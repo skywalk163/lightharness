@@ -240,6 +240,11 @@ def 后台执行(
     )
 
 
+def 收尾进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果:
+    """等待后台进程完成（光明安全名：避免 等待 关键字拆分）。"""
+    return 等待进程(进程, 超时)
+
+
 def 等待进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果:
     """
     等待后台进程完成
@@ -252,7 +257,7 @@ def 等待进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果
         命令结果
     """
     try:
-        标准输出, 标准错误 = 进程.沟通(timeout=超时)
+        标准输出, 标准错误 = 进程.communicate(timeout=超时)
         return 命令结果(
             返回码=进程.returncode,
             标准输出=标准输出.decode('utf-8', errors='replace') if isinstance(标准输出, bytes) else (标准输出 or ""),

@@ -119,9 +119,10 @@
       "状态": "done",
       "证据": [
         "src/代理.light",
-        "examples/test_代理.light"
+        "examples/test_代理.light",
+        "examples/test_并行.light"
       ],
-      "本轮目标": "done：turn/step 状态机/请求组装/流式消费/助手消息记录/tool-call+result/工具调用分组执行/max-tokens粘性/错误结构化(v1同步驱动)",
+      "本轮目标": "done：turn/step 多轮循环；parallel 工具组真并发（线程分批，并发上限4，结果按模型序回填，tool/call、tool/result 事件在主线程记录）；exclusive 顺序屏障",
       "反跑判据": "test_代理.light：把 假客户端.调用次数 期望 2 改为 1 即红",
       "语言缺陷": [
         "L-004",
@@ -196,7 +197,7 @@
         "examples/test_总入口.light",
         "examples/运行CLI.light"
       ],
-      "本轮目标": "partial：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL与实时API联调待密钥",
+      "本轮目标": "partial：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；实时API联调待密钥",
       "反跑判据": "test_总入口.light：把 bash 工具输出断言改为相反值即红",
       "语言缺陷": [
         "L-004",
@@ -214,7 +215,7 @@
         "src/子进程.light",
         "examples/test_子进程.light"
       ],
-      "本轮目标": "partial：运行进程/运行并取输出/进程成功(捕获输出+成功判定)；退出码精确值因 返回码 属性被拆暂以 0/-1 表示",
+      "本轮目标": "partial：运行进程/运行并取输出/进程成功(捕获输出+成功判定)已通；新增 运行后台/等待后台（Popen+超时）；退出码精确值因 返回码 属性被拆暂以 0/-1 表示",
       "反跑判据": "test_子进程.light：把 输出 断言 hi 改成 nope 即红",
       "语言缺陷": [
         "L-010"
