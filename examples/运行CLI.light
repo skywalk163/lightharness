@@ -1,2 +1,34 @@
+# 运行CLI.light —— lightharness CLI 示例入口（T10-02 联调修正）
+#
+# 用法（环境变量传参）：
+#
+#   单轮对话：
+#     设 HARNESS_MSG 为 "你好"
+#     设 DEEPSEEK_API_KEY 为 "sk-..."
+#     python 运行.py examples/运行CLI.light
+#
+#   多轮交互（REPL）：
+#     设 HARNESS_REPL 为 "1"
+#     设 DEEPSEEK_API_KEY 为 "sk-..."
+#     python 运行.py examples/运行CLI.light
+#
+#   续写已有会话：
+#     设 HARNESS_RESUME 为 "cli_1234567890"
+#     设 HARNESS_MSG 为 "接着上次的聊"
+#     设 DEEPSEEK_API_KEY 为 "sk-..."
+#     python 运行.py examples/运行CLI.light
+#
+#   从文件读取提示：
+#     设 HARNESS_PROMPT_FILE 为 "prompt.txt"
+#     设 DEEPSEEK_API_KEY 为 "sk-..."
+#     python 运行.py examples/运行CLI.light
+#
+# 可选环境变量：
+#   HARNESS_MODEL     模型名（默认 deepseek-chat）
+#   HARNESS_ENDPOINT  端点（默认 https://api.deepseek.com/chat/completions）
+#   HARNESS_ROOT      持久化根目录（默认 sessions）
+#   HARNESS_SESSION   会话标识（默认 cli_<时间戳>）
+#   HARNESS_API_KEY   替代 DEEPSEEK_API_KEY
+
 从 总入口 导入 主
 主()
