@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 编译产物/
 *.log
+
+tmp_persist/
+sessions/
+tmp_*

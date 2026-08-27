@@ -151,12 +151,19 @@
       "编号": 9,
       "功能": "上下文压缩（compaction surface replace）",
       "原版包": "compaction/compaction",
-      "光明模块": "src/上下文/压缩.light",
-      "状态": "none",
-      "证据": [],
-      "本轮目标": "done：tool/result 对合并、assistant/message 压缩、surface replace",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "光明模块": "src/压缩.light",
+      "状态": "done",
+      "证据": [
+        "src/压缩.light",
+        "examples/test_压缩.light",
+        "src/会话.light(压缩替换原位)"
+      ],
+      "本轮目标": "done：v1 确定性策略 压缩到最近(保留N条)/造摘要/压缩替换原位插入(遮蔽段保留+来源事件序号)",
+      "反跑判据": "test_压缩.light：把 压缩后 条数断言 3 改成 2 即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007"
+      ]
     },
     {
       "编号": 10,
@@ -198,12 +205,17 @@
       "编号": 12,
       "功能": "子进程执行（subprocess/shell 后端）",
       "原版包": "subprocess + shell",
-      "光明模块": "src/运行层/子进程.light",
-      "状态": "none",
-      "证据": [],
-      "本轮目标": "partial：spawn/超时/输出捕获/退出码",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "光明模块": "src/子进程.light",
+      "状态": "partial",
+      "证据": [
+        "src/子进程.light",
+        "examples/test_子进程.light"
+      ],
+      "本轮目标": "partial：运行进程/运行并取输出/进程成功(捕获输出+成功判定)；退出码精确值因 返回码 属性被拆暂以 0/-1 表示",
+      "反跑判据": "test_子进程.light：把 输出 断言 hi 改成 nope 即红",
+      "语言缺陷": [
+        "L-010"
+      ]
     },
     {
       "编号": 13,
@@ -220,11 +232,14 @@
       "编号": 14,
       "功能": "文件与存储（fs/storage）",
       "原版包": "fs + storage",
-      "光明模块": "src/运行层/文件.light",
-      "状态": "none",
-      "证据": [],
-      "本轮目标": "partial：读写/目录/glob/JSON 存储",
-      "反跑判据": "待建",
+      "光明模块": "src/文件.light",
+      "状态": "partial",
+      "证据": [
+        "src/文件.light",
+        "examples/test_文件.light"
+      ],
+      "本轮目标": "partial：JSON文件存取/文本存取/目录保证/列目录/拼路径",
+      "反跑判据": "test_文件.light：把 JSON 读回 名字 断言改成相反值即红",
       "语言缺陷": []
     }
   ]
