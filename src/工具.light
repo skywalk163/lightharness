@@ -1,22 +1,32 @@
-# 工具.light —— 工具注册表 + 执行（对齐原版 core/tools，P0 同步等价版）
+# 工具.light —— 工具注册表 + 执行流水线（对齐原版 core/tools + agent-loop/tool-calls.ts，T10-05 加深）
 #
 # 数据结构：
-#   ToolSchema    { "name", "description", "parameters" }   ← 给模型的工具描述
-#   ToolDefinition { "name", "description", "parameters", "execute"(函数), "mode"(执行策略) }
-#   ToolExecutionResult { "content"(块表), "isError"(布尔), "concludesTurn"(布尔), "additionalContexts"(列表) }
+#   ToolSchema     { "name", "description", "parameters" }   ← 给模型的工具描述
+#   ToolDefinition { "name", "description", "parameters", "execute"(函数), "mode"(执行策略),
+#                    "prepare"(前置钩子, 可选), "finalize"(收尾钩子, 可选) }
+#   ToolExecutionResult { "content"(块表), "isError"(布尔), "concludesTurn"(布尔), "additionalContexts"(列表), "error" }
 # 执行策略："exclusive"（独占总线，形成屏障）/"parallel"（可并行，v1 顺序执行但语义按模式分组）
 #
-# 模型参数 raw JSON 解析：空→{}；非法 JSON→保持原文文本（对齐原版 parseArguments）。
+# T10-05 加深点（对标 core/tools json-schema.ts + tool-calls.ts 三阶段）：
+#   1) 参数校验：校验参数(模式, 参数) —— JSON Schema 子集校验器，返回结构化错误列表
+#      （字段路径用列表 ["参数","秒"]，原因 missing/type/enum/pattern/...）。
+#   2) 执行流水线接入：执行 = 准备(prepare, 可改参/拒) → 校验(schema) → 派发(execute) → 收尾(finalize)。
+#   3) 红线：不改动 执行的返回结构（content/isError/concludesTurn/additionalContexts/error），
+#      只在校验失败时为 error 补「字段错误」详情。
 #
-# ⚠️ 光明命名规范 v1：成员名避开关键字/运算符词根；成员赋值一律「设 己.X 为 …」。
+# ⚠️ 光明命名规范：成员名避开关键字/运算符词根（工具/模式/参数/类型 等）；
+#   成员赋值一律「设 己.X 为 …」；校验器成员名用 校验一层/记错误/可读名/核对相等（无危险词根）。
+
+导入 re
 
 # ---- 构造工具模式（模型可见 schema）----
 段落 造工具模式 接收 名字, 描述, 参数:
   返回 ["name": 名字, "description": 描述, "parameters": 参数]
 
 # ---- 构造工具定义（注册用）----
-段落 造工具定义 接收 名字, 描述, 参数, 执行函数:
-  返回 ["name": 名字, "description": 描述, "parameters": 参数, "execute": 执行函数, "mode": "parallel"]
+# 策略：执行策略（"parallel"/"exclusive"）；准备/收尾 为可选钩子函数（默认 空）。
+段落 造工具定义 接收 名字, 描述, 参数, 执行函数, 策略="parallel", 准备=空, 收尾=空:
+  返回 ["name": 名字, "description": 描述, "parameters": 参数, "execute": 执行函数, "mode": 策略, "prepare": 准备, "finalize": 收尾]
 
 # ---- 构造执行结果 ----
 段落 造工具结果 接收 内容, 是否错误:
@@ -31,6 +41,258 @@
   捕获 错误:
     返回 原文
 
+# =====================================================================
+# 参数校验器（JSON Schema 校验器，纯光明实现，对齐原版 json-schema.ts 强制子集）
+#   强制子集（对齐原版 CONSTRAINT_KEYWORDS）：
+#     type / oneOf / properties / required /
+#     additionalProperties(仅布尔) / items / enum / const
+#   —— 外加 type:null 支持（原版 JsonSchemaScalar 含 null）。
+#   超集兼容扩展（原版 assertSupportedJsonSchema 会拒绝，这里宽松保留，因工具参数有用）：
+#     pattern / minimum / maximum / minLength / maxLength / minItems / maxItems
+#     （属宽松超集，缺失时不影响对原版子集的对齐判定）
+#   错误列表项：["路径": [...列表...], "原因": "...", "细节": "..."]
+#   路径用列表（如 ["参数","秒"]），避免字符串拼接歧义。
+# =====================================================================
+类 校验器:
+  属性 占位 等于 空
+
+  段落 构造:
+    设 己.占位 为 0
+
+  # ---- 入口：根路径标签默认 "参数" ----
+  段落 校验 接收 模式, 值, 根标签:
+    设 错误表 为 []
+    设 根路径 为 [根标签]
+    己.校验一层(值, 模式, 根路径, 错误表)
+    返回 错误表
+
+  # ---- 分派：逐级校验，每类约束拆成独立方法（扁平化，规避深层嵌套解析错位）----
+  段落 校验一层 接收 值, 模式, 路径, 错误表:
+    己.校验组合(值, 模式, 路径, 错误表)
+    己.校验型(值, 模式, 路径, 错误表)
+    己.校验枚举(值, 模式, 路径, 错误表)
+    己.校验常量(值, 模式, 路径, 错误表)
+    如果 type(值) == dict:
+      己.校验对象(值, 模式, 路径, 错误表)
+    如果 type(值) == list:
+      己.校验数组(值, 模式, 路径, 错误表)
+    如果 type(值) == str:
+      己.校验字符串(值, 模式, 路径, 错误表)
+    如果 (type(值) == int) 或 (type(值) == float):
+      己.校验数值(值, 模式, 路径, 错误表)
+
+  # ---- oneOf 关键字（精确匹配一个分支；对齐原版 exact-one 语义）----
+  #   若 schema 未声明 oneOf 则跳过；对每个分支递归校验，统计匹配分支数，非 1 即报错。
+  段落 校验组合 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("oneOf") == 假:
+      返回
+    设 分支表 为 模式["oneOf"]
+    设 命中 为 0
+    遍历 分支 之 分支表:
+      设 临时 为 []
+      己.校验一层(值, 分支, 路径, 临时)
+      如果 长(临时) == 0:
+        设 命中 为 命中 加上 1
+    如果 命中 != 1:
+      己.记错误(错误表, 路径, "oneOf", "需精确匹配一个分支，实际匹配 " 加上 转字符串(命中) 加上 " 个")
+
+  # ---- type 关键字（顺序 if，避免 else-if 链嵌套）----
+  段落 校验型 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("type") == 假:
+      返回
+    设 期望型 为 模式["type"]
+    设 已知型 为 假
+    设 符合 为 假
+    如果 期望型 == "string":
+      设 已知型 为 真
+      设 符合 为 (type(值) == str)
+    如果 期望型 == "integer":
+      设 已知型 为 真
+      设 符合 为 (type(值) == int)
+    如果 期望型 == "number":
+      设 已知型 为 真
+      设 符合 为 ((type(值) == int) 或 (type(值) == float))
+    如果 期望型 == "boolean":
+      设 已知型 为 真
+      设 符合 为 (type(值) == bool)
+    如果 期望型 == "null":
+      设 已知型 为 真
+      设 符合 为 (值 == 空)
+    如果 期望型 == "array":
+      设 已知型 为 真
+      设 符合 为 (type(值) == list)
+    如果 期望型 == "object":
+      设 已知型 为 真
+      设 符合 为 (type(值) == dict)
+    如果 已知型 == 真:
+      如果 符合 == 假:
+        己.记错误(错误表, 路径, "type", "期望 " 加上 期望型 加上 " 实际 " 加上 己.可读名(值))
+
+  # ---- 值是否符合单个声明 type（供 enum/const 的 type 闸门复用）----
+  段落 型相符 接收 值, 期望型:
+    如果 期望型 == "string":
+      返回 (type(值) == str)
+    如果 期望型 == "integer":
+      返回 (type(值) == int)
+    如果 期望型 == "number":
+      返回 ((type(值) == int) 或 (type(值) == float))
+    如果 期望型 == "boolean":
+      返回 (type(值) == bool)
+    如果 期望型 == "null":
+      返回 (值 == 空)
+    如果 期望型 == "array":
+      返回 (type(值) == list)
+    如果 期望型 == "object":
+      返回 (type(值) == dict)
+    返回 假
+
+  # ---- enum 关键字（仅当 type 匹配时才校验；对齐原版 type-gated 语义）----
+  段落 校验枚举 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("enum") == 假:
+      返回
+    如果 模式.包含("type") 且 己.型相符(值, 模式["type"]) == 假:
+      返回
+    设 命中 为 假
+    遍历 候选 之 模式["enum"]:
+      如果 己.核对相等(值, 候选):
+        设 命中 为 真
+    如果 命中 == 假:
+      己.记错误(错误表, 路径, "enum", "值不在枚举: " 加上 转字符串(值))
+
+  # ---- const 关键字（仅当 type 匹配时才校验；对齐原版 type-gated 语义）----
+  段落 校验常量 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("const") == 假:
+      返回
+    如果 模式.包含("type") 且 己.型相符(值, 模式["type"]) == 假:
+      返回
+    如果 己.核对相等(值, 模式["const"]) == 假:
+      己.记错误(错误表, 路径, "const", "值不等于常量")
+
+  # ---- object 关键字（仅当 值 是字典时由 校验一层 调用）----
+  段落 校验对象 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("properties"):
+      设 属性表 为 模式["properties"]
+      遍历 键 之 属性表:
+        如果 值.包含(键):
+          设 子路径 为 己.复制追加(路径, 键)
+          己.校验一层(值[键], 属性表[键], 子路径, 错误表)
+    如果 模式.包含("required"):
+      遍历 键 之 模式["required"]:
+        如果 值.包含(键) == 假:
+          设 子路径 为 己.复制追加(路径, 键)
+          己.记错误(错误表, 子路径, "missing", "缺少必需字段 " 加上 键)
+    # additionalProperties: false → 拒绝未声明键（对齐原版强制子集；原版仅支持布尔）
+    如果 模式.包含("additionalProperties") 且 模式["additionalProperties"] == 假:
+      设 声明 为 {}
+      如果 模式.包含("properties"):
+        设 声明 为 模式["properties"]
+      遍历 键 之 值:
+        如果 声明.包含(键) == 假:
+          设 子路径 为 己.复制追加(路径, 键)
+          己.记错误(错误表, 子路径, "additionalProperties", "未声明的额外字段: " 加上 键)
+
+  # ---- array 关键字（仅当 值 是列表时由 校验一层 调用）----
+  段落 校验数组 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("items"):
+      设 元素模式 为 模式["items"]
+      设 i 为 0
+      当 i < 长(值):
+        设 子路径 为 己.复制追加(路径, 转字符串(i))
+        己.校验一层(值[i], 元素模式, 子路径, 错误表)
+        设 i 为 i 加上 1
+    如果 模式.包含("minItems"):
+      如果 长(值) < 模式["minItems"]:
+        己.记错误(错误表, 路径, "minItems", "数组项数小于最小值")
+    如果 模式.包含("maxItems"):
+      如果 长(值) > 模式["maxItems"]:
+        己.记错误(错误表, 路径, "maxItems", "数组项数大于最大值")
+
+  # ---- 字符串约束 ----
+  段落 校验字符串 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("minLength"):
+      如果 长(值) < 模式["minLength"]:
+        己.记错误(错误表, 路径, "minLength", "字符串长度小于最小值")
+    如果 模式.包含("maxLength"):
+      如果 长(值) > 模式["maxLength"]:
+        己.记错误(错误表, 路径, "maxLength", "字符串长度大于最大值")
+    如果 模式.包含("pattern"):
+      如果 re.search(模式["pattern"], 值) == 空:
+        己.记错误(错误表, 路径, "pattern", "不匹配正则 " 加上 模式["pattern"])
+
+  # ---- 数值约束 ----
+  段落 校验数值 接收 值, 模式, 路径, 错误表:
+    如果 模式.包含("minimum"):
+      如果 值 < 模式["minimum"]:
+        己.记错误(错误表, 路径, "minimum", "数值小于最小值")
+    如果 模式.包含("maximum"):
+      如果 值 > 模式["maximum"]:
+        己.记错误(错误表, 路径, "maximum", "数值大于最大值")
+
+  # ---- 复制路径并追加一级（消除内联 遍历 p 之 路径 的三层嵌套）----
+  段落 复制追加 接收 路径, 键:
+    设 副本 为 []
+    遍历 p 之 路径:
+      副本.追加(p)
+    副本.追加(键)
+    返回 副本
+
+  # ---- 记录错误（复制路径，避免共享引用污染）----
+  段落 记错误 接收 错误表, 路径, 原因, 细节:
+    设 副本 为 []
+    遍历 p 之 路径:
+      副本.追加(p)
+    错误表.追加(["路径": 副本, "原因": 原因, "细节": 细节])
+
+  # ---- 人类可读类型名（用于错误细节）----
+  段落 可读名 接收 值:
+    如果 type(值) == str:
+      返回 "字符串"
+    如果 type(值) == int:
+      返回 "整数"
+    如果 type(值) == float:
+      返回 "小数"
+    如果 type(值) == bool:
+      返回 "布尔"
+    如果 type(值) == list:
+      返回 "数组"
+    如果 type(值) == dict:
+      返回 "对象"
+    如果 值 == 空:
+      返回 "空"
+    返回 转字符串(type(值))
+
+  # ---- 深比较（列表/字典递归）----
+  段落 核对相等 接收 a, b:
+    如果 type(a) != type(b):
+      返回 假
+    如果 type(a) == list:
+      如果 长(a) != 长(b):
+        返回 假
+      设 i 为 0
+      当 i < 长(a):
+        如果 己.核对相等(a[i], b[i]) == 假:
+          返回 假
+        设 i 为 i 加上 1
+      返回 真
+    如果 type(a) == dict:
+      如果 长(a) != 长(b):
+        返回 假
+      遍历 k 之 a:
+        如果 b.包含(k) == 假:
+          返回 假
+        如果 己.核对相等(a[k], b[k]) == 假:
+          返回 假
+      返回 真
+    返回 a == b
+
+# ---- 对外校验入口：根标签固定 "参数"，返回错误列表 ----
+段落 校验参数 接收 模式, 参数:
+  设 实例 为 新建 校验器()
+  返回 实例.校验(模式, 参数, "参数")
+
+# =====================================================================
+# 工具注册表
+# =====================================================================
 类 工具注册表:
   属性 登记表 等于 空
   属性 顺序表 等于 空
@@ -87,14 +349,37 @@
     返回 "parallel"
 
   # 执行一个工具调用：名字 + 原始参数 JSON
+  # 流水线：准备(prepare) → 校验(schema) → 派发(execute) → 收尾(finalize)
   # 返回 { "content", "isError", "concludesTurn", "additionalContexts", "error" }
   段落 执行 接收 名字, 原始参数:
     如果 己.登记表.包含(名字) == 假:
-      返回 ["content": [["type": "text", "text": "未知工具: " + 名字]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": "未知工具", "代码": "TOOL_NOT_FOUND"]]
-    设 定义 为 己.登记表[名字]
+      返回 ["content": [["type": "text", "text": "未知工具: " 加上 名字]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": "未知工具", "代码": "TOOL_NOT_FOUND"]]
+    设 条目 为 己.登记表[名字]
     设 参数 为 解析参数(原始参数)
+    # 1) 准备钩子（前置，可改参数 / 可拒绝）
+    如果 条目.包含("prepare") 且 条目["prepare"] != 空:
+      尝试:
+        设 准备函数 为 条目["prepare"]
+        设 参数 为 准备函数(参数)
+      捕获 错误:
+        返回 ["content": [["type": "text", "text": "工具准备失败: " 加上 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": "工具准备失败", "代码": "TOOL_PREPARE_FAILED", "详情": 转字符串(错误)]]
+    # 2) 参数校验（JSON Schema）
+    设 模式 为 条目["parameters"]
+    设 校验错误 为 校验参数(模式, 参数)
+    如果 长(校验错误) > 0:
+      返回 ["content": [["type": "text", "text": "参数校验失败"]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": "参数校验失败", "代码": "PARAM_SCHEMA_INVALID", "字段错误": 校验错误]]
+    # 3) 派发（执行）
     尝试:
-      设 值 为 定义["execute"](参数)
-      返回 ["content": 值, "isError": 假, "concludesTurn": 假, "additionalContexts": [], "error": 空]
+      设 执行函数 为 条目["execute"]
+      设 值 为 执行函数(参数)
+      设 结果 为 ["content": 值, "isError": 假, "concludesTurn": 假, "additionalContexts": [], "error": 空]
     捕获 错误:
-      返回 ["content": [["type": "text", "text": "工具执行失败: " + 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": 转字符串(错误), "代码": "TOOL_EXECUTION_FAILED"]]
+      设 结果 为 ["content": [["type": "text", "text": "工具执行失败: " 加上 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": 转字符串(错误), "代码": "TOOL_EXECUTION_FAILED"]]
+    # 4) 收尾钩子（execute 后，可读结果/记录；收尾异常不掩盖主结果）
+    如果 条目.包含("finalize") 且 条目["finalize"] != 空:
+      尝试:
+        设 收尾函数 为 条目["finalize"]
+        设 占位 为 收尾函数(结果, 参数)
+      捕获 错误:
+        设 占位 为 空
+    返回 结果

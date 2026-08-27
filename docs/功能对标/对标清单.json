@@ -156,7 +156,8 @@
     "L-003",
     "L-013",
     "L-014"
-   ]
+   ],
+   "子集对齐补遗": "T10-05b：补齐原版 json-schema.ts 强制子集缺口 oneOf(精确匹配一个)/additionalProperties:false(拒绝未声明键)/type:null + enum/const 支持null + enum/const type-gated(仅type匹配时校验)；任务书§6 原未覆盖清单按完整JSON Schema列、偏离原版（原版 assertSupportedJsonSchema 不支持 allOf/anyOf/not/$ref/format/multipleOf/uniqueItems 等，会主动拒绝），对齐原版无需实现它们"
   },
   {
    "编号": 9,
