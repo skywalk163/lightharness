@@ -1,0 +1,17 @@
+# 冒烟测试：验证 lightharness 自包含 stdlib 解析
+# 从 lightharness/stdlib 导入多个模块，证明不依赖 light-merge 的 stdlib
+从 JSON核心 导入 序列化
+从 JSON 导入 解析
+从 字符串处理 导入 拼接
+导入 数学
+
+段落 主:
+  设 数据 为 ["名字": "光明", "版本": "lightharness"]
+  设 文本 为 序列化(数据)
+  打印 "JSON序列化: " 加上 文本
+  设 解析后 为 解析(文本)
+  打印 "JSON解析回: " 加上 解析后["名字"]
+  打印 "数学.pi: " 加上 字符串(数学.pi)
+  打印 "自包含 stdlib 冒烟测试通过"
+
+主()
