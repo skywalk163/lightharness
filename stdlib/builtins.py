@@ -227,6 +227,84 @@ def 文件大小(path: str) -> int:
         raise RuntimeError(f"获取文件大小失败 '{path}': {e}")
 
 
+def 复制文件(src: str, dst: str) -> None:
+    """复制文件（保留元数据）"""
+    import shutil
+    try:
+        shutil.copy2(src, dst)
+    except Exception as e:
+        raise RuntimeError(f"复制文件失败 '{src}' -> '{dst}': {e}")
+
+
+def 重命名(src: str, dst: str) -> None:
+    """重命名文件或目录"""
+    try:
+        os.rename(src, dst)
+    except Exception as e:
+        raise RuntimeError(f"重命名失败 '{src}' -> '{dst}': {e}")
+
+
+def 复制目录(src: str, dst: str) -> None:
+    """复制目录树"""
+    import shutil
+    try:
+        shutil.copytree(src, dst)
+    except Exception as e:
+        raise RuntimeError(f"复制目录失败 '{src}' -> '{dst}': {e}")
+
+
+def 删目录树(path: str) -> None:
+    """递归删除目录树（shutil.rmtree）"""
+    import shutil
+    try:
+        shutil.rmtree(path)
+    except Exception as e:
+        raise RuntimeError(f"删除目录树失败 '{path}': {e}")
+
+
+def 创建临时目录(prefix: str = "light_") -> str:
+    """创建临时目录，返回路径"""
+    import tempfile
+    try:
+        return tempfile.mkdtemp(prefix=prefix)
+    except Exception as e:
+        raise RuntimeError(f"创建临时目录失败: {e}")
+
+
+def 查找目录列表(path: str, pattern: str, recursive: bool = False) -> List[str]:
+    """按通配符筛选目录中的文件（fnmatch）"""
+    import fnmatch
+    result = []
+    if recursive:
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                if fnmatch.fnmatch(f, pattern):
+                    result.append(os.path.join(root, f))
+    else:
+        for f in os.listdir(path):
+            if fnmatch.fnmatch(f, pattern):
+                result.append(os.path.join(path, f))
+    return result
+
+
+def 读二进制文件(path: str) -> bytes:
+    """读取二进制文件"""
+    try:
+        with open(path, 'rb') as f:
+            return f.read()
+    except Exception as e:
+        raise RuntimeError(f"读取二进制文件失败 '{path}': {e}")
+
+
+def 写入二进制文件(path: str, data: bytes) -> None:
+    """写入二进制文件"""
+    try:
+        with open(path, 'wb') as f:
+            f.write(data)
+    except Exception as e:
+        raise RuntimeError(f"写入二进制文件失败 '{path}': {e}")
+
+
 # =============================================================================
 # 路径操作函数
 # =============================================================================
