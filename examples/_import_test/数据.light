@@ -1,0 +1,4 @@
+# L-001 辅助模块：examples/_import_test/数据.light
+# 供 test_L001.light 用「从 _import_test.数据 导入 造值」点号导入
+段落 造值:
+  返回 42

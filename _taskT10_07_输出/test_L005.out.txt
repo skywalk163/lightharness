@@ -1,0 +1,21 @@
+﻿python : 错误: 类型错误
+At line:1 char:11355
++ ... ($f in $files) { $out = python 运行.py "examples/$f.light" 2>&1 | Out-S ...
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (错误: 类型错误:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  'dict' object is not callable
+源代码:
+ 1 # 缺陷：L-005 非 self 成员下标访问被误编译成函数调用（对象.表[键] → 对象.表([键])）
+ 2 # 当前：红——「'dict' object is not callable」（监听器表["点击"] 被编译成 监听器表(["点击"])）
+ 3 # 修复后：绿——下标读取按字面语义执行，取回已挂载的值，断言通过
+ 4 类 总线:
+ 5   属性 监听器表 等于 空
+
+  建议: 请检查操作数类型是否匹配，段言中文本和数字不能直接进行运算。可使用「整数()」「文本()」等函数进行类型转换。
+  参考示例：
+  设 数字 为 整数("123")  # 将文本转换为整数
+  设 文本 为 文本(123)     # 将整数转换为文本
+
+

@@ -1,0 +1,21 @@
+﻿python : 错误: 模块未找到
+At line:1 char:11191
++ ... ,'test_L008')) { $out = python 运行.py "examples/$f.light" 2>&1 | Out-S ...
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (错误: 模块未找到:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  No module named '_import_test.数据'
+源代码:
+ 1 # 缺陷：L-001 跨目录点号导入不可用（点号导入 子目录.模块 的符号 编译期不内联、运行期 No module named）
+ 2 # 当前：红——「No module named '_import_test.数据'」（即使 _import_test/__init__.py 存在也不解析）
+ 3 # 修复后：绿——点号导入被解析/内联，造值() 返回 42，断言通过
+ 4 从 _import_test.数据 导入 造值
+ 5 
+
+  建议: 模块未找到，请检查模块名是否拼写正确，确认模块已安装。段言中可使用「导入 模块名」导入模块。
+  参考示例：
+  导入 数学
+  打印(数学.平方根(16))
+
+

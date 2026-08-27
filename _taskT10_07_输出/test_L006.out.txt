@@ -1,0 +1,19 @@
+﻿python : 错误: UnboundLocalError
+At line:1 char:11355
++ ... ($f in $files) { $out = python 运行.py "examples/$f.light" 2>&1 | Out-S ...
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (错误: UnboundLocalError:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  cannot access local variable '计数' where it is not associated with a value
+源代码:
+ 1 # 缺陷：L-006 闭包修改外层标量触发 UnboundLocalError（内层段落对外层标量做 X = X + 1 式更新）
+ 2 # 当前：红——「UnboundLocalError」（内层段落把 计数 当作局部变量重新绑定）
+ 3 # 修复后：绿——内层段落可读改外层标量（nonlocal 语义），计数 应为 1，断言通过
+ 4 
+ 5 # 复现段：内层段落 处理器 修改外层标量 计数
+
+  参考示例：
+  请根据具体的错误信息进行修复
+
+

@@ -1,0 +1,21 @@
+﻿python : 错误: 属性错误
+At line:1 char:11355
++ ... ($f in $files) { $out = python 运行.py "examples/$f.light" 2>&1 | Out-S ...
++                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (错误: 属性错误:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  module '外部命令' has no attribute '等待'
+源代码:
+ 1 # 缺陷：L-011 关键字根「等待」拆分成员访问（外部命令.等待进程 被拆成 外部命令.等待(...)）
+ 2 # 当前：红——「module '外部命令' has no attribute '等待'」（等待进程 被关键字根拆分）
+ 3 # 修复后：绿——等待进程 整体成词可调用，断言通过（此处允许使用 stdlib 外部命令 作复现载体）
+ 4 导入 外部命令
+ 5 
+
+  建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+  参考示例：
+  设 文本 为 "hello"
+  打印(字符串长度(文本))  # 使用函数而非属性
+
+
