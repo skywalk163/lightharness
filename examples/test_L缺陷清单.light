@@ -15,6 +15,11 @@
   打印 "L-009 工具 test_L009.light 注释内嵌导入字样被文本替换误伤"
   打印 "L-010 红 test_L010.light 返回码 成员访问被拆"
   打印 "L-011 红 test_L011.light 等待进程 成员访问被拆"
+  打印 "L-012 红 test_L012.light 终端.终端会话 跨模块成员访问被拆"
+  打印 "L-013 绿 test_L013.light 单行for循环已缓解转绿(编译器侧闭合)"
+  打印 "L-014 红 test_L014.light 语句级下标调用 FunctionCallExpr"
+  打印 "L-015 红 test_L015.light 模块名含关键字词根 from 解析失败"
+  打印 "L-016 红 test_L016.light CancelledError 无法被捕获接住"
   打印 "--- 测试L缺陷清单 结束 ---"
 
 主()
