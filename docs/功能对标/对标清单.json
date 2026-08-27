@@ -209,7 +209,7 @@
      "examples/运行CLI.light",
      "examples/test_联调CLI.light"
     ],
-    "本轮目标": "done：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；无key自动化冒烟（mock客户端注入，单轮/多轮上下文延续/续写JSONL持久化+turn序号连续）；交互缺陷修复（缺key友好提示/网络失败try-catch/REPL空输入跳过/提示文件与续写会话不存在时友好报错）；真实API联调未实测（无DEEPSEEK_API_KEY）",
+    "本轮目标": "done：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；无key自动化冒烟（mock客户端注入，单轮/多轮上下文延续/续写JSONL持久化+turn序号连续）；交互缺陷修复（缺key友好提示/网络失败try-catch/REPL空输入跳过/提示文件与续写会话不存在时友好报错）；OpenAI兼容工具格式包装器（兼容注册表，工具.light只读不改）；续写turn序号连续修复（跑一轮从会话历史推导起始轮号）；真实API联调已实测（DEEPSEEK_API_KEY 单轮/多轮REPL/续写全部跑通，turn序号1→2连续验证通过）",
     "反跑判据": "test_联调CLI.light：把 mock 请求断言（模型名改 WRONG-MODEL / 消息条数改 >=999）即红；test_总入口.light：把 bash 工具输出断言改为相反值即红",
     "语言缺陷": [
      "L-004",
