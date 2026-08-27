@@ -1,0 +1,100 @@
+# 工具.light —— 工具注册表 + 执行（对齐原版 core/tools，P0 同步等价版）
+#
+# 数据结构：
+#   ToolSchema    { "name", "description", "parameters" }   ← 给模型的工具描述
+#   ToolDefinition { "name", "description", "parameters", "execute"(函数), "mode"(执行策略) }
+#   ToolExecutionResult { "content"(块表), "isError"(布尔), "concludesTurn"(布尔), "additionalContexts"(列表) }
+# 执行策略："exclusive"（独占总线，形成屏障）/"parallel"（可并行，v1 顺序执行但语义按模式分组）
+#
+# 模型参数 raw JSON 解析：空→{}；非法 JSON→保持原文文本（对齐原版 parseArguments）。
+#
+# ⚠️ 光明命名规范 v1：成员名避开关键字/运算符词根；成员赋值一律「设 己.X 为 …」。
+
+# ---- 构造工具模式（模型可见 schema）----
+段落 造工具模式 接收 名字, 描述, 参数:
+  返回 ["name": 名字, "description": 描述, "parameters": 参数]
+
+# ---- 构造工具定义（注册用）----
+段落 造工具定义 接收 名字, 描述, 参数, 执行函数:
+  返回 ["name": 名字, "description": 描述, "parameters": 参数, "execute": 执行函数, "mode": "parallel"]
+
+# ---- 构造执行结果 ----
+段落 造工具结果 接收 内容, 是否错误:
+  返回 ["content": 内容, "isError": 是否错误, "concludesTurn": 假, "additionalContexts": []]
+
+# ---- 解析模型参数（空→{}；非法 JSON→原文）----
+段落 解析参数 接收 原文:
+  如果 原文 == "":
+    返回 {}
+  尝试:
+    返回 解析JSON(原文)
+  捕获 错误:
+    返回 原文
+
+类 工具注册表:
+  属性 登记表 等于 空
+  属性 顺序表 等于 空
+
+  段落 构造:
+    设 己.登记表 为 {}
+    设 己.顺序表 为 []
+
+  # 注册工具；同名覆盖
+  段落 注册 接收 定义:
+    设 名字 为 定义["name"]
+    设 己.登记表[名字] 为 定义
+    如果 己.顺序表.包含(名字) == 假:
+      己.顺序表.追加(名字)
+    返回 真
+
+  # 注销工具
+  段落 注销 接收 名字:
+    如果 己.登记表.包含(名字):
+      字典删除(己.登记表, 名字)
+      设 新名单 为 []
+      遍历 项 之 己.顺序表:
+        如果 项 != 名字:
+          新名单.追加(项)
+      设 己.顺序表 为 新名单
+    返回 真
+
+  # 是否存在
+  段落 有无 接收 名字:
+    返回 己.登记表.包含(名字)
+
+  # 查找定义
+  段落 查找 接收 名字:
+    如果 己.登记表.包含(名字):
+      返回 己.登记表[名字]
+    返回 空
+
+  # 全部已注册名字（登记顺序）
+  段落 名单:
+    返回 己.顺序表
+
+  # 模型可见的描述表（按登记顺序）
+  段落 描述表:
+    设 结果 为 []
+    遍历 名字 之 己.顺序表:
+      设 定义 为 己.登记表[名字]
+      结果.追加(["name": 定义["name"], "description": 定义["description"], "parameters": 定义["parameters"]])
+    返回 结果
+
+  # 指定工具的执行策略（未注册默认 parallel）
+  段落 执行策略 接收 名字:
+    如果 己.登记表.包含(名字):
+      返回 己.登记表[名字]["mode"]
+    返回 "parallel"
+
+  # 执行一个工具调用：名字 + 原始参数 JSON
+  # 返回 { "content", "isError", "concludesTurn", "additionalContexts", "error" }
+  段落 执行 接收 名字, 原始参数:
+    如果 己.登记表.包含(名字) == 假:
+      返回 ["content": [["type": "text", "text": "未知工具: " + 名字]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": "未知工具", "代码": "TOOL_NOT_FOUND"]]
+    设 定义 为 己.登记表[名字]
+    设 参数 为 解析参数(原始参数)
+    尝试:
+      设 值 为 定义["execute"](参数)
+      返回 ["content": 值, "isError": 假, "concludesTurn": 假, "additionalContexts": [], "error": 空]
+    捕获 错误:
+      返回 ["content": [["type": "text", "text": "工具执行失败: " + 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": 转字符串(错误), "代码": "TOOL_EXECUTION_FAILED"]]
