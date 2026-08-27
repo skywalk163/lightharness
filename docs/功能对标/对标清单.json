@@ -179,12 +179,20 @@
       "编号": 11,
       "功能": "CLI 入口（headless runner）",
       "原版包": "apps/cli + bundle/headless",
-      "光明模块": "src/主程序.light",
-      "状态": "none",
-      "证据": [],
-      "本轮目标": "done：命令行参数解析、单次对话/多轮 agent 两种模式、会话文件读写",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "光明模块": "src/总入口.light + examples/运行CLI.light",
+      "状态": "partial",
+      "证据": [
+        "src/总入口.light",
+        "examples/test_总入口.light",
+        "examples/运行CLI.light"
+      ],
+      "本轮目标": "partial：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL与实时API联调待密钥",
+      "反跑判据": "test_总入口.light：把 bash 工具输出断言改为相反值即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007",
+        "L-010"
+      ]
     },
     {
       "编号": 12,

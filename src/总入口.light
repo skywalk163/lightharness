@@ -1,0 +1,83 @@
+# 主程序.light —— lightharness CLI 入口（对齐原版 apps/cli headless runner，P0 版）
+#
+# 用法（环境变量传参，避免与 light run 的 argv 冲突）：
+#   $env:HARNESS_MSG="你好"; $env:DEEPSEEK_API_KEY="sk-..."; python 运行.py src/总入口.light
+#
+# 环境变量：
+#   HARNESS_MSG       用户消息（必填；或 HARNESS_PROMPT_FILE 指向提示文件）
+#   HARNESS_PROMPT_FILE  提示文件路径（替代 HARNESS_MSG）
+#   HARNESS_ENDPOINT  端点（默认 https://api.deepseek.com/chat/completions）
+#   HARNESS_MODEL     模型（默认 deepseek-chat）
+#   DEEPSEEK_API_KEY  API 密钥（必填；也可 HARNESS_API_KEY）
+#   HARNESS_ROOT      持久化根目录（默认 sessions）
+#   HARNESS_SESSION   会话标识（默认 cli_<时间戳>）
+#
+# ⚠️ 光明命名规范 v1：成员名/局部名避开关键字与运算符词根。
+
+从 客户端 导入 客户端
+从 代理 导入 代理循环
+从 会话 导入 新建会话
+从 工具 导入 工具注册表, 造工具定义, 造工具结果
+从 消息 导入 造文本块
+从 持久化 导入 写出会话
+导入 外部命令
+
+# ---- bash 工具：执行外部命令 ----
+段落 执行bash 接收 参数:
+  设 命令 为 参数.获取("command", "")
+  设 结果 为 外部命令.执行命令(命令)
+  设 输出 为 结果.标准输出
+  如果 结果.是否成功 == 假:
+    设 输出 为 输出 + "\n[退出] " + 结果.标准错误
+  返回 [造文本块(输出)]
+
+# ---- 注册内置工具 ----
+段落 组装注册表:
+  设 注册表 为 新建 工具注册表()
+  设 执行体 为 执行bash
+  注册表.注册(造工具定义("bash", "在用户机器上执行 shell 命令并返回输出", ["type": "object", "properties": ["command": ["type": "string", "description": "要执行的命令"]]], 执行体))
+  返回 注册表
+
+# ---- 主流程 ----
+段落 主:
+  设 用户文本 为 环境变量("HARNESS_MSG", 空)
+  设 提示文件 为 环境变量("HARNESS_PROMPT_FILE", 空)
+  如果 用户文本 == 空 且 提示文件 != 空 且 提示文件 != "":
+    设 用户文本 为 读取文件(提示文件).去除空白()
+  如果 用户文本 == 空:
+    打印 "用法: 设 HARNESS_MSG 为用户消息 + DEEPSEEK_API_KEY 为密钥，然后 python 运行.py src/总入口.light"
+    返回
+  设 端点 为 环境变量("HARNESS_ENDPOINT", "https://api.deepseek.com/chat/completions")
+  设 模型 为 环境变量("HARNESS_MODEL", "deepseek-chat")
+  设 密钥 为 环境变量("HARNESS_API_KEY", 空)
+  如果 密钥 == 空:
+    设 密钥 为 环境变量("DEEPSEEK_API_KEY", 空)
+  如果 密钥 == 空 或 密钥 == "":
+    打印 "错误: 未提供 API 密钥（DEEPSEEK_API_KEY 或 HARNESS_API_KEY）"
+    返回
+  设 根 为 环境变量("HARNESS_ROOT", "sessions")
+  设 会话标识 为 环境变量("HARNESS_SESSION", "cli_" + 转字符串(时间戳()))
+
+  设 客户端对象 为 新建 客户端(端点, 密钥, 模型)
+  设 注册表 为 组装注册表()
+  设 会话对象 为 新建会话(会话标识, 当前目录())
+  设 代理 为 新建 代理循环(会话对象, 客户端对象, 注册表, [])
+  设 结果 为 代理.驱动(用户文本)
+
+  打印 "--- 轮次结束: " + 结果["种类"] + " ---"
+  设 消息表 为 会话对象.整理消息()
+  设 全文 为 汇集文本(消息表)
+  打印 "--- 助手最终回复 ---"
+  打印 全文
+  设 路径 为 写出会话(根, 会话对象)
+  打印 "--- 已持久化: " + 路径 + " ---"
+
+# 汇集全部助手文本块
+段落 汇集文本 接收 消息表:
+  设 结果 为 ""
+  遍历 消息 之 消息表:
+    如果 消息["role"] == "assistant":
+      遍历 块 之 消息["content"]:
+        如果 块["type"] == "text":
+          设 结果 为 结果 + 块["text"] + "\n"
+  返回 结果.去除空白()
