@@ -22,6 +22,11 @@ class 命令结果:
     def 是否成功(self) -> bool:
         """是否执行成功（返回码为0）"""
         return self.返回码 == 0
+
+    @property
+    def 退出码值(self) -> int:
+        """精确退出码（光明安全字段名，绕 L-010『返回码』属性访问被拆）。"""
+        return self.返回码
     
     def __bool__(self) -> bool:
         return self.是否成功

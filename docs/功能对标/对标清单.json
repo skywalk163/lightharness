@@ -197,39 +197,43 @@
     "L-007"
    ]
   },
-  {
-   "编号": 11,
-   "功能": "CLI 入口（headless runner）",
-   "原版包": "apps/cli + bundle/headless",
-   "光明模块": "src/总入口.light + examples/运行CLI.light",
-   "状态": "partial",
-   "证据": [
-    "src/总入口.light",
-    "examples/test_总入口.light",
-    "examples/运行CLI.light"
-   ],
-   "本轮目标": "partial：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；实时API联调待密钥",
-   "反跑判据": "test_总入口.light：把 bash 工具输出断言改为相反值即红",
-   "语言缺陷": [
-    "L-004",
-    "L-007",
-    "L-010"
-   ]
-  },
+   {
+    "编号": 11,
+    "功能": "CLI 入口（headless runner）",
+    "原版包": "apps/cli + bundle/headless",
+    "光明模块": "src/总入口.light + examples/运行CLI.light",
+    "状态": "done",
+    "证据": [
+     "src/总入口.light",
+     "examples/test_总入口.light",
+     "examples/运行CLI.light",
+     "examples/test_联调CLI.light"
+    ],
+    "本轮目标": "done：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；无key自动化冒烟（mock客户端注入，单轮/多轮上下文延续/续写JSONL持久化+turn序号连续）；交互缺陷修复（缺key友好提示/网络失败try-catch/REPL空输入跳过/提示文件与续写会话不存在时友好报错）；真实API联调未实测（无DEEPSEEK_API_KEY）",
+    "反跑判据": "test_联调CLI.light：把 mock 请求断言（模型名改 WRONG-MODEL / 消息条数改 >=999）即红；test_总入口.light：把 bash 工具输出断言改为相反值即红",
+    "语言缺陷": [
+     "L-004",
+     "L-007",
+     "L-010",
+     "L-005(成员属性链式下标 对象.属性[0][\"key\"] 被编译为函数调用，需拆局部变量绕)"
+    ]
+   },
   {
    "编号": 12,
    "功能": "子进程执行（subprocess/shell 后端）",
    "原版包": "subprocess + shell",
    "光明模块": "src/子进程.light",
-   "状态": "partial",
+   "状态": "done",
    "证据": [
     "src/子进程.light",
-    "examples/test_子进程.light"
+    "examples/test_子进程.light",
+    "examples/test_子进程码.light"
    ],
-   "本轮目标": "partial：运行进程/运行并取输出/进程成功(捕获输出+成功判定)已通；新增 运行后台/等待后台（Popen+超时）；退出码精确值因 返回码 属性被拆暂以 0/-1 表示",
-   "反跑判据": "test_子进程.light：把 输出 断言 hi 改成 nope 即红",
+   "本轮目标": "done：运行进程/运行并取输出/进程成功/运行后台/等待后台 全通；退出码精确化（exit(3)→3、exit(0)→0），经 stdlib`外部命令.py` 安全字段 `退出码值`(property→返回码) 绕 L-010/L-004",
+   "反跑判据": "test_子进程码.light：把 码==3 改成 码==0 即红",
    "语言缺陷": [
-    "L-010"
+    "L-010(返回码属性, 用 退出码值 绕)",
+    "L-004(identifier 拆分, 用整段安全名 退出码值 绕)"
    ]
   },
   {
@@ -242,7 +246,7 @@
     "src/沙箱.light",
     "examples/test_沙箱.light"
    ],
-   "本轮目标": "done(v1)：路径护栏(允许读/写/禁止表,归一化,禁止优先)+进程隔离(白名单环境+工作目录限定+超时)；不做landlock/seccomp；退出码精确值因返回码属性被拆暂0/-1",
+   "本轮目标": "done(v1)：路径护栏(允许读/写/禁止表,归一化,禁止优先)+进程隔离(白名单环境+工作目录限定+超时)；不做landlock/seccomp；退出码精确化（经 stdlib`退出码值` 绕 L-010）",
    "反跑判据": "test_沙箱.light：把 读禁止路径 断言改为 真 即红",
    "语言缺陷": [
     "L-010(返回码属性)",
