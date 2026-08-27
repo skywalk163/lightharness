@@ -1,0 +1,215 @@
+# 客户端.light —— deepseek 流式客户端（对齐原版 llm/llm-deepseek，P0 等价版）
+#
+# 职责：
+#   - 映射 wire 完成原因 → harness 完成原因（stop/tool_calls/length/其它→error）
+#   - 映射 wire 用量 → 不相交 TokenUsage（DeepSeek prompt_tokens 含缓存命中，需减出）
+#   - 翻译 SSE 载荷流 → harness StreamChunk 列表（增量即时；block-end/usage/finish 延后到 [DONE]）
+#   - 发送对话请求（HTTP POST /chat/completions），非流式取回 SSE 体再解析（v1 传输层）
+#
+# 用法（传输层可注入，便于离线测试）：
+#   客户端(端点, 密钥, 模型).对话响应(消息表, 选项表, 工具表) → chunk 列表
+#
+# ⚠️ 光明命名规范 v1：成员名避开关键字/运算符词根（取/生成/导出/模型/模式/事件/部分/原因/类型/全部/工具/模）。
+从 流 导入 造块开始, 造文本增量, 造推理增量, 造工具调用增量, 造块结束, 造用量块, 造结束, 造停止原因, 造错误原因, 造失败
+从 SSE 导入 SSE解析器
+从 HTTP 导入 HTTPPost
+
+# ---- 映射 wire 完成原因 ----
+段落 翻译完成原因 接收 原因:
+  如果 原因 == "stop":
+    返回 ["种类": "stop"]
+  如果 原因 == "tool_calls":
+    返回 ["种类": "tool-calls"]
+  如果 原因 == "length":
+    返回 ["种类": "max-tokens"]
+  返回 ["种类": "error", "失败": ["消息": "模型停止: " + 原因, "代码": 原因.转大写()]]
+
+# ---- 映射 wire 用量 → 不相交计数 ----
+# wire: { "prompt_tokens", "completion_tokens", "prompt_cache_hit_tokens"?, "completion_tokens_details"?: { "reasoning_tokens"? } }
+段落 翻译用量 接收 用量:
+  设 缓存读 为 0
+  如果 用量.包含("prompt_cache_hit_tokens"):
+    设 缓存读 为 用量["prompt_cache_hit_tokens"]
+  设 推理 为 空
+  如果 用量.包含("completion_tokens_details") 且 用量["completion_tokens_details"].包含("reasoning_tokens"):
+    设 推理 为 用量["completion_tokens_details"]["reasoning_tokens"]
+  设 结果 为 ["输入": 用量["prompt_tokens"] - 缓存读, "输出": 用量["completion_tokens"]]
+  如果 缓存读 > 0:
+    结果["缓存读"] 为 缓存读
+  如果 推理 != 空:
+    结果["推理"] 为 推理
+  返回 结果
+
+# ---- 用 SSE 解析器把响应体切成载荷列表 ----
+段落 解析SSE载荷 接收 响应体:
+  设 解析器 为 新建 SSE解析器()
+  设 载荷表 为 []
+  遍历 事件 之 解析器.喂入(响应体.encode("utf-8")):
+    如果 事件["数据"] != "":
+      载荷表.追加(事件["数据"])
+  返回 载荷表
+
+# ---- 翻译 SSE 载荷流 → StreamChunk 列表 ----
+# 语义对齐原版 translate.ts：推理先行、空串首块不开块、工具调用按 index 分组、
+# finish/usage 延后到 [DONE]；stop 且无块 → EMPTY_RESPONSE 错误结束。
+段落 翻译流 接收 载荷表:
+  设 块序 为 0
+  设 文本块 为 空
+  设 推理块 为 空
+  设 工具块表 为 {}
+  设 顺序块表 为 []
+  设 待定完成 为 空
+  设 待定用量 为 空
+  设 输出块 为 []
+  遍历 载荷 之 载荷表:
+    如果 载荷 == "[DONE]":
+      遍历 块 之 顺序块表:
+        输出块.追加(造块结束(块["索引"], 闭合块(块)))
+      如果 待定用量 != 空:
+        输出块.追加(造用量块(待定用量))
+      设 完成 为 待定完成
+      如果 完成 == 空:
+        设 完成 为 造停止原因()
+      如果 完成["种类"] == "stop" 且 长度(顺序块表) == 0:
+        设 完成 为 造错误原因(造失败("模型返回空完成", "EMPTY_RESPONSE"))
+      输出块.追加(造结束(完成))
+      返回 输出块
+    设 载荷 为 解析JSON(载荷)
+    如果 载荷.包含("choices"):
+      遍历 选择 之 载荷["choices"]:
+        设 增量 为 选择["delta"]
+        如果 增量.包含("reasoning_content") 且 增量["reasoning_content"] != "":
+          如果 推理块 == 空:
+            设 推理块 为 打开块("reasoning", 块序, 顺序块表)
+            块序 = 块序 + 1
+            输出块.追加(造块开始(推理块["索引"], "reasoning"))
+          推理块["文本"] 为 推理块["文本"] + 增量["reasoning_content"]
+          输出块.追加(造推理增量(推理块["索引"], 增量["reasoning_content"]))
+        如果 增量.包含("content") 且 增量["content"] != "":
+          如果 文本块 == 空:
+            设 文本块 为 打开块("text", 块序, 顺序块表)
+            块序 = 块序 + 1
+            输出块.追加(造块开始(文本块["索引"], "text"))
+          文本块["文本"] 为 文本块["文本"] + 增量["content"]
+          输出块.追加(造文本增量(文本块["索引"], 增量["content"]))
+        如果 增量.包含("tool_calls"):
+          遍历 调用 之 增量["tool_calls"]:
+            设 工具块 为 空
+            如果 工具块表.包含(调用["index"]):
+              设 工具块 为 工具块表[调用["index"]]
+            如果 工具块 == 空:
+              设 工具块 为 打开块("tool-call", 块序, 顺序块表)
+              块序 = 块序 + 1
+              设 工具块表[调用["index"]] 为 工具块
+              输出块.追加(造块开始(工具块["索引"], "tool-call"))
+            如果 调用.包含("id"):
+              工具块["标识"] 为 调用["id"]
+            如果 调用.包含("function") 且 调用["function"].包含("name"):
+              工具块["名字"] 为 调用["function"]["name"]
+            设 片段 为 ""
+            如果 调用.包含("function") 且 调用["function"].包含("arguments"):
+              设 片段 为 调用["function"]["arguments"]
+            工具块["文本"] 为 工具块["文本"] + 片段
+            输出块.追加(造工具调用增量(工具块["索引"], 工具块["标识"], 工具块["名字"], 片段))
+        如果 选择.包含("finish_reason") 且 选择["finish_reason"] != 空:
+          设 待定完成 为 翻译完成原因(选择["finish_reason"])
+    如果 载荷.包含("usage") 且 载荷["usage"] != 空:
+      设 待定用量 为 翻译用量(载荷["usage"])
+  抛出 "SSE 载荷流未以 [DONE] 结束"
+
+# 打开一个块并登记顺序
+段落 打开块 接收 种类, 索引, 顺序块表:
+  设 块 为 ["索引": 索引, "种类": 种类, "文本": "", "标识": 空, "名字": "", "成品": 空]
+  顺序块表.追加(块)
+  返回 块
+
+# 把打开的块闭合为最终内容块（对齐原版 closeBlock）
+段落 闭合块 接收 块:
+  如果 块["种类"] == "text":
+    返回 ["type": "text", "text": 块["文本"]]
+  如果 块["种类"] == "reasoning":
+    返回 ["type": "reasoning", "text": 块["文本"]]
+  设 标识 为 块["标识"]
+  如果 标识 == 空:
+    设 标识 为 ""
+  设 名字 为 块["名字"]
+  如果 名字 == 空:
+    设 名字 为 ""
+  返回 ["type": "tool-call", "id": 标识, "name": 名字, "arguments": 块["文本"]]
+
+# ---- 把 harness 消息映射为 deepseek 网络消息 ----
+# harness: {role:user/assistant, content:[块], source}
+# wire:    {role:system/user/assistant/tool, content, tool_calls?, reasoning_content?}
+段落 映射网络消息 接收 消息表:
+  设 结果 为 []
+  遍历 消息 之 消息表:
+    如果 消息["role"] == "system":
+      结果.追加(["role": "system", "content": 块文本拼接(消息["content"])])
+    否则如果 消息["role"] == "user":
+      设 工具块 为 空
+      遍历 块 之 消息["content"]:
+        如果 块["type"] == "tool-result":
+          设 工具块 为 块
+      如果 工具块 != 空:
+        结果.追加(["role": "tool", "tool_call_id": 工具块["toolCallId"], "content": 块文本拼接(工具块["content"])])
+      否则:
+        结果.追加(["role": "user", "content": 块文本拼接(消息["content"])])
+    否则如果 消息["role"] == "assistant":
+      设 网络 为 ["role": "assistant"]
+      设 文本 为 ""
+      设 推理 为 ""
+      设 调用表 为 []
+      遍历 块 之 消息["content"]:
+        如果 块["type"] == "text":
+          设 文本 为 文本 + 块["text"]
+        否则如果 块["type"] == "reasoning":
+          设 推理 为 推理 + 块["text"]
+        否则如果 块["type"] == "tool-call":
+          调用表.追加(["id": 块["id"], "type": "function", "function": ["name": 块["name"], "arguments": 块["arguments"]]])
+      网络["content"] 为 文本
+      如果 推理 != "":
+        网络["reasoning_content"] 为 推理
+      如果 长度(调用表) > 0:
+        网络["tool_calls"] 为 调用表
+      结果.追加(网络)
+    否则:
+      结果.追加(["role": "user", "content": 块文本拼接(消息["content"])])
+  返回 结果
+
+# 块表拼成纯文本（跳过推理/工具）
+段落 块文本拼接 接收 块表:
+  设 结果 为 ""
+  遍历 块 之 块表:
+    如果 块["type"] == "text":
+      设 结果 为 结果 + 块["text"]
+  返回 结果
+
+# ---- deepseek 客户端类 ----
+类 客户端:
+  属性 端点 等于 空
+  属性 密钥 等于 空
+  属性 模型名 等于 空
+
+  段落 构造 接收 端点, 密钥, 模型名:
+    设 己.端点 为 端点
+    设 己.密钥 为 密钥
+    设 己.模型名 为 模型名
+
+  # 组装请求体（消息/工具/温度/最大输出）
+  段落 组装请求 接收 消息表, 选项表, 工具表:
+    设 请求 为 ["model": 己.模型名, "messages": 消息表, "stream": 真]
+    如果 工具表 != 空 且 长度(工具表) > 0:
+      请求["tools"] 为 工具表
+    如果 选项表 != 空:
+      如果 选项表.包含("temperature"):
+        请求["temperature"] 为 选项表["temperature"]
+      如果 选项表.包含("maxTokens"):
+        请求["max_tokens"] 为 选项表["maxTokens"]
+    返回 请求
+
+  # 发送对话请求并翻译为 chunk 列表（v1 非流式传输）
+  段落 对话响应 接收 消息表, 选项表, 工具表:
+    设 请求 为 己.组装请求(消息表, 选项表, 工具表)
+    设 响应 为 HTTPPost(己.端点, 请求, 超时 = 60, 请求头 = ["Authorization": "Bearer " + 己.密钥])
+    设 载荷表 为 解析SSE载荷(响应["响应体"])
+    返回 翻译流(载荷表)

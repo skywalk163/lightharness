@@ -1,0 +1,6 @@
+段落 主:
+  设 文本 为 "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"add\",\"arguments\":\"{\\\"a\\\":\"}}]}}]}"
+  打印 文本
+  设 载荷 为 解析JSON(文本)
+  打印 "ok choices=" + 转字符串(长度(载荷["choices"]))
+主()
