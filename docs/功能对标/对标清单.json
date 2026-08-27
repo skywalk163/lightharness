@@ -14,23 +14,23 @@
       "编号": 1,
       "功能": "会话事件日志（SessionEvent append-only log）",
       "原版包": "core/session",
-      "光明模块": "src/核心/会话.light",
-      "状态": "none",
-      "证据": [],
+      "光明模块": "src/会话.light",
+      "状态": "done",
+      "证据": ["src/会话.light", "examples/test_会话.light"],
       "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红",
+      "语言缺陷": ["L-003", "L-004"]
     },
     {
       "编号": 2,
       "功能": "surface 折叠（消息产生事件投影 + append/replace）",
       "原版包": "core/session/surface.ts",
-      "光明模块": "src/核心/会话.light",
-      "状态": "none",
-      "证据": [],
-      "本轮目标": "done：导出消息() 从 surface 节点投影模型历史；compaction replace 语义",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "光明模块": "src/会话.light",
+      "状态": "done",
+      "证据": ["src/会话.light 的 整理消息/压缩替换", "examples/test_会话.light（surface投影正确/压缩替换语义正确）"],
+      "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义",
+      "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红",
+      "语言缺陷": ["L-004"]
     },
     {
       "编号": 3,
@@ -47,12 +47,12 @@
       "编号": 4,
       "功能": "消息词汇表（Message/ContentBlock/构造段）",
       "原版包": "llm/llm/message.ts",
-      "光明模块": "src/核心/消息.light",
-      "状态": "none",
-      "证据": [],
+      "光明模块": "src/消息.light",
+      "状态": "done",
+      "证据": ["src/消息.light", "examples/test_消息.light"],
       "本轮目标": "done：text/reasoning/tool-call/tool-result 块 + 构造段",
-      "反跑判据": "待建",
-      "语言缺陷": []
+      "反跑判据": "test_消息.light：把 块类型 断言改为相反值即红",
+      "语言缺陷": ["L-002"]
     },
     {
       "编号": 5,
