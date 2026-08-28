@@ -1,0 +1,50 @@
+# test_mcp_http.light —— MCP HTTP 客户端测试（P2 v2 streamable-http）
+导入 subprocess
+导入 time
+从 工具 导入 工具注册表
+从 mcp客户端 导入 MCPHttpClient, 注册MCPHTTP服务器
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 "断言失败: " 加上 标签
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " 加上 标签 + " 实际=" 加上 转字符串(实际) + " 期望=" 加上 转字符串(期望)
+
+打印 "=== test_mcp_http 开始 ==="
+设 服务器进程 为 subprocess.Popen(["python", "examples/mcp_http服务器.py", "18768"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+打印 "服务器已启动"
+time.sleep(1.5)
+
+设 客户端 为 新建 MCPHttpClient("http://127.0.0.1:18768", "httpdemo", 空)
+设 握手 为 客户端.连接()
+断言真(握手.包含("错误") == 假, "连接握手应成功")
+打印 "握手 OK"
+
+设 工具表 为 客户端.列工具()
+断言等于(长度(工具表), 3, "应发现 3 个工具")
+打印 "列工具 OK: 3 个"
+
+设 结果1 为 客户端.调用工具("echo", ["text": "hello http mcp"])
+断言等于(结果1["内容"], "hello http mcp", "echo 应回显")
+打印 "echo OK"
+
+设 结果2 为 客户端.调用工具("add", ["a": 7, "b": 8])
+断言等于(结果2["内容"], "15", "add(7,8) 应=15")
+打印 "add OK"
+
+设 结果3 为 客户端.调用工具("get_image", {})
+断言真(结果3["内容"].包含("[图片 image/png:"), "图片块应投影")
+打印 "图片投影 OK: " 加上 结果3["内容"]
+
+# 顶层注册函数
+设 注册表 为 新建 工具注册表()
+设 注册结果 为 注册MCPHTTP服务器(注册表, "http://127.0.0.1:18768", "srv", 空)
+断言真(注册结果.包含("错误") == 假, "注册MCPHTTP服务器应成功")
+断言等于(长度(注册结果["已注册"]), 3, "应注册 3 个工具")
+打印 "注册MCPHTTP服务器 OK: " 加上 转字符串(注册结果["已注册"])
+
+客户端.关闭()
+服务器进程.terminate()
+打印 "=== test_mcp_http PASS ==="
