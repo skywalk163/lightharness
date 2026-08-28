@@ -309,6 +309,37 @@
          "本轮目标": "done(v2)：v1 stdio 传输 + 初始化握手 + tools/list 发现注册 + tools/call 调用；v2 深化：①streamable-http 传输（MCPHttpClient 类，POST JSON-RPC + SSE/JSON 响应解析，注册MCPHTTP服务器 顶层函数）；②重连策略（请求失败/服务器退出自动重连，指数退避，最多3次）；③图片块投影（tools/call 返回 image 块时投影为 [图片 mimeType: data预览]，不再是未支持占位）",
          "反跑判据": "test_mcp.light：echo/add 断言改反即红；test_mcp_http.light：工具数 3 改 4 即红，或 echo/add 断言改反即红",
          "语言缺陷": []
+      },
+      {
+         "编号": 17,
+         "功能": "用户审批/交互（interaction）",
+         "原版包": "packages/interaction",
+         "光明模块": "src/审批.light",
+         "状态": "done",
+         "证据": [
+            "src/审批.light",
+            "examples/test_审批.light",
+            "src/代理.light(执行组审批检查接入)"
+         ],
+         "本轮目标": "done：审批管理器类（approve/deny/ask 三策略 + 按工具名配置 + 审批记录 + 统计）；代理循环 选项[审批管理器] 接入，执行组在工具执行前检查，deny 则记录 tool/error 事件并跳过；ask 模式 v1 简化为拒绝并记录待审批",
+         "反跑判据": "test_审批.light：把 批准数 2 改 3 即红；或把 tool/error 事件断言改反即红",
+         "语言缺陷": []
+      },
+      {
+         "编号": 18,
+         "功能": "子智能体/Subagent",
+         "原版包": "packages/subagent",
+         "光明模块": "src/子智能体.light",
+         "状态": "done",
+         "证据": [
+            "src/子智能体.light",
+            "examples/test_子智能体.light"
+         ],
+         "本轮目标": "done：子智能体类（独立会话+独立代理循环+工具子集，执行(任务)返回最后助手消息文本）；造子智能体工具 顶层函数（包装为工具定义，可注册到主 agent 注册表，参数{任务}）；状态查询（名字/执行次数/事件数）",
+         "反跑判据": "test_子智能体.light：把 执行次数 1 改 2 即红；或把 结果包含子任务完成 断言改反即红",
+         "语言缺陷": [
+            "L-019(变量名与类名相同导致 UnboundLocalError：设 X 为 新建 X(...) 需改变量名)"
+         ]
       }
    ]
 }
