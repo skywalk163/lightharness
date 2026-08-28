@@ -23,10 +23,6 @@ class 命令结果:
         """是否执行成功（返回码为0）"""
         return self.返回码 == 0
 
-    @property
-    def 退出码值(self) -> int:
-        """精确退出码（光明安全字段名，绕 L-010『返回码』属性访问被拆）。"""
-        return self.返回码
     
     def __bool__(self) -> bool:
         return self.是否成功
@@ -243,11 +239,6 @@ def 后台执行(
         cwd=工作目录,
         env=环境,
     )
-
-
-def 收尾进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果:
-    """等待后台进程完成（光明安全名：避免 等待 关键字拆分）。"""
-    return 等待进程(进程, 超时)
 
 
 def 等待进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果:
