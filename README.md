@@ -34,15 +34,14 @@ P2 生态层（mcp 客户端、subagent、code-runtime、e2b、遥测、Web UI�
 lightharness/
 ├── 运行.py                 # 运行器：自包含 stdlib + 光明编译器
 ├── stdlib/                 # 自包含标准库（复制自 light-merge，含 .light + .py）
-├── src/                    # lightharness 光明源码
-│   ├── 主程序.light        # CLI 入口
-│   ├── 核心/               # 会话/消息/事件/作用域/系统提示/智能体/循环
-│   ├── 大模型/             # 流词汇表 + deepseek 适配器
-│   ├── 工具/               # 注册表/模式/流水线
-│   ├── 会话/               # JSONL 持久化
-│   ├── 上下文/             # 压缩
-│   ├── 钩子/               # hook 协议
-│   └── 运行层/             # 子进程/终端/沙箱/文件（P1）
+├── src/                    # lightharness 光明源码（扁平布局，P0+P1）
+│   ├── 总入口.light        # CLI 入口
+│   ├── 会话/消息/事件       # 会话.light(事件日志)、消息.light、事件.light(事件总线)
+│   ├── 代理/异步代理/中止   # agent-loop：代理.light(同步)+异步代理.light(异步)+中止.light
+│   ├── 客户端.light        # llm 流式客户端（deepseek 适配器）
+│   ├── 工具/钩子/压缩       # 工具.light(注册/校验/执行)、钩子.light、压缩.light(上下文)
+│   ├── 持久化/存储/文件     # JSONL 持久化 + 存储/文件（P1）
+│   └── 运行层/             # 子进程/沙箱/终端/流/重试策略（P1）
 ├── 工具集/                 # 内置工具（fs/bash/...）
 ├── docs/
 │   ├── 架构设计.md          # 光明版架构蓝图
@@ -56,7 +55,7 @@ lightharness/
 ```bash
 cd G:\dsword\duan-light-merge\lightharness
 python 运行.py examples/冒烟.light        # 自包含 stdlib 冒烟测试
-python 运行.py src/主程序.light           # CLI 入口
+python 运行.py src/总入口.light           # CLI 入口
 ```
 
 ## 语言缺陷反馈流程
@@ -70,3 +69,8 @@ python 运行.py src/主程序.light           # CLI 入口
 ## 对齐进度
 
 见 `docs/功能对标/对标清单.json`。当前进度以文件内状态为准。
+
+## 回归门禁
+
+`python -m pytest tests/` 跑全量 examples 用例（含缺陷复现套件），任一带退出码断言
+失败即红；反跑判据见 `docs/功能对标/反跑判据.md`。

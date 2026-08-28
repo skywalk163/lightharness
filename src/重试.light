@@ -1,9 +1,9 @@
-# 重试策略.light —— 重试策略（对齐原版 packages/llm/llm-retry 的 ResolvedRetryPolicy）
+# 重试.light —— 重试策略（对齐原版 packages/llm/llm-retry 的 ResolvedRetryPolicy）
 #
-# ⚠️ 模块名说明：任务书要求文件名 src/重试.light，但 stdlib/重试.light 为纯光明
-#    模块（无同名 .py），运行器导入钩子按 [STDLIB, ROOT, SRC] 顺序查找，src 同名
-#    模块永远不可达（from 重试 import … 恒命中 stdlib）。故本文件命名「重试策略」，
-#    此为 L-018 缺陷（2026-08-28 登记，见 docs/功能对标/语言缺陷账.md）。
+# 任务书要求名 src/重试.light。原 L-018 缺陷（顶层模块重名时用户侧模块不可达）
+# 已修复：导入解析器改为「用户代码目录优先于 stdlib」（对齐 Python sys.path 语义），
+# 运行器与语言生成代码均按 [SRC, STDLIB, ROOT] / [脚本目录, STDLIB, CWD] 顺序查找，
+# 故本文件恢复正式名 src/重试.light（2026-08-28 修复，见 docs/功能对标/语言缺陷账.md）。
 #
 # 策略字典（对齐原版字段）：
 #   { "最大次数", "退避基数秒", "退避上限秒", "可重试代码表", "上限耗时秒", "抖动比" }

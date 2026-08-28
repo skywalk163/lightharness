@@ -41,7 +41,7 @@ def _setup_paths():
     # 安装「纯光明模块」导入钩子：让 .light 模块在运行时被找到
     try:
         import _light_import_hook
-        _light_import_hook.install([STDLIB, ROOT, SRC])
+        _light_import_hook.install([SRC, STDLIB, ROOT])
     except Exception as exc:  # noqa: BLE001 - 钩子失败不致命，.py 版 stdlib 仍可用
         print(f'警告: 纯光明导入钩子安装失败: {exc}')
 

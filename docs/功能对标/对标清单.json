@@ -118,11 +118,11 @@
    "编号": 7,
    "功能": "agent-loop 多轮循环（turn/step 流程）",
    "原版包": "core/agent-loop/agent.ts",
-   "光明模块": "src/代理.light（同步）+ src/协程代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
+   "光明模块": "src/代理.light（同步）+ src/异步代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
    "状态": "done",
    "证据": [
     "src/代理.light",
-    "src/协程代理.light",
+    "src/异步代理.light",
     "src/中止.light",
     "src/重试策略.light",
     "src/客户端.light（对话响应协程）",
