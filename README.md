@@ -26,7 +26,7 @@
 | | sandbox 沙箱边界 | `sandbox` | 待实现 |
 | | fs / storage 文件与存储 | `fs` `storage` | 待实现 |
 
-P2 生态层（mcp 客户端、subagent、code-runtime、e2b、遥测、Web UI）押后。
+P2 生态层：**mcp 客户端已落地**（#16 done：stdio 传输、初始化握手、tools/list 发现并注册、tools/call 调用，`examples/test_mcp.light` 连本地 MCP 服务器验证）；subagent、code-runtime、e2b、遥测、Web UI 押后。
 
 ## 目录结构
 

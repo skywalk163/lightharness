@@ -290,6 +290,21 @@
     "L-004(导入后 终端.终端会话 被拆成 终端().终(...))",
     "L-012(模块名与类名共享关键字前缀，跨模块成员访问被拆)"
    ]
+  },
+  {
+   "编号": 16,
+   "功能": "MCP 客户端（mcp-client，P2 生态层）",
+   "原版包": "mcp/mcp-client",
+   "光明模块": "src/mcp客户端.light",
+   "状态": "done",
+   "证据": [
+    "src/mcp客户端.light",
+    "examples/test_mcp.light",
+    "examples/mcp_服务器.py"
+   ],
+   "本轮目标": "done：stdio 传输 MCP 客户端（spawn 子进程 + JSON-RPC 2.0 逐行 JSON）；初始化握手（initialize→initialized）；tools/list 发现工具并注册进工具注册表（命名 mcp__服务器名__原始名，对齐原版 publicToolName 干净路径）；tools/call 调用（光明闭包把 客户端+原始名 绑进执行函数）；文本块投影（对齐原版 extractText，其余块占位）；注销能力。边界：仅 stdio（streamable-http 押后）、串行请求一次一个在途、无重连策略",
+   "反跑判据": "test_mcp.light：把 echo 期望 hello mcp 改 nope 即红；或把 add 期望 5 改反即红；或把 已注册 长度 2 改反即红",
+   "语言缺陷": []
   }
  ]
 }
