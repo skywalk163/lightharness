@@ -19,7 +19,7 @@
 | | llm 流式客户端（deepseek 适配器） | `llm/llm` + `llm/llm-deepseek` | 待实现 |
 | | agent-loop 多轮循环（turn/step 流程） | `core/agent` + `core/agent-loop` | 待实现 |
 | | tools 工具系统（注册/校验/执行） | `core/tools` | 待实现 |
-| | context 上下文压缩（compaction） | `compaction/compaction` | 待实现 |
+| | context 上下文压缩（compaction，v2 自动触发） | `compaction/compaction` | 已实现 |
 | | hooks 事件/插件机制 | `core/hooks` + `hook-protocol` | 待实现 |
 | | cli 命令行入口 | `apps/cli` | 待实现 |
 | | subprocess / terminal / shell 进程执行 | `sandbox` `subprocess` `terminal` `shell` | done（终端含 PTY 真 tty） |
@@ -39,7 +39,7 @@ lightharness/
 │   ├── 会话/消息/事件       # 会话.light(事件日志)、消息.light、事件.light(事件总线)
 │   ├── 代理/异步代理/中止   # agent-loop：代理.light(同步)+异步代理.light(异步)+中止.light
 │   ├── 客户端.light        # llm 流式客户端（deepseek 适配器）
-│   ├── 工具/钩子/压缩       # 工具.light(注册/校验/执行)、钩子.light、压缩.light(上下文)
+│   ├── 工具/钩子/压缩       # 工具.light(注册/校验/执行)、钩子.light、压缩.light(上下文/v2自动触发:token计量+step前检查)
 │   ├── 持久化/存储/文件     # JSONL 持久化 + 存储/文件（P1）
 │   └── 运行层/             # 子进程/沙箱/终端(管道+PTY)/流/重试策略（P1）
 ├── 工具集/                 # 内置工具（fs/bash/...）
