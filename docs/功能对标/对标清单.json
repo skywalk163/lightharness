@@ -277,12 +277,13 @@
    "功能": "终端会话（terminal/PTY）",
    "原版包": "packages/terminal",
    "光明模块": "src/终端.light",
-   "状态": "done",
+   "状态": "done(v2 PTY)",
    "证据": [
     "src/终端.light",
-    "examples/test_终端.light"
+    "examples/test_终端.light",
+    "examples/test_终端PTY.light"
    ],
-   "本轮目标": "done(v1 管道式)：spawn/写入/读取(超时)/发信号(SIGTERM/SIGINT/SIGKILL)/状态机(未启动→运行中→已退出)+退出码/关闭释放句柄；读线程累积缓冲时间读取；PTY 未做(真 tty 交互转 stdlib/伪终端)；POSIX 信号未实测(Windows 用 terminate/kill 等价)",
+   "本轮目标": "done(v2 PTY)：管道式 终端会话（spawn/写入/读取(超时)/发信号/状态机/退出码/关闭）v1 + 伪终端会话（真 tty，基于 stdlib/伪终端.light 的 伪控制台：Windows ConPTY / POSIX openpty），接口对齐可互换；SIGINT→Ctrl+C、SIGTERM/SIGKILL→关闭(强杀)；PTY 无退出码(码=空)；ANSI 原样保留不解析",
    "反跑判据": "test_终端.light：把 输出 断言 hi 改成 nope 即红；或把 已退出 状态改反即红",
    "语言缺陷": [
     "L-010(终端 模块名首字符关键字 → 从 终端 导入 失败)",

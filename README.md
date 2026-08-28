@@ -22,7 +22,7 @@
 | | context 上下文压缩（compaction） | `compaction/compaction` | 待实现 |
 | | hooks 事件/插件机制 | `core/hooks` + `hook-protocol` | 待实现 |
 | | cli 命令行入口 | `apps/cli` | 待实现 |
-| **P1 运行层** | subprocess / terminal / shell 进程执行 | `sandbox` `subprocess` `terminal` `shell` | 待实现 |
+| | subprocess / terminal / shell 进程执行 | `sandbox` `subprocess` `terminal` `shell` | done（终端含 PTY 真 tty） |
 | | sandbox 沙箱边界 | `sandbox` | 待实现 |
 | | fs / storage 文件与存储 | `fs` `storage` | 待实现 |
 
@@ -41,7 +41,7 @@ lightharness/
 │   ├── 客户端.light        # llm 流式客户端（deepseek 适配器）
 │   ├── 工具/钩子/压缩       # 工具.light(注册/校验/执行)、钩子.light、压缩.light(上下文)
 │   ├── 持久化/存储/文件     # JSONL 持久化 + 存储/文件（P1）
-│   └── 运行层/             # 子进程/沙箱/终端/流/重试策略（P1）
+│   └── 运行层/             # 子进程/沙箱/终端(管道+PTY)/流/重试策略（P1）
 ├── 工具集/                 # 内置工具（fs/bash/...）
 ├── docs/
 │   ├── 架构设计.md          # 光明版架构蓝图
@@ -53,7 +53,7 @@ lightharness/
 ## 运行方式
 
 ```bash
-cd G:\dsword\duan-light-merge\lightharness
+cd G:\dswork\duan-light-merge\lightharness
 python 运行.py examples/冒烟.light        # 自包含 stdlib 冒烟测试
 python 运行.py src/总入口.light           # CLI 入口
 ```
@@ -74,3 +74,5 @@ python 运行.py src/总入口.light           # CLI 入口
 
 `python -m pytest tests/` 跑全量 examples 用例（含缺陷复现套件），任一带退出码断言
 失败即红；反跑判据见 `docs/功能对标/反跑判据.md`。
+
+`python 运行.py examples/test_终端PTY.light` 单独验证终端 PTY（真 tty，需 Win10 1809+）。

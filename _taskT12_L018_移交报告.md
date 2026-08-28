@@ -90,5 +90,24 @@
 ```powershell
 Set-Location G:\dswork\duan-light-merge\lightharness
 python 运行.py examples/test_L018.light    # 当前判红（未修复）
-python 运行.py examples/test_异步代理.light  # 内部经 从 重试策略 导入 造策略/带重试，全绿（用户侧模块可用）
+python 运行.py examples/test_异步代理.light  # 内部经 从 重试 导入 造策略/带重试，全绿（用户侧模块可用）
 ```
+
+---
+
+## 8. 执行记录（本次修复，2026-08-28）
+
+按第 6 节「移交后待办」逐项落地，L-018 已闭环：
+
+| 待办 | 落地位置 | 做法 | 结果 |
+|---|---|---|---|
+| 1. 语言侧修导入顺序 | `light-merge/src/code_generator.py:812` | 生成代码 `install([_light_stdlib, _light_file_dir, os.getcwd()])` → `install([_light_file_dir, _light_stdlib, os.getcwd()])`（脚本/用户目录优先于 stdlib） | 语言级根因修复，对齐 Python `sys.path` 语义 |
+| 1. 运行器侧同步 | `lightharness/运行.py:44` | `install([STDLIB, ROOT, SRC])` → `install([SRC, STDLIB, ROOT])` | 运行器与语言侧顺序一致（运行器 install 先执行，顺序必须一致才生效） |
+| 2. 松绑恢复正式名 | `src/重试策略.light` → `src/重试.light`（git mv）；`src/异步代理.light:34`、`examples/test_异步代理.light:21` 的 `从 重试策略 导入` → `从 重试 导入` | 用户模块恢复任务书要求名 | 完成 |
+| 3. 用例转绿 | `examples/test_L018.light` | 导入用户侧独有符号 `退避间隔/造策略`，主段调用 `断言修复后()` | rc=0 绿 |
+| 4. 回填状态 | `docs/功能对标/{语言缺陷账,编译器缺陷验收判据,反跑判据}.md` | L-018 标「已修复」；修正语言缺陷账验证列描述 | 完成 |
+
+验证：
+- `python 运行.py examples/test_L018.light` → rc=0（绿），`退避间隔(1,策略)=1.0` 证明命中用户侧 `src/重试.light` 而非 stdlib。
+- `python 运行.py examples/test_异步代理.light` → 5 测试全绿（内部 `从 重试 导入 造策略/带重试` 正常）。
+- 全量 `examples/*.light`：63 绿；2 红为**环境限制**（`windows-sandbox-recycle-bin-unavailable` 致清理删除失败，与导入顺序无关），非回归。
