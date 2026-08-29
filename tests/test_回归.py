@@ -31,20 +31,26 @@ EXPECT_RED = {}
 
 # ── 平台可移植性欠账 ────────────────────────────────────────────────────
 # 以下用例依赖 OS 级能力，在 Windows 开发机全绿，但在 FreeBSD CI runner 上红。
-# 实测（2026-08-29，lightharness CI run 307，FreeBSD host 模式 act_runner）：
-#     test_子进程码.light  断言 exit(3) 退出码应为 3 实际=2
-#     test_沙箱.light      断言「读根外路径拒绝」护栏未生效
-#     test_终端PTY.light   断言「应读到数据」实际读到「退出」
-# 同一批用例在 Windows 本地跑 rc=0 全绿（已交叉验证）→ 属环境能力差异，不是缺陷。
+# 曾登记 3 条（2026-08-29 CI run 307 实测），已全部修好并清空：
+#   test_子进程码.light  exit(3) 被读成 2
+#       根因：运行进程走 shell=True，命令串 "python -c exit(3)" 未加引号，
+#             POSIX sh 把 ( ) 当元字符 → Syntax error → sh 返回 2，而非 python 的 3。
+#             cmd.exe 不把 ( 当元字符，故 Windows 不受影响。
+#       修复：给 -c 的参数加引号 → "python -c \"exit(3)\""，两种 shell 都正确。
+#   test_沙箱.light      「读根外路径拒绝」护栏未生效
+#       根因：用例写死 "C:\\Windows" 当「根外路径」。POSIX 下反斜杠不是分隔符，
+#             它只是根下的普通文件名 → 归一化后仍在根内 → 检查读返回真。
+#       修复：改用 <根>/..（父目录），归一化后必然在根外，两平台语义一致。
+#   test_终端PTY.light   PTY 读到「退出」而非数据
+#       根因：用例写死 cmd.exe（FreeBSD 上根本 spawn 不起来），且用 cmd 专有的
+#             set /a 1+2，行尾还是 Windows 的 CRLF（sh 会把它读成 "exit\r"）。
+#       修复：按平台挑外壳/行尾/算式命令。⚠️ 判定必须用「是否Windows 的否定」——
+#             FreeBSD 上 是否Linux() 返回 假（实测），用它会把 FreeBSD 误判成 Windows。
+# 三条现均在 Windows 与 FreeBSD 上 rc=0 全绿，故清空本表。
 #
-# 故按平台登记：仅非 Windows 时并入 EXPECT_RED，CI 转绿但仍拦得住新回归。
-# 登记是「自清理」的：一旦有人在 FreeBSD 上把某项修好，rc 变 0，
-# 此处「断言 rc != 0」就会失败，提示来删掉这条登记——欠账不会悄悄烂在表里。
-PLATFORM_ENV_DEBT = {
-    'test_子进程码.light': 'FreeBSD：子进程退出码精确化读到 2（期望 3）',
-    'test_沙箱.light': 'FreeBSD：沙箱「读根外路径拒绝」护栏未生效（路径归一化 POSIX 语义差异）',
-    'test_终端PTY.light': 'FreeBSD：PTY 读不到数据，实际读到「退出」（伪终端行为差异）',
-}
+# 保留机制本身：日后若再出现平台能力差异，直接往这里登记即可。
+# 它仍是「自清理」的——平台上修好后 rc 变 0，「断言 rc != 0」即失败，逼你删登记。
+PLATFORM_ENV_DEBT = {}
 
 if not sys.platform.startswith('win'):
     EXPECT_RED.update(PLATFORM_ENV_DEBT)
