@@ -104,13 +104,14 @@
          "功能": "deepseek 流式客户端（llm-deepseek 适配器）",
          "原版包": "llm/llm-deepseek",
          "光明模块": "src/客户端.light",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/客户端.light",
-            "examples/test_客户端.light"
+            "examples/test_客户端.light",
+            "examples/test_客户端超时.light"
          ],
-         "本轮目标": "done：SSE载荷解析/翻译流(推理文本工具增量/EMPTY_RESPONSE/完成原因映射/用量缓存减出)/harness→wire映射/HTTP对话(重试留待agent-loop)",
-         "反跑判据": "test_客户端.light：把 翻译用量(100-40) 期望改为 100 即红",
+         "本轮目标": "done：SSE载荷解析/翻译流(推理文本工具增量/EMPTY_RESPONSE/完成原因映射/用量缓存减出)/harness→wire映射/HTTP对话(重试留待agent-loop)；v2 新增请求超时配置：客户端类新增超时秒属性（默认60），构造函数支持选项[\"超时秒\"]配置，对话响应方法用己.超时秒代替写死的60，对话响应协程方法支持超时秒为空时回退到默认值",
+         "反跑判据": "test_客户端.light：把 翻译用量(100-40) 期望改为 100 即红；v2：test_客户端超时.light 把默认超时秒断言60改30即红",
          "语言缺陷": [
             "L-004",
             "L-007"
