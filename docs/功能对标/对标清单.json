@@ -147,15 +147,16 @@
          "功能": "工具注册表 + 执行流水线",
          "原版包": "core/tools + agent-loop/tool-calls.ts",
          "光明模块": "src/工具.light + src/代理.light(执行组)",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/工具.light",
             "examples/test_工具.light",
             "examples/test_工具深.light",
-            "examples/test_代理.light"
+            "examples/test_代理.light",
+            "examples/test_工具统计.light"
          ],
-         "本轮目标": "done（T10-05 加深）：注册/注销/查找/描述表/执行策略(exclusive|parallel)/执行(参数解析空→{} 非法→原文)；新增 JSON Schema 参数校验器 校验参数(模式,参数)（支持 type/properties/required/items/enum/const/pattern/minimum/maximum/minLength/maxLength/minItems/maxItems，错误列表含「字段路径(列表，如[\"参数\",\"秒\"])+原因+细节」）；执行流水线接入 prepare→校验(schema)→dispatch→finalize 三阶段（准备钩子可改参/拒绝，收尾钩子 execute 后调用、异常不掩盖主结果）；返回结构不变 {content,isError,concludesTurn,additionalContexts,error}，仅校验失败时为 error 补「字段错误」详情",
-         "反跑判据": "test_工具.light：把 注销后 名单长度 期望 1 改为 2 即红；test_工具深.light：§4.2 把「校验失败→isError」断言 真 改 假 立红；§4.4 把 prepare 计数器断言 1 改 0 立红；§4.3 把 原因为type/enum/pattern 改非对应值立红",
+         "本轮目标": "done（T10-05 加深）：注册/注销/查找/描述表/执行策略(exclusive|parallel)/执行(参数解析空→{} 非法→原文)；新增 JSON Schema 参数校验器 校验参数(模式,参数)（支持 type/properties/required/items/enum/const/pattern/minimum/maximum/minLength/maxLength/minItems/maxItems，错误列表含「字段路径(列表，如[\"参数\",\"秒\"])+原因+细节」）；执行流水线接入 prepare→校验(schema)→dispatch→finalize 三阶段（准备钩子可改参/拒绝，收尾钩子 execute 后调用、异常不掩盖主结果）；返回结构不变 {content,isError,concludesTurn,additionalContexts,error}，仅校验失败时为 error 补「字段错误」详情；v2 新增执行统计：注册表统计表属性（调用次数/成功次数/失败次数），注册时初始化、注销时删除、执行时更新，新增统计()方法返回统计表",
+         "反跑判据": "test_工具.light：把 注销后 名单长度 期望 1 改为 2 即红；test_工具深.light：§4.2 把「校验失败→isError」断言 真 改 假 立红；§4.4 把 prepare 计数器断言 1 改 0 立红；§4.3 把 原因为type/enum/pattern 改非对应值立红；v2：test_工具统计.light 把成功次数断言3改2即红",
          "语言缺陷": [
             "L-004",
             "L-007",
