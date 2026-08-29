@@ -121,7 +121,7 @@
          "功能": "agent-loop 多轮循环（turn/step 流程）",
          "原版包": "core/agent-loop/agent.ts",
          "光明模块": "src/代理.light（同步）+ src/异步代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/代理.light",
             "src/异步代理.light",
@@ -130,10 +130,11 @@
             "src/客户端.light（对话响应协程）",
             "examples/test_代理.light",
             "examples/test_并行.light",
-            "examples/test_异步代理.light"
+            "examples/test_异步代理.light",
+            "examples/test_代理深化.light"
          ],
-         "本轮目标": "done：同步 turn/step 多轮循环（代理.light）+ 异步代理循环（协程代理.light）：异步 while 循环、中止令牌（协作式检查 + asyncio cancel 竞速取消）、重试策略（指数退避/可重试判定/超时可重试/llm-retry 事件）、请求竞速（完成/中止/超时）、工具组异步化（丢线程真并发，结果按模型序回填）；parallel 工具组真并发，exclusive 顺序屏障；同步路径不回归",
-         "反跑判据": "同步：test_代理.light 把 假客户端.调用次数 期望 2 改 1 即红；异步：test_异步代理.light 删触发中止行即红（中止）、mock 恒失败即红（重试）、mock 改正常即红（超时）",
+         "本轮目标": "v2：在 v1 基础上新增 max_steps 步数上限（默认25，选项[\"最大步数\"]配置）+ 轮次结果增强（种类/步骤数/输入token/输出token/耗时秒）；修复执行步骤内部循环在工具调用后不退出的问题（新增\"continue\"状态，驱动方法检测后继续下一步），使 max_steps 能正确终止工具调用循环",
+         "反跑判据": "同步：test_代理.light 把 假客户端.调用次数 期望 2 改 1 即红；v2：test_代理深化.light 删最大步数配置即红（无限循环）、改期望步骤数即红",
          "语言缺陷": [
             "L-004",
             "L-007",
