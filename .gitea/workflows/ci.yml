@@ -1,5 +1,30 @@
 name: CI
 
+# 本地 Gitea Actions（192.168.1.5），FreeBSD host 模式 act_runner，无 Docker。
+# 黄金参考：light-merge/.gitea/workflows/ci.yml（本环境唯一跑通的 CI 范本）。
+#
+# 直接照抄 GitHub 模板会让 job 永远停在 "Waiting to run"（无人认领），本环境有三处不同：
+#
+#   1) runs-on：本环境 runner 只有 freebsd / freebsd-14.3 / self-hosted 三个标签，没有 ubuntu。
+#      写 ubuntu-latest → 无任何 runner 能认领 → 状态永久 pending / "Waiting to run"。
+#      实测：run 2 的 commit status 为 pending、"Waiting to run"，且
+#      created_at == updated_at（2026-08-29T12:42:10+08:00），从未被 runner 碰过。
+#      runner 是实例级（两个仓库的 repo 级 runner 列表都是 0，而 light 的 CI 正常），
+#      因此 lightharness 也吃得到——卡住纯粹是标签不匹配。
+#   2) actions/setup-python：本地 Gitea 未镜像该仓库
+#      （GET /api/v1/repos/actions/setup-python → 404），host 模式下也不需要它：
+#      直接用系统 python3 建 venv（--system-site-packages 复用宿主已装包）。
+#   3) checkout：裸写 actions/checkout@v4 偶发被服务端解析回落到 github.com（不可达）；
+#      固定写完整本地 URL 绕开该解析。actions/checkout 本地已镜像（200）。
+#
+# 另有两个 FreeBSD 专属注意点，已写进对应步骤：
+#   - 没有系统级 `python`，只有 `python3`；而 tests/test_回归.py 内部调的是裸 `python`
+#     → 必须让 venv 的 bin 进 PATH，否则 96 条用例全是 FileNotFoundError。
+#   - 运行.py 未设 LIGHT_MERGE 时会退回 Windows 路径 G:\...\light-merge → 必须显式设置。
+#
+# 注：.github/workflows/ci.yml 是给 GitHub/gitcode 镜像用的公开 CI（那边真有 ubuntu-latest
+# 与 setup-python），保持原样，不要照本文件改——layout 与 light-merge 一致。
+
 on:
   push:
     branches: [main, master]
@@ -8,16 +33,20 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: "3.13"
+  # 本项目文件名与用例输出大量含中文（运行.py / examples/test_会话.light），
+  # 显式固定 Python 侧编码，避免 runner locale 差异导致编解码报错。
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: "1"
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: freebsd
     timeout-minutes: 30
 
     steps:
       - name: 检出 lightharness
-        uses: actions/checkout@v4
+        # 固定走本地 actions/checkout，避免裸写 uses 偶发回落到 github.com
+        uses: http://192.168.1.5:3000/actions/checkout@v4
 
       - name: 检出 light-merge 编译器（内网 Gitea）
         run: |
@@ -27,15 +56,31 @@ jobs:
           fi
           git clone --depth 1 "$REPO" ../light-merge
 
-      - name: 设置 Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+      - name: 建 venv 并安装测试依赖
+        run: |
+          python3 -m venv --system-site-packages .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          # requirements.txt 只声明 pytest>=9.0；本地 devpi 镜像不保证有该下界版本。
+          # 取不到时退回任意可用 pytest —— 缺依赖不该把 CI 卡死在装包这一步。
+          python -m pip install -r requirements.txt || python -m pip install pytest
+          # 供后续步骤（以及测试内部起的 `python` 子进程）用上 venv：
+          # FreeBSD 无系统级 python，tests/test_回归.py 里 subprocess 调的是裸 `python`。
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
-      - name: 安装依赖
-        run: pip install -r requirements.txt
+      - name: 环境盘点（只报告，不判绿）
+        run: |
+          . .venv/bin/activate
+          python --version
+          python -m pytest --version
+          echo "LIGHT_MERGE=${{ github.workspace }}/../light-merge"
+          ls "${{ github.workspace }}/../light-merge/src" | head -5 \
+            || echo "[CI][警告] light-merge/src 不存在，后续用例必然全红"
 
       - name: 运行 CI 测试
         env:
+          # 运行.py 未设该变量时会退回 Windows 路径，FreeBSD 上必然 exit 1
           LIGHT_MERGE: ${{ github.workspace }}/../light-merge
-        run: python scripts/ci_test.py
+        run: |
+          . .venv/bin/activate
+          python scripts/ci_test.py
