@@ -31,6 +31,27 @@
 段落 造工具结果块 接收 工具调用标识, 内容, 是否错误:
   返回 ["type": "tool-result", "toolCallId": 工具调用标识, "content": 内容, "isError": 是否错误]
 
+# 造图片块（data 为 base64 编码，mimeType 默认 image/png）
+段落 造图片块 接收 数据, 类型:
+  设 mime 为 "image/png"
+  如果 类型 != 空:
+    设 mime 为 类型
+  返回 ["type": "image", "data": 数据, "mimeType": mime]
+
+# 造音频块（data 为 base64 编码，mimeType 默认 audio/wav）
+段落 造音频块 接收 数据, 类型:
+  设 mime 为 "audio/wav"
+  如果 类型 != 空:
+    设 mime 为 类型
+  返回 ["type": "audio", "data": 数据, "mimeType": mime]
+
+# 造资源块（对齐原版 ResourceContentBlock：resourceId + text + source）
+段落 造资源块 接收 资源ID, 文本, 来源:
+  设 块 为 ["type": "resource", "resourceId": 资源ID, "text": 文本]
+  如果 来源 != 空:
+    块["source"] 为 来源
+  返回 块
+
 # ---- 消息构造 ----
 
 # 造用户消息（来源 kind=user）
@@ -69,4 +90,15 @@
   遍历 块 之 消息["content"]:
     如果 块["type"] == "text":
       设 结果 为 结果 加上 块["text"]
+    否则如果 块["type"] == "reasoning":
+      设 结果 为 结果 加上 块["text"]
+    否则如果 块["type"] == "image":
+      设 预览 为 块["data"]
+      如果 长度(预览) > 40:
+        设 预览 为 预览[0:40] 加上 "..."
+      设 结果 为 结果 加上 "[图片 " 加上 块["mimeType"] 加上 ": " 加上 预览 加上 "]"
+    否则如果 块["type"] == "audio":
+      设 结果 为 结果 加上 "[音频 " 加上 块["mimeType"] 加上 "]"
+    否则如果 块["type"] == "resource":
+      设 结果 为 结果 加上 "[资源 " 加上 块["resourceId"] 加上 ": " 加上 块["text"] 加上 "]"
   返回 结果

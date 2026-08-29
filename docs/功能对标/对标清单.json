@@ -51,13 +51,14 @@
          "功能": "JSONL 持久化（session-persistence-jsonl）",
          "原版包": "session/session-persistence-jsonl",
          "光明模块": "src/持久化.light",
-         "状态": "done",
+         "状态": "done(v2 增量追加)",
          "证据": [
             "src/持久化.light",
-            "examples/test_持久化.light"
+            "examples/test_持久化.light",
+            "examples/test_持久化增量.light"
          ],
-         "本轮目标": "done：整盘快照写出(首行header+逐事件JSONL)/读入回放/路径编码(编码段/项目键)/头部校验",
-         "反跑判据": "test_持久化.light：把 编码段(\"..\") 断言改为 \"..\" 即红",
+         "本轮目标": "done(v2)：v1 整盘快照写出(首行header+逐事件JSONL)/读入回放/路径编码/头部校验；v2 增量追加：初始化日志(只写header) + 追加事件行(末尾追加，文件不存在自动初始化)，支持增量持久化模式",
+         "反跑判据": "test_持久化.light：事件数断言改反即红；test_持久化增量.light：事件包含断言改反即红",
          "语言缺陷": [
             "L-004",
             "L-007",
@@ -69,13 +70,14 @@
          "功能": "消息词汇表（Message/ContentBlock/构造段）",
          "原版包": "llm/llm/message.ts",
          "光明模块": "src/消息.light",
-         "状态": "done",
+         "状态": "done(v2 多媒体块)",
          "证据": [
             "src/消息.light",
-            "examples/test_消息.light"
+            "examples/test_消息.light",
+            "examples/test_消息深化.light"
          ],
-         "本轮目标": "done：text/reasoning/tool-call/tool-result 块 + 构造段",
-         "反跑判据": "test_消息.light：把 块类型 断言改为相反值即红",
+         "本轮目标": "done(v2)：v1 text/reasoning/tool-call/tool-result 块 + 构造段；v2 新增 image/audio/resource 块（造图片块/造音频块/造资源块，mimeType 默认值，resource 带 source）；取消息文本 支持新块类型投影（图片→[图片 mimeType: 预览]，音频→[音频 mimeType]，资源→[资源 id: text]）",
+         "反跑判据": "test_消息.light：块数断言改反即红；test_消息深化.light：块类型或文本投影断言改反即红",
          "语言缺陷": [
             "L-002"
          ]
@@ -208,15 +210,13 @@
          "功能": "CLI 入口（headless runner）",
          "原版包": "apps/cli + bundle/headless",
          "光明模块": "src/总入口.light + examples/运行CLI.light",
-         "状态": "done",
+         "状态": "done(v2 增量持久化+会话列表)",
          "证据": [
             "src/总入口.light",
-            "examples/test_总入口.light",
-            "examples/运行CLI.light",
-            "examples/test_联调CLI.light"
+            "examples/test_cli深化.light"
          ],
-         "本轮目标": "done：环境变量参数解析/单轮对话/内置bash工具/会话写出已接通；多轮交互REPL（交互循环, HARNESS_REPL=1）与 HARNESS_RESUME 续写已落地；无key自动化冒烟（mock客户端注入，单轮/多轮上下文延续/续写JSONL持久化+turn序号连续）；交互缺陷修复（缺key友好提示/网络失败try-catch/REPL空输入跳过/提示文件与续写会话不存在时友好报错）；OpenAI兼容工具格式包装器（兼容注册表，工具.light只读不改）；续写turn序号连续修复（跑一轮从会话历史推导起始轮号）；真实API联调已实测（DEEPSEEK_API_KEY 单轮/多轮REPL/续写全部跑通，turn序号1→2连续验证通过）",
-         "反跑判据": "test_联调CLI.light：把 mock 请求断言（模型名改 WRONG-MODEL / 消息条数改 >=999）即红；test_总入口.light：把 bash 工具输出断言改为相反值即红",
+         "本轮目标": "done(v2)：v1 环境变量参数解析/单轮对话/内置bash工具/会话写出/多轮REPL/续写；v2 增量持久化：REPL和单轮模式均改用增量保存(初始化日志+追加事件行，文件不存在自动初始化，从指定序号开始只追加新增事件)；新增 HARNESS_LIST=1 会话列表功能(列出根目录下所有已有会话，不需要API key)；增量保存函数可测试导出",
+         "反跑判据": "test_cli深化.light：事件包含或工具名断言改反即红",
          "语言缺陷": [
             "L-004",
             "L-007",
