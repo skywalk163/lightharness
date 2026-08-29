@@ -26,7 +26,7 @@
 | | sandbox 沙箱边界 | `sandbox` | 待实现 |
 | | fs / storage 文件与存储 | `fs` `storage` | 待实现 |
 
-P2 生态层：**mcp 客户端(v2)**（#16：stdio+streamable-http、自动重连、图片块投影）、**用户审批 interaction**（#17：approve/deny/ask 三策略，代理循环执行组接入，deny→tool/error）、**子智能体 subagent**（#18：独立会话+代理循环，可包装为工具注册到主 agent）已落地；code-runtime、e2b、遥测、Web UI 押后。
+P2 生态层：**mcp 客户端(v2)**（#16）、**用户审批 interaction**（#17）、**子智能体 subagent**（#18）、**遥测 telemetry**（#19：轮次/步骤/工具调用/token+延迟统计，代理循环接入）、**代码运行时 code-runtime**（#20：subprocess 执行代码，可包装为工具）、**e2b 云沙箱**（#21：接口层+本地模拟模式）已落地；Web UI 押后。P0/P1 #9 压缩已升级 v3（自动触发+溢出恢复）。
 
 ## 目录结构
 
