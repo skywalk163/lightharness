@@ -392,13 +392,14 @@
          "功能": "e2b 云沙箱客户端（e2b）",
          "原版包": "packages/e2b",
          "光明模块": "src/e2b客户端.light",
-         "状态": "done(接口层+本地模拟)",
+         "状态": "v2",
          "证据": [
             "src/e2b客户端.light",
-            "examples/test_e2b.light"
+            "examples/test_e2b.light",
+            "examples/test_e2b深化.light"
          ],
-         "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）",
-         "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红",
+         "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）；v2：会话管理(创建会话/列出会话/关闭会话) + 执行超时配置 + 连接状态查询(未连接/已连接/远程模式/本地模拟 + 最后心跳 + 活跃会话数)",
+         "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红；v2：test_e2b深化.light 把 创建会话后列表长度改反即红、关闭会话后状态非closed即红、连接状态本地模拟改远程模式即红",
          "语言缺陷": []
       }
    ]
