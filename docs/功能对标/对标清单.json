@@ -18,13 +18,14 @@
          "功能": "会话事件日志（SessionEvent append-only log）",
          "原版包": "core/session",
          "光明模块": "src/会话.light",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/会话.light",
-            "examples/test_会话.light"
+            "examples/test_会话.light",
+            "examples/test_会话深化.light"
          ],
-         "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件",
-         "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红",
+         "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件；v2 新增查询事件(类型,开始序号,结束序号)：类型空串\"\"不过滤类型，开始序号=0不限制下限，结束序号=0不限制上限；test_会话深化.light 查询事件测试全通过",
+         "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红；v2：test_会话深化.light 把查询结果数量断言改反即红",
          "语言缺陷": [
             "L-003",
             "L-004"
@@ -35,13 +36,14 @@
          "功能": "surface 折叠（消息产生事件投影 + append/replace）",
          "原版包": "core/session/surface.ts",
          "光明模块": "src/会话.light",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/会话.light 的 整理消息/压缩替换",
-            "examples/test_会话.light（surface投影正确/压缩替换语义正确）"
+            "examples/test_会话.light（surface投影正确/压缩替换语义正确）",
+            "examples/test_会话深化.light"
          ],
-         "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义",
-         "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红",
+         "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义；v2 新增投影统计()：返回消息数/总块数/角色分布(user/assistant/tool)，遮蔽事件不计入；test_会话深化.light 投影统计测试全通过",
+         "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红；v2：test_会话深化.light 把投影统计断言改反即红",
          "语言缺陷": [
             "L-004"
          ]
@@ -87,13 +89,14 @@
          "功能": "LLM 流式词汇表（StreamChunk/FinishReason/TokenUsage）",
          "原版包": "llm/llm/types.ts",
          "光明模块": "src/流.light",
-         "状态": "done",
+         "状态": "v2",
          "证据": [
             "src/流.light",
-            "examples/test_流.light"
+            "examples/test_流.light",
+            "examples/test_流深化.light"
          ],
-         "本轮目标": "done：七种流块 + 组装器（块表/完成原因/用量/中断块/组装消息）",
-         "反跑判据": "test_流.light：改 完成原因 种类断言或 block-end 冻结断言即红",
+         "本轮目标": "done：七种流块 + 组装器（块表/完成原因/用量/中断块/组装消息）；v2 新增流块合并：合并连续delta流块为完整消息，支持finish_reason和usage聚合；test_流深化.light 合并流块测试全通过",
+         "反跑判据": "test_流.light：改 完成原因 种类断言或 block-end 冻结断言即红；v2：test_流深化.light 把合并结果断言改反即红",
          "语言缺陷": [
             "L-004",
             "L-007"
