@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出 lightharness
+        uses: actions/checkout@v4
+
+      - name: 检出 light-merge 编译器
+        run: |
+          REPO="${{ vars.LIGHT_MERGE_REPO }}"
+          if [ -z "$REPO" ]; then
+            echo "::warning::LIGHT_MERGE_REPO 未配置，尝试默认地址"
+            REPO="https://gitcode.com/skywalk163/light.git"
+          fi
+          git clone --depth 1 "$REPO" ../light-merge || echo "::warning::light-merge 检出失败，测试将跳过"
+
+      - name: 设置 Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行 CI 测试
+        env:
+          LIGHT_MERGE: ${{ github.workspace }}/../light-merge
+        run: python scripts/ci_test.py
+
+      - name: 上传失败日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-logs
+          path: |
+            tests/
+            examples/
+          retention-days: 7

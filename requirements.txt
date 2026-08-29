@@ -1,0 +1,3 @@
+# lightharness 运行依赖
+# 光明编译器 light-merge 为外部依赖，通过 LIGHT_MERGE 环境变量指定路径，不在此声明
+pytest>=9.0
