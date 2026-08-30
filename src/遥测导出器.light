@@ -1,0 +1,178 @@
+# 遥测导出器.light —— 遥测数据导出器（A1 OTel对齐，三输出器+隐私保护+管理器）
+#
+# 输出器接口：输出(spans), 输出指标(metrics), 刷新(), 关闭()
+# 实现：控制台输出器、JSONL输出器、OTLP输出器（接口层预留）
+# 隐私保护：capture_content=false（默认）时，attributes中不含正文，仅含元数据。
+# 输出器管理器：注册多个输出器，广播输出。
+
+# 控制台输出器
+类 控制台输出器:
+  属性 名称 等于 "console"
+  属性 记录正文 等于 假
+
+  段落 构造 接收 选项:
+    设 己.记录正文 为 假
+    如果 选项 != 空 且 选项.包含("capture_content"):
+      设 己.记录正文 为 选项["capture_content"]
+
+  段落 过滤 接收 span:
+    如果 己.记录正文 == 真:
+      返回 span
+    设 结果 为 ["trace_id": span["trace_id"], "span_id": span["span_id"], "parent_span_id": span["parent_span_id"], "name": span["name"], "kind": span["kind"], "start_time": span["start_time"], "end_time": span["end_time"], "duration_ms": span["duration_ms"], "status": span["status"], "error_message": span["error_message"]]
+    设 安全属性 为 {}
+    设 属性表 为 span["attributes"]
+    如果 属性表 != 空:
+      遍历 键 之 属性表:
+        如果 键 == "model" 或 键 == "ttft_ms" 或 键 == "input_tokens" 或 键 == "output_tokens" 或 键 == "cache_read_tokens" 或 键 == "finish_reason" 或 键 == "tool_name" 或 键 == "params_hash" 或 键 == "success" 或 键 == "error_type" 或 键 == "session_id":
+          设 安全属性[键] 为 属性表[键]
+    设 结果["attributes"] 为 安全属性
+    返回 结果
+
+  段落 输出 接收 spans:
+    打印 "=== 遥测 Span 输出（控制台） ==="
+    打印 "Span 总数: " 加上 转字符串(长度(spans))
+    遍历 span 之 spans:
+      设 安全span 为 己.过滤(span)
+      打印 "[" + 安全span["kind"] + "] " + 安全span["name"] + " span_id=" + 安全span["span_id"] + " parent=" + 安全span["parent_span_id"] + " 耗时=" + 转字符串(安全span["duration_ms"]) + "ms 状态=" + 安全span["status"]
+    打印 "=================================="
+    返回 长度(spans)
+
+  段落 输出指标 接收 metrics:
+    打印 "=== 遥测指标（控制台） ==="
+    打印 转字符串(metrics)
+    打印 "=========================="
+
+  段落 刷新:
+    返回 空
+
+  段落 关闭:
+    返回 空
+
+# JSONL 输出器
+类 JSONL输出器:
+  属性 名称 等于 "jsonl"
+  属性 文件路径 等于 ""
+  属性 记录正文 等于 假
+
+  段落 构造 接收 文件路径, 选项:
+    设 己.文件路径 为 文件路径
+    设 己.记录正文 为 假
+    如果 选项 != 空 且 选项.包含("capture_content"):
+      设 己.记录正文 为 选项["capture_content"]
+
+  段落 过滤 接收 span:
+    如果 己.记录正文 == 真:
+      返回 span
+    设 结果 为 ["trace_id": span["trace_id"], "span_id": span["span_id"], "parent_span_id": span["parent_span_id"], "name": span["name"], "kind": span["kind"], "start_time": span["start_time"], "end_time": span["end_time"], "duration_ms": span["duration_ms"], "status": span["status"], "error_message": span["error_message"]]
+    设 安全属性 为 {}
+    设 属性表 为 span["attributes"]
+    如果 属性表 != 空:
+      遍历 键 之 属性表:
+        如果 键 == "model" 或 键 == "ttft_ms" 或 键 == "input_tokens" 或 键 == "output_tokens" 或 键 == "cache_read_tokens" 或 键 == "finish_reason" 或 键 == "tool_name" 或 键 == "params_hash" 或 键 == "success" 或 键 == "error_type" 或 键 == "session_id":
+          设 安全属性[键] 为 属性表[键]
+    设 结果["attributes"] 为 安全属性
+    返回 结果
+
+  段落 输出 接收 spans:
+    设 全部文本 为 ""
+    遍历 span 之 spans:
+      设 安全span 为 己.过滤(span)
+      设 行文本 为 序列化JSON(安全span)
+      设 全部文本 为 全部文本 + 行文本 + "\n"
+    写入文件(己.文件路径, 全部文本)
+    返回 长度(spans)
+
+  段落 输出指标 接收 metrics:
+    设 指标路径 为 己.文件路径 + ".metrics.json"
+    写入文件(指标路径, 序列化JSON(metrics))
+    返回 指标路径
+
+  段落 刷新:
+    返回 空
+
+  段落 关闭:
+    返回 空
+
+# OTLP 输出器（接口层预留）
+类 OTLP输出器:
+  属性 名称 等于 "otlp"
+  属性 端点 等于 ""
+  属性 请求头 等于 {}
+  属性 记录正文 等于 假
+  属性 已输出计数 等于 0
+
+  段落 构造 接收 端点, 请求头, 选项:
+    设 己.端点 为 端点
+    设 己.请求头 为 请求头
+    如果 己.请求头 == 空:
+      设 己.请求头 为 {}
+    设 己.记录正文 为 假
+    如果 选项 != 空 且 选项.包含("capture_content"):
+      设 己.记录正文 为 选项["capture_content"]
+    设 己.已输出计数 为 0
+
+  段落 过滤 接收 span:
+    如果 己.记录正文 == 真:
+      返回 span
+    设 结果 为 ["trace_id": span["trace_id"], "span_id": span["span_id"], "parent_span_id": span["parent_span_id"], "name": span["name"], "kind": span["kind"], "start_time": span["start_time"], "end_time": span["end_time"], "duration_ms": span["duration_ms"], "status": span["status"], "error_message": span["error_message"]]
+    设 安全属性 为 {}
+    设 属性表 为 span["attributes"]
+    如果 属性表 != 空:
+      遍历 键 之 属性表:
+        如果 键 == "model" 或 键 == "ttft_ms" 或 键 == "input_tokens" 或 键 == "output_tokens" 或 键 == "cache_read_tokens" 或 键 == "finish_reason" 或 键 == "tool_name" 或 键 == "params_hash" 或 键 == "success" 或 键 == "error_type" 或 键 == "session_id":
+          设 安全属性[键] 为 属性表[键]
+    设 结果["attributes"] 为 安全属性
+    返回 结果
+
+  段落 输出 接收 spans:
+    设 资源span表 为 []
+    遍历 span 之 spans:
+      设 安全span 为 己.过滤(span)
+      资源span表.追加(安全span)
+    设 请求体 为 ["endpoint": 己.端点, "headers": 己.请求头, "format": "otlp-http-json", "resource_spans": 资源span表, "注意": "OTLP输出为接口层预留，未实际发送HTTP请求"]
+    设 己.已输出计数 为 己.已输出计数 + 长度(spans)
+    打印 "OTLP输出器（接口层预留）: 组装 " + 转字符串(长度(spans)) + " 个span到 " + 己.端点 + "，未实际发送"
+    返回 请求体
+
+  段落 输出指标 接收 metrics:
+    设 请求体 为 ["endpoint": 己.端点, "headers": 己.请求头, "format": "otlp-http-json", "metrics": metrics, "注意": "OTLP输出为接口层预留"]
+    返回 请求体
+
+  段落 刷新:
+    返回 空
+
+  段落 关闭:
+    返回 空
+
+# 输出器管理器：注册多个输出器，广播输出
+类 输出器管理器:
+  属性 输出器表 等于 []
+
+  段落 构造 接收:
+    设 己.输出器表 为 []
+
+  段落 注册 接收 输出器:
+    己.输出器表.追加(输出器)
+    返回 长度(己.输出器表)
+
+  段落 输出 接收 spans:
+    设 结果表 为 []
+    遍历 输出器 之 己.输出器表:
+      设 结果 为 输出器.输出(spans)
+      结果表.追加(["名称": 输出器.名称, "结果": 结果])
+    返回 结果表
+
+  段落 输出指标 接收 metrics:
+    遍历 输出器 之 己.输出器表:
+      输出器.输出指标(metrics)
+    返回 长度(己.输出器表)
+
+  段落 刷新:
+    遍历 输出器 之 己.输出器表:
+      输出器.刷新()
+    返回 空
+
+  段落 关闭:
+    遍历 输出器 之 己.输出器表:
+      输出器.关闭()
+    返回 空

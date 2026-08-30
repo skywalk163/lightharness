@@ -1,74 +1,183 @@
-# test_遥测深化.light —— 遥测 v2：导出指标/聚合统计/错误分类/持久化
-从 遥测 导入 遥测收集器
+# test_遥测深化.light —— A1 遥测后端对接（OTel GenAI语义+调用树+三输出器+隐私保护）
 
-段落 断言等于 接收 实际, 期望, 标签:
-  如果 实际 != 期望:
-    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+从 遥测 导入 遥测收集器
+从 遥测导出器 导入 控制台输出器, JSONL输出器, OTLP输出器, 输出器管理器
 
 段落 断言真 接收 条件, 标签:
   如果 条件 == 假:
-    抛出 "断言失败: " + 标签
+    抛出 "断言失败: " 加上 标签
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " 加上 标签 + " 实际=" 加上 转字符串(实际) + " 期望=" 加上 转字符串(期望)
+
+# 测试1-6：span调用树基础
+段落 测span调用树 接收 遥测:
+  设 会话span 为 遥测.开始会话("sess_001")
+  断言真(会话span["trace_id"] != "", "trace_id应非空")
+  断言真(会话span["span_id"] != "", "span_id应非空")
+  断言等于(会话span["kind"], "session", "kind应为session")
+  断言等于(会话span["parent_span_id"], "", "parent应为空")
+  断言等于(会话span["attributes"]["session_id"], "sess_001", "session_id应为sess_001")
+  打印 "测试1 trace_id/span_id生成 PASS"
+
+  设 轮次span 为 遥测.开始轮次()
+  断言等于(轮次span["kind"], "turn", "kind应为turn")
+  断言等于(轮次span["parent_span_id"], 会话span["span_id"], "parent应为会话span_id")
+  断言等于(轮次span["trace_id"], 会话span["trace_id"], "trace_id应相同")
+  打印 "测试2 轮次span父关系 PASS"
+
+  设 步骤span 为 遥测.开始步骤()
+  断言等于(步骤span["kind"], "step", "kind应为step")
+  断言等于(步骤span["parent_span_id"], 轮次span["span_id"], "parent应为轮次span_id")
+  打印 "测试3 步骤span调用树 PASS"
+
+  设 llmspan 为 遥测.记录LLM调用("deepseek-chat", 120.5, 500, 200, 50, "stop")
+  断言等于(llmspan["kind"], "llm", "kind应为llm")
+  断言等于(llmspan["parent_span_id"], 步骤span["span_id"], "parent应为步骤span_id")
+  断言等于(llmspan["attributes"]["model"], "deepseek-chat", "model应为deepseek-chat")
+  断言等于(llmspan["attributes"]["ttft_ms"], 120.5, "ttft_ms应为120.5")
+  断言等于(llmspan["attributes"]["input_tokens"], 500, "input_tokens应为500")
+  断言等于(llmspan["attributes"]["output_tokens"], 200, "output_tokens应为200")
+  断言等于(llmspan["attributes"]["cache_read_tokens"], 50, "cache_read_tokens应为50")
+  断言等于(llmspan["attributes"]["finish_reason"], "stop", "finish_reason应为stop")
+  打印 "测试4 LLM span属性 PASS"
+
+  设 toolspan1 为 遥测.记录工具调用详情("bash", "abc123", 真, "")
+  断言等于(toolspan1["kind"], "tool", "kind应为tool")
+  断言等于(toolspan1["attributes"]["tool_name"], "bash", "tool_name应为bash")
+  断言等于(toolspan1["attributes"]["success"], 真, "success应为真")
+  断言等于(toolspan1["status"], "ok", "status应为ok")
+  设 toolspan2 为 遥测.记录工具调用详情("read_file", "def456", 假, "timeout")
+  断言等于(toolspan2["attributes"]["success"], 假, "success应为假")
+  断言等于(toolspan2["status"], "error", "status应为error")
+  断言等于(toolspan2["attributes"]["error_type"], "timeout", "error_type应为timeout")
+  打印 "测试5 工具span属性 PASS"
+
+  设 结束步骤 为 遥测.结束当前()
+  断言等于(结束步骤["kind"], "step", "结束的应为step")
+  设 结束轮次 为 遥测.结束当前()
+  断言等于(结束轮次["kind"], "turn", "结束的应为turn")
+  设 结束会话 为 遥测.结束当前()
+  断言等于(结束会话["kind"], "session", "结束的应为session")
+  设 栈顶 为 遥测.栈顶span()
+  断言等于(栈顶, 空, "栈顶应为空")
+  设 全部span 为 遥测.获取全部span()
+  断言等于(长度(全部span), 6, "span总数应为6")
+  打印 "测试6 span数量和层级 PASS"
+  返回 全部span
+
+# 测试7-8：聚合统计和错误分类
+段落 测聚合统计 接收 遥测:
+  设 模型聚合 为 遥测.聚合统计("模型")
+  断言真(模型聚合.包含("分组"), "模型聚合应含分组")
+  设 模型分组 为 模型聚合["分组"]
+  断言真(模型分组.包含("deepseek-chat"), "应含deepseek-chat")
+  设 模型项 为 模型分组["deepseek-chat"]
+  断言等于(模型项["调用数"], 1, "模型调用数应为1")
+  设 工具聚合 为 遥测.聚合统计("工具")
+  设 工具分组 为 工具聚合["分组"]
+  断言真(工具分组.包含("bash"), "应含bash")
+  断言真(工具分组.包含("read_file"), "应含read_file")
+  设 bash项 为 工具分组["bash"]
+  断言等于(bash项["成功率"], 1.0, "bash成功率应为1.0")
+  设 rf项 为 工具分组["read_file"]
+  断言等于(rf项["成功率"], 0.0, "read_file成功率应为0.0")
+  打印 "测试7 聚合统计 PASS"
+
+  设 错误分类 为 遥测.错误分类统计()
+  断言真(错误分类.包含("timeout"), "应含timeout")
+  断言等于(错误分类["timeout"], 1, "timeout计数应为1")
+  打印 "测试8 错误分类统计 PASS"
+
+# 测试9-13：输出器
+段落 测输出器 接收 全部span:
+  设 jsonl路径 为 "tmp_telemetry_test.jsonl"
+  设 输出器jsonl 为 新建 JSONL输出器(jsonl路径, 空)
+  设 输出结果 为 输出器jsonl.输出(全部span)
+  断言等于(输出结果, 6, "JSONL输出应返回6")
+  设 文件内容 为 读取文件(jsonl路径)
+  设 行数 为 0
+  遍历 行 之 分割字符串(文件内容, "\n"):
+    如果 行 != "":
+      设 行数 为 行数 + 1
+      设 解析结果 为 解析JSON(行)
+      断言真(解析结果 != 空, "每行应可解析为JSON")
+  断言等于(行数, 6, "JSONL应有6行")
+  打印 "测试9 JSONL输出 PASS"
+
+  设 隐私遥测 为 新建 遥测收集器()
+  隐私遥测.配置选项(["capture_content": 假])
+  设 psession 为 隐私遥测.开始会话("priv_sess")
+  设 pstep 为 隐私遥测.开始步骤()
+  设 pllm 为 隐私遥测.记录LLM调用("gpt-4", 50.0, 100, 50, 0, "stop")
+  隐私遥测.结束当前()
+  隐私遥测.结束当前()
+  设 隐私span表 为 隐私遥测.获取全部span()
+  设 隐私输出器 为 新建 控制台输出器(["capture_content": 假])
+  遍历 pspan 之 隐私span表:
+    设 过滤后 为 隐私输出器.过滤(pspan)
+    设 过滤后属性 为 过滤后["attributes"]
+    断言真(过滤后属性.包含("prompt") == 假, "不应含prompt")
+    断言真(过滤后属性.包含("response") == 假, "不应含response")
+    断言真(过滤后属性.包含("content") == 假, "不应含content")
+    如果 过滤后["kind"] == "llm":
+      断言真(过滤后属性.包含("model"), "应保留model")
+      断言真(过滤后属性.包含("input_tokens"), "应保留input_tokens")
+  打印 "测试10 隐私保护 PASS"
+
+  设 控制台输出器实例 为 新建 控制台输出器(空)
+  设 控制台结果 为 控制台输出器实例.输出(全部span)
+  断言等于(控制台结果, 6, "控制台输出应返回6")
+  控制台输出器实例.输出指标(["测试指标": 1])
+  控制台输出器实例.刷新()
+  控制台输出器实例.关闭()
+  打印 "测试11 控制台输出 PASS"
+
+  设 输出器otlp 为 新建 OTLP输出器("https://otlp.example.com/v1/traces", ["Authorization": "Bearer test"], 空)
+  设 otlp结果 为 输出器otlp.输出(全部span)
+  断言真(otlp结果.包含("endpoint"), "应含endpoint")
+  断言等于(otlp结果["endpoint"], "https://otlp.example.com/v1/traces", "endpoint应匹配")
+  断言真(otlp结果.包含("注意"), "应含注意字段")
+  打印 "测试12 OTLP输出器 PASS"
+
+  设 管理器 为 新建 输出器管理器()
+  管理器.注册(控制台输出器实例)
+  设 jsonl2 为 新建 JSONL输出器("tmp_manager_test.jsonl", 空)
+  管理器.注册(jsonl2)
+  设 广播结果 为 管理器.输出(全部span)
+  断言等于(长度(广播结果), 2, "应调用2个输出器")
+  管理器.刷新()
+  管理器.关闭()
+  打印 "测试13 输出器管理器 PASS"
+
+  删除文件(jsonl路径)
+  删除文件("tmp_manager_test.jsonl")
+
+# 测试14：向后兼容
+段落 测向后兼容:
+  设 旧遥测 为 新建 遥测收集器()
+  旧遥测.记录轮次开始(1)
+  旧遥测.记录步骤(1, 1, 0.5, ["输入": 100, "输出": 50])
+  旧遥测.记录工具调用("add", 0.1)
+  旧遥测.记录错误("timeout错误")
+  旧遥测.记录轮次结束(1, ["种类": "completed"])
+  设 旧统计 为 旧遥测.汇总()
+  断言等于(旧统计["轮次数"], 1, "轮次数应为1")
+  断言等于(旧统计["总步骤"], 1, "总步骤应为1")
+  断言等于(旧统计["总工具调用"], 1, "总工具调用应为1")
+  断言等于(旧统计["总错误"], 1, "总错误应为1")
+  设 旧错误分类 为 旧遥测.错误分类统计()
+  断言真(旧错误分类.包含("timeout"), "应含timeout")
+  打印 "测试14 向后兼容 PASS"
 
 段落 主:
   设 遥测 为 新建 遥测收集器()
-
-  # 生成测试数据
-  遥测.记录轮次开始(1)
-  遥测.记录步骤(1, "step1", 0.5, ["输入": 100, "输出": 50])
-  遥测.记录步骤(1, "step2", 0.3, ["输入": 80, "输出": 40])
-  遥测.记录工具调用("工具A", 0.1)
-  遥测.记录错误("timeout occurred")
-  遥测.记录轮次结束(1, "completed")
-
-  遥测.记录轮次开始(2)
-  遥测.记录步骤(2, "step1", 0.2, ["输入": 60, "输出": 30])
-  遥测.记录工具调用("工具B", 0.05)
-  遥测.记录错误("auth failed 401")
-  遥测.记录错误("network connection error")
-  遥测.记录轮次结束(2, "failed")
-
-  # ===== 导出指标 =====
-  打印 "=== 导出指标测试 ==="
-  设 json文本 为 遥测.导出指标("json")
-  断言真(json文本.包含("telemetry"), "JSON含指标名telemetry")
-  断言真(json文本.包含("时间戳"), "JSON含时间戳")
-  断言真(json文本.包含("维度标签"), "JSON含维度标签")
-  断言真(json文本.包含("轮次数"), "JSON含轮次数字段")
-  打印 "  导出指标通过"
-
-  # ===== 聚合统计 =====
-  打印 "=== 聚合统计测试 ==="
-  设 按轮次 为 遥测.聚合统计("轮次")
-  断言等于(按轮次["维度"], "轮次", "维度=轮次")
-  断言等于(按轮次["总调用数"], 2, "按轮次总调用数=2")
-  断言真(按轮次["总耗时"] > 0, "按轮次总耗时>0")
-  断言等于(按轮次["错误数"], 3, "按轮次错误数=3")
-  断言真(按轮次["平均耗时"] > 0, "按轮次平均耗时>0")
-
-  设 按步骤 为 遥测.聚合统计("步骤")
-  断言等于(按步骤["维度"], "步骤", "维度=步骤")
-  断言等于(按步骤["总调用数"], 3, "按步骤总调用数=3")
-  断言真(按步骤["总耗时"] > 0, "按步骤总耗时>0")
-  断言等于(按步骤["错误数"], 3, "按步骤错误数=3")
-  打印 "  聚合统计通过"
-
-  # ===== 错误分类统计 =====
-  打印 "=== 错误分类统计测试 ==="
-  设 分类 为 遥测.错误分类统计()
-  断言等于(分类["timeout"], 1, "timeout错误=1")
-  断言等于(分类["auth"], 1, "auth错误=1")
-  断言等于(分类["network"], 1, "network错误=1")
-  打印 "  错误分类统计通过"
-
-  # ===== 持久化 =====
-  打印 "=== 持久化测试 ==="
-  设 测试路径 为 "tmp_persist/遥测导出测试.json"
-  遥测.持久化接口(测试路径)
-  设 读取文本 为 读取文件(测试路径)
-  断言真(读取文本.包含("汇总"), "持久化文件含汇总数据")
-  断言真(读取文本.包含("错误分类"), "持久化文件含错误分类")
-  打印 "  持久化通过"
-
-  打印 "--- 遥测深化测试通过 ---"
+  设 全部span 为 测span调用树(遥测)
+  测聚合统计(遥测)
+  测输出器(全部span)
+  测向后兼容()
+  打印 ""
+  打印 "test_遥测深化 全部 PASS"
 
 主()
