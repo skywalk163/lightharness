@@ -27,6 +27,14 @@ jobs:
             REPO="https://gitcode.com/skywalk163/light.git"
           fi
           git clone --depth 1 "$REPO" ../light-merge || echo "::warning::light-merge 检出失败，测试将跳过"
+          # 自愈合：若检出的 light-merge 不含 L-013/L-021 修复（预期 commit 5610f44a），
+          # 退回 canonical gitcode main，避免编译器版本错位导致整门禁误导式全红。
+          EXPECT=5610f44a2b7d6970a9a185bccba578e13b9a7657
+          if ! git -C ../light-merge cat-file -e ${EXPECT}^{commit} 2>/dev/null; then
+            echo "::warning::LIGHT_MERGE_REPO 指向的 light-merge 不含 L-013/L-021 修复（缺 commit ${EXPECT}），退回 canonical gitcode main"
+            rm -rf ../light-merge
+            git clone --depth 1 https://gitcode.com/skywalk163/light.git ../light-merge
+          fi
 
       - name: 设置 Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5

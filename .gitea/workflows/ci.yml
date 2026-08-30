@@ -54,7 +54,20 @@ jobs:
           if [ -z "$REPO" ]; then
             REPO="http://192.168.1.5:3000/skywalk/light.git"
           fi
-          git clone --depth 1 "$REPO" ../light-merge
+          git clone --depth 1 "$REPO" ../light-merge || {
+            echo "[CI][错误] 无法克隆 LIGHT_MERGE_REPO=$REPO"
+            exit 1
+          }
+          # 自愈合：若检出的 light-merge 不含 L-013/L-021 修复（预期 commit 5610f44a），
+          # 说明 LIGHT_MERGE_REPO 指向过期的 fork/分支，退回 canonical gitea main，
+          # 避免「编译器版本错位」导致整门禁误导式全红（典型症状：L-021 报「属性 是保留关键字」）。
+          EXPECT=5610f44a2b7d6970a9a185bccba578e13b9a7657
+          if ! git -C ../light-merge cat-file -e ${EXPECT}^{commit} 2>/dev/null; then
+            echo "[CI][警告] LIGHT_MERGE_REPO 指向的 light-merge 不含 L-013/L-021 修复（缺 commit ${EXPECT}），退回 canonical gitea main"
+            echo "[CI][警告] 请在 lightharness 仓库 Settings→Variables 中将 LIGHT_MERGE_REPO 更新为 http://192.168.1.5:3000/skywalk/light.git 或清空以用内建回退"
+            rm -rf ../light-merge
+            git clone --depth 1 http://192.168.1.5:3000/skywalk/light.git ../light-merge
+          fi
 
       - name: 建 venv 并安装测试依赖
         run: |
@@ -74,6 +87,7 @@ jobs:
           python --version
           python -m pytest --version
           echo "LIGHT_MERGE=${{ github.workspace }}/../light-merge"
+          echo "light-merge commit: $(git -C ${{ github.workspace }}/../light-merge rev-parse HEAD 2>/dev/null || echo 未知)"
           ls "${{ github.workspace }}/../light-merge/src" | head -5 \
             || echo "[CI][警告] light-merge/src 不存在，后续用例必然全红"
 
