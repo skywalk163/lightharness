@@ -54,12 +54,11 @@ PLATFORM_ENV_DEBT = {}
 
 if not sys.platform.startswith('win'):
     EXPECT_RED.update(PLATFORM_ENV_DEBT)
-    # FreeBSD PTY 既有问题：test_终端PTY.light 在 FreeBSD runner 上偶发
-    # 「写入命令只回显、读不到 shell 执行结果」，属伪终端/外壳交互脆弱，
-    # 与 P0-2 改动无关（非本次引入）。Windows 本地用 ConPTY 可绿，故仅
-    # FreeBSD 登记为预期红，留待以后在 FreeBSD runner 上单独修
-    # 终端.light / 伪终端.light。详见 docs/问题档案.md。
-    EXPECT_RED['test_终端PTY.light'] = 'FreeBSD PTY 既有问题（非 P0-2 引入，留待以后修）'
+    # 历史：test_终端PTY.light 曾因 FreeBSD PTY 计时脆弱在 runner 上偶发红，
+    # 登记为预期红作临时挡板。2026-08-30 已将测试改为「轮询+累积读取」消除
+    # 计时脆弱（见 examples/test_终端PTY.light 的 读至包含 助手），FreeBSD 上
+    # 稳定绿，故删除本登记，门禁全量硬判绿（EXPECT_RED 归零，符合
+    # 「EXPECT_RED 应保持为空」的验收口径）。详见 docs/问题档案.md。
 
 # 其余全部预期绿；如个别用例基线红且不属于本门禁范围，需在此显式登记
 EXPECT_GREEN_EXCEPT = set(EXPECT_RED)
