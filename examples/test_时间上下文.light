@@ -1,0 +1,140 @@
+# test_时间上下文.light —— 时间上下文子系统（模块31）测试
+# 复刻对象：packages/context/time-context/src/timestamp.ts + request-zone.ts
+#
+# 反跑判据（改任一条即红）：
+#   1. 时区偏移文本(0) 由 "+00:00" 改为 "-00:00"
+#   2. 格式化时间戳 去掉末尾的 "[时区]" 包裹
+#   3. mixed 分支去掉 序列化JSON 包裹（只拼原文）
+#   4. 推导 不做去重（两个相同时区会被判成 mixed）
+
+从 时间上下文 导入 时区偏移文本, 格式化时间戳, 是IANA时区, 浏览器时区, 推导浏览器时区上下文, 渲染浏览器时区上下文
+从 定时 导入 日期转epoch
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败 " 加上 标签 加上 " 实际=" 加上 转字符串(实际) 加上 " 期望=" 加上 转字符串(期望))
+
+段落 断言为真 接收 条件, 标签:
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败（应为真） " 加上 标签)
+
+段落 断言为假 接收 条件, 标签:
+  如果 条件 != 假:
+    抛出 新建 错误("断言失败（应为假） " 加上 标签)
+
+# 构造一条 user-rpc 消息
+段落 用户消息 接收 rpc编号, 时区:
+  如果 时区 == 空:
+    返回 {"source": {"kind": "user", "rpcId": rpc编号}}
+  返回 {"source": {"kind": "user", "rpcId": rpc编号, "clientTimeZone": 时区}}
+
+
+段落 主:
+  # ── 1) 偏移文本（复刻 GMT→GMT+00:00→slice(3)） ──────────────────────
+  断言相等(时区偏移文本(0), "+00:00", "UTC 偏移")
+  断言相等(时区偏移文本(480), "+08:00", "东八区")
+  断言相等(时区偏移文本(-300), "-05:00", "西五区")
+  断言相等(时区偏移文本(330), "+05:30", "印度半时区")
+  断言相等(时区偏移文本(-270), "-04:30", "负半时区")
+  断言相等(时区偏移文本(60), "+01:00", "东一区")
+  打印("用例1 偏移归一化 PASS")
+
+  # ── 2) 时间戳组装：YYYY-MM-DDTHH:mm:ss±HH:MM[Zone] ──────────────────
+  # epoch 0 = 1970-01-01T00:00:00Z
+  断言相等(格式化时间戳(0, 0, "UTC"), "1970-01-01T00:00:00+00:00[UTC]", "epoch0 UTC")
+  断言相等(格式化时间戳(0, 480, "Asia/Shanghai"), "1970-01-01T08:00:00+08:00[Asia/Shanghai]", "epoch0 东八区")
+  断言相等(格式化时间戳(0, -300, "America/New_York"), "1969-12-31T19:00:00-05:00[America/New_York]", "epoch0 西五区跨日")
+  # 2026-08-31T12:00:00Z 的 epoch（UTC 中午）→ 东八区为 20:00
+  设 中午 为 日期转epoch(2026, 8, 31, 12, 0, 0, 0)
+  断言相等(格式化时间戳(中午, 480, "Asia/Shanghai"), "2026-08-31T20:00:00+08:00[Asia/Shanghai]", "指定时刻东八区")
+  断言相等(格式化时间戳(中午, 0, "UTC"), "2026-08-31T12:00:00+00:00[UTC]", "指定时刻UTC")
+  打印("用例2 时间戳组装 PASS")
+
+  # ── 3) IANA 形态校验（等价 /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/[A-Za-z0-9_+.-]+)+$/） ──
+  断言为真(是IANA时区("Asia/Shanghai"), "Asia/Shanghai")
+  断言为真(是IANA时区("America/New_York"), "America/New_York")
+  断言为真(是IANA时区("Etc/GMT+8"), "Etc/GMT+8 含+号")
+  断言为真(是IANA时区("Asia/Shanghai/Beijing"), "多段")
+  断言为真(是IANA时区("America/Argentina/Buenos_Aires"), "三段含下划线")
+  断言为假(是IANA时区("UTC"), "UTC 无斜杠（走字面量分支）")
+  断言为假(是IANA时区("Asia"), "缺 Location")
+  断言为假(是IANA时区("Asia/"), "末段为空")
+  断言为假(是IANA时区("/Shanghai"), "首字符非字母")
+  断言为假(是IANA时区("1Asia/Shanghai"), "首字符为数字")
+  断言为假(是IANA时区("Asia//Shanghai"), "中间空段")
+  断言为假(是IANA时区("Asia/Shang hai"), "含空格")
+  断言为假(是IANA时区("Asia/Shanghai!"), "含感叹号")
+  断言为假(是IANA时区(""), "空串")
+  打印("用例3 IANA 形态校验 PASS")
+
+  # ── 4) 单条消息的时区读取与校验 ────────────────────────────────────
+  断言相等(浏览器时区(用户消息("r1", "Asia/Shanghai")), "Asia/Shanghai", "读取 IANA 区")
+  断言相等(浏览器时区(用户消息("r1", "UTC")), "UTC", "读取字面 UTC")
+  断言相等(浏览器时区(用户消息("r1", 空)), 空, "无 clientTimeZone")
+  断言相等(浏览器时区({"source": {"kind": "tool", "rpcId": "r2", "clientTimeZone": "Asia/Tokyo"}}), 空, "非 user 来源")
+  断言相等(浏览器时区({"source": 空}), 空, "无 source")
+  断言相等(浏览器时区({"source": {"kind": "user", "rpcId": "r3", "clientTimeZone": 123}}), 空, "clientTimeZone 非字符串")
+
+  # 非法时区必须抛错
+  设 抛错 为 假
+  尝试:
+    浏览器时区(用户消息("r4", "Mars/Olympus!"))
+  捕获 异常 e:
+    设 抛错 为 真
+  断言为真(抛错, "非法时区应抛 TypeError")
+
+  设 抛错2 为 假
+  尝试:
+    浏览器时区(用户消息("r5", "Not/AZone!"))
+  捕获 异常 e2:
+    设 抛错2 为 真
+  断言为真(抛错2, "含非法字符应抛错")
+  打印("用例4 单消息读取与校验 PASS")
+
+  # ── 5) 派生上下文：去重 + 排序 → resolved / mixed / missing ─────────
+  设 空上下文 为 推导浏览器时区上下文([])
+  断言相等(空上下文["种类"], "missing", "空消息表→missing")
+
+  设 单上下文 为 推导浏览器时区上下文([用户消息("r1", "Asia/Shanghai")])
+  断言相等(单上下文["种类"], "resolved", "单时区→resolved")
+  断言相等(单上下文["时区"], "Asia/Shanghai", "resolved 取值")
+
+  # 去重：两条相同 → 仍是 resolved
+  设 重复上下文 为 推导浏览器时区上下文([用户消息("r1", "Asia/Shanghai"), 用户消息("r2", "Asia/Shanghai")])
+  断言相等(重复上下文["种类"], "resolved", "相同时区去重后 resolved")
+
+  # 混合：两条不同 → mixed，且已排序
+  设 混合上下文 为 推导浏览器时区上下文([用户消息("r1", "Asia/Tokyo"), 用户消息("r2", "America/New_York")])
+  断言相等(混合上下文["种类"], "mixed", "不同时区→mixed")
+  断言相等(列表长度(混合上下文["时区表"]), 2, "mixed 含两个")
+  断言相等(混合上下文["时区表"][0], "America/New_York", "mixed 已排序（首项）")
+  断言相等(混合上下文["时区表"][1], "Asia/Tokyo", "mixed 已排序（次项）")
+
+  # 无 rpc 的消息不贡献时区 → missing
+  设 非rpc 为 推导浏览器时区上下文([{"source": {"kind": "tool"}}, 用户消息("r9", 空)])
+  断言相等(非rpc["种类"], "missing", "无有效时区→missing")
+  打印("用例5 上下文派生 PASS")
+
+  # ── 6) 策略文案渲染 ────────────────────────────────────────────────
+  设 期望解析 为 "Browser time zone for this request: Asia/Shanghai. Interpret otherwise-unqualified dates and times in this zone."
+  断言相等(渲染浏览器时区上下文({"种类": "resolved", "时区": "Asia/Shanghai"}), 期望解析, "resolved 文案")
+
+  设 期望混合 为 "Browser time zone for this request: mixed " 加上 序列化JSON(["America/New_York", "Asia/Tokyo"]) 加上 ". Ask the user to clarify otherwise-unqualified dates and times."
+  断言相等(渲染浏览器时区上下文({"种类": "mixed", "时区表": ["America/New_York", "Asia/Tokyo"]}), 期望混合, "mixed 文案（含 JSON 序列化）")
+
+  设 期望缺失 为 "Browser time zone for this request: unavailable. Ask the user to clarify otherwise-unqualified dates and times."
+  断言相等(渲染浏览器时区上下文({"种类": "missing"}), 期望缺失, "missing 文案")
+
+  # 未知种类必须抛错（对应原版 assertNever）
+  设 抛错3 为 假
+  尝试:
+    渲染浏览器时区上下文({"种类": "unknown"})
+  捕获 异常 e3:
+    设 抛错3 为 真
+  断言为真(抛错3, "未知种类应抛错")
+  打印("用例6 策略文案渲染 PASS")
+
+  打印("--- 时间上下文子系统（模块31）测试通过 ---")
+
+
+主()

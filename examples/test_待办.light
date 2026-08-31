@@ -1,0 +1,111 @@
+# test_待办.light —— 待办任务管理工具（模块 #22）反跑判据测试
+# 对齐原版 packages/todo/tool-todo：整表替换 + 值校验 + 会话事件 + 投影重置 + 非 agent 拒绝。
+# 运行：python 运行.py examples/test_待办.light
+#
+# 反跑判据：把任一「断言相等(实际, 期望, 标签)」的 期望 改成反向值，本测试必须立红
+#          （抛出 断言失败），否则该判据无效。每条关键断言下方已注明反向改法。
+
+从 工具 导入 工具注册表
+从 会话 导入 新建会话
+从 待办 导入 造待办工具, 待办日志校验
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " 加上 标签 加上 " 实际=" 加上 转字符串(实际) 加上 " 期望=" 加上 转字符串(期望)
+
+段落 造参数 接收 表:
+  返回 序列化(["todos": 表])
+
+段落 主:
+  # ---- 用例1：整表替换（last-write-wins）----
+  # 先写 A（2 项），再写 B（1 项），投影应整体被 B 覆盖。
+  设 注册表 为 新建 工具注册表()
+  设 会话 为 新建会话("test_todo", ".")
+  设 管理器 为 造待办工具(注册表, 会话, ["允许多重": 假])
+  设 结果甲 为 注册表.执行("todo_write", 造参数([["content": "甲", "status": "pending"], ["content": "乙", "status": "in_progress"]]))
+  断言相等(结果甲["isError"], 假, "用例1 首次写入应成功")
+  设 结果乙 为 注册表.执行("todo_write", 造参数([["content": "只剩丙", "status": "completed"]]))
+  断言相等(结果乙["isError"], 假, "用例1 二次写入应成功")
+  设 清单 为 管理器.取清单()
+  断言相等(长(清单), 1, "用例1 整表替换后仅剩 1 项")
+  断言相等(清单[0]["content"], "只剩丙", "用例1 投影内容应为最后一次写入")
+  断言相等(清单[0]["status"], "completed", "用例1 投影状态应为 completed")
+  # 反跑判据：把 长(清单) 期望 1 改 2，或 清单[0]["content"] 改 "乙" 即红
+
+  # ---- 用例2：counts 计数正确 ----
+  设 计数 为 结果乙["content"]["counts"]
+  断言相等(计数["pending"], 0, "用例2 pending=0")
+  断言相等(计数["inProgress"], 0, "用例2 inProgress=0")
+  断言相等(计数["completed"], 1, "用例2 completed=1")
+  # 反跑判据：把 completed 期望 1 改 0 即红
+  设 三态 为 注册表.执行("todo_write", 造参数([["content": "p", "status": "pending"], ["content": "q", "status": "in_progress"], ["content": "r", "status": "completed"]]))
+  设 计数三 为 三态["content"]["counts"]
+  断言相等(计数三["pending"], 1, "用例2 三态 pending=1")
+  断言相等(计数三["inProgress"], 1, "用例2 三态 inProgress=1")
+  断言相等(计数三["completed"], 1, "用例2 三态 completed=1")
+  # 反跑判据：把 inProgress 期望 1 改 2 即红
+
+  # ---- 用例3：content 空 → 拒绝 ----
+  设 空结果 为 注册表.执行("todo_write", 造参数([["content": "", "status": "pending"]]))
+  断言相等(空结果["isError"], 真, "用例3 content 空应拒绝")
+  # 反跑判据：把 isError 期望 真 改 假 即红
+
+  # ---- 用例4：content 首尾含空白（未 trim）→ 拒绝 ----
+  设 空格结果 为 注册表.执行("todo_write", 造参数([["content": "  带空格  ", "status": "pending"]]))
+  断言相等(空格结果["isError"], 真, "用例4 content 首尾空格应拒绝")
+  # 反跑判据：把 isError 期望 真 改 假 即红
+  # 注意：纯中间空格（"a b"）是被允许的，仅首尾禁止
+
+  # ---- 用例5：重复 content → 拒绝 ----
+  设 重复结果 为 注册表.执行("todo_write", 造参数([["content": "同", "status": "pending"], ["content": "同", "status": "completed"]]))
+  断言相等(重复结果["isError"], 真, "用例5 重复 content 应拒绝")
+  # 反跑判据：把 isError 期望 真 改 假 即红
+
+  # ---- 用例6：单活跃纪律下 in_progress>1 → 拒绝；并行纪律下允许 ----
+  设 多活跃 为 注册表.执行("todo_write", 造参数([["content": "a", "status": "in_progress"], ["content": "b", "status": "in_progress"]]))
+  断言相等(多活跃["isError"], 真, "用例6 单活跃下双 in_progress 应拒绝")
+  # 反跑判据：把 isError 期望 真 改 假 即红
+
+  设 注册表2 为 新建 工具注册表()
+  设 会话2 为 新建会话("test_todo_p", ".")
+  设 管理器2 为 造待办工具(注册表2, 会话2, ["允许多重": 真])
+  设 并行写 为 注册表2.执行("todo_write", 造参数([["content": "a", "status": "in_progress"], ["content": "b", "status": "in_progress"]]))
+  断言相等(并行写["isError"], 假, "用例6 并行纪律下双 in_progress 应成功")
+  断言相等(并行写["content"]["counts"]["inProgress"], 2, "用例6 并行下 inProgress=2")
+  # 反跑判据：把 inProgress 期望 2 改 1 即红
+
+  # ---- 用例7：非 agent 调用方（会话=空）拒绝 ----
+  设 注册表3 为 新建 工具注册表()
+  设 管理器3 为 造待办工具(注册表3, 空, ["允许多重": 假])
+  设 无会话 为 注册表3.执行("todo_write", 造参数([["content": "x", "status": "pending"]]))
+  断言相等(无会话["isError"], 真, "用例7 无所属会话应拒绝")
+  # 反跑判据：把 isError 期望 真 改 假 即红
+
+  # ---- 用例8：向会话追加 todo/write 事件（last-write-wins 可回放）----
+  设 事件表 为 会话.查询事件("todo/write", 0, 0)
+  断言相等(长(事件表) >= 1, 真, "用例8 至少追加一条 todo/write 事件")
+  # 反跑判据：把 >=1 改 >=2 即红（除非再加一次写入）
+  设 末事件 为 事件表[长(事件表) - 1]
+  断言相等(末事件["类型"], "todo/write", "用例8 事件类型为 todo/write")
+  # 注意：用例2 的第三次写入（p/q/r）是当时最近一次 todo/write，故末事件首项为 "p"。
+  断言相等(末事件["数据"]["todos"][0]["content"], "p", "用例8 末事件数据为最近一次写入")
+  # 反跑判据：把 content 期望 "p" 改 "甲" 即红
+
+  # ---- 用例9：投影在 turn/start 清空 ----
+  断言相等(管理器.取清单() != 空, 真, "用例9 写入后投影非空")
+  管理器.处理事件("turn/start")
+  断言相等(管理器.取清单() == 空, 真, "用例9 turn/start 后投影清空")
+  # 反跑判据：把 ==空 期望 真 改 假 即红
+
+  # ---- 用例10：持久化日志校验（对齐 invariant.ts）----
+  设 合法事件 为 待办日志校验("todo/write", ["todos": [["content": "ok", "status": "pending"]]])
+  断言相等(长(合法事件), 0, "用例10 合法快照零错误")
+  设 非法事件 为 待办日志校验("todo/write", ["todos": [["content": "  ", "status": "pending"]]])
+  断言相等(长(非法事件) >= 1, 真, "用例10 非法快照报错")
+  设 无关事件 为 待办日志校验("turn/start", ["todos": []])
+  断言相等(长(无关事件), 0, "用例10 非 todo/write 事件忽略")
+  # 反跑判据：把 合法事件 长度期望 0 改 1 即红
+
+  打印 "--- 待办任务管理工具（模块22）测试通过 ---"
+
+主()

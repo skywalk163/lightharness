@@ -1,0 +1,172 @@
+# 时间上下文（模块31）—— 1:1 复刻 deepseek-harness
+#   packages/context/time-context/src/timestamp.ts
+#   packages/context/time-context/src/request-zone.ts
+#
+# 只取「纯逻辑核心」：
+#   timestamp.ts    → formatTimestamp 的组装规则与偏移归一化（GMT→GMT+00:00→slice(3)）
+#   request-zone.ts → IANA 时区正则校验、浏览器时区派生（去重+排序→resolved/mixed/missing）、
+#                     面向模型的策略文案渲染
+#
+# 不可移植缺口（与原 #29 定时的 IANA 缺口同性质，已文档化）：
+#   * createTimestampFormatter 依赖 Intl.DateTimeFormat（en-US + longOffset），
+#     纯光明没有 Intl/时区数据库 → 以「固定偏移分钟」等价替代：墙上时钟由
+#     epoch + 偏移 计算，偏移文本按原版 slice(3) 语义生成，输出串形态完全一致。
+#   * browserTimeZone 里的 Intl 规范化校验（resolvedOptions().timeZone === value）
+#     同样依赖时区数据库 → 纯光明只能做「UTC 或 IANA 形态」的语法校验，
+#     无法判定「是否已规范化 / 系统是否支持该区」。
+#
+# 反跑判据：把 时区偏移文本(0) 改成 "-00:00"，或把 mixed 分支的 JSON 序列化去掉，测试即红。
+
+# 注：序列化JSON 是自动内置（勿导入），而 截取/字符转ASCII 必须显式导入 —— 见 L-028
+从 字符串处理 导入 截取, 字符转ASCII
+从 定时 导入 epoch转UTC, 零填充, 排序列表
+
+
+# ── 基础字符判定 ────────────────────────────────────────────────────────
+
+段落 是数字 接收 c:
+  设 码 为 字符转ASCII(c)
+  返回 码 >= 48 且 码 <= 57
+
+段落 是字母 接收 c:
+  设 码 为 字符转ASCII(c)
+  返回 (码 >= 65 且 码 <= 90) 或 (码 >= 97 且 码 <= 122)
+
+# IANA 段内允许字符：[A-Za-z0-9_+.-]
+段落 是时区段字符 接收 c:
+  返回 是字母(c) 或 是数字(c) 或 c == "_" 或 c == "+" 或 c == "." 或 c == "-"
+
+
+# ── IANA 时区形态校验 ────────────────────────────────────────────────────
+# 等价于 /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/[A-Za-z0-9_+.-]+)+$/
+# 语义：首字符为字母；之后若干段内字符；最后必须有 ≥1 个 "/段"，且每段非空。
+# 光明无 break，故用「首次记录」的方式定位第一个 '/'，再逐段校验。
+段落 是IANA时区 接收 值:
+  设 n 为 字符串长度(值)
+  如果 n == 0:
+    返回 假
+  如果 是字母(字符串获取(值, 0)) == 假:
+    返回 假
+  # 定位第一个 '/'
+  设 斜杠位置 为 -1
+  设 i 为 0
+  当 i < n:
+    如果 斜杠位置 < 0 且 字符串获取(值, i) == "/":
+      设 斜杠位置 为 i
+    设 i 为 i + 1
+  # 必须至少有一个 "/段"
+  如果 斜杠位置 < 0:
+    返回 假
+  # 首段（A/Location 的 Area 部分）逐字符校验
+  设 j 为 0
+  当 j < 斜杠位置:
+    如果 是时区段字符(字符串获取(值, j)) == 假:
+      返回 假
+    设 j 为 j + 1
+  # 剩余部分：按 '/' 切成若干段，每段非空且字符合法
+  设 k 为 斜杠位置 + 1
+  设 段长 为 0
+  当 k < n:
+    设 c 为 字符串获取(值, k)
+    如果 c == "/":
+      如果 段长 == 0:
+        返回 假
+      设 段长 为 0
+    否则:
+      如果 是时区段字符(c) == 假:
+        返回 假
+      设 段长 为 段长 + 1
+    设 k 为 k + 1
+  # 末段不能为空（避免以 '/' 结尾）
+  如果 段长 == 0:
+    返回 假
+  返回 真
+
+
+# ── 时间戳格式化（timestamp.ts） ─────────────────────────────────────────
+# 复刻 parts.timeZoneName.replace(/^GMT$/, 'GMT+00:00').slice(3) 的偏移语义：
+#   UTC      → "GMT"        → "GMT+00:00" → slice(3) → "+00:00"
+#   UTC+8    → "GMT+08:00"  →              slice(3)  → "+08:00"
+#   UTC-5    → "GMT-05:00"  →              slice(3)  → "-05:00"
+段落 时区偏移文本 接收 偏移分钟:
+  如果 偏移分钟 == 0:
+    返回 "+00:00"
+  设 符号 为 "+"
+  设 绝对值 为 偏移分钟
+  如果 偏移分钟 < 0:
+    设 符号 为 "-"
+    设 绝对值 为 0 - 偏移分钟
+  设 时 为 绝对值 // 60
+  设 分 为 绝对值 - 时 * 60
+  返回 符号 加上 零填充(时, 2) 加上 ":" 加上 零填充(分, 2)
+
+
+# 复刻 formatTimestamp(now, formatter, timeZone)
+#   → `${year}-${month}-${day}T${hour}:${minute}:${second}${offset}[${timeZone}]`
+# 墙上时钟 = epoch + 偏移（等价于对固定偏移做 formatToParts），再拼偏移与区名。
+段落 格式化时间戳 接收 现在, 偏移分钟, 时区:
+  设 本地毫秒 为 现在 + 偏移分钟 * 60000
+  设 文本 为 epoch转UTC(本地毫秒)
+  设 日期部分 为 截取(文本, 0, 10)
+  设 时间部分 为 截取(文本, 11, 19)
+  返回 日期部分 加上 "T" 加上 时间部分 加上 时区偏移文本(偏移分钟) 加上 "[" 加上 时区 加上 "]"
+
+
+# ── 请求时区派生（request-zone.ts） ───────────────────────────────────────
+
+# 复刻 browserTimeZone(message)：从 user-rpc 来源读取并校验 clientTimeZone。
+# 合法值：字面 "UTC"，或形如 Area/Location 的 IANA 串；否则抛 TypeError。
+段落 浏览器时区 接收 消息:
+  设 来源 为 消息["source"]
+  如果 来源 == 空:
+    返回 空
+  如果 字典包含键(来源, "kind") == 假:
+    返回 空
+  如果 来源["kind"] != "user":
+    返回 空
+  如果 字典包含键(来源, "rpcId") == 假:
+    返回 空
+  如果 是字符串(来源["rpcId"]) == 假:
+    返回 空
+  如果 字典包含键(来源, "clientTimeZone") == 假:
+    返回 空
+  如果 是字符串(来源["clientTimeZone"]) == 假:
+    返回 空
+  设 值 为 来源["clientTimeZone"]
+  如果 值 != "UTC" 且 是IANA时区(值) == 假:
+    抛出 新建 错误("browser time zone must be canonical UTC or IANA Area/Location: " 加上 序列化JSON(值))
+  # 原版此处还有一步 Intl 规范化/可支持性校验，纯光明无时区数据库，无法复刻（见文件头缺口说明）。
+  返回 值
+
+段落 列表含 接收 列表, 值:
+  遍历 项 之 列表:
+    如果 项 == 值:
+      返回 真
+  返回 假
+
+# 复刻 deriveBrowserTimeZoneContext(messages)：去重 + 排序 → resolved / mixed / missing
+段落 推导浏览器时区上下文 接收 消息表:
+  设 收集 为 []
+  遍历 消息 之 消息表:
+    设 时区 为 浏览器时区(消息)
+    如果 时区 != 空:
+      如果 列表含(收集, 时区) == 假:
+        列表追加(收集, 时区)
+  设 排序后 为 排序列表(收集)
+  设 个数 为 列表长度(排序后)
+  如果 个数 == 0:
+    返回 {"种类": "missing"}
+  如果 个数 == 1:
+    返回 {"种类": "resolved", "时区": 排序后[0]}
+  返回 {"种类": "mixed", "时区表": 排序后}
+
+# 复刻 renderBrowserTimeZoneContext(context)：面向模型的一行策略文案
+段落 渲染浏览器时区上下文 接收 上下文:
+  设 种类 为 上下文["种类"]
+  如果 种类 == "resolved":
+    返回 "Browser time zone for this request: " 加上 上下文["时区"] 加上 ". Interpret otherwise-unqualified dates and times in this zone."
+  如果 种类 == "mixed":
+    返回 "Browser time zone for this request: mixed " 加上 序列化JSON(上下文["时区表"]) 加上 ". Ask the user to clarify otherwise-unqualified dates and times."
+  如果 种类 == "missing":
+    返回 "Browser time zone for this request: unavailable. Ask the user to clarify otherwise-unqualified dates and times."
+  抛出 新建 错误("unknown BrowserTimeZoneContext: " 加上 转字符串(种类))

@@ -402,6 +402,170 @@
          "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）；v2：会话管理(创建会话/列出会话/关闭会话) + 执行超时配置 + 连接状态查询(未连接/已连接/远程模式/本地模拟 + 最后心跳 + 活跃会话数)",
          "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红；v2：test_e2b深化.light 把 创建会话后列表长度改反即红、关闭会话后状态非closed即红、连接状态本地模拟改远程模式即红",
          "语言缺陷": []
+      },
+      {
+         "编号": 22,
+         "功能": "待办任务管理（todo_write 整表替换工具）",
+         "原版包": "packages/todo/tool-todo",
+         "光明模块": "src/待办.light",
+         "状态": "done",
+         "证据": [
+            "src/待办.light",
+            "examples/test_待办.light"
+         ],
+         "本轮目标": "done：1:1 复刻原版 tool-todo 的 todo_write 工具——整表替换模型（每次发送完整列表整体覆盖旧列表，无部分更新）；schema 外值校验（content 必已 trim 且非空、content 唯一、in_progress 至多一个，除非 允许多重 并行纪律）；向会话追加 todo/write 事件（last-write-wins）；返回 {todos, counts}；turn/start 投影清空；非 agent 会话(空)拒绝；持久化日志校验（对齐 invariant.ts）。对照 10 项判据全绿。",
+         "反跑判据": "test_待办.light：把 用例1 整表替换后清单长度 期望1 改2 即红；用例6 单活跃双in_progress isError 真 改假 即红；用例8 末事件类型 todo/write 改 tool/done 即红；用例9 turn/start 后投影清空 真 改假 即红",
+         "语言缺陷": [
+            "L-022(匿名闭包赋值不被接受：设 X 为 段落 接收 参数 报错，须用具名段落)"
+         ]
+      },
+      {
+         "编号": 23,
+         "功能": "重复工具调用提醒守卫（repeat-tool-reminder）",
+         "原版包": "packages/guard/repeat-tool-reminder",
+         "光明模块": "src/重复提醒.light",
+         "状态": "done",
+         "证据": [
+            "src/重复提醒.light",
+            "examples/test_重复提醒.light"
+         ],
+         "本轮目标": "done：1:1 复刻原版 repeat-tool-reminder 的 advisory per-agent repeat-call detector——按 (工具名, 规范化参数) 维护连续重复链；连续重复命中阈值 [3,5,8] 注入提醒（不否决、不改写）；首阈值 GENTLE、后续 DETAILED（点名工具/次数/参数预览）；参数规范化=深度键排序后序列化（键序无关）；include/exclude 为 * 通配工具名（纯光明递归实现，不依赖 python re）；用户插入消息打断循环（重置链）；阈值/预览上限 fail-loud 校验。对照 10 组用例全绿。",
+         "反跑判据": "test_重复提醒.light：用例1 第3次触发 GENTLE、第5次 DETAILED(含 consecutive_calls)；用例2 键序不同第3次仍触发；用例3 换参数后计数重置；用例4 include 不匹配不跟踪；用例5 exclude 匹配透明；用例6 阈值<2/空/重复均抛错且升序去重；用例7 长参数第5次 DETAILED 含 more chars；用例8 代理隔离；用例9 重置后重新计数；用例10 通配匹配单测。把任一期望改反即红。",
+         "语言缺陷": [
+            "L-023(裸表达式跨行续行不支持：行尾悬空 加上/运算符 续行报意外换行)",
+            "L-024(for 循环语法为 遍历 X 之 Y:，而非 循环 对于 X 在 Y:)",
+            "L-025(裸 包含/排除 作标识符与保留词冲突，需改名如 包含名单/排除名单)"
+         ]
+      },
+      {
+         "编号": 24,
+         "功能": "凭据管理（credentials：API key/provider 读取 + 红化脱敏）",
+         "原版包": "packages/credentials",
+         "光明模块": "src/凭据.light",
+         "状态": "done",
+         "证据": [
+            "src/凭据.light",
+            "examples/test_凭据.light"
+         ],
+         "本轮目标": "done：凭据加载(从环境变量/选项读取 provider key)、凭据红化(脱敏打印，key 中段掩码)、凭据相等比较、缺省回退；1:1 复刻原版 credentials 纯逻辑核心。",
+         "反跑判据": "test_凭据.light：把 key 红化后「非空掩码」断言改反即红；或把「缺省回退」期望值改反即红。",
+         "语言缺陷": []
+      },
+      {
+         "编号": 25,
+         "功能": "设置（settings：harness 全局配置解析 + 校验）",
+         "原版包": "packages/settings",
+         "光明模块": "src/设置.light",
+         "状态": "done",
+         "证据": [
+            "src/设置.light",
+            "examples/test_设置.light"
+         ],
+         "本轮目标": "done：设置加载(从文件/选项合并)、字段校验(必填/类型)、默认值回退、配置相等比较；1:1 复刻原版 settings 纯逻辑核心。",
+         "反跑判据": "test_设置.light：把某字段默认值断言改反即红；或把校验失败(缺必填)期望的 isError 真 改 假 即红。",
+         "语言缺陷": []
+      },
+      {
+         "编号": 26,
+         "功能": "会话引用（session-reference：dsh-session: URI 编解码 + markdown 提及解析）",
+         "原版包": "packages/session-reference",
+         "光明模块": "src/会话引用.light",
+         "状态": "done",
+         "证据": [
+            "src/会话引用.light",
+            "examples/test_会话引用.light"
+         ],
+         "本轮目标": "done：会话引用 URI 编码(会话id → dsh-session:Base64URL(序列化JSON{payload})))、解码(严格：拒绝带 = 填充/非规范 Base64URL 字符/非 JSON/缺 payload)、markdown 文本解析(扫描 提及 与 裸 URI，去重)、标签转义；1:1 复刻原版 session-reference 纯逻辑核心。",
+         "反跑判据": "test_会话引用.light：把「拒绝带填充 URI」的断言改反即红；或把 round-trip 后 id 相等断言改反即红；或把「裸 URI 解析去重」计数断言改反即红。",
+         "语言缺陷": [
+            "L-027(Base64URL 解码不补 = 填充，已在 解码会话引用URI 内手动补填充绕过)",
+            "L-028(截取/匹配正则 须从 字符串处理 导入，且不存在 字符串以开头/包含 这类近似内置名，须用 开头/字符串包含)"
+         ]
+      },
+      {
+         "编号": 27,
+         "功能": "溢出（spill：超大结果 head/tail 预览 + 占位替换 + 字节预算）",
+         "原版包": "packages/spill + spill-policy + util/output-retention(TextRetainer)",
+         "光明模块": "src/溢出.light",
+         "状态": "done",
+         "证据": [
+            "src/溢出.light",
+            "examples/test_溢出.light",
+            "examples/test_溢出恢复.light",
+            "examples/test_溢出重试深化.light"
+         ],
+         "本轮目标": "done：字节预算预览(头尾字节截断，头=(预算+1)//2、尾=预算//2；预算0→全省略，预算≥总长→不变)、省略描述(无/精确/未知三态)、溢出提示包裹(定位符+检索提示)、模拟保存文本(saveText 契约 → {定位符,字节长度,检索提示})、溢出替换(预留通知+字节，不变量 字节长度(替换)<=上限)、纯文本扁平化(任何非文本块返回 空)、上限校验(非负整数)；1:1 复刻原版 spill 纯逻辑核心。",
+         "反跑判据": "test_溢出.light：把「预算0→全省略」的断言改反即红；或把「溢出替换不变量 字节长度(替换)<=上限」断言改反即红；或把「纯文本扁平化遇非文本块返回 空」断言改反即红。",
+         "语言缺陷": [
+            "L-028(字节长度 须从 溢出 模块内定义/导入而非自动内置；判型须用 是整数 而非不存在的 整数())"
+         ]
+      },
+      {
+         "编号": 28,
+         "功能": "反馈（feedback：命令/消息反馈记录 + 乐观锁 CAS）",
+         "原版包": "packages/feedback + command-feedback + message-feedback",
+         "光明模块": "src/反馈.light",
+         "状态": "done",
+         "证据": [
+            "src/反馈.light",
+            "examples/test_反馈.light"
+         ],
+         "本轮目标": "done：记录反馈(trim→空 抛错)、最大备注字节校验(≥1 正整数)、会话/头部身份匹配、备注解析(undefined→空 / trim空→note-blank / 超字节→note-too-large)、版本冲突 CAS(版本 != 现有版本??空)、空操作检测(rating+note 不变)、反馈服务类(生成版本「v」+计数 / 取现有项 / 放置 put / 删除 delete 状态机)；1:1 复刻原版 feedback 纯逻辑核心。",
+         "反跑判据": "test_反馈.light：把「版本冲突 CAS 拒绝旧版本」断言 真 改 假 即红；或把「删除不存在项→无论版本均成功」断言改反即红；或把「空操作不写入新版本」断言改反即红。",
+         "语言缺陷": [
+            "L-028(字节长度 须从 溢出 导入，非自动内置)"
+         ]
+      },
+      {
+         "编号": 29,
+         "功能": "定时（schedule：RFC3339/UTC 即时编解码 + 调度记录折叠状态机 + 每发生解析）",
+         "原版包": "packages/schedule/schedule/src/domain.ts",
+         "光明模块": "src/定时.light",
+         "状态": "done",
+         "证据": [
+            "src/定时.light",
+            "examples/test_定时.light"
+         ],
+         "本轮目标": "done：日历换算(闰年/月天数/日期↔天数迭代)、UTC 即时编解码(epoch ms ↔ RFC3339 Z，手搓 day-count 已对 Python datetime 验证)、偏移即时解析(RFC3339 Z/±hh:mm)、Id 解码(严格版本/键/即时校验 + round-trip 校验)、调度记录解码/折叠(事件派发/调度id复用/删除派发校验)、每发生解析(最新+下一即时)、创建即时/于/每 记录(严格未来 + 规范 UTC)；IANA 时区本地日历形式不可移植(仅支持 RFC3339 偏移/Z 字符串形式)，已文档化缺口。",
+         "反跑判据": "test_定时.light：把「非规范即时(带填充/非 base64url)解码拒绝」断言改反即红；或把「折叠状态机 id 复用」断言改反即红；或把 createAfter 严格未来校验断言改反即红；或把 resolveEveryOccurrence 最新+下一 断言改反即红。",
+         "语言缺陷": [
+            "L-026(列表排序 为原地排序且返回 None，需自写 排序列表 选择排序)",
+            "L-028(截取/字符转ASCII 须从 字符串处理 导入，非自动内置)"
+         ]
+      },
+      {
+         "编号": 30,
+         "功能": "文件引用（file-reference：@path / @\"path\" 游标令牌提取 + 候选路径格式化）",
+         "原版包": "packages/context/file-reference（grammar.ts；index.ts 为宿主 RPC 缝隙，非纯逻辑，未复刻）",
+         "光明模块": "src/文件引用.light",
+         "状态": "done",
+         "证据": [
+            "src/文件引用.light",
+            "examples/test_文件引用.light"
+         ],
+         "本轮目标": "done：activeAtToken(游标处提取 @path/plain 或 @\"path\"/quoted 令牌，含 (?:^|\\s) 边界与行尾锚定，邮箱等词中@不触发) + formatFileMention(候选路径→提示文本，目录补/、含空白或保留引号走 @\"...\" 包裹、目录保留开引号便于下钻、含控制字符或双引号返回 空)；1:1 复刻 grammar.ts 纯逻辑。注：原版用正则捕获组，光明 匹配正则 仅返回布尔，故以原生字符串原语复刻（与 repeat-tool-reminder 纯光明递归同范式）。",
+         "反跑判据": "test_文件引用.light：用例2 邮箱非触发断言改反即红；用例3 quoted 含空格断言改反即红；用例11 闭合引号后走 plain 断言改反即红；用例E 含引号不安全返回 空 改反即红；用例C file 含空白引号包裹改反即红。",
+         "语言缺陷": [
+            "L-029(双引号串内 \\\" 转义不产出字面 \"，改用单引号串 '...' 表达含 \" 的字面量)"
+         ]
+      },
+      {
+         "编号": 31,
+         "功能": "时间上下文（time-context：ISO 形时间戳格式化 + 请求浏览器时区派生与策略文案）",
+         "原版包": "packages/context/time-context（timestamp.ts + request-zone.ts；index.ts/invariant.ts 为宿主 Cordis 注册，非纯逻辑，未复刻）",
+         "光明模块": "src/时间上下文.light",
+         "状态": "done",
+         "证据": [
+            "src/时间上下文.light",
+            "examples/test_时间上下文.light"
+         ],
+         "本轮目标": "done：时区偏移文本 + 格式化时间戳（epoch ms 与偏移 → YYYY-MM-DDTHH:mm:ss±HH:MM[Zone]，1:1 复刻 timeZoneName 的 GMT→GMT+00:00→slice(3) 偏移归一化；墙上时钟由 epoch+偏移 计算）＋ 是IANA时区（等价于 /^[A-Za-z][A-Za-z0-9_+.-]*(?:\\/[A-Za-z0-9_+.-]+)+$/，以手写字符扫描复刻，含首字符字母、≥1 个非空 /段、段内字符集、末段非空）＋ 浏览器时区（user-rpc 来源读取与 UTC/IANA 校验，非法抛 TypeError）＋ 推导浏览器时区上下文（去重＋排序 → resolved/mixed/missing）＋ 渲染浏览器时区上下文（面向模型的一行策略文案，未知种类抛错对应 assertNever）。",
+         "反跑判据": "test_时间上下文.light：时区偏移文本(0) 由 +00:00 改 -00:00 即红；格式化时间戳 去掉末尾 [时区] 包裹即红；mixed 分支去掉 序列化JSON 包裹即红；推导 不做去重（两个相同时区被判 mixed）即红；unknown 种类不抛错即红。",
+         "语言缺陷": [],
+         "不可移植缺口": [
+            "createTimestampFormatter 依赖 Intl.DateTimeFormat('en-US', { timeZoneName: 'longOffset' })，纯光明无 Intl/时区数据库 → 以「固定偏移分钟」等价替代，输出串形态与 slice(3) 语义完全一致",
+            "browserTimeZone 的 Intl 规范化校验（resolvedOptions().timeZone === value）依赖时区数据库 → 只能做 UTC/IANA 形态的语法校验，无法判定是否已规范化或被系统支持（与 #29 定时 的 IANA 本地日历缺口同性质）"
+         ]
       }
    ]
 }

@@ -14,14 +14,17 @@
 """
 import glob
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 EXAMPLES = os.path.join(ROOT, 'examples')
+
 
 # 载体模块：被其它用例 import，不独立运行
 SKIP = {'_helper_L004.light', '_helper_L007b.light'}
@@ -78,12 +81,35 @@ CASES = _collect()
 
 
 def _run(f):
-    p = subprocess.run(
-        ['python', RUNNER, f],
-        capture_output=True, text=True, encoding='utf-8', errors='replace',
-        timeout=300,
-    )
-    return p.returncode, (p.stdout or '') + (p.stderr or '')
+    """在「独立的系统临时目录」里运行单个用例。
+
+    背景（2026-08-31 实测）：若干用例把工作根目录取成 当前目录() 或相对路径，
+    例如 tmp_文件测试 / .test_persist_incr / .test_cli_v2 / _taskT10_02_resume。
+    默认 cwd 是仓库目录（G: 盘），于是这些目录落在工作区内；而沙箱对「工作区内
+    的删除」做 safe-delete 拦截（要求先进回收站），G: 盘没有 $Recycle.Bin，于是
+    safe-delete fail-closed 抛错 → 用例 rc!=0，门禁假红 5 条：
+        [safe-delete][SAFE_DELETE_FAIL_CLOSED] ... "reason":
+        "windows-sandbox-recycle-bin-unavailable"
+    把 cwd 换成系统临时目录（C: 盘，有回收站）即可消除假红；副作用全是正面的：
+    用例之间互不干扰，且不再往仓库里掉 tmp_文件测试 等残留目录。
+    """
+    workdir = tempfile.mkdtemp(prefix='lightharness_case_')
+    try:
+        # 少数用例以「相对路径」引用仓库内的脚本（如 examples/mcp_服务器.py），
+        # 因此在隔离 cwd 里补一个 examples/ 目录，把这些 .py 助手脚本拷过去，
+        # 保证相对引用照旧可用（这些脚本仅依赖标准库，拷贝即可独立运行）。
+        _ex = os.path.join(workdir, 'examples')
+        os.makedirs(_ex, exist_ok=True)
+        for _py in glob.glob(os.path.join(EXAMPLES, '*.py')):
+            shutil.copy2(_py, _ex)
+        p = subprocess.run(
+            ['python', RUNNER, f],
+            capture_output=True, text=True, encoding='utf-8', errors='replace',
+            timeout=300, cwd=workdir,
+        )
+        return p.returncode, (p.stdout or '') + (p.stderr or '')
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
 
 @pytest.mark.parametrize('name,fpath', CASES, ids=[c[0] for c in CASES])

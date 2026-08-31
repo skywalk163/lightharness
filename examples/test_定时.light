@@ -1,0 +1,166 @@
+# 定时（模块29）测试 —— 反跑判据：改期望值即红
+
+从 定时 导入 解码调度变更, 折叠调度事件, 分配调度Id, 创建后调度记录, 创建每调度记录, 创建于调度记录, 解析每发生, UTC转epoch, 解码即时
+
+段落 断言相等 接收 甲, 乙, 信息:
+  如果 甲 != 乙:
+    抛出 "断言失败: " 加上 信息 加上 " (期望 " 加上 转字符串(乙) 加上 " 实得 " 加上 转字符串(甲) 加上 ")"
+
+段落 主:
+  # ===== 严格解码 decodeScheduleChange =====
+  # 用例1：create(after) 解码
+  设 变更 为 解码调度变更({ "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "hi", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" } })
+  断言相等(变更["operation"], "create", "用例1 create 操作")
+  断言相等(变更["schedule"]["kind"], "after", "用例1b after 记录")
+  断言相等(变更["schedule"]["afterSeconds"], 10, "用例1c afterSeconds")
+  # 反跑判据：把 "after" 改 "at" 即红
+
+  # 用例2：版本校验 / 精确键校验
+  设 错版本 为 假
+  尝试:
+    解码调度变更({ "version": 2, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "hi", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" } })
+  捕获 异常 e:
+    设 错版本 为 真
+  断言相等(错版本, 真, "用例2 版本非1拒绝")
+  设 错键 为 假
+  尝试:
+    解码调度变更({ "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "hi", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" }, "extra": 1 })
+  捕获 异常 e:
+    设 错键 为 真
+  断言相等(错键, 真, "用例2b create 多余键拒绝")
+
+  # 用例3：即时字段必须规范真实 UTC
+  设 错即时 为 假
+  尝试:
+    解码调度变更({ "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "hi", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00Z" } })   # 缺毫秒
+  捕获 异常 e:
+    设 错即时 为 真
+  断言相等(错即时, 真, "用例3 非规范即时(缺毫秒)拒绝")
+  设 错日历 为 假
+  尝试:
+    解码调度变更({ "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "hi", "afterSeconds": 10, "scheduledAt": "2025-02-30T00:00:00.000Z" } })   # 2月30不存在
+  捕获 异常 e:
+    设 错日历 为 真
+  断言相等(错日历, 真, "用例3b 非真实日历拒绝")
+
+  # 用例4：dispatch 解码（含/不含 acceptedAt）
+  设 d无 为 解码调度变更({ "version": 1, "operation": "dispatch", "id": "s1" })
+  断言相等(d无["operation"], "dispatch", "用例4 dispatch 无acceptedAt")
+  断言相等(字典包含键(d无, "acceptedAt"), 假, "用例4b 无acceptedAt键")
+  设 d有 为 解码调度变更({ "version": 1, "operation": "dispatch", "id": "s1", "acceptedAt": "2025-01-01T00:00:00.000Z" })
+  断言相等(d有["acceptedAt"], "2025-01-01T00:00:00.000Z", "用例4c dispatch 含acceptedAt")
+  设 错派 为 假
+  尝试:
+    解码调度变更({ "version": 1, "operation": "dispatch", "id": "s1", "acceptedAt": "x", "extra": 1 })
+  捕获 异常 e:
+    设 错派 为 真
+  断言相等(错派, 真, "用例4d dispatch 多余键拒绝")
+
+  # ===== 状态机 foldScheduleEvents =====
+  # 用例5：create→create→dispatch(every 推进)→delete
+  设 事件 为 [
+    { "type": "schedule/change", "data": { "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "p", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" } } },
+    { "type": "schedule/change", "data": { "version": 1, "operation": "create", "schedule": { "id": "s2", "kind": "every", "prompt": "p", "everySeconds": 3600, "scheduledAt": "2025-01-01T00:00:00.000Z" } } },
+    { "type": "schedule/change", "data": { "version": 1, "operation": "dispatch", "id": "s2", "acceptedAt": "2025-01-01T03:30:00.000Z" } },
+    { "type": "schedule/change", "data": { "version": 1, "operation": "delete", "id": "s1" } },
+  ]
+  设 折叠 为 折叠调度事件(事件, 0)
+  断言相等(列表长度(折叠["active"]), 1, "用例5 active 仅剩 s2")
+  断言相等(折叠["active"][0]["id"], "s2", "用例5b active 为 s2")
+  断言相等(折叠["active"][0]["scheduledAt"], "2025-01-01T04:00:00.000Z", "用例5c every 推进到下一目标")
+  # 反跑判据：把 04:00:00 改 03:00:00 即红
+  断言相等(列表长度(折叠["seenIds"]), 2, "用例5d 见过两个 id")
+
+  # 用例6：异常路径（id 复用 / 删无效 / 派无效）
+  设 复用 为 假
+  尝试:
+    折叠调度事件([
+      { "type": "schedule/change", "data": { "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "p", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" } } },
+      { "type": "schedule/change", "data": { "version": 1, "operation": "create", "schedule": { "id": "s1", "kind": "after", "prompt": "p", "afterSeconds": 10, "scheduledAt": "2025-01-01T00:00:00.000Z" } } },
+    ], 0)
+  捕获 异常 e:
+    设 复用 为 真
+  断言相等(复用, 真, "用例6 id 复用拒绝")
+  设 删无效 为 假
+  尝试:
+    折叠调度事件([ { "type": "schedule/change", "data": { "version": 1, "operation": "delete", "id": "nope" } } ], 0)
+  捕获 异常 e:
+    设 删无效 为 真
+  断言相等(删无效, 真, "用例6b 删除无效id拒绝")
+  设 派无效 为 假
+  尝试:
+    折叠调度事件([ { "type": "schedule/change", "data": { "version": 1, "operation": "dispatch", "id": "nope", "acceptedAt": "2025-01-01T00:00:00.000Z" } } ], 0)
+  捕获 异常 e:
+    设 派无效 为 真
+  断言相等(派无效, 真, "用例6c 派发无效id拒绝")
+
+  # ===== allocateScheduleId =====
+  # 用例7：基于 seenIds 分配下一个 schedule-N
+  断言相等(分配调度Id({ "active": [], "seenIds": [] }), "schedule-1", "用例7 空 seen→schedule-1")
+  断言相等(分配调度Id(折叠), "schedule-3", "用例7b seen=[s1,s2]→schedule-3")
+
+  # ===== 记录构造 createAfter/At/Every =====
+  # 用例8：createAfterScheduleRecord（now + 延迟，严格未来）
+  设 现在 为 UTC转epoch("2025-01-01T00:00:00.000Z")
+  设 r8 为 创建后调度记录("s1", "  hello  ", 3600, 现在)   # prompt trim
+  断言相等(r8["prompt"], "hello", "用例8 prompt 被 trim")
+  断言相等(r8["afterSeconds"], 3600, "用例8b afterSeconds")
+  断言相等(r8["scheduledAt"], "2025-01-01T01:00:00.000Z", "用例8c 目标=now+1h")
+  # 反跑判据：把 01:00:00 改 00:00:00 即红
+  设 空提示 为 假
+  尝试:
+    创建后调度记录("s1", "   ", 3600, 现在)
+  捕获 异常 e:
+    设 空提示 为 真
+  断言相等(空提示, 真, "用例8d 空 prompt 拒绝")
+
+  # 用例9：createEveryScheduleRecord（最小间隔 300）
+  设 r9 为 创建每调度记录("s2", "每小提醒", 3600, 现在)
+  断言相等(r9["everySeconds"], 3600, "用例9 everySeconds")
+  断言相等(r9["scheduledAt"], "2025-01-01T01:00:00.000Z", "用例9b 目标=now+1h")
+  设 高频 为 假
+  尝试:
+    创建每调度记录("s2", "x", 100, 现在)   # < 300
+  捕获 异常 e:
+    设 高频 为 真
+  断言相等(高频, 真, "用例9c 间隔<300 拒绝")
+
+  # 用例10：createAtScheduleRecord（显式偏移即时）
+  设 现在2 为 UTC转epoch("2024-12-31T23:00:00.000Z")
+  设 r10 为 创建于调度记录("s3", "at提醒", "2025-01-01T00:00:00.000Z", 现在2)   # Z
+  断言相等(r10["scheduledAt"], "2025-01-01T00:00:00.000Z", "用例10 Z 偏移即时")
+  设 r10b 为 创建于调度记录("s3", "at提醒", "2025-01-01T08:00:00.000+08:00", 现在2)   # +08:00 → UTC 00:00
+  断言相等(r10b["scheduledAt"], "2025-01-01T00:00:00.000Z", "用例10b +08:00→UTC 00:00")
+  设 非未来 为 假
+  尝试:
+    创建于调度记录("s3", "x", "2025-01-01T00:00:00.000Z", UTC转epoch("2025-01-01T00:00:00.000Z"))   # 目标==now 非严格未来
+  捕获 异常 e:
+    设 非未来 为 真
+  断言相等(非未来, 真, "用例10c 非严格未来拒绝")
+  设 本地对象 为 假
+  尝试:
+    创建于调度记录("s3", "x", { "date": "2025-01-01", "time": "00:00:00", "time_zone": "Asia/Shanghai" }, 现在2)
+  捕获 异常 e:
+    设 本地对象 为 真
+  断言相等(本地对象, 真, "用例10d 本地日历对象形态暂不支持→抛错")
+
+  # ===== resolveEveryOccurrence =====
+  # 用例11：最新到期 + 下一目标
+  设 每记录 为 { "id": "s2", "kind": "every", "prompt": "p", "everySeconds": 3600, "scheduledAt": "2025-01-01T00:00:00.000Z" }
+  设 发生 为 解析每发生(每记录, UTC转epoch("2025-01-01T03:30:00.000Z"))
+  断言相等(发生["occurrenceAt"], "2025-01-01T03:00:00.000Z", "用例11 最新到期=03:00")
+  断言相等(发生["nextScheduledAt"], "2025-01-01T04:00:00.000Z", "用例11b 下一目标=04:00")
+  # 反跑判据：把 04:00 改 03:00 即红
+  设 发生0 为 解析每发生(每记录, UTC转epoch("2025-01-01T00:00:00.000Z"))   # acceptedAt == target
+  断言相等(发生0["occurrenceAt"], "2025-01-01T00:00:00.000Z", "用例11c acceptedAt==target→occ=target")
+  断言相等(发生0["nextScheduledAt"], "2025-01-01T01:00:00.000Z", "用例11d 下一=+1h")
+  设 早于 为 假
+  尝试:
+    解析每发生(每记录, UTC转epoch("2024-12-31T23:00:00.000Z"))   # < target
+  捕获 异常 e:
+    设 早于 为 真
+  断言相等(早于, 真, "用例11e acceptedAt 早于 target→拒绝")
+
+  打印("--- 定时子系统（模块29）测试通过 ---")
+
+主()

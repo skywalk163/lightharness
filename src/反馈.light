@@ -1,0 +1,178 @@
+# 反馈（feedback）子系统 —— 对照原版 packages/feedback
+#
+# 原版分两个 Cordis 服务：command-feedback（/feedback 命令 + recordFeedback）与
+# message-feedback（消息级 CAS 持久化服务）。这里 1:1 复刻其纯逻辑核心：
+#
+# command-feedback：
+#   1) recordFeedback：trim 后为空即抛 TypeError；否则归一化文本（语义：环绕空白丢弃）
+#
+# message-feedback（纯逻辑核心，以内存表替代 KvTable）：
+#   2) resolveMaxNoteBytes：maxNoteBytes 必须是「≥1 的正整数」，否则抛错
+#   3) 会话身份 / 同一身份 / 同一头部身份：以 createdAt(+cwd) 区分一次持久化生命周期
+#   4) resolveNote：备注为空串→成功(无备注)；trim 后为空→note-blank；UTF-8 超 maxNoteBytes→note-too-large
+#   5) 版本冲突(CAS)：ifVersion !== (existing?.version ?? null) 即冲突
+#   6) 空操作(no-op)：rating 与 note 均与现有项相同→返回现有项、不前进版本
+#   7) put 状态机：先校验备注 → 取现有项 → 版本冲突判定 → 空操作判定 → 生成新版本并落表
+#      说明：原版 hasFeedbackTarget / ensureTargetDurable 属基础设施，不在纯逻辑内；
+#            这里约定「目标消息恒存在」，专注可独立测试的 CAS + 备注 + 身份语义。
+#
+# 说明：原版 nextVersion 用 randomUUID（不透明令牌）；纯逻辑以「自增计数器」生成确定且不重复的版本，
+#      便于反跑测试断言；字节预算用 溢出.字节长度（UTF-8），与原版 Buffer.byteLength 等价。
+
+从 溢出 导入 字节长度
+
+段落 最大 接收 a, b:
+  如果 a > b:
+    返回 a
+  否则:
+    返回 b
+
+# ---------- command-feedback 核心 ----------
+
+# recordFeedback：归一化后为空即抛错，否则返回归一化文本
+段落 记录反馈 接收 文本:
+  设 规 为 去除空白(文本)
+  如果 字符串长度(规) == 0:
+    抛出 新建 错误("feedback text must not be empty")
+  返回 规
+
+# ---------- message-feedback 核心 ----------
+
+# resolveMaxNoteBytes：maxNoteBytes 必须是 ≥1 的正整数
+段落 解析最大备注字节 接收 值:
+  如果 是整数(值) == 假 或 值 < 1:
+    抛出 新建 错误("message-feedback: maxNoteBytes must be a positive safe integer, got " 加上 转字符串(值))
+  返回 值
+
+# 会话身份：取 createdAt，cwd 存在才带
+段落 会话身份 接收 头部:
+  设 身份 为 字典创建()
+  字典设置(身份, "createdAt", 头部["createdAt"])
+  如果 字典包含键(头部, "cwd") == 真:
+    字典设置(身份, "cwd", 头部["cwd"])
+  返回 身份
+
+# 同一身份：row.session.createdAt/cwd 与 header 对应相等
+段落 同一身份 接收 行, 头部:
+  设 行会话 为 行["session"]
+  返回 行会话["createdAt"] == 头部["createdAt"] 且 行会话["cwd"] == 头部["cwd"]
+
+# 同一头部身份：id + createdAt + cwd 三者相等
+段落 同一头部身份 接收 左, 右:
+  返回 左["id"] == 右["id"] 且 左["createdAt"] == 右["createdAt"] 且 左["cwd"] == 右["cwd"]
+
+# resolveNote：空备注→成功(无)；trim 空→note-blank；超字节→note-too-large；否则成功(原串)
+段落 解析备注 接收 备注, 最大备注字节:
+  如果 备注 == 空:
+    返回 { "ok": 真, "value": 空 }
+  设 规 为 去除空白(备注)
+  如果 字符串长度(规) == 0:
+    返回 { "ok": 假, "error": { "code": "note-blank" } }
+  设 实际字节 为 字节长度(备注)
+  如果 实际字节 > 最大备注字节:
+    返回 { "ok": 假, "error": { "code": "note-too-large", "maxBytes": 最大备注字节, "actualBytes": 实际字节 } }
+  返回 { "ok": 真, "value": 备注 }
+
+# 版本冲突判定：ifVersion !== (existing?.version ?? null)
+段落 版本冲突 接收 if版本, 现有版本:
+  设 当前 为 现有版本
+  如果 当前 == 空:
+    设 当前 为 空
+  返回 if版本 != 当前
+
+# 空操作判定：现有项存在 且 rating/note 均未变
+段落 是空操作 接收 现有项, 评级, 备注值:
+  如果 现有项 == 空:
+    返回 假
+  返回 现有项["rating"] == 评级 且 现有项["note"] == 备注值
+
+# 反馈服务（内存表版 put/delete 的纯逻辑状态机）
+类 反馈服务:
+  属性 最大备注字节 等于 0
+  属性 表 等于 字典创建()
+  属性 版本计数 等于 0
+
+  段落 构造 接收 最大备注字节:
+    己.最大备注字节 为 解析最大备注字节(最大备注字节)
+    己.表 为 字典创建()
+    己.版本计数 为 0
+
+  # 生成不透明且确定的版本令牌
+  段落 生成版本:
+    己.版本计数 为 己.版本计数 + 1
+    返回 "v" 加上 转字符串(己.版本计数)
+
+  # 在表内按会话/消息查找现有项（仅当 row 与 会话头 生命周期一致）
+  段落 取现有项 接收 会话id, 会话头, 消息id:
+    如果 字典包含键(己.表, 会话id) == 假:
+      返回 空
+    设 行 为 字典获取(己.表, 会话id)
+    如果 同一身份(行, 会话头) == 假:
+      返回 空
+    遍历 项 之 行["items"]:
+      如果 项["messageId"] == 消息id:
+        返回 项
+    返回 空
+
+  # put：先校验备注，再版本冲突，再空操作，最后落表
+  段落 放置 接收 会话id, 会话头, 消息id, 评级, 备注, if版本:
+    设 备注解析 为 解析备注(备注, 己.最大备注字节)
+    如果 备注解析["ok"] == 假:
+      返回 { "ok": 假, "error": 备注解析["error"] }
+    设 现有项 为 己.取现有项(会话id, 会话头, 消息id)
+    设 现有版本 为 空
+    如果 现有项 != 空:
+      设 现有版本 为 现有项["version"]
+    如果 版本冲突(if版本, 现有版本) == 真:
+      返回 { "ok": 假, "error": { "code": "version-conflict", "current": 现有项 } }
+    如果 是空操作(现有项, 评级, 备注解析["value"]) == 真:
+      返回 { "ok": 真, "value": 现有项 }
+    设 现在 为 时间戳()
+    设 新项 为 字典创建()
+    字典设置(新项, "messageId", 消息id)
+    字典设置(新项, "rating", 评级)
+    如果 备注解析["value"] != 空:
+      字典设置(新项, "note", 备注解析["value"])
+    字典设置(新项, "version", 己.生成版本())
+    如果 现有项 == 空:
+      字典设置(新项, "createdAt", 现在)
+      字典设置(新项, "updatedAt", 现在)
+    否则:
+      字典设置(新项, "createdAt", 现有项["createdAt"])
+      字典设置(新项, "updatedAt", 最大(现在, 现有项["updatedAt"]))
+    # 合并进该行 items
+    设 行 为 字典创建()
+    字典设置(行, "session", 会话身份(会话头))
+    设 新列表 为 列表创建()
+    设 命中 为 假
+    如果 字典包含键(己.表, 会话id) == 真:
+      设 旧行 为 字典获取(己.表, 会话id)
+      如果 同一身份(旧行, 会话头) == 真:
+        遍历 项 之 旧行["items"]:
+          如果 项["messageId"] == 消息id:
+            列表追加(新列表, 新项)
+            设 命中 为 真
+          否则:
+            列表追加(新列表, 项)
+    如果 命中 == 假:
+      列表追加(新列表, 新项)
+    字典设置(行, "items", 新列表)
+    字典设置(己.表, 会话id, 行)
+    返回 { "ok": 真, "value": 新项 }
+
+  # delete：不存在即成功(空后置)；存在则需版本精确匹配，否则 version-conflict
+  段落 删除 接收 会话id, 会话头, 消息id, if版本:
+    设 现有项 为 己.取现有项(会话id, 会话头, 消息id)
+    如果 现有项 == 空:
+      返回 { "ok": 真, "value": { "absent": 真 } }
+    如果 版本冲突(if版本, 现有项["version"]) == 真:
+      返回 { "ok": 假, "error": { "code": "version-conflict", "current": 现有项 } }
+    设 行 为 字典创建()
+    字典设置(行, "session", 会话身份(会话头))
+    设 新列表 为 列表创建()
+    遍历 项 之 字典获取(字典获取(己.表, 会话id), "items"):
+      如果 项["messageId"] != 消息id:
+        列表追加(新列表, 项)
+    字典设置(行, "items", 新列表)
+    字典设置(己.表, 会话id, 行)
+    返回 { "ok": 真, "value": { "absent": 真 } }
