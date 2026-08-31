@@ -536,6 +536,12 @@ def 转整数(text: str) -> int:
     return 内置核心转换.转整数(text)
 
 
+def 整数(值) -> int:
+    """强转整数（与「是整数」判型对称；L-028；真身 stdlib/内置核心转换.light:34）"""
+    import 内置核心转换
+    return 内置核心转换.整数(值)
+
+
 def 转浮点(text: str) -> float:
     """将字符串转换为浮点数（地板已搬迁：真身 stdlib/内置核心转换.light:22）"""
     import 内置核心转换
@@ -815,6 +821,12 @@ def 列表反转(列表) -> None:
     """反转列表（原地修改）（地板已搬迁：真身 stdlib/内置核心列表.light:50）"""
     import 内置核心列表
     return 内置核心列表.列表反转(列表)
+
+
+def 排序列表(列表, 反向: bool = False):
+    """返回排序后的新列表，不改动入参（L-026；真身 stdlib/内置核心列表.light:54）"""
+    import 内置核心列表
+    return 内置核心列表.排序列表(列表, 反向)
 
 
 def 列表包含(列表, 元素) -> bool:
