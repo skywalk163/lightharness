@@ -96,14 +96,21 @@ def Base64URL解码(数据: str, 编码: str = 'utf-8') -> str:
     """
     URL 安全的 Base64 解码
 
+    自动补足 `=` 填充（L-027 修复）：编码端剥去尾部 `=` 后仍可解码，
+    实现编解码往返对称；对已带合法 `=` 填充的输入不会重复填充。
+
     参数:
-        数据: URL 安全的 Base64 编码字符串
+        数据: URL 安全的 Base64 编码字符串（可带或不带 `=` 填充）
         编码: 解码后的字符串编码（默认 utf-8）
 
     返回:
         解码后的字符串
     """
     try:
+        # L-027: 自动补足 = 填充，使剥去填充的编码产物仍可解码（往返可逆）
+        missing_padding = len(数据) % 4
+        if missing_padding:
+            数据 += '=' * (4 - missing_padding)
         return base64.urlsafe_b64decode(数据).decode(编码)
     except Exception as e:
         raise RuntimeError(f"Base64 URL 解码失败: {e}")
