@@ -566,6 +566,89 @@
             "createTimestampFormatter 依赖 Intl.DateTimeFormat('en-US', { timeZoneName: 'longOffset' })，纯光明无 Intl/时区数据库 → 以「固定偏移分钟」等价替代，输出串形态与 slice(3) 语义完全一致",
             "browserTimeZone 的 Intl 规范化校验（resolvedOptions().timeZone === value）依赖时区数据库 → 只能做 UTC/IANA 形态的语法校验，无法判定是否已规范化或被系统支持（与 #29 定时 的 IANA 本地日历缺口同性质）"
          ]
+      },
+      {
+         "编号": 32,
+         "功能": "上下文指令（agent-instructions：模板渲染/字节预算/作用域键/摘要/变更/基线）",
+         "原版包": "packages/context/agent-instructions（render.ts / digest.ts / config.ts / files.ts / state.ts）",
+         "光明模块": "src/智能体指令.light",
+         "状态": "done",
+         "证据": [
+            "src/智能体指令.light",
+            "examples/test_智能体指令.light"
+         ],
+         "本轮目标": "done：1:1 复刻 render（字节预算渲染、作用域键编解码、XML 框架转义、按预算截断/省略）、digest（SHA-1 摘要，严格采用去除首尾空白语义对齐原版 content.trim()）、config（配置解析 maxBytes / maxSourceBytes 默认）、files（祖先链/后代目录间/相对显示/按目录去重指令文件）、state（相同指令变更比较/基线指令状态/保留的指令版本更新）。不可移植缺口：files 的文件系统 stat/read、provider 抽象、AbortSignal 取消；state 的会话事件扫描、WeakMap 缓存、cordis 钩子；tmux 查询见 #33。",
+         "反跑判据": "test_智能体指令.light：把 digest SHA1(去除首尾空白(内容)) 期望改反即红；把 解码作用域键 往返断言改反即红；把 字节预算回退链（文件/紧凑/截断）任一分支期望改反即红；把 变更渲染 Additional/removed/updated 文案改反即红；把 空替换（budget 不足）返回空串断言改反即红。",
+         "语言缺陷": [
+            "L-030",
+            "L-031",
+            "L-032",
+            "L-033"
+         ]
+      },
+      {
+         "编号": 33,
+         "功能": "tmux 上下文（tmux-context：位置渲染/最近注入状态/刷新间隔校验）",
+         "原版包": "packages/context/tmux-context（index.ts）",
+         "光明模块": "src/tmux上下文.light",
+         "状态": "done",
+         "证据": [
+            "src/tmux上下文.light",
+            "examples/test_tmux上下文.light"
+         ],
+         "本轮目标": "done：1:1 复刻 renderState（稳定状态块，windowName 经 序列化JSON 包裹引号，等价于原版 JSON.stringify(location.windowName)）、renderReading（易变轮次前导行 + 状态块）、latestInjectedState（倒序回溯事件表，首个 tmux-context 插件文本块切出状态块；非文本块/空内容视作无先前状态返回空）、validateRefreshInterval（非负安全整数校验，非法抛 TypeError）。不可移植缺口：queryTmuxLocation 依赖 tmux display-message + ps -o tty= 外部 shell 执行（环境依赖），纯逻辑层无法 1:1 复现，已文档化缺口。",
+         "反跑判据": "test_tmux上下文.light：把 渲染状态 期望串（含 windowName 的 JSON 引号）改反即红；把 渲染阅读 轮次前缀改反即红；把 最近注入状态 多行切出状态块断言改反即红；把 校验刷新间隔 负间隔/浮点间隔应抛错改为不抛错即红。",
+         "语言缺陷": []
+      },
+      {
+         "编号": 34,
+         "功能": "主目录路径（home-paths：~ 展开 / DSH_HOME 解析 / 主目录拼接 / 显示名）",
+         "原版包": "packages/util/home-paths",
+         "光明模块": "src/主目录路径.light",
+         "状态": "done",
+         "证据": [
+            "src/主目录路径.light",
+            "examples/test_主目录路径.light"
+         ],
+         "本轮目标": "done：1:1 复刻 expandHomePath（~ / ~\\ / ~/ 展开）、resolveDshHome（配置 > $DSH_HOME > 默认 ~/.dsh 优先级，空白环境变量视为未设置）、dshHomePath（段拼接）、dshHomeDisplay（默认 ~/.dsh / 其余 $DSH_HOME）。原版依赖 Node homedir()，此处把操作系统主目录作为显式参数注入，使纯函数可测。",
+         "反跑判据": "test_主目录路径.light：把 展开主目录路径(\"~\") 期望改非主目录即红；把 解析主目录(空,{\"DSH_HOME\":\"/env\"}) 期望改非 /env 即红；把 主目录显示(默认) 期望改非 ~/.dsh 即红。",
+         "语言缺陷": [
+            "L-028(去除首尾空白 须从 字符串工具 导入，非自动内置)"
+         ]
+      },
+      {
+         "编号": 35,
+         "功能": "目标折叠（goal/goal：goal/change 严格解码 + 重放折叠状态机）",
+         "原版包": "packages/goal/goal（fold.ts + domain.ts）",
+         "光明模块": "src/目标折叠.light",
+         "状态": "done",
+         "证据": [
+            "src/目标折叠.light",
+            "examples/test_目标折叠.light"
+         ],
+         "本轮目标": "done：1:1 复刻 decodeGoalChange（kind/version/operation 严格校验、字段集合精确匹配）、decodeSnapshot（phase 分支字段集、objective 归一校验、blockedReason 小写短横线校验）、applyGoalChange/applyGoalEvent/foldGoal（create/edit/pause/resume/complete/block/clear 全转移 + user/message 轮次准入）。fail-loud 语义与原版一致。",
+         "反跑判据": "test_目标折叠.light：把 生命周期折叠 后 goal 期望改非 空 即红；把 clear 后 lastRef 期望改非墓碑即红；把 是小写短横线(\"Abc\") 期望改 真 即红；把 轮次预算耗尽 用例改不抛错即红。",
+         "语言缺陷": [
+            "L-035(列表取 非内置，自写 遍历+计数 版)",
+            "L-026(列表排序 原地返 None，自写 排序列表 选择排序)"
+         ]
+      },
+      {
+         "编号": 36,
+         "功能": "会话查询过滤（session-query：逻辑会话/事件文档 过滤器 编译/物化/匹配）",
+         "原版包": "packages/session-query/session-query/src/filters.ts",
+         "光明模块": "src/会话查询过滤.light",
+         "状态": "done",
+         "证据": [
+            "src/会话查询过滤.light",
+            "examples/test_会话查询过滤.light"
+         ],
+         "本轮目标": "done：1:1 复刻 filterSessionResults / filterSessionEventDocuments（保留输入顺序的 AND 叠加）、materializeSessionResultFilters / materializeSessionEventResultFilters（值复制 + 枚举白名单校验 + 范围校验）、compileSessionTextFilter（大小写不敏感 + 空白灵活的归一匹配：小写折叠后过滤令牌须按序作为文档令牌连续子序列）。原版 cursor.ts 仅品牌化字符串无逻辑，corpus/documents/extraction 为宿主侧抽取，纯逻辑层未复刻。",
+         "反跑判据": "test_会话查询过滤.light：把 id=s1 命中数期望改非 1 即红；把 availability=live 命中改非 s1 即红；把 文本过滤匹配(\"Hello World Foo\",\"hello world\") 期望改 假 即红；把 物化 availability 含 bogus 应抛错改不抛即红。",
+         "语言缺陷": [
+            "L-034(字符串内 { } 破坏词法：断言消息改用「含」避免花括号)",
+            "L-035(列表取 非内置，自写)"
+         ]
       }
    ]
 }
