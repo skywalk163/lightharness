@@ -1,0 +1,130 @@
+# acp内容.light —— 对标原版 packages/acp/acp/src/content.ts
+# 纯逻辑核心：ACP 线内容（prompt / assistant）的准入校验 + 有序投影。
+#
+# 不可移植缺口（与原版一致，本模块只复刻纯逻辑层）：
+#   - 原版 decodeImage 把 base64 经 Buffer 往返以强制「规范 base64」；
+#     本模块改用 是规范base64() 的字符串原语校验等价覆盖（不引入 Buffer）。
+#   - 原版 admitAcpPrompt 在通过校验后调用 attachments.saveImages() 落盘并拿回
+#     ImageAttachmentRef；本模块把「保存」折叠为「校验后直接返回解码附件引用」
+#     （{mediaType, data}），因为落盘是宿主侧 IO，纯逻辑只关心校验与投影。
+#   - 原版 assistantBlockToAcp 经 attachments.readImage(ref) 取回字节再 base64
+#     内联；本模块接收调用方注入的「附件库」字典（ref -> {data,mediaType}），
+#     把 IO 取回抽象出去，保留投影与空文本/非输出块的语义。
+#
+# 这些抽象不改变纯逻辑行为：验证分支、内容投影顺序、空提示判定、种类收窄
+# 与原版逐条对齐。
+
+从 字符串工具 导入 去除首尾空白
+从 字符串处理 导入 匹配正则
+从 JSON 导入 序列化JSON
+
+# 光栅格式白名单（与核心附件词表一致）
+IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
+
+# 列表按下标取元素（光明无下标取元素原语，用遍历实现）—— 见语言缺陷账 L-035
+段落 列表取 接收 列表, i:
+  设 计数 为 0
+  遍历 元素 之 列表:
+    如果 计数 == i: 返回 元素
+    设 计数 为 计数 + 1
+  返回 空
+
+# 把 MIME 字符串收窄到耐久光栅词表；不在白名单返回 空
+段落 图像媒体类型 接收 值:
+  如果 列表包含(IMAGE_MEDIA_TYPES, 值): 返回 值
+  返回 空
+
+# 严格判定「规范 RFC 4648 base64（无空白、无 URL-safe 别名）」。
+# 不用正则的 {n} 量词（会触发 L-034 字符串内花括号词法陷阱），改用
+# 字符类正则 + 长度/填充结构校验。
+段落 是规范base64 接收 数据:
+  如果 匹配正则(数据, "^[A-Za-z0-9+/=]*$") == 假: 返回 假
+  设 n 为 字符串长度(数据)
+  如果 n == 0: 返回 真
+  如果 n % 4 != 0: 返回 假
+  设 等号位置 为 查找子串(数据, "=")
+  如果 等号位置 < 0: 返回 真
+  # 等号必须连续出现在尾部，且尾部最多 2 个
+  设 尾长 为 n - 等号位置
+  如果 尾长 > 2: 返回 假
+  设 i 为 等号位置
+  当 i < n:
+    如果 字符串获取(数据, i) != "=": 返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 把一个 resource_link 渲染成核心当前文本词表
+段落 资源链接文本 接收 name, uri:
+  返回 "\n[resource_link name=" + 序列化JSON(name) + " uri=" + 序列化JSON(uri) + "]\n"
+
+# 严格解码一个 ACP 内联图像（不接收 base64 别名）
+段落 解码图像块 接收 块:
+  设 mime 为 块["mimeType"]
+  设 mt 为 图像媒体类型(mime)
+  如果 mt == 空: 抛出 新建 错误("image mimeType must be image/png, image/jpeg, image/webp, or image/gif")
+  设 数据 为 块["data"]
+  如果 是规范base64(数据) == 假: 抛出 新建 错误("image data must be canonical base64")
+  返回 {"mediaType": mt, "data": 数据}
+
+# 准入一个 ACP prompt 为有序耐久核心内容。
+# 每个线块与图像在「有序图像批开始落盘前」先行校验；取消发生在成功的
+# 内容寻址写入之后也不会排队迟到的用户消息。
+#   提示: ACP ContentBlock 列表（线顺序）
+#   图像启用: 初始化时广告的能力结果
+# 返回: 核心内容（图像引用按线顺序、文本/资源链接合并为待定文本）
+段落 admitAcpPrompt 接收 提示, 图像启用:
+  # 校验轮：先拒绝非法类型，合法图像解码进引用表
+  设 引用表 为 []
+  遍历 块 之 提示:
+    设 种类 为 块["type"]
+    如果 种类 == "audio": 抛出 新建 错误("audio prompt content is not supported")
+    如果 种类 == "resource": 抛出 新建 错误("embedded resource prompt content is not supported")
+    如果 种类 == "image":
+      如果 图像启用 == 假: 抛出 新建 错误("inline image prompts were not advertised by this connection")
+      列表追加(引用表, 解码图像块(块))
+    如果 种类 != "text" 且 种类 != "resource_link" 且 种类 != "image" 且 种类 != "audio" 且 种类 != "resource": 抛出 新建 错误("unsupported ACP prompt content")
+
+  # 投影轮：文本与 resource_link 累积为待定文本；图像在 flush 文本后置入
+  设 内容 为 []
+  设 待定文本 为 ""
+  设 图像序号 为 0
+  遍历 块 之 提示:
+    设 种类 为 块["type"]
+    如果 种类 == "text":
+      设 待定文本 为 待定文本 + 块["text"]
+    否则如果 种类 == "resource_link":
+      设 待定文本 为 待定文本 + 资源链接文本(块["name"], 块["uri"])
+    否则如果 种类 == "image":
+      如果 字符串长度(待定文本) > 0:
+        列表追加(内容, {"type": "text", "text": 待定文本})
+        设 待定文本 为 ""
+      设 引用 为 列表取(引用表, 图像序号)
+      设 图像序号 为 图像序号 + 1
+      列表追加(内容, {"type": "image", "attachment": 引用})
+  # 末次 flush
+  如果 字符串长度(待定文本) > 0:
+    列表追加(内容, {"type": "text", "text": 待定文本})
+
+  # 空提示判定：无任何图像，且没有任何非空（去除空白后）文本块
+  设 有内容 为 假
+  遍历 b 之 内容:
+    如果 b["type"] == "image": 设 有内容 为 真
+    否则如果 b["type"] == "text" 且 字符串长度(去除首尾空白(b["text"])) > 0: 设 有内容 为 真
+  如果 有内容 == 假: 抛出 新建 错误("empty prompt")
+  返回 内容
+
+# 把一个已落盘的核心 assistant 块翻译为 ACP 线内容。
+#   附件库: ref -> {data, mediaType} 的字典（由调用方注入，抽象掉 IO 取回）
+# 返回: ACP 文本/图像内容；非输出块返回 空。
+段落 assistantBlockToAcp 接收 块, 附件库:
+  设 种类 为 块["type"]
+  如果 种类 == "text":
+    设 t 为 块["text"]
+    如果 字符串长度(t) == 0: 返回 空
+    返回 {"type": "text", "text": t}
+  如果 种类 == "image":
+    设 引用 为 块["attachment"]
+    设 存储 为 字典获取(附件库, 引用)
+    如果 存储 == 空: 抛出 新建 错误("cannot deliver assistant image: the attachment is unavailable or corrupt")
+    返回 {"type": "image", "data": 存储["data"], "mimeType": 存储["mediaType"]}
+  返回 空

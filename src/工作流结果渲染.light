@@ -1,0 +1,38 @@
+# 工作流工具呈现纯逻辑核心
+# 对标 packages/workflow/tool-workflow/src/index.ts
+# 只复刻两个纯函数：stopReasonError（运行结果 → 可读错误信息）与 renderResult
+# （运行结果 → 文本，含返回值 JSON 渲染与超限截断）。其余 defineTool / Config /
+# 视图渲染胶水不属纯逻辑层，剔除。
+
+从 字符串处理 导入 截取
+从 JSON 导入 序列化JSON
+
+段落 取可选 接收 对象, 键:
+  如果 (字典包含键(对象, 键) == 假): 返回 空
+  返回 对象[键]
+
+# 等价原版 stopReasonError：completed → 空；cancelled/error → 拼装错误文本；未知 → 异常兜底
+段落 停止原因错误 接收 结果:
+  设 原因 为 结果["stopReason"]
+  如果 原因 == "completed": 返回 空
+  如果 原因 == "cancelled":
+    设 错误信息 为 取可选(结果, "error")
+    如果 错误信息 == 空: 返回 "workflow run was cancelled"
+    返回 "workflow run was cancelled (" + 错误信息 + ")"
+  如果 原因 == "error":
+    设 错误信息 为 取可选(结果, "error")
+    如果 错误信息 == 空: 返回 "workflow run failed: unknown error"
+    返回 "workflow run failed: " + 错误信息
+  设 原因串 为 转字符串(原因)
+  返回 "workflow run ended abnormally (" + 原因串 + ")"
+
+# 等价原版 renderResult：渲染 meta 名称、代理数、返回值 JSON（超 上限 截断）
+段落 渲染结果 接收 名称, 代理数, 值, 上限:
+  设 渲染 为 序列化JSON(值)
+  设 长度 为 字符串长度(渲染)
+  设 裁剪 为 渲染
+  如果 长度 > 上限:
+    设 裁剪 为 截取(渲染, 0, 上限) + "\n… [truncated: " + 转字符串(长度 - 上限) + " more characters]"
+  设 后缀 为 "s"
+  如果 代理数 == 1: 设 后缀 为 ""
+  返回 "workflow \"" + 名称 + "\" completed (" + 转字符串(代理数) + " agent" + 后缀 + ").\nReturn value:\n" + 裁剪

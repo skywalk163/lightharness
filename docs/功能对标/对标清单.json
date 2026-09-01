@@ -1,654 +1,859 @@
 {
-   "说明": [
-      "lightharness 功能对标清单：每模块一张卡，对着原版 deepseek-harness 的功能勾对齐度。",
-      "状态三值：done / partial / none。done 与 partial 必须带至少一条存在的证据文件。",
-      "反跑判据：把判据测试里的一行改成反向，测试必须立红，否则不算判据。",
-      "第11轮松绑（2026-08-28）：编译器 L1/L2/L3 修复后，L-001~L-016 用例除 L-009(工程层) 外全部转绿；",
-      "lightharness 已移除 退出码值/收尾进程/会话工厂/补录 等绕法，协程代理.light 恢复正式名 异步代理.light，",
-      "缺陷账与验收判据状态已回填。",
-      "语言缺陷：光明写不出/写错/绕不过的地方，登记进 docs/功能对标/语言缺陷账.md。",
-      "编号 + 功能名 双字段匹配改状态，只认编号会串条目。"
-   ],
-   "版本": 1,
-   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
-   "建立于": "lightharness 第一版",
-   "条目": [
-      {
-         "编号": 1,
-         "功能": "会话事件日志（SessionEvent append-only log）",
-         "原版包": "core/session",
-         "光明模块": "src/会话.light",
-         "状态": "v2",
-         "证据": [
-            "src/会话.light",
-            "examples/test_会话.light",
-            "examples/test_会话深化.light"
-         ],
-         "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件；v2 新增查询事件(类型,开始序号,结束序号)：类型空串\"\"不过滤类型，开始序号=0不限制下限，结束序号=0不限制上限；test_会话深化.light 查询事件测试全通过",
-         "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红；v2：test_会话深化.light 把查询结果数量断言改反即红",
-         "语言缺陷": [
-            "L-003",
-            "L-004"
-         ]
-      },
-      {
-         "编号": 2,
-         "功能": "surface 折叠（消息产生事件投影 + append/replace）",
-         "原版包": "core/session/surface.ts",
-         "光明模块": "src/会话.light",
-         "状态": "v2",
-         "证据": [
-            "src/会话.light 的 整理消息/压缩替换",
-            "examples/test_会话.light（surface投影正确/压缩替换语义正确）",
-            "examples/test_会话深化.light"
-         ],
-         "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义；v2 新增投影统计()：返回消息数/总块数/角色分布(user/assistant/tool)，遮蔽事件不计入；test_会话深化.light 投影统计测试全通过",
-         "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红；v2：test_会话深化.light 把投影统计断言改反即红",
-         "语言缺陷": [
-            "L-004"
-         ]
-      },
-      {
-         "编号": 3,
-         "功能": "JSONL 持久化（session-persistence-jsonl）",
-         "原版包": "session/session-persistence-jsonl",
-         "光明模块": "src/持久化.light",
-         "状态": "done(v2 增量追加)",
-         "证据": [
-            "src/持久化.light",
-            "examples/test_持久化.light",
-            "examples/test_持久化增量.light"
-         ],
-         "本轮目标": "done(v2)：v1 整盘快照写出(首行header+逐事件JSONL)/读入回放/路径编码/头部校验；v2 增量追加：初始化日志(只写header) + 追加事件行(末尾追加，文件不存在自动初始化)，支持增量持久化模式",
-         "反跑判据": "test_持久化.light：事件数断言改反即红；test_持久化增量.light：事件包含断言改反即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007",
-            "L-002(注释续行陷阱)"
-         ]
-      },
-      {
-         "编号": 4,
-         "功能": "消息词汇表（Message/ContentBlock/构造段）",
-         "原版包": "llm/llm/message.ts",
-         "光明模块": "src/消息.light",
-         "状态": "done(v2 多媒体块)",
-         "证据": [
-            "src/消息.light",
-            "examples/test_消息.light",
-            "examples/test_消息深化.light"
-         ],
-         "本轮目标": "done(v2)：v1 text/reasoning/tool-call/tool-result 块 + 构造段；v2 新增 image/audio/resource 块（造图片块/造音频块/造资源块，mimeType 默认值，resource 带 source）；取消息文本 支持新块类型投影（图片→[图片 mimeType: 预览]，音频→[音频 mimeType]，资源→[资源 id: text]）",
-         "反跑判据": "test_消息.light：块数断言改反即红；test_消息深化.light：块类型或文本投影断言改反即红",
-         "语言缺陷": [
-            "L-002"
-         ]
-      },
-      {
-         "编号": 5,
-         "功能": "LLM 流式词汇表（StreamChunk/FinishReason/TokenUsage）",
-         "原版包": "llm/llm/types.ts",
-         "光明模块": "src/流.light",
-         "状态": "v2",
-         "证据": [
-            "src/流.light",
-            "examples/test_流.light",
-            "examples/test_流深化.light"
-         ],
-         "本轮目标": "done：七种流块 + 组装器（块表/完成原因/用量/中断块/组装消息）；v2 新增流块合并：合并连续delta流块为完整消息，支持finish_reason和usage聚合；test_流深化.light 合并流块测试全通过",
-         "反跑判据": "test_流.light：改 完成原因 种类断言或 block-end 冻结断言即红；v2：test_流深化.light 把合并结果断言改反即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007"
-         ]
-      },
-      {
-         "编号": 6,
-         "功能": "deepseek 流式客户端（llm-deepseek 适配器）",
-         "原版包": "llm/llm-deepseek",
-         "光明模块": "src/客户端.light",
-         "状态": "v2",
-         "证据": [
-            "src/客户端.light",
-            "examples/test_客户端.light",
-            "examples/test_客户端超时.light"
-         ],
-         "本轮目标": "done：SSE载荷解析/翻译流(推理文本工具增量/EMPTY_RESPONSE/完成原因映射/用量缓存减出)/harness→wire映射/HTTP对话(重试留待agent-loop)；v2 新增请求超时配置：客户端类新增超时秒属性（默认60），构造函数支持选项[\"超时秒\"]配置，对话响应方法用己.超时秒代替写死的60，对话响应协程方法支持超时秒为空时回退到默认值",
-         "反跑判据": "test_客户端.light：把 翻译用量(100-40) 期望改为 100 即红；v2：test_客户端超时.light 把默认超时秒断言60改30即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007"
-         ]
-      },
-      {
-         "编号": 7,
-         "功能": "agent-loop 多轮循环（turn/step 流程）",
-         "原版包": "core/agent-loop/agent.ts",
-         "光明模块": "src/代理.light（同步）+ src/异步代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
-         "状态": "v2",
-         "证据": [
-            "src/代理.light",
-            "src/异步代理.light",
-            "src/中止.light",
-            "src/重试策略.light",
-            "src/客户端.light（对话响应协程）",
-            "examples/test_代理.light",
-            "examples/test_并行.light",
-            "examples/test_异步代理.light",
-            "examples/test_代理深化.light"
-         ],
-         "本轮目标": "v2：在 v1 基础上新增 max_steps 步数上限（默认25，选项[\"最大步数\"]配置）+ 轮次结果增强（种类/步骤数/输入token/输出token/耗时秒）；修复执行步骤内部循环在工具调用后不退出的问题（新增\"continue\"状态，驱动方法检测后继续下一步），使 max_steps 能正确终止工具调用循环",
-         "反跑判据": "同步：test_代理.light 把 假客户端.调用次数 期望 2 改 1 即红；v2：test_代理深化.light 删最大步数配置即红（无限循环）、改期望步骤数即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007",
-            "L-015",
-            "L-016"
-         ]
-      },
-      {
-         "编号": 8,
-         "功能": "工具注册表 + 执行流水线",
-         "原版包": "core/tools + agent-loop/tool-calls.ts",
-         "光明模块": "src/工具.light + src/代理.light(执行组)",
-         "状态": "v2",
-         "证据": [
-            "src/工具.light",
-            "examples/test_工具.light",
-            "examples/test_工具深.light",
-            "examples/test_代理.light",
-            "examples/test_工具统计.light"
-         ],
-         "本轮目标": "done（T10-05 加深）：注册/注销/查找/描述表/执行策略(exclusive|parallel)/执行(参数解析空→{} 非法→原文)；新增 JSON Schema 参数校验器 校验参数(模式,参数)（支持 type/properties/required/items/enum/const/pattern/minimum/maximum/minLength/maxLength/minItems/maxItems，错误列表含「字段路径(列表，如[\"参数\",\"秒\"])+原因+细节」）；执行流水线接入 prepare→校验(schema)→dispatch→finalize 三阶段（准备钩子可改参/拒绝，收尾钩子 execute 后调用、异常不掩盖主结果）；返回结构不变 {content,isError,concludesTurn,additionalContexts,error}，仅校验失败时为 error 补「字段错误」详情；v2 新增执行统计：注册表统计表属性（调用次数/成功次数/失败次数），注册时初始化、注销时删除、执行时更新，新增统计()方法返回统计表",
-         "反跑判据": "test_工具.light：把 注销后 名单长度 期望 1 改为 2 即红；test_工具深.light：§4.2 把「校验失败→isError」断言 真 改 假 立红；§4.4 把 prepare 计数器断言 1 改 0 立红；§4.3 把 原因为type/enum/pattern 改非对应值立红；v2：test_工具统计.light 把成功次数断言3改2即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007",
-            "L-003",
-            "L-013",
-            "L-014"
-         ],
-         "子集对齐补遗": "T10-05b：补齐原版 json-schema.ts 强制子集缺口 oneOf(精确匹配一个)/additionalProperties:false(拒绝未声明键)/type:null + enum/const 支持null + enum/const type-gated(仅type匹配时校验)；任务书§6 原未覆盖清单按完整JSON Schema列、偏离原版（原版 assertSupportedJsonSchema 不支持 allOf/anyOf/not/$ref/format/multipleOf/uniqueItems 等，会主动拒绝），对齐原版无需实现它们"
-      },
-      {
-         "编号": 9,
-         "功能": "上下文压缩（compaction surface replace）",
-         "原版包": "compaction/compaction",
-         "光明模块": "src/压缩.light",
-         "状态": "done(v3 自动触发+溢出恢复)",
-         "证据": [
-            "src/压缩.light",
-            "examples/test_压缩.light",
-            "examples/test_压缩自动.light",
-            "examples/test_溢出恢复.light",
-            "src/代理.light(step前检查+溢出恢复)",
-            "src/会话.light(压缩替换原位)"
-         ],
-         "本轮目标": "done(v3)：v1 确定性策略 压缩到最近/造摘要/压缩替换原位；v2 自动触发：估算token+压缩管理器+代理循环 step 前检查；v3 溢出恢复：LLM 请求异常/完成原因 error 时检测上下文溢出关键词，自动压缩后重试（最多 2 次），是溢出错误方法",
-         "反跑判据": "test_压缩.light：压缩后条数断言改反即红；test_压缩自动.light：压缩次数断言改反即红；test_溢出恢复.light：客户端调用次数 2 改反即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007"
-         ]
-      },
-      {
-         "编号": 10,
-         "功能": "hooks 事件机制（三事件域）",
-         "原版包": "core/hooks + hook-protocol",
-         "光明模块": "src/钩子.light + src/事件.light(总线) + src/会话.light(会话域接线) + src/代理.light(代理/能力域接线)",
-         "状态": "v2",
-         "证据": [
-            "src/钩子.light",
-            "examples/test_钩子.light",
-            "src/会话.light(连接钩子)",
-            "src/代理.light(连接钩子/发出代理事件/发出能力事件)",
-            "examples/test_一次性监听器.light"
-         ],
-         "本轮目标": "done：三事件域总线(session/agent/capability)+钩子协议(处理器收上下文返回瀑布事件)+瀑布限深+取消订阅；会话域经会话.记录事件广播、代理/能力域经代理循环发出(turn/start/end、tool/executed)；v2 新增一次性监听器：订阅方法支持选项[\"一次性\"]=真，执行后自动从监听器表移除；事件总线发布/瀑布/造取消处理器、钩子系统分发方法均接入一次性移除逻辑；选项参数默认空以保持向后兼容",
-         "反跑判据": "test_钩子.light：把 会话事件广播 断言改为 假 即红；v2：test_一次性监听器.light 把第二次发布后一次性计数断言1改2即红",
-         "语言缺陷": [
-            "L-005(总线.监听器表下标绕法)",
-            "L-004",
-            "L-007"
-         ]
-      },
-      {
-         "编号": 11,
-         "功能": "CLI 入口（headless runner）",
-         "原版包": "apps/cli + bundle/headless",
-         "光明模块": "src/总入口.light + examples/运行CLI.light",
-         "状态": "done(v2 增量持久化+会话列表)",
-         "证据": [
-            "src/总入口.light",
-            "examples/test_cli深化.light"
-         ],
-         "本轮目标": "done(v2)：v1 环境变量参数解析/单轮对话/内置bash工具/会话写出/多轮REPL/续写；v2 增量持久化：REPL和单轮模式均改用增量保存(初始化日志+追加事件行，文件不存在自动初始化，从指定序号开始只追加新增事件)；新增 HARNESS_LIST=1 会话列表功能(列出根目录下所有已有会话，不需要API key)；增量保存函数可测试导出",
-         "反跑判据": "test_cli深化.light：事件包含或工具名断言改反即红",
-         "语言缺陷": [
-            "L-004",
-            "L-007",
-            "L-010",
-            "L-005(成员属性链式下标 对象.属性[0][\"key\"] 被编译为函数调用，需拆局部变量绕)"
-         ]
-      },
-      {
-         "编号": 12,
-         "功能": "子进程执行（subprocess/shell 后端）",
-         "原版包": "subprocess + shell",
-         "光明模块": "src/子进程.light",
-         "状态": "v2",
-         "证据": [
-            "src/子进程.light",
-            "examples/test_子进程.light",
-            "examples/test_子进程码.light",
-            "examples/test_子进程流式.light"
-         ],
-         "本轮目标": "done：运行进程/运行并取输出/进程成功/运行后台/等待后台 全通；退出码精确化（exit(3)→3、exit(0)→0），经 stdlib`外部命令.py` 安全字段 `退出码值`(property→返回码) 绕 L-010/L-004；v2 新增运行并流式输出(命令, 行处理器, 超时)：逐行回调标准输出，返回退出码；当前用运行进程获取全部输出后按换行拆分逐行回调，接口一致后续可替换为真正流式；注意「回调」是保留关键字，参数名用行处理器",
-         "反跑判据": "test_子进程码.light：把 码==3 改成 码==0 即红；v2：test_子进程流式.light 把处理器调用次数断言改反即红",
-         "语言缺陷": [
-            "L-010(返回码属性, 用 退出码值 绕)",
-            "L-004(identifier 拆分, 用整段安全名 退出码值 绕)"
-         ]
-      },
-      {
-         "编号": 13,
-         "功能": "沙箱边界（sandbox）",
-         "原版包": "sandbox",
-         "光明模块": "src/沙箱.light",
-         "状态": "v2",
-         "证据": [
-            "src/沙箱.light",
-            "examples/test_沙箱.light",
-            "examples/test_沙箱资源.light"
-         ],
-         "本轮目标": "done(v1)：路径护栏(允许读/写/禁止表,归一化,禁止优先)+进程隔离(白名单环境+工作目录限定+超时)；不做landlock/seccomp；退出码精确化（经 stdlib`退出码值` 绕 L-010）；v2 新增资源限制配置：构造函数支持选项[\"秒数上限\"][\"兆数上限\"]（0=不限制），新增资源限制描述()方法返回配置文本，运行受限返回结果包含资源限制字段；实际执行限制留待 stdlib 增强（Windows无原生ulimit）；注意属性名用纯中文避免中英文混合标识符拆分",
-         "反跑判据": "test_沙箱.light：把 读禁止路径 断言改为 真 即红；v2：test_沙箱资源.light 把资源限制描述断言改反即红",
-         "语言缺陷": [
-            "L-010(返回码属性)",
-            "L-004"
-         ]
-      },
-      {
-         "编号": 14,
-         "功能": "文件与存储（fs/storage）",
-         "原版包": "fs + storage",
-         "光明模块": "src/文件.light + src/存储.light",
-         "状态": "v2",
-         "证据": [
-            "src/文件.light",
-            "src/存储.light",
-            "examples/test_文件.light",
-            "examples/test_文件深.light",
-            "examples/test_原子写.light"
-         ],
-         "本轮目标": "done：JSON/文本存取 + 目录保证/列目录/拼路径 + 删除(文件/空目录/非空目录递归) + 重命名 + 复制(文件/目录) + 存在性 + stat(大小/类别/存在) + glob通配符查找(非递归/递归) + 临时目录 + 二进制读写 + 键值存储(命名空间隔离/get/set/delete/keys/JSON持久化/重开读回)；v2 新增原子写文本：先写临时文件（路径+.tmp.+时间戳），写入成功后删除目标文件（Windows兼容）再重命名，失败时清理临时文件，确保写入过程中崩溃不破坏原文件",
-         "反跑判据": "test_文件深.light：6组判据各改反一行即红（文本/JSON/二进制往返、目录操作递归删除、stat大小、glob计数、存储命名空间隔离、重开读回）；v2：test_原子写.light 把内容断言改反即红",
-         "语言缺陷": []
-      },
-      {
-         "编号": 15,
-         "功能": "终端会话（terminal/PTY）",
-         "原版包": "packages/terminal",
-         "光明模块": "src/终端.light",
-         "状态": "done(v2 PTY)",
-         "证据": [
-            "src/终端.light",
-            "examples/test_终端.light",
-            "examples/test_终端PTY.light"
-         ],
-         "本轮目标": "done(v2 PTY)：管道式 终端会话（spawn/写入/读取(超时)/发信号/状态机/退出码/关闭）v1 + 伪终端会话（真 tty，基于 stdlib/伪终端.light 的 伪控制台：Windows ConPTY / POSIX openpty），接口对齐可互换；SIGINT→Ctrl+C、SIGTERM/SIGKILL→关闭(强杀)；PTY 无退出码(码=空)；ANSI 原样保留不解析",
-         "反跑判据": "test_终端.light：把 输出 断言 hi 改成 nope 即红；或把 已退出 状态改反即红",
-         "语言缺陷": [
-            "L-010(终端 模块名首字符关键字 → 从 终端 导入 失败)",
-            "L-004(导入后 终端.终端会话 被拆成 终端().终(...))",
-            "L-012(模块名与类名共享关键字前缀，跨模块成员访问被拆)"
-         ]
-      },
-      {
-         "编号": 16,
-         "功能": "MCP 客户端（mcp-client，P2 生态层）",
-         "原版包": "mcp/mcp-client",
-         "光明模块": "src/mcp客户端.light",
-         "状态": "done(v2: streamable-http+重连+图片投影)",
-         "证据": [
-            "src/mcp客户端.light",
-            "examples/test_mcp.light",
-            "examples/test_mcp_http.light",
-            "examples/mcp_服务器.py",
-            "examples/mcp_http服务器.py"
-         ],
-         "本轮目标": "done(v2)：v1 stdio 传输 + 初始化握手 + tools/list 发现注册 + tools/call 调用；v2 深化：①streamable-http 传输（MCPHttpClient 类，POST JSON-RPC + SSE/JSON 响应解析，注册MCPHTTP服务器 顶层函数）；②重连策略（请求失败/服务器退出自动重连，指数退避，最多3次）；③图片块投影（tools/call 返回 image 块时投影为 [图片 mimeType: data预览]，不再是未支持占位）",
-         "反跑判据": "test_mcp.light：echo/add 断言改反即红；test_mcp_http.light：工具数 3 改 4 即红，或 echo/add 断言改反即红",
-         "语言缺陷": []
-      },
-      {
-         "编号": 17,
-         "功能": "用户审批/交互（interaction）",
-         "原版包": "packages/interaction",
-         "光明模块": "src/审批.light",
-         "状态": "v2",
-         "证据": [
-            "src/审批.light",
-            "examples/test_审批.light",
-            "src/代理.light(执行组审批检查接入)",
-            "examples/test_审批深化.light"
-         ],
-         "本轮目标": "done：审批管理器类（approve/deny/ask 三策略 + 按工具名配置 + 审批记录 + 统计）；代理循环 选项[审批管理器] 接入，执行组在工具执行前检查，deny 则记录 tool/error 事件并跳过；ask 模式 v1 简化为拒绝并记录待审批；v2：查询记录(工具名/状态/时间范围筛选，参数为空不过滤) + 统计v2(总数/批准数/拒绝数/待审批数) + 批量设置策略(字典批量配置) + 设置配置/取配置(默认审批人/超时时间等)，请求审批记录新增状态和时间字段",
-         "反跑判据": "test_审批.light：把 批准数 2 改 3 即红；或把 tool/error 事件断言改反即红；v2：test_审批深化.light 把 查询记录工具名过滤期望2改3即红、统计v2待审批数改反即红、批量策略工具A批准改假即红",
-         "语言缺陷": []
-      },
-      {
-         "编号": 18,
-         "功能": "子智能体/Subagent",
-         "原版包": "packages/subagent",
-         "光明模块": "src/子智能体.light",
-         "状态": "v2",
-         "证据": [
-            "src/子智能体.light",
-            "examples/test_子智能体.light",
-            "examples/test_子智能体深化.light"
-         ],
-         "本轮目标": "done：子智能体类（独立会话+独立代理循环+工具子集，执行(任务)返回最后助手消息文本）；造子智能体工具 顶层函数（包装为工具定义，可注册到主 agent 注册表，参数{任务}）；状态查询（名字/执行次数/事件数）；v2：执行状态(空闲/运行中/完成/失败 + 已运行秒 + 当前步骤 + 总耗时) + 设置最大深度 + 嵌套深度限制(超限返回嵌套深度超限) + 执行统计(调用次数/总耗时/成功次数/失败次数/成功率)，执行方法内部增强状态追踪和耗时统计(签名不变)",
-         "反跑判据": "test_子智能体.light：把 执行次数 1 改 2 即红；或把 结果包含子任务完成 断言改反即红；v2：test_子智能体深化.light 把 执行后状态完成改空闲即红、嵌套深度超限结果不含嵌套深度超限即红、执行统计成功率改反即红",
-         "语言缺陷": [
-            "L-019(变量名与类名相同导致 UnboundLocalError：设 X 为 新建 X(...) 需改变量名)"
-         ]
-      },
-      {
-         "编号": 19,
-         "功能": "遥测/指标收集（telemetry）",
-         "原版包": "packages/telemetry",
-         "光明模块": "src/遥测.light",
-         "状态": "v2",
-         "证据": [
-            "src/遥测.light",
-            "examples/test_遥测.light",
-            "src/代理.light(遥测接入)",
-            "examples/test_遥测深化.light",
-            "src/遥测导出器.light"
-         ],
-         "本轮目标": "done：遥测收集器类（轮次/步骤/工具调用/错误记录，token用量+延迟统计，汇总+输出）；代理循环 选项[遥测] 接入（轮次开始/结束、步骤延迟+用量、工具调用）；适配光明用量字段 输入/输出；v2：导出指标(json格式含指标名/值/时间戳/维度标签) + 聚合统计(按轮次/步骤维度，总调用数/总耗时/平均耗时/错误数) + 错误分类统计(按错误类型分类) + 持久化接口(写入JSON文件)；v3(A1 OTel对齐)：OTel GenAI语义span结构(trace_id/span_id/parent_span_id/kind/attributes/status) + 调用树(会话→轮次→步骤→LLM/工具) + span栈上下文管理 + 按模型/工具维度聚合统计(调用数/总耗时/平均耗时/成功率) + JSONL/OTLP/控制台三输出器 + capture_content默认不采集正文(隐私保护) + 输出器管理器(广播输出) + 向后兼容(旧方法全部保留)",
-         "反跑判据": "test_遥测.light：总步骤或总工具调用断言改反即红；v2：test_遥测深化.light 把 导出指标JSON含时间戳改假即红、聚合统计按轮次总调用数改反即红、错误分类timeout计数改反即红、持久化文件不含汇总即红",
-         "语言缺陷": [
-            "L-020(函数名包含接收子串导致词法分析误判：测直接收集→测直接遥测)"
-         ]
-      },
-      {
-         "编号": 20,
-         "功能": "代码执行运行时（code-runtime）",
-         "原版包": "packages/code-runtime",
-         "光明模块": "src/代码运行时.light",
-         "状态": "v2",
-         "证据": [
-            "src/代码运行时.light",
-            "examples/test_代码运行时.light",
-            "examples/test_代码运行时深化.light"
-         ],
-         "本轮目标": "done：代码运行时类（subprocess 执行 Python 代码，捕获 stdout/stderr/返回码，超时控制，执行取文本）；造代码执行工具 顶层函数（包装为工具定义可注册到注册表）；v2：超时可配置(构造函数选项) + 输出大小限制(最大输出字节数，超限截断并标记已截断) + 执行统计(执行次数/总耗时/成功次数/失败次数/成功率/平均耗时)",
-         "反跑判据": "test_代码运行时.light：输出断言或返回码断言改反即红；v2：test_代码运行时深化.light 把 输出超限已截断改假即红、执行统计成功率改反即红、自定义超时10秒改30即红",
-         "语言缺陷": []
-      },
-      {
-         "编号": 21,
-         "功能": "e2b 云沙箱客户端（e2b）",
-         "原版包": "packages/e2b",
-         "光明模块": "src/e2b客户端.light",
-         "状态": "v2",
-         "证据": [
-            "src/e2b客户端.light",
-            "examples/test_e2b.light",
-            "examples/test_e2b深化.light"
-         ],
-         "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）；v2：会话管理(创建会话/列出会话/关闭会话) + 执行超时配置 + 连接状态查询(未连接/已连接/远程模式/本地模拟 + 最后心跳 + 活跃会话数)",
-         "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红；v2：test_e2b深化.light 把 创建会话后列表长度改反即红、关闭会话后状态非closed即红、连接状态本地模拟改远程模式即红",
-         "语言缺陷": []
-      },
-      {
-         "编号": 22,
-         "功能": "待办任务管理（todo_write 整表替换工具）",
-         "原版包": "packages/todo/tool-todo",
-         "光明模块": "src/待办.light",
-         "状态": "done",
-         "证据": [
-            "src/待办.light",
-            "examples/test_待办.light"
-         ],
-         "本轮目标": "done：1:1 复刻原版 tool-todo 的 todo_write 工具——整表替换模型（每次发送完整列表整体覆盖旧列表，无部分更新）；schema 外值校验（content 必已 trim 且非空、content 唯一、in_progress 至多一个，除非 允许多重 并行纪律）；向会话追加 todo/write 事件（last-write-wins）；返回 {todos, counts}；turn/start 投影清空；非 agent 会话(空)拒绝；持久化日志校验（对齐 invariant.ts）。对照 10 项判据全绿。",
-         "反跑判据": "test_待办.light：把 用例1 整表替换后清单长度 期望1 改2 即红；用例6 单活跃双in_progress isError 真 改假 即红；用例8 末事件类型 todo/write 改 tool/done 即红；用例9 turn/start 后投影清空 真 改假 即红",
-         "语言缺陷": [
-            "L-022(匿名闭包赋值不被接受：设 X 为 段落 接收 参数 报错，须用具名段落)"
-         ]
-      },
-      {
-         "编号": 23,
-         "功能": "重复工具调用提醒守卫（repeat-tool-reminder）",
-         "原版包": "packages/guard/repeat-tool-reminder",
-         "光明模块": "src/重复提醒.light",
-         "状态": "done",
-         "证据": [
-            "src/重复提醒.light",
-            "examples/test_重复提醒.light"
-         ],
-         "本轮目标": "done：1:1 复刻原版 repeat-tool-reminder 的 advisory per-agent repeat-call detector——按 (工具名, 规范化参数) 维护连续重复链；连续重复命中阈值 [3,5,8] 注入提醒（不否决、不改写）；首阈值 GENTLE、后续 DETAILED（点名工具/次数/参数预览）；参数规范化=深度键排序后序列化（键序无关）；include/exclude 为 * 通配工具名（纯光明递归实现，不依赖 python re）；用户插入消息打断循环（重置链）；阈值/预览上限 fail-loud 校验。对照 10 组用例全绿。",
-         "反跑判据": "test_重复提醒.light：用例1 第3次触发 GENTLE、第5次 DETAILED(含 consecutive_calls)；用例2 键序不同第3次仍触发；用例3 换参数后计数重置；用例4 include 不匹配不跟踪；用例5 exclude 匹配透明；用例6 阈值<2/空/重复均抛错且升序去重；用例7 长参数第5次 DETAILED 含 more chars；用例8 代理隔离；用例9 重置后重新计数；用例10 通配匹配单测。把任一期望改反即红。",
-         "语言缺陷": [
-            "L-023(裸表达式跨行续行不支持：行尾悬空 加上/运算符 续行报意外换行)",
-            "L-024(for 循环语法为 遍历 X 之 Y:，而非 循环 对于 X 在 Y:)",
-            "L-025(裸 包含/排除 作标识符与保留词冲突，需改名如 包含名单/排除名单)"
-         ]
-      },
-      {
-         "编号": 24,
-         "功能": "凭据管理（credentials：API key/provider 读取 + 红化脱敏）",
-         "原版包": "packages/credentials",
-         "光明模块": "src/凭据.light",
-         "状态": "done",
-         "证据": [
-            "src/凭据.light",
-            "examples/test_凭据.light"
-         ],
-         "本轮目标": "done：凭据加载(从环境变量/选项读取 provider key)、凭据红化(脱敏打印，key 中段掩码)、凭据相等比较、缺省回退；1:1 复刻原版 credentials 纯逻辑核心。",
-         "反跑判据": "test_凭据.light：把 key 红化后「非空掩码」断言改反即红；或把「缺省回退」期望值改反即红。",
-         "语言缺陷": []
-      },
-      {
-         "编号": 25,
-         "功能": "设置（settings：harness 全局配置解析 + 校验）",
-         "原版包": "packages/settings",
-         "光明模块": "src/设置.light",
-         "状态": "done",
-         "证据": [
-            "src/设置.light",
-            "examples/test_设置.light"
-         ],
-         "本轮目标": "done：设置加载(从文件/选项合并)、字段校验(必填/类型)、默认值回退、配置相等比较；1:1 复刻原版 settings 纯逻辑核心。",
-         "反跑判据": "test_设置.light：把某字段默认值断言改反即红；或把校验失败(缺必填)期望的 isError 真 改 假 即红。",
-         "语言缺陷": []
-      },
-      {
-         "编号": 26,
-         "功能": "会话引用（session-reference：dsh-session: URI 编解码 + markdown 提及解析）",
-         "原版包": "packages/session-reference",
-         "光明模块": "src/会话引用.light",
-         "状态": "done",
-         "证据": [
-            "src/会话引用.light",
-            "examples/test_会话引用.light"
-         ],
-         "本轮目标": "done：会话引用 URI 编码(会话id → dsh-session:Base64URL(序列化JSON{payload})))、解码(严格：拒绝带 = 填充/非规范 Base64URL 字符/非 JSON/缺 payload)、markdown 文本解析(扫描 提及 与 裸 URI，去重)、标签转义；1:1 复刻原版 session-reference 纯逻辑核心。",
-         "反跑判据": "test_会话引用.light：把「拒绝带填充 URI」的断言改反即红；或把 round-trip 后 id 相等断言改反即红；或把「裸 URI 解析去重」计数断言改反即红。",
-         "语言缺陷": [
-            "L-027(Base64URL 解码不补 = 填充，已在 解码会话引用URI 内手动补填充绕过)",
-            "L-028(截取/匹配正则 须从 字符串处理 导入，且不存在 字符串以开头/包含 这类近似内置名，须用 开头/字符串包含)"
-         ]
-      },
-      {
-         "编号": 27,
-         "功能": "溢出（spill：超大结果 head/tail 预览 + 占位替换 + 字节预算）",
-         "原版包": "packages/spill + spill-policy + util/output-retention(TextRetainer)",
-         "光明模块": "src/溢出.light",
-         "状态": "done",
-         "证据": [
-            "src/溢出.light",
-            "examples/test_溢出.light",
-            "examples/test_溢出恢复.light",
-            "examples/test_溢出重试深化.light"
-         ],
-         "本轮目标": "done：字节预算预览(头尾字节截断，头=(预算+1)//2、尾=预算//2；预算0→全省略，预算≥总长→不变)、省略描述(无/精确/未知三态)、溢出提示包裹(定位符+检索提示)、模拟保存文本(saveText 契约 → {定位符,字节长度,检索提示})、溢出替换(预留通知+字节，不变量 字节长度(替换)<=上限)、纯文本扁平化(任何非文本块返回 空)、上限校验(非负整数)；1:1 复刻原版 spill 纯逻辑核心。",
-         "反跑判据": "test_溢出.light：把「预算0→全省略」的断言改反即红；或把「溢出替换不变量 字节长度(替换)<=上限」断言改反即红；或把「纯文本扁平化遇非文本块返回 空」断言改反即红。",
-         "语言缺陷": [
-            "L-028(字节长度 须从 溢出 模块内定义/导入而非自动内置；判型须用 是整数 而非不存在的 整数())"
-         ]
-      },
-      {
-         "编号": 28,
-         "功能": "反馈（feedback：命令/消息反馈记录 + 乐观锁 CAS）",
-         "原版包": "packages/feedback + command-feedback + message-feedback",
-         "光明模块": "src/反馈.light",
-         "状态": "done",
-         "证据": [
-            "src/反馈.light",
-            "examples/test_反馈.light"
-         ],
-         "本轮目标": "done：记录反馈(trim→空 抛错)、最大备注字节校验(≥1 正整数)、会话/头部身份匹配、备注解析(undefined→空 / trim空→note-blank / 超字节→note-too-large)、版本冲突 CAS(版本 != 现有版本??空)、空操作检测(rating+note 不变)、反馈服务类(生成版本「v」+计数 / 取现有项 / 放置 put / 删除 delete 状态机)；1:1 复刻原版 feedback 纯逻辑核心。",
-         "反跑判据": "test_反馈.light：把「版本冲突 CAS 拒绝旧版本」断言 真 改 假 即红；或把「删除不存在项→无论版本均成功」断言改反即红；或把「空操作不写入新版本」断言改反即红。",
-         "语言缺陷": [
-            "L-028(字节长度 须从 溢出 导入，非自动内置)"
-         ]
-      },
-      {
-         "编号": 29,
-         "功能": "定时（schedule：RFC3339/UTC 即时编解码 + 调度记录折叠状态机 + 每发生解析）",
-         "原版包": "packages/schedule/schedule/src/domain.ts",
-         "光明模块": "src/定时.light",
-         "状态": "done",
-         "证据": [
-            "src/定时.light",
-            "examples/test_定时.light"
-         ],
-         "本轮目标": "done：日历换算(闰年/月天数/日期↔天数迭代)、UTC 即时编解码(epoch ms ↔ RFC3339 Z，手搓 day-count 已对 Python datetime 验证)、偏移即时解析(RFC3339 Z/±hh:mm)、Id 解码(严格版本/键/即时校验 + round-trip 校验)、调度记录解码/折叠(事件派发/调度id复用/删除派发校验)、每发生解析(最新+下一即时)、创建即时/于/每 记录(严格未来 + 规范 UTC)；IANA 时区本地日历形式不可移植(仅支持 RFC3339 偏移/Z 字符串形式)，已文档化缺口。",
-         "反跑判据": "test_定时.light：把「非规范即时(带填充/非 base64url)解码拒绝」断言改反即红；或把「折叠状态机 id 复用」断言改反即红；或把 createAfter 严格未来校验断言改反即红；或把 resolveEveryOccurrence 最新+下一 断言改反即红。",
-         "语言缺陷": [
-            "L-026(列表排序 为原地排序且返回 None，需自写 排序列表 选择排序)",
-            "L-028(截取/字符转ASCII 须从 字符串处理 导入，非自动内置)"
-         ]
-      },
-      {
-         "编号": 30,
-         "功能": "文件引用（file-reference：@path / @\"path\" 游标令牌提取 + 候选路径格式化）",
-         "原版包": "packages/context/file-reference（grammar.ts；index.ts 为宿主 RPC 缝隙，非纯逻辑，未复刻）",
-         "光明模块": "src/文件引用.light",
-         "状态": "done",
-         "证据": [
-            "src/文件引用.light",
-            "examples/test_文件引用.light"
-         ],
-         "本轮目标": "done：activeAtToken(游标处提取 @path/plain 或 @\"path\"/quoted 令牌，含 (?:^|\\s) 边界与行尾锚定，邮箱等词中@不触发) + formatFileMention(候选路径→提示文本，目录补/、含空白或保留引号走 @\"...\" 包裹、目录保留开引号便于下钻、含控制字符或双引号返回 空)；1:1 复刻 grammar.ts 纯逻辑。注：原版用正则捕获组，光明 匹配正则 仅返回布尔，故以原生字符串原语复刻（与 repeat-tool-reminder 纯光明递归同范式）。",
-         "反跑判据": "test_文件引用.light：用例2 邮箱非触发断言改反即红；用例3 quoted 含空格断言改反即红；用例11 闭合引号后走 plain 断言改反即红；用例E 含引号不安全返回 空 改反即红；用例C file 含空白引号包裹改反即红。",
-         "语言缺陷": [
-            "L-029(双引号串内 \\\" 转义不产出字面 \"，改用单引号串 '...' 表达含 \" 的字面量)"
-         ]
-      },
-      {
-         "编号": 31,
-         "功能": "时间上下文（time-context：ISO 形时间戳格式化 + 请求浏览器时区派生与策略文案）",
-         "原版包": "packages/context/time-context（timestamp.ts + request-zone.ts；index.ts/invariant.ts 为宿主 Cordis 注册，非纯逻辑，未复刻）",
-         "光明模块": "src/时间上下文.light",
-         "状态": "done",
-         "证据": [
-            "src/时间上下文.light",
-            "examples/test_时间上下文.light"
-         ],
-         "本轮目标": "done：时区偏移文本 + 格式化时间戳（epoch ms 与偏移 → YYYY-MM-DDTHH:mm:ss±HH:MM[Zone]，1:1 复刻 timeZoneName 的 GMT→GMT+00:00→slice(3) 偏移归一化；墙上时钟由 epoch+偏移 计算）＋ 是IANA时区（等价于 /^[A-Za-z][A-Za-z0-9_+.-]*(?:\\/[A-Za-z0-9_+.-]+)+$/，以手写字符扫描复刻，含首字符字母、≥1 个非空 /段、段内字符集、末段非空）＋ 浏览器时区（user-rpc 来源读取与 UTC/IANA 校验，非法抛 TypeError）＋ 推导浏览器时区上下文（去重＋排序 → resolved/mixed/missing）＋ 渲染浏览器时区上下文（面向模型的一行策略文案，未知种类抛错对应 assertNever）。",
-         "反跑判据": "test_时间上下文.light：时区偏移文本(0) 由 +00:00 改 -00:00 即红；格式化时间戳 去掉末尾 [时区] 包裹即红；mixed 分支去掉 序列化JSON 包裹即红；推导 不做去重（两个相同时区被判 mixed）即红；unknown 种类不抛错即红。",
-         "语言缺陷": [],
-         "不可移植缺口": [
-            "createTimestampFormatter 依赖 Intl.DateTimeFormat('en-US', { timeZoneName: 'longOffset' })，纯光明无 Intl/时区数据库 → 以「固定偏移分钟」等价替代，输出串形态与 slice(3) 语义完全一致",
-            "browserTimeZone 的 Intl 规范化校验（resolvedOptions().timeZone === value）依赖时区数据库 → 只能做 UTC/IANA 形态的语法校验，无法判定是否已规范化或被系统支持（与 #29 定时 的 IANA 本地日历缺口同性质）"
-         ]
-      },
-      {
-         "编号": 32,
-         "功能": "上下文指令（agent-instructions：模板渲染/字节预算/作用域键/摘要/变更/基线）",
-         "原版包": "packages/context/agent-instructions（render.ts / digest.ts / config.ts / files.ts / state.ts）",
-         "光明模块": "src/智能体指令.light",
-         "状态": "done",
-         "证据": [
-            "src/智能体指令.light",
-            "examples/test_智能体指令.light"
-         ],
-         "本轮目标": "done：1:1 复刻 render（字节预算渲染、作用域键编解码、XML 框架转义、按预算截断/省略）、digest（SHA-1 摘要，严格采用去除首尾空白语义对齐原版 content.trim()）、config（配置解析 maxBytes / maxSourceBytes 默认）、files（祖先链/后代目录间/相对显示/按目录去重指令文件）、state（相同指令变更比较/基线指令状态/保留的指令版本更新）。不可移植缺口：files 的文件系统 stat/read、provider 抽象、AbortSignal 取消；state 的会话事件扫描、WeakMap 缓存、cordis 钩子；tmux 查询见 #33。",
-         "反跑判据": "test_智能体指令.light：把 digest SHA1(去除首尾空白(内容)) 期望改反即红；把 解码作用域键 往返断言改反即红；把 字节预算回退链（文件/紧凑/截断）任一分支期望改反即红；把 变更渲染 Additional/removed/updated 文案改反即红；把 空替换（budget 不足）返回空串断言改反即红。",
-         "语言缺陷": [
-            "L-030",
-            "L-031",
-            "L-032",
-            "L-033"
-         ]
-      },
-      {
-         "编号": 33,
-         "功能": "tmux 上下文（tmux-context：位置渲染/最近注入状态/刷新间隔校验）",
-         "原版包": "packages/context/tmux-context（index.ts）",
-         "光明模块": "src/tmux上下文.light",
-         "状态": "done",
-         "证据": [
-            "src/tmux上下文.light",
-            "examples/test_tmux上下文.light"
-         ],
-         "本轮目标": "done：1:1 复刻 renderState（稳定状态块，windowName 经 序列化JSON 包裹引号，等价于原版 JSON.stringify(location.windowName)）、renderReading（易变轮次前导行 + 状态块）、latestInjectedState（倒序回溯事件表，首个 tmux-context 插件文本块切出状态块；非文本块/空内容视作无先前状态返回空）、validateRefreshInterval（非负安全整数校验，非法抛 TypeError）。不可移植缺口：queryTmuxLocation 依赖 tmux display-message + ps -o tty= 外部 shell 执行（环境依赖），纯逻辑层无法 1:1 复现，已文档化缺口。",
-         "反跑判据": "test_tmux上下文.light：把 渲染状态 期望串（含 windowName 的 JSON 引号）改反即红；把 渲染阅读 轮次前缀改反即红；把 最近注入状态 多行切出状态块断言改反即红；把 校验刷新间隔 负间隔/浮点间隔应抛错改为不抛错即红。",
-         "语言缺陷": []
-      },
-      {
-         "编号": 34,
-         "功能": "主目录路径（home-paths：~ 展开 / DSH_HOME 解析 / 主目录拼接 / 显示名）",
-         "原版包": "packages/util/home-paths",
-         "光明模块": "src/主目录路径.light",
-         "状态": "done",
-         "证据": [
-            "src/主目录路径.light",
-            "examples/test_主目录路径.light"
-         ],
-         "本轮目标": "done：1:1 复刻 expandHomePath（~ / ~\\ / ~/ 展开）、resolveDshHome（配置 > $DSH_HOME > 默认 ~/.dsh 优先级，空白环境变量视为未设置）、dshHomePath（段拼接）、dshHomeDisplay（默认 ~/.dsh / 其余 $DSH_HOME）。原版依赖 Node homedir()，此处把操作系统主目录作为显式参数注入，使纯函数可测。",
-         "反跑判据": "test_主目录路径.light：把 展开主目录路径(\"~\") 期望改非主目录即红；把 解析主目录(空,{\"DSH_HOME\":\"/env\"}) 期望改非 /env 即红；把 主目录显示(默认) 期望改非 ~/.dsh 即红。",
-         "语言缺陷": [
-            "L-028(去除首尾空白 须从 字符串工具 导入，非自动内置)"
-         ]
-      },
-      {
-         "编号": 35,
-         "功能": "目标折叠（goal/goal：goal/change 严格解码 + 重放折叠状态机）",
-         "原版包": "packages/goal/goal（fold.ts + domain.ts）",
-         "光明模块": "src/目标折叠.light",
-         "状态": "done",
-         "证据": [
-            "src/目标折叠.light",
-            "examples/test_目标折叠.light"
-         ],
-         "本轮目标": "done：1:1 复刻 decodeGoalChange（kind/version/operation 严格校验、字段集合精确匹配）、decodeSnapshot（phase 分支字段集、objective 归一校验、blockedReason 小写短横线校验）、applyGoalChange/applyGoalEvent/foldGoal（create/edit/pause/resume/complete/block/clear 全转移 + user/message 轮次准入）。fail-loud 语义与原版一致。",
-         "反跑判据": "test_目标折叠.light：把 生命周期折叠 后 goal 期望改非 空 即红；把 clear 后 lastRef 期望改非墓碑即红；把 是小写短横线(\"Abc\") 期望改 真 即红；把 轮次预算耗尽 用例改不抛错即红。",
-         "语言缺陷": [
-            "L-035(列表取 非内置，自写 遍历+计数 版)",
-            "L-026(列表排序 原地返 None，自写 排序列表 选择排序)"
-         ]
-      },
-      {
-         "编号": 36,
-         "功能": "会话查询过滤（session-query：逻辑会话/事件文档 过滤器 编译/物化/匹配）",
-         "原版包": "packages/session-query/session-query/src/filters.ts",
-         "光明模块": "src/会话查询过滤.light",
-         "状态": "done",
-         "证据": [
-            "src/会话查询过滤.light",
-            "examples/test_会话查询过滤.light"
-         ],
-         "本轮目标": "done：1:1 复刻 filterSessionResults / filterSessionEventDocuments（保留输入顺序的 AND 叠加）、materializeSessionResultFilters / materializeSessionEventResultFilters（值复制 + 枚举白名单校验 + 范围校验）、compileSessionTextFilter（大小写不敏感 + 空白灵活的归一匹配：小写折叠后过滤令牌须按序作为文档令牌连续子序列）。原版 cursor.ts 仅品牌化字符串无逻辑，corpus/documents/extraction 为宿主侧抽取，纯逻辑层未复刻。",
-         "反跑判据": "test_会话查询过滤.light：把 id=s1 命中数期望改非 1 即红；把 availability=live 命中改非 s1 即红；把 文本过滤匹配(\"Hello World Foo\",\"hello world\") 期望改 假 即红；把 物化 availability 含 bogus 应抛错改不抛即红。",
-         "语言缺陷": [
-            "L-034(字符串内 { } 破坏词法：断言消息改用「含」避免花括号)",
-            "L-035(列表取 非内置，自写)"
-         ]
-      }
-   ]
+  "说明": [
+    "lightharness 功能对标清单：每模块一张卡，对着原版 deepseek-harness 的功能勾对齐度。",
+    "状态三值：done / partial / none。done 与 partial 必须带至少一条存在的证据文件。",
+    "反跑判据：把判据测试里的一行改成反向，测试必须立红，否则不算判据。",
+    "第11轮松绑（2026-08-28）：编译器 L1/L2/L3 修复后，L-001~L-016 用例除 L-009(工程层) 外全部转绿；",
+    "lightharness 已移除 退出码值/收尾进程/会话工厂/补录 等绕法，协程代理.light 恢复正式名 异步代理.light，",
+    "缺陷账与验收判据状态已回填。",
+    "语言缺陷：光明写不出/写错/绕不过的地方，登记进 docs/功能对标/语言缺陷账.md。",
+    "编号 + 功能名 双字段匹配改状态，只认编号会串条目。"
+  ],
+  "版本": 1,
+  "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
+  "建立于": "lightharness 第一版",
+  "条目": [
+    {
+      "编号": 1,
+      "功能": "会话事件日志（SessionEvent append-only log）",
+      "原版包": "core/session",
+      "光明模块": "src/会话.light",
+      "状态": "v2",
+      "证据": [
+        "src/会话.light",
+        "examples/test_会话.light",
+        "examples/test_会话深化.light"
+      ],
+      "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件；v2 新增查询事件(类型,开始序号,结束序号)：类型空串\"\"不过滤类型，开始序号=0不限制下限，结束序号=0不限制上限；test_会话深化.light 查询事件测试全通过",
+      "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红；v2：test_会话深化.light 把查询结果数量断言改反即红",
+      "语言缺陷": [
+        "L-003",
+        "L-004"
+      ]
+    },
+    {
+      "编号": 2,
+      "功能": "surface 折叠（消息产生事件投影 + append/replace）",
+      "原版包": "core/session/surface.ts",
+      "光明模块": "src/会话.light",
+      "状态": "v2",
+      "证据": [
+        "src/会话.light 的 整理消息/压缩替换",
+        "examples/test_会话.light（surface投影正确/压缩替换语义正确）",
+        "examples/test_会话深化.light"
+      ],
+      "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义；v2 新增投影统计()：返回消息数/总块数/角色分布(user/assistant/tool)，遮蔽事件不计入；test_会话深化.light 投影统计测试全通过",
+      "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红；v2：test_会话深化.light 把投影统计断言改反即红",
+      "语言缺陷": [
+        "L-004"
+      ]
+    },
+    {
+      "编号": 3,
+      "功能": "JSONL 持久化（session-persistence-jsonl）",
+      "原版包": "session/session-persistence-jsonl",
+      "光明模块": "src/持久化.light",
+      "状态": "done(v2 增量追加)",
+      "证据": [
+        "src/持久化.light",
+        "examples/test_持久化.light",
+        "examples/test_持久化增量.light"
+      ],
+      "本轮目标": "done(v2)：v1 整盘快照写出(首行header+逐事件JSONL)/读入回放/路径编码/头部校验；v2 增量追加：初始化日志(只写header) + 追加事件行(末尾追加，文件不存在自动初始化)，支持增量持久化模式",
+      "反跑判据": "test_持久化.light：事件数断言改反即红；test_持久化增量.light：事件包含断言改反即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007",
+        "L-002(注释续行陷阱)"
+      ]
+    },
+    {
+      "编号": 4,
+      "功能": "消息词汇表（Message/ContentBlock/构造段）",
+      "原版包": "llm/llm/message.ts",
+      "光明模块": "src/消息.light",
+      "状态": "done(v2 多媒体块)",
+      "证据": [
+        "src/消息.light",
+        "examples/test_消息.light",
+        "examples/test_消息深化.light"
+      ],
+      "本轮目标": "done(v2)：v1 text/reasoning/tool-call/tool-result 块 + 构造段；v2 新增 image/audio/resource 块（造图片块/造音频块/造资源块，mimeType 默认值，resource 带 source）；取消息文本 支持新块类型投影（图片→[图片 mimeType: 预览]，音频→[音频 mimeType]，资源→[资源 id: text]）",
+      "反跑判据": "test_消息.light：块数断言改反即红；test_消息深化.light：块类型或文本投影断言改反即红",
+      "语言缺陷": [
+        "L-002"
+      ]
+    },
+    {
+      "编号": 5,
+      "功能": "LLM 流式词汇表（StreamChunk/FinishReason/TokenUsage）",
+      "原版包": "llm/llm/types.ts",
+      "光明模块": "src/流.light",
+      "状态": "v2",
+      "证据": [
+        "src/流.light",
+        "examples/test_流.light",
+        "examples/test_流深化.light"
+      ],
+      "本轮目标": "done：七种流块 + 组装器（块表/完成原因/用量/中断块/组装消息）；v2 新增流块合并：合并连续delta流块为完整消息，支持finish_reason和usage聚合；test_流深化.light 合并流块测试全通过",
+      "反跑判据": "test_流.light：改 完成原因 种类断言或 block-end 冻结断言即红；v2：test_流深化.light 把合并结果断言改反即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007"
+      ]
+    },
+    {
+      "编号": 6,
+      "功能": "deepseek 流式客户端（llm-deepseek 适配器）",
+      "原版包": "llm/llm-deepseek",
+      "光明模块": "src/客户端.light",
+      "状态": "v2",
+      "证据": [
+        "src/客户端.light",
+        "examples/test_客户端.light",
+        "examples/test_客户端超时.light"
+      ],
+      "本轮目标": "done：SSE载荷解析/翻译流(推理文本工具增量/EMPTY_RESPONSE/完成原因映射/用量缓存减出)/harness→wire映射/HTTP对话(重试留待agent-loop)；v2 新增请求超时配置：客户端类新增超时秒属性（默认60），构造函数支持选项[\"超时秒\"]配置，对话响应方法用己.超时秒代替写死的60，对话响应协程方法支持超时秒为空时回退到默认值",
+      "反跑判据": "test_客户端.light：把 翻译用量(100-40) 期望改为 100 即红；v2：test_客户端超时.light 把默认超时秒断言60改30即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007"
+      ]
+    },
+    {
+      "编号": 7,
+      "功能": "agent-loop 多轮循环（turn/step 流程）",
+      "原版包": "core/agent-loop/agent.ts",
+      "光明模块": "src/代理.light（同步）+ src/异步代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
+      "状态": "v2",
+      "证据": [
+        "src/代理.light",
+        "src/异步代理.light",
+        "src/中止.light",
+        "src/重试策略.light",
+        "src/客户端.light（对话响应协程）",
+        "examples/test_代理.light",
+        "examples/test_并行.light",
+        "examples/test_异步代理.light",
+        "examples/test_代理深化.light"
+      ],
+      "本轮目标": "v2：在 v1 基础上新增 max_steps 步数上限（默认25，选项[\"最大步数\"]配置）+ 轮次结果增强（种类/步骤数/输入token/输出token/耗时秒）；修复执行步骤内部循环在工具调用后不退出的问题（新增\"continue\"状态，驱动方法检测后继续下一步），使 max_steps 能正确终止工具调用循环",
+      "反跑判据": "同步：test_代理.light 把 假客户端.调用次数 期望 2 改 1 即红；v2：test_代理深化.light 删最大步数配置即红（无限循环）、改期望步骤数即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007",
+        "L-015",
+        "L-016"
+      ]
+    },
+    {
+      "编号": 8,
+      "功能": "工具注册表 + 执行流水线",
+      "原版包": "core/tools + agent-loop/tool-calls.ts",
+      "光明模块": "src/工具.light + src/代理.light(执行组)",
+      "状态": "v2",
+      "证据": [
+        "src/工具.light",
+        "examples/test_工具.light",
+        "examples/test_工具深.light",
+        "examples/test_代理.light",
+        "examples/test_工具统计.light"
+      ],
+      "本轮目标": "done（T10-05 加深）：注册/注销/查找/描述表/执行策略(exclusive|parallel)/执行(参数解析空→{} 非法→原文)；新增 JSON Schema 参数校验器 校验参数(模式,参数)（支持 type/properties/required/items/enum/const/pattern/minimum/maximum/minLength/maxLength/minItems/maxItems，错误列表含「字段路径(列表，如[\"参数\",\"秒\"])+原因+细节」）；执行流水线接入 prepare→校验(schema)→dispatch→finalize 三阶段（准备钩子可改参/拒绝，收尾钩子 execute 后调用、异常不掩盖主结果）；返回结构不变 {content,isError,concludesTurn,additionalContexts,error}，仅校验失败时为 error 补「字段错误」详情；v2 新增执行统计：注册表统计表属性（调用次数/成功次数/失败次数），注册时初始化、注销时删除、执行时更新，新增统计()方法返回统计表",
+      "反跑判据": "test_工具.light：把 注销后 名单长度 期望 1 改为 2 即红；test_工具深.light：§4.2 把「校验失败→isError」断言 真 改 假 立红；§4.4 把 prepare 计数器断言 1 改 0 立红；§4.3 把 原因为type/enum/pattern 改非对应值立红；v2：test_工具统计.light 把成功次数断言3改2即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007",
+        "L-003",
+        "L-013",
+        "L-014"
+      ],
+      "子集对齐补遗": "T10-05b：补齐原版 json-schema.ts 强制子集缺口 oneOf(精确匹配一个)/additionalProperties:false(拒绝未声明键)/type:null + enum/const 支持null + enum/const type-gated(仅type匹配时校验)；任务书§6 原未覆盖清单按完整JSON Schema列、偏离原版（原版 assertSupportedJsonSchema 不支持 allOf/anyOf/not/$ref/format/multipleOf/uniqueItems 等，会主动拒绝），对齐原版无需实现它们"
+    },
+    {
+      "编号": 9,
+      "功能": "上下文压缩（compaction surface replace）",
+      "原版包": "compaction/compaction",
+      "光明模块": "src/压缩.light",
+      "状态": "done(v3 自动触发+溢出恢复)",
+      "证据": [
+        "src/压缩.light",
+        "examples/test_压缩.light",
+        "examples/test_压缩自动.light",
+        "examples/test_溢出恢复.light",
+        "src/代理.light(step前检查+溢出恢复)",
+        "src/会话.light(压缩替换原位)"
+      ],
+      "本轮目标": "done(v3)：v1 确定性策略 压缩到最近/造摘要/压缩替换原位；v2 自动触发：估算token+压缩管理器+代理循环 step 前检查；v3 溢出恢复：LLM 请求异常/完成原因 error 时检测上下文溢出关键词，自动压缩后重试（最多 2 次），是溢出错误方法",
+      "反跑判据": "test_压缩.light：压缩后条数断言改反即红；test_压缩自动.light：压缩次数断言改反即红；test_溢出恢复.light：客户端调用次数 2 改反即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007"
+      ]
+    },
+    {
+      "编号": 10,
+      "功能": "hooks 事件机制（三事件域）",
+      "原版包": "core/hooks + hook-protocol",
+      "光明模块": "src/钩子.light + src/事件.light(总线) + src/会话.light(会话域接线) + src/代理.light(代理/能力域接线)",
+      "状态": "v2",
+      "证据": [
+        "src/钩子.light",
+        "examples/test_钩子.light",
+        "src/会话.light(连接钩子)",
+        "src/代理.light(连接钩子/发出代理事件/发出能力事件)",
+        "examples/test_一次性监听器.light"
+      ],
+      "本轮目标": "done：三事件域总线(session/agent/capability)+钩子协议(处理器收上下文返回瀑布事件)+瀑布限深+取消订阅；会话域经会话.记录事件广播、代理/能力域经代理循环发出(turn/start/end、tool/executed)；v2 新增一次性监听器：订阅方法支持选项[\"一次性\"]=真，执行后自动从监听器表移除；事件总线发布/瀑布/造取消处理器、钩子系统分发方法均接入一次性移除逻辑；选项参数默认空以保持向后兼容",
+      "反跑判据": "test_钩子.light：把 会话事件广播 断言改为 假 即红；v2：test_一次性监听器.light 把第二次发布后一次性计数断言1改2即红",
+      "语言缺陷": [
+        "L-005(总线.监听器表下标绕法)",
+        "L-004",
+        "L-007"
+      ]
+    },
+    {
+      "编号": 11,
+      "功能": "CLI 入口（headless runner）",
+      "原版包": "apps/cli + bundle/headless",
+      "光明模块": "src/总入口.light + examples/运行CLI.light",
+      "状态": "done(v2 增量持久化+会话列表)",
+      "证据": [
+        "src/总入口.light",
+        "examples/test_cli深化.light"
+      ],
+      "本轮目标": "done(v2)：v1 环境变量参数解析/单轮对话/内置bash工具/会话写出/多轮REPL/续写；v2 增量持久化：REPL和单轮模式均改用增量保存(初始化日志+追加事件行，文件不存在自动初始化，从指定序号开始只追加新增事件)；新增 HARNESS_LIST=1 会话列表功能(列出根目录下所有已有会话，不需要API key)；增量保存函数可测试导出",
+      "反跑判据": "test_cli深化.light：事件包含或工具名断言改反即红",
+      "语言缺陷": [
+        "L-004",
+        "L-007",
+        "L-010",
+        "L-005(成员属性链式下标 对象.属性[0][\"key\"] 被编译为函数调用，需拆局部变量绕)"
+      ]
+    },
+    {
+      "编号": 12,
+      "功能": "子进程执行（subprocess/shell 后端）",
+      "原版包": "subprocess + shell",
+      "光明模块": "src/子进程.light",
+      "状态": "v2",
+      "证据": [
+        "src/子进程.light",
+        "examples/test_子进程.light",
+        "examples/test_子进程码.light",
+        "examples/test_子进程流式.light"
+      ],
+      "本轮目标": "done：运行进程/运行并取输出/进程成功/运行后台/等待后台 全通；退出码精确化（exit(3)→3、exit(0)→0），经 stdlib`外部命令.py` 安全字段 `退出码值`(property→返回码) 绕 L-010/L-004；v2 新增运行并流式输出(命令, 行处理器, 超时)：逐行回调标准输出，返回退出码；当前用运行进程获取全部输出后按换行拆分逐行回调，接口一致后续可替换为真正流式；注意「回调」是保留关键字，参数名用行处理器",
+      "反跑判据": "test_子进程码.light：把 码==3 改成 码==0 即红；v2：test_子进程流式.light 把处理器调用次数断言改反即红",
+      "语言缺陷": [
+        "L-010(返回码属性, 用 退出码值 绕)",
+        "L-004(identifier 拆分, 用整段安全名 退出码值 绕)"
+      ]
+    },
+    {
+      "编号": 13,
+      "功能": "沙箱边界（sandbox）",
+      "原版包": "sandbox",
+      "光明模块": "src/沙箱.light",
+      "状态": "v2",
+      "证据": [
+        "src/沙箱.light",
+        "examples/test_沙箱.light",
+        "examples/test_沙箱资源.light"
+      ],
+      "本轮目标": "done(v1)：路径护栏(允许读/写/禁止表,归一化,禁止优先)+进程隔离(白名单环境+工作目录限定+超时)；不做landlock/seccomp；退出码精确化（经 stdlib`退出码值` 绕 L-010）；v2 新增资源限制配置：构造函数支持选项[\"秒数上限\"][\"兆数上限\"]（0=不限制），新增资源限制描述()方法返回配置文本，运行受限返回结果包含资源限制字段；实际执行限制留待 stdlib 增强（Windows无原生ulimit）；注意属性名用纯中文避免中英文混合标识符拆分",
+      "反跑判据": "test_沙箱.light：把 读禁止路径 断言改为 真 即红；v2：test_沙箱资源.light 把资源限制描述断言改反即红",
+      "语言缺陷": [
+        "L-010(返回码属性)",
+        "L-004"
+      ]
+    },
+    {
+      "编号": 14,
+      "功能": "文件与存储（fs/storage）",
+      "原版包": "fs + storage",
+      "光明模块": "src/文件.light + src/存储.light",
+      "状态": "v2",
+      "证据": [
+        "src/文件.light",
+        "src/存储.light",
+        "examples/test_文件.light",
+        "examples/test_文件深.light",
+        "examples/test_原子写.light"
+      ],
+      "本轮目标": "done：JSON/文本存取 + 目录保证/列目录/拼路径 + 删除(文件/空目录/非空目录递归) + 重命名 + 复制(文件/目录) + 存在性 + stat(大小/类别/存在) + glob通配符查找(非递归/递归) + 临时目录 + 二进制读写 + 键值存储(命名空间隔离/get/set/delete/keys/JSON持久化/重开读回)；v2 新增原子写文本：先写临时文件（路径+.tmp.+时间戳），写入成功后删除目标文件（Windows兼容）再重命名，失败时清理临时文件，确保写入过程中崩溃不破坏原文件",
+      "反跑判据": "test_文件深.light：6组判据各改反一行即红（文本/JSON/二进制往返、目录操作递归删除、stat大小、glob计数、存储命名空间隔离、重开读回）；v2：test_原子写.light 把内容断言改反即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 15,
+      "功能": "终端会话（terminal/PTY）",
+      "原版包": "packages/terminal",
+      "光明模块": "src/终端.light",
+      "状态": "done(v2 PTY)",
+      "证据": [
+        "src/终端.light",
+        "examples/test_终端.light",
+        "examples/test_终端PTY.light"
+      ],
+      "本轮目标": "done(v2 PTY)：管道式 终端会话（spawn/写入/读取(超时)/发信号/状态机/退出码/关闭）v1 + 伪终端会话（真 tty，基于 stdlib/伪终端.light 的 伪控制台：Windows ConPTY / POSIX openpty），接口对齐可互换；SIGINT→Ctrl+C、SIGTERM/SIGKILL→关闭(强杀)；PTY 无退出码(码=空)；ANSI 原样保留不解析",
+      "反跑判据": "test_终端.light：把 输出 断言 hi 改成 nope 即红；或把 已退出 状态改反即红",
+      "语言缺陷": [
+        "L-010(终端 模块名首字符关键字 → 从 终端 导入 失败)",
+        "L-004(导入后 终端.终端会话 被拆成 终端().终(...))",
+        "L-012(模块名与类名共享关键字前缀，跨模块成员访问被拆)"
+      ]
+    },
+    {
+      "编号": 16,
+      "功能": "MCP 客户端（mcp-client，P2 生态层）",
+      "原版包": "mcp/mcp-client",
+      "光明模块": "src/mcp客户端.light",
+      "状态": "done(v2: streamable-http+重连+图片投影)",
+      "证据": [
+        "src/mcp客户端.light",
+        "examples/test_mcp.light",
+        "examples/test_mcp_http.light",
+        "examples/mcp_服务器.py",
+        "examples/mcp_http服务器.py"
+      ],
+      "本轮目标": "done(v2)：v1 stdio 传输 + 初始化握手 + tools/list 发现注册 + tools/call 调用；v2 深化：①streamable-http 传输（MCPHttpClient 类，POST JSON-RPC + SSE/JSON 响应解析，注册MCPHTTP服务器 顶层函数）；②重连策略（请求失败/服务器退出自动重连，指数退避，最多3次）；③图片块投影（tools/call 返回 image 块时投影为 [图片 mimeType: data预览]，不再是未支持占位）",
+      "反跑判据": "test_mcp.light：echo/add 断言改反即红；test_mcp_http.light：工具数 3 改 4 即红，或 echo/add 断言改反即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 17,
+      "功能": "用户审批/交互（interaction）",
+      "原版包": "packages/interaction",
+      "光明模块": "src/审批.light",
+      "状态": "v2",
+      "证据": [
+        "src/审批.light",
+        "examples/test_审批.light",
+        "src/代理.light(执行组审批检查接入)",
+        "examples/test_审批深化.light"
+      ],
+      "本轮目标": "done：审批管理器类（approve/deny/ask 三策略 + 按工具名配置 + 审批记录 + 统计）；代理循环 选项[审批管理器] 接入，执行组在工具执行前检查，deny 则记录 tool/error 事件并跳过；ask 模式 v1 简化为拒绝并记录待审批；v2：查询记录(工具名/状态/时间范围筛选，参数为空不过滤) + 统计v2(总数/批准数/拒绝数/待审批数) + 批量设置策略(字典批量配置) + 设置配置/取配置(默认审批人/超时时间等)，请求审批记录新增状态和时间字段",
+      "反跑判据": "test_审批.light：把 批准数 2 改 3 即红；或把 tool/error 事件断言改反即红；v2：test_审批深化.light 把 查询记录工具名过滤期望2改3即红、统计v2待审批数改反即红、批量策略工具A批准改假即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 18,
+      "功能": "子智能体/Subagent",
+      "原版包": "packages/subagent",
+      "光明模块": "src/子智能体.light",
+      "状态": "v2",
+      "证据": [
+        "src/子智能体.light",
+        "examples/test_子智能体.light",
+        "examples/test_子智能体深化.light"
+      ],
+      "本轮目标": "done：子智能体类（独立会话+独立代理循环+工具子集，执行(任务)返回最后助手消息文本）；造子智能体工具 顶层函数（包装为工具定义，可注册到主 agent 注册表，参数{任务}）；状态查询（名字/执行次数/事件数）；v2：执行状态(空闲/运行中/完成/失败 + 已运行秒 + 当前步骤 + 总耗时) + 设置最大深度 + 嵌套深度限制(超限返回嵌套深度超限) + 执行统计(调用次数/总耗时/成功次数/失败次数/成功率)，执行方法内部增强状态追踪和耗时统计(签名不变)",
+      "反跑判据": "test_子智能体.light：把 执行次数 1 改 2 即红；或把 结果包含子任务完成 断言改反即红；v2：test_子智能体深化.light 把 执行后状态完成改空闲即红、嵌套深度超限结果不含嵌套深度超限即红、执行统计成功率改反即红",
+      "语言缺陷": [
+        "L-019(变量名与类名相同导致 UnboundLocalError：设 X 为 新建 X(...) 需改变量名)"
+      ]
+    },
+    {
+      "编号": 19,
+      "功能": "遥测/指标收集（telemetry）",
+      "原版包": "packages/telemetry",
+      "光明模块": "src/遥测.light",
+      "状态": "v2",
+      "证据": [
+        "src/遥测.light",
+        "examples/test_遥测.light",
+        "src/代理.light(遥测接入)",
+        "examples/test_遥测深化.light",
+        "src/遥测导出器.light"
+      ],
+      "本轮目标": "done：遥测收集器类（轮次/步骤/工具调用/错误记录，token用量+延迟统计，汇总+输出）；代理循环 选项[遥测] 接入（轮次开始/结束、步骤延迟+用量、工具调用）；适配光明用量字段 输入/输出；v2：导出指标(json格式含指标名/值/时间戳/维度标签) + 聚合统计(按轮次/步骤维度，总调用数/总耗时/平均耗时/错误数) + 错误分类统计(按错误类型分类) + 持久化接口(写入JSON文件)；v3(A1 OTel对齐)：OTel GenAI语义span结构(trace_id/span_id/parent_span_id/kind/attributes/status) + 调用树(会话→轮次→步骤→LLM/工具) + span栈上下文管理 + 按模型/工具维度聚合统计(调用数/总耗时/平均耗时/成功率) + JSONL/OTLP/控制台三输出器 + capture_content默认不采集正文(隐私保护) + 输出器管理器(广播输出) + 向后兼容(旧方法全部保留)",
+      "反跑判据": "test_遥测.light：总步骤或总工具调用断言改反即红；v2：test_遥测深化.light 把 导出指标JSON含时间戳改假即红、聚合统计按轮次总调用数改反即红、错误分类timeout计数改反即红、持久化文件不含汇总即红",
+      "语言缺陷": [
+        "L-020(函数名包含接收子串导致词法分析误判：测直接收集→测直接遥测)"
+      ]
+    },
+    {
+      "编号": 20,
+      "功能": "代码执行运行时（code-runtime）",
+      "原版包": "packages/code-runtime",
+      "光明模块": "src/代码运行时.light",
+      "状态": "v2",
+      "证据": [
+        "src/代码运行时.light",
+        "examples/test_代码运行时.light",
+        "examples/test_代码运行时深化.light"
+      ],
+      "本轮目标": "done：代码运行时类（subprocess 执行 Python 代码，捕获 stdout/stderr/返回码，超时控制，执行取文本）；造代码执行工具 顶层函数（包装为工具定义可注册到注册表）；v2：超时可配置(构造函数选项) + 输出大小限制(最大输出字节数，超限截断并标记已截断) + 执行统计(执行次数/总耗时/成功次数/失败次数/成功率/平均耗时)",
+      "反跑判据": "test_代码运行时.light：输出断言或返回码断言改反即红；v2：test_代码运行时深化.light 把 输出超限已截断改假即红、执行统计成功率改反即红、自定义超时10秒改30即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 21,
+      "功能": "e2b 云沙箱客户端（e2b）",
+      "原版包": "packages/e2b",
+      "光明模块": "src/e2b客户端.light",
+      "状态": "v2",
+      "证据": [
+        "src/e2b客户端.light",
+        "examples/test_e2b.light",
+        "examples/test_e2b深化.light"
+      ],
+      "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）；v2：会话管理(创建会话/列出会话/关闭会话) + 执行超时配置 + 连接状态查询(未连接/已连接/远程模式/本地模拟 + 最后心跳 + 活跃会话数)",
+      "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红；v2：test_e2b深化.light 把 创建会话后列表长度改反即红、关闭会话后状态非closed即红、连接状态本地模拟改远程模式即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 22,
+      "功能": "待办任务管理（todo_write 整表替换工具）",
+      "原版包": "packages/todo/tool-todo",
+      "光明模块": "src/待办.light",
+      "状态": "done",
+      "证据": [
+        "src/待办.light",
+        "examples/test_待办.light"
+      ],
+      "本轮目标": "done：1:1 复刻原版 tool-todo 的 todo_write 工具——整表替换模型（每次发送完整列表整体覆盖旧列表，无部分更新）；schema 外值校验（content 必已 trim 且非空、content 唯一、in_progress 至多一个，除非 允许多重 并行纪律）；向会话追加 todo/write 事件（last-write-wins）；返回 {todos, counts}；turn/start 投影清空；非 agent 会话(空)拒绝；持久化日志校验（对齐 invariant.ts）。对照 10 项判据全绿。",
+      "反跑判据": "test_待办.light：把 用例1 整表替换后清单长度 期望1 改2 即红；用例6 单活跃双in_progress isError 真 改假 即红；用例8 末事件类型 todo/write 改 tool/done 即红；用例9 turn/start 后投影清空 真 改假 即红",
+      "语言缺陷": [
+        "L-022(匿名闭包赋值不被接受：设 X 为 段落 接收 参数 报错，须用具名段落)"
+      ]
+    },
+    {
+      "编号": 23,
+      "功能": "重复工具调用提醒守卫（repeat-tool-reminder）",
+      "原版包": "packages/guard/repeat-tool-reminder",
+      "光明模块": "src/重复提醒.light",
+      "状态": "done",
+      "证据": [
+        "src/重复提醒.light",
+        "examples/test_重复提醒.light"
+      ],
+      "本轮目标": "done：1:1 复刻原版 repeat-tool-reminder 的 advisory per-agent repeat-call detector——按 (工具名, 规范化参数) 维护连续重复链；连续重复命中阈值 [3,5,8] 注入提醒（不否决、不改写）；首阈值 GENTLE、后续 DETAILED（点名工具/次数/参数预览）；参数规范化=深度键排序后序列化（键序无关）；include/exclude 为 * 通配工具名（纯光明递归实现，不依赖 python re）；用户插入消息打断循环（重置链）；阈值/预览上限 fail-loud 校验。对照 10 组用例全绿。",
+      "反跑判据": "test_重复提醒.light：用例1 第3次触发 GENTLE、第5次 DETAILED(含 consecutive_calls)；用例2 键序不同第3次仍触发；用例3 换参数后计数重置；用例4 include 不匹配不跟踪；用例5 exclude 匹配透明；用例6 阈值<2/空/重复均抛错且升序去重；用例7 长参数第5次 DETAILED 含 more chars；用例8 代理隔离；用例9 重置后重新计数；用例10 通配匹配单测。把任一期望改反即红。",
+      "语言缺陷": [
+        "L-023(裸表达式跨行续行不支持：行尾悬空 加上/运算符 续行报意外换行)",
+        "L-024(for 循环语法为 遍历 X 之 Y:，而非 循环 对于 X 在 Y:)",
+        "L-025(裸 包含/排除 作标识符与保留词冲突，需改名如 包含名单/排除名单)"
+      ]
+    },
+    {
+      "编号": 24,
+      "功能": "凭据管理（credentials：API key/provider 读取 + 红化脱敏）",
+      "原版包": "packages/credentials",
+      "光明模块": "src/凭据.light",
+      "状态": "done",
+      "证据": [
+        "src/凭据.light",
+        "examples/test_凭据.light"
+      ],
+      "本轮目标": "done：凭据加载(从环境变量/选项读取 provider key)、凭据红化(脱敏打印，key 中段掩码)、凭据相等比较、缺省回退；1:1 复刻原版 credentials 纯逻辑核心。",
+      "反跑判据": "test_凭据.light：把 key 红化后「非空掩码」断言改反即红；或把「缺省回退」期望值改反即红。",
+      "语言缺陷": []
+    },
+    {
+      "编号": 25,
+      "功能": "设置（settings：harness 全局配置解析 + 校验）",
+      "原版包": "packages/settings",
+      "光明模块": "src/设置.light",
+      "状态": "done",
+      "证据": [
+        "src/设置.light",
+        "examples/test_设置.light"
+      ],
+      "本轮目标": "done：设置加载(从文件/选项合并)、字段校验(必填/类型)、默认值回退、配置相等比较；1:1 复刻原版 settings 纯逻辑核心。",
+      "反跑判据": "test_设置.light：把某字段默认值断言改反即红；或把校验失败(缺必填)期望的 isError 真 改 假 即红。",
+      "语言缺陷": []
+    },
+    {
+      "编号": 26,
+      "功能": "会话引用（session-reference：dsh-session: URI 编解码 + markdown 提及解析）",
+      "原版包": "packages/session-reference",
+      "光明模块": "src/会话引用.light",
+      "状态": "done",
+      "证据": [
+        "src/会话引用.light",
+        "examples/test_会话引用.light"
+      ],
+      "本轮目标": "done：会话引用 URI 编码(会话id → dsh-session:Base64URL(序列化JSON{payload})))、解码(严格：拒绝带 = 填充/非规范 Base64URL 字符/非 JSON/缺 payload)、markdown 文本解析(扫描 提及 与 裸 URI，去重)、标签转义；1:1 复刻原版 session-reference 纯逻辑核心。",
+      "反跑判据": "test_会话引用.light：把「拒绝带填充 URI」的断言改反即红；或把 round-trip 后 id 相等断言改反即红；或把「裸 URI 解析去重」计数断言改反即红。",
+      "语言缺陷": [
+        "L-027(Base64URL 解码不补 = 填充，已在 解码会话引用URI 内手动补填充绕过)",
+        "L-028(截取/匹配正则 须从 字符串处理 导入，且不存在 字符串以开头/包含 这类近似内置名，须用 开头/字符串包含)"
+      ]
+    },
+    {
+      "编号": 27,
+      "功能": "溢出（spill：超大结果 head/tail 预览 + 占位替换 + 字节预算）",
+      "原版包": "packages/spill + spill-policy + util/output-retention(TextRetainer)",
+      "光明模块": "src/溢出.light",
+      "状态": "done",
+      "证据": [
+        "src/溢出.light",
+        "examples/test_溢出.light",
+        "examples/test_溢出恢复.light",
+        "examples/test_溢出重试深化.light"
+      ],
+      "本轮目标": "done：字节预算预览(头尾字节截断，头=(预算+1)//2、尾=预算//2；预算0→全省略，预算≥总长→不变)、省略描述(无/精确/未知三态)、溢出提示包裹(定位符+检索提示)、模拟保存文本(saveText 契约 → {定位符,字节长度,检索提示})、溢出替换(预留通知+字节，不变量 字节长度(替换)<=上限)、纯文本扁平化(任何非文本块返回 空)、上限校验(非负整数)；1:1 复刻原版 spill 纯逻辑核心。",
+      "反跑判据": "test_溢出.light：把「预算0→全省略」的断言改反即红；或把「溢出替换不变量 字节长度(替换)<=上限」断言改反即红；或把「纯文本扁平化遇非文本块返回 空」断言改反即红。",
+      "语言缺陷": [
+        "L-028(字节长度 须从 溢出 模块内定义/导入而非自动内置；判型须用 是整数 而非不存在的 整数())"
+      ]
+    },
+    {
+      "编号": 28,
+      "功能": "反馈（feedback：命令/消息反馈记录 + 乐观锁 CAS）",
+      "原版包": "packages/feedback + command-feedback + message-feedback",
+      "光明模块": "src/反馈.light",
+      "状态": "done",
+      "证据": [
+        "src/反馈.light",
+        "examples/test_反馈.light"
+      ],
+      "本轮目标": "done：记录反馈(trim→空 抛错)、最大备注字节校验(≥1 正整数)、会话/头部身份匹配、备注解析(undefined→空 / trim空→note-blank / 超字节→note-too-large)、版本冲突 CAS(版本 != 现有版本??空)、空操作检测(rating+note 不变)、反馈服务类(生成版本「v」+计数 / 取现有项 / 放置 put / 删除 delete 状态机)；1:1 复刻原版 feedback 纯逻辑核心。",
+      "反跑判据": "test_反馈.light：把「版本冲突 CAS 拒绝旧版本」断言 真 改 假 即红；或把「删除不存在项→无论版本均成功」断言改反即红；或把「空操作不写入新版本」断言改反即红。",
+      "语言缺陷": [
+        "L-028(字节长度 须从 溢出 导入，非自动内置)"
+      ]
+    },
+    {
+      "编号": 29,
+      "功能": "定时（schedule：RFC3339/UTC 即时编解码 + 调度记录折叠状态机 + 每发生解析）",
+      "原版包": "packages/schedule/schedule/src/domain.ts",
+      "光明模块": "src/定时.light",
+      "状态": "done",
+      "证据": [
+        "src/定时.light",
+        "examples/test_定时.light"
+      ],
+      "本轮目标": "done：日历换算(闰年/月天数/日期↔天数迭代)、UTC 即时编解码(epoch ms ↔ RFC3339 Z，手搓 day-count 已对 Python datetime 验证)、偏移即时解析(RFC3339 Z/±hh:mm)、Id 解码(严格版本/键/即时校验 + round-trip 校验)、调度记录解码/折叠(事件派发/调度id复用/删除派发校验)、每发生解析(最新+下一即时)、创建即时/于/每 记录(严格未来 + 规范 UTC)；IANA 时区本地日历形式不可移植(仅支持 RFC3339 偏移/Z 字符串形式)，已文档化缺口。",
+      "反跑判据": "test_定时.light：把「非规范即时(带填充/非 base64url)解码拒绝」断言改反即红；或把「折叠状态机 id 复用」断言改反即红；或把 createAfter 严格未来校验断言改反即红；或把 resolveEveryOccurrence 最新+下一 断言改反即红。",
+      "语言缺陷": [
+        "L-026(列表排序 为原地排序且返回 None，需自写 排序列表 选择排序)",
+        "L-028(截取/字符转ASCII 须从 字符串处理 导入，非自动内置)"
+      ]
+    },
+    {
+      "编号": 30,
+      "功能": "文件引用（file-reference：@path / @\"path\" 游标令牌提取 + 候选路径格式化）",
+      "原版包": "packages/context/file-reference（grammar.ts；index.ts 为宿主 RPC 缝隙，非纯逻辑，未复刻）",
+      "光明模块": "src/文件引用.light",
+      "状态": "done",
+      "证据": [
+        "src/文件引用.light",
+        "examples/test_文件引用.light"
+      ],
+      "本轮目标": "done：activeAtToken(游标处提取 @path/plain 或 @\"path\"/quoted 令牌，含 (?:^|\\s) 边界与行尾锚定，邮箱等词中@不触发) + formatFileMention(候选路径→提示文本，目录补/、含空白或保留引号走 @\"...\" 包裹、目录保留开引号便于下钻、含控制字符或双引号返回 空)；1:1 复刻 grammar.ts 纯逻辑。注：原版用正则捕获组，光明 匹配正则 仅返回布尔，故以原生字符串原语复刻（与 repeat-tool-reminder 纯光明递归同范式）。",
+      "反跑判据": "test_文件引用.light：用例2 邮箱非触发断言改反即红；用例3 quoted 含空格断言改反即红；用例11 闭合引号后走 plain 断言改反即红；用例E 含引号不安全返回 空 改反即红；用例C file 含空白引号包裹改反即红。",
+      "语言缺陷": [
+        "L-029(双引号串内 \\\" 转义不产出字面 \"，改用单引号串 '...' 表达含 \" 的字面量)"
+      ]
+    },
+    {
+      "编号": 31,
+      "功能": "时间上下文（time-context：ISO 形时间戳格式化 + 请求浏览器时区派生与策略文案）",
+      "原版包": "packages/context/time-context（timestamp.ts + request-zone.ts；index.ts/invariant.ts 为宿主 Cordis 注册，非纯逻辑，未复刻）",
+      "光明模块": "src/时间上下文.light",
+      "状态": "done",
+      "证据": [
+        "src/时间上下文.light",
+        "examples/test_时间上下文.light"
+      ],
+      "本轮目标": "done：时区偏移文本 + 格式化时间戳（epoch ms 与偏移 → YYYY-MM-DDTHH:mm:ss±HH:MM[Zone]，1:1 复刻 timeZoneName 的 GMT→GMT+00:00→slice(3) 偏移归一化；墙上时钟由 epoch+偏移 计算）＋ 是IANA时区（等价于 /^[A-Za-z][A-Za-z0-9_+.-]*(?:\\/[A-Za-z0-9_+.-]+)+$/，以手写字符扫描复刻，含首字符字母、≥1 个非空 /段、段内字符集、末段非空）＋ 浏览器时区（user-rpc 来源读取与 UTC/IANA 校验，非法抛 TypeError）＋ 推导浏览器时区上下文（去重＋排序 → resolved/mixed/missing）＋ 渲染浏览器时区上下文（面向模型的一行策略文案，未知种类抛错对应 assertNever）。",
+      "反跑判据": "test_时间上下文.light：时区偏移文本(0) 由 +00:00 改 -00:00 即红；格式化时间戳 去掉末尾 [时区] 包裹即红；mixed 分支去掉 序列化JSON 包裹即红；推导 不做去重（两个相同时区被判 mixed）即红；unknown 种类不抛错即红。",
+      "语言缺陷": [],
+      "不可移植缺口": [
+        "createTimestampFormatter 依赖 Intl.DateTimeFormat('en-US', { timeZoneName: 'longOffset' })，纯光明无 Intl/时区数据库 → 以「固定偏移分钟」等价替代，输出串形态与 slice(3) 语义完全一致",
+        "browserTimeZone 的 Intl 规范化校验（resolvedOptions().timeZone === value）依赖时区数据库 → 只能做 UTC/IANA 形态的语法校验，无法判定是否已规范化或被系统支持（与 #29 定时 的 IANA 本地日历缺口同性质）"
+      ]
+    },
+    {
+      "编号": 32,
+      "功能": "上下文指令（agent-instructions：模板渲染/字节预算/作用域键/摘要/变更/基线）",
+      "原版包": "packages/context/agent-instructions（render.ts / digest.ts / config.ts / files.ts / state.ts）",
+      "光明模块": "src/智能体指令.light",
+      "状态": "done",
+      "证据": [
+        "src/智能体指令.light",
+        "examples/test_智能体指令.light"
+      ],
+      "本轮目标": "done：1:1 复刻 render（字节预算渲染、作用域键编解码、XML 框架转义、按预算截断/省略）、digest（SHA-1 摘要，严格采用去除首尾空白语义对齐原版 content.trim()）、config（配置解析 maxBytes / maxSourceBytes 默认）、files（祖先链/后代目录间/相对显示/按目录去重指令文件）、state（相同指令变更比较/基线指令状态/保留的指令版本更新）。不可移植缺口：files 的文件系统 stat/read、provider 抽象、AbortSignal 取消；state 的会话事件扫描、WeakMap 缓存、cordis 钩子；tmux 查询见 #33。",
+      "反跑判据": "test_智能体指令.light：把 digest SHA1(去除首尾空白(内容)) 期望改反即红；把 解码作用域键 往返断言改反即红；把 字节预算回退链（文件/紧凑/截断）任一分支期望改反即红；把 变更渲染 Additional/removed/updated 文案改反即红；把 空替换（budget 不足）返回空串断言改反即红。",
+      "语言缺陷": [
+        "L-030",
+        "L-031",
+        "L-032",
+        "L-033"
+      ]
+    },
+    {
+      "编号": 33,
+      "功能": "tmux 上下文（tmux-context：位置渲染/最近注入状态/刷新间隔校验）",
+      "原版包": "packages/context/tmux-context（index.ts）",
+      "光明模块": "src/tmux上下文.light",
+      "状态": "done",
+      "证据": [
+        "src/tmux上下文.light",
+        "examples/test_tmux上下文.light"
+      ],
+      "本轮目标": "done：1:1 复刻 renderState（稳定状态块，windowName 经 序列化JSON 包裹引号，等价于原版 JSON.stringify(location.windowName)）、renderReading（易变轮次前导行 + 状态块）、latestInjectedState（倒序回溯事件表，首个 tmux-context 插件文本块切出状态块；非文本块/空内容视作无先前状态返回空）、validateRefreshInterval（非负安全整数校验，非法抛 TypeError）。不可移植缺口：queryTmuxLocation 依赖 tmux display-message + ps -o tty= 外部 shell 执行（环境依赖），纯逻辑层无法 1:1 复现，已文档化缺口。",
+      "反跑判据": "test_tmux上下文.light：把 渲染状态 期望串（含 windowName 的 JSON 引号）改反即红；把 渲染阅读 轮次前缀改反即红；把 最近注入状态 多行切出状态块断言改反即红；把 校验刷新间隔 负间隔/浮点间隔应抛错改为不抛错即红。",
+      "语言缺陷": []
+    },
+    {
+      "编号": 34,
+      "功能": "主目录路径（home-paths：~ 展开 / DSH_HOME 解析 / 主目录拼接 / 显示名）",
+      "原版包": "packages/util/home-paths",
+      "光明模块": "src/主目录路径.light",
+      "状态": "done",
+      "证据": [
+        "src/主目录路径.light",
+        "examples/test_主目录路径.light"
+      ],
+      "本轮目标": "done：1:1 复刻 expandHomePath（~ / ~\\ / ~/ 展开）、resolveDshHome（配置 > $DSH_HOME > 默认 ~/.dsh 优先级，空白环境变量视为未设置）、dshHomePath（段拼接）、dshHomeDisplay（默认 ~/.dsh / 其余 $DSH_HOME）。原版依赖 Node homedir()，此处把操作系统主目录作为显式参数注入，使纯函数可测。",
+      "反跑判据": "test_主目录路径.light：把 展开主目录路径(\"~\") 期望改非主目录即红；把 解析主目录(空,{\"DSH_HOME\":\"/env\"}) 期望改非 /env 即红；把 主目录显示(默认) 期望改非 ~/.dsh 即红。",
+      "语言缺陷": [
+        "L-028(去除首尾空白 须从 字符串工具 导入，非自动内置)"
+      ]
+    },
+    {
+      "编号": 35,
+      "功能": "目标折叠（goal/goal：goal/change 严格解码 + 重放折叠状态机）",
+      "原版包": "packages/goal/goal（fold.ts + domain.ts）",
+      "光明模块": "src/目标折叠.light",
+      "状态": "done",
+      "证据": [
+        "src/目标折叠.light",
+        "examples/test_目标折叠.light"
+      ],
+      "本轮目标": "done：1:1 复刻 decodeGoalChange（kind/version/operation 严格校验、字段集合精确匹配）、decodeSnapshot（phase 分支字段集、objective 归一校验、blockedReason 小写短横线校验）、applyGoalChange/applyGoalEvent/foldGoal（create/edit/pause/resume/complete/block/clear 全转移 + user/message 轮次准入）。fail-loud 语义与原版一致。",
+      "反跑判据": "test_目标折叠.light：把 生命周期折叠 后 goal 期望改非 空 即红；把 clear 后 lastRef 期望改非墓碑即红；把 是小写短横线(\"Abc\") 期望改 真 即红；把 轮次预算耗尽 用例改不抛错即红。",
+      "语言缺陷": [
+        "L-035(列表取 非内置，自写 遍历+计数 版)",
+        "L-026(列表排序 原地返 None，自写 排序列表 选择排序)"
+      ]
+    },
+    {
+      "编号": 36,
+      "功能": "会话查询过滤（session-query：逻辑会话/事件文档 过滤器 编译/物化/匹配）",
+      "原版包": "packages/session-query/session-query/src/filters.ts",
+      "光明模块": "src/会话查询过滤.light",
+      "状态": "done",
+      "证据": [
+        "src/会话查询过滤.light",
+        "examples/test_会话查询过滤.light"
+      ],
+      "本轮目标": "done：1:1 复刻 filterSessionResults / filterSessionEventDocuments（保留输入顺序的 AND 叠加）、materializeSessionResultFilters / materializeSessionEventResultFilters（值复制 + 枚举白名单校验 + 范围校验）、compileSessionTextFilter（大小写不敏感 + 空白灵活的归一匹配：小写折叠后过滤令牌须按序作为文档令牌连续子序列）。原版 cursor.ts 仅品牌化字符串无逻辑，corpus/documents/extraction 为宿主侧抽取，纯逻辑层未复刻。",
+      "反跑判据": "test_会话查询过滤.light：把 id=s1 命中数期望改非 1 即红；把 availability=live 命中改非 s1 即红；把 文本过滤匹配(\"Hello World Foo\",\"hello world\") 期望改 假 即红；把 物化 availability 含 bogus 应抛错改不抛即红。",
+      "语言缺陷": [
+        "L-034(字符串内 { } 破坏词法：断言消息改用「含」避免花括号)",
+        "L-035(列表取 非内置，自写)"
+      ]
+    },
+    {
+      "编号": 37,
+      "功能": "ACP 内容准入/投影（acp-content：prompt 内容准入校验 + assistant 内容投影）",
+      "原版包": "packages/acp/acp/src/content.ts",
+      "光明模块": "src/acp内容.light",
+      "状态": "done",
+      "证据": [
+        "src/acp内容.light",
+        "examples/test_acp内容.light"
+      ],
+      "本轮目标": "done：1:1 复刻 admitAcpPrompt（ACP prompt 内容准入：校验轮先拒绝 audio/resource 非法类型、图像经 解码图像块 转引用、未知类型抛 unsupported；投影轮文本与 resource_link 合并为待定文本、图像在 flush 文本后置入、维持线顺序；空提示判定：无任何图像且无非空白文本块则抛 empty prompt）+ assistantBlockToAcp（核心 assistant 块投影为 ACP 线内容：空文本→空、图像经注入附件库取回 data/mimeType、非输出块→空）+ 图像媒体类型收窄 + 是规范base64（RFC4648 字符类校验 + 长度/填充结构，规避 L-034 花括号）+ 资源链接文本渲染。IO 抽象：原版 saveImages() 落盘→直接返回 {mediaType,data} 引用；assistantBlockToAcp 的 readImage 经调用方注入附件库字典，纯逻辑行为不变。",
+      "反跑判据": "test_acp内容.light：把 图像提示 断言(attachment 引用)改反即红；把 资源链接投影进文本 子串断言改反即红；把 image 未启用须抛 改不抛即红；把 空提示须抛 改不抛即红；把 规范base64(\"A===\") 期望 假 改 真 即红；把 assistant 图像 经注入库回投断言改反即红。",
+      "语言缺陷": [
+        "L-034(字符串内 { } 破坏词法：是规范base64 用字符类正则 ^[A-Za-z0-9+/=]*$ 替代 {4} 量词)",
+        "L-035(列表取下标 非内置，自写 列表取 遍历+计数)"
+      ]
+    },
+    {
+      "编号": 38,
+      "功能": "技能纯逻辑核心（skill：名校验 / 调用策略 / 内容渲染含 XML 转义 / 候选·定义·运行时校验 / 投影 / 比较排序）",
+      "原版包": "packages/skill/skill/src/index.ts",
+      "光明模块": "src/技能清单.light",
+      "状态": "done",
+      "证据": [
+        "src/技能清单.light",
+        "examples/test_技能清单.light"
+      ],
+      "本轮目标": "done：对齐原版 SkillRegistry 可纯函数化逻辑层——kebab-case 技能名校验（手写字符扫描，规避 L-034 花括号陷阱）、model/user 调用策略、资源提示与 <skill_content> 渲染（& \" < > 转义）、规范化 provider 观察（数组→{candidates,complete:true}）、候选/运行时/定义三级校验、到摘要/运行时候选投影、按名/按候选(rank→providerOrder→localOrder)比较。已规避三处语言坑：缺失键 [] 抛 键错误（取可选 守卫，L-036）、输出 为保留字不可作标识符（改名 观察）、是字典/是列表 置于 或/且 链不加括号时词法切错（显式括号分组）。",
+      "反跑判据": "test_技能清单.light：把 是技能名(\"foo-bar\") 期望 真 改 假 即红；把 规范化提供方观察([\"a\",\"b\"],\"p\")[\"complete\"] 期望 真 改 假 即红；把 运行时候选(...)[\"rank\"]==250 改 !=250 即红；把 转义属性(\"a&b\\\"c<d\") 期望串改反即红；把 比较候选(左,右) 返回 -1 改 1 即红；把 校验候选 合法用例改为必抛即红。",
+      "语言缺陷": [
+        "L-036(缺失键 [] 抛 键错误，可选字段须 取可选 守卫；伴生：输出 保留字不可作标识符、是字典/是列表 置于 或/且 链需加括号)"
+      ]
+    },
+    {
+      "编号": 39,
+      "功能": "计划模式纯逻辑核心（plan-mode：配置校验 / 首个标题抽取 / 计划模式折叠 / 未闭合轮次判定 / 末标题处计划模式 / plan 投影单元状态机 apply·view）",
+      "原版包": "packages/plan/plan-mode/src/index.ts",
+      "光明模块": "src/计划模式.light",
+      "状态": "done",
+      "证据": [
+        "src/计划模式.light",
+        "examples/test_计划模式.light"
+      ],
+      "本轮目标": "done：对齐原版 PlanModeController 可纯函数化逻辑层——resolveConfig（section 字符串/非空/无未知键校验）、firstHeading（手写字符扫描抽取首个 markdown 标题，规避 L-034 花括号陷阱与 匹配正则 仅布尔的局限）、foldPlanMode（末 plan/mode 胜出）、hasOpenTurn、planModeAtLastHeader（折到末 request/header）、以及「plan」投影单元的 init/apply/view 状态机（command/run 记 running、command/done 成功且 wanted≠active 才落实、plan/mode 落实 active 清 wanted、view 算 pending）。已剔除 Cordis Service/WeakMap/pendingIntents/systemPrompt/commands/tools/userQuestions/session.append 等运行时胶水，只保留可纯函数折叠的逻辑层。落地时踩 3 处语言坑：断言(条件,标签) 降级为 no-op assert 元组（L-037，改用 断言相等/检测抛错）、截取到末尾 被按前缀拆成 截取+末尾 生成垃圾（L-038，改用 截取 三参）、退出循环 非保留字（L-039，改用 跳出）。",
+      "反跑判据": "test_计划模式.light：把 首个标题(\"# Hello\") 期望 \"Hello\" 改 \"X\" 即红；把 校验配置({\"section\":\"x\"})[\"section\"] 期望 \"x\" 改 \"y\" 即红；把 折叠计划模式([plan/mode active:真],1) 期望 真 改 假 即红；把 有未闭合轮次([turn/start]) 期望 真 改 假 即红；把 投影应用(state, command/run plan off) 后 running.wanted 期望 假 改 真 即红；把 投影视图 后 pending 期望 假 改 真 即红；把 校验配置({\"section\":1}) 必抛改成不抛即红（检测抛错 生效）。",
+      "语言缺陷": [
+        "L-037(断言(条件,标签) 降级为 assert(条件,标签) 元组，永远为真、永不报错；须改用 断言相等 或 如果/抛出)",
+        "L-038(截取到末尾(行,j) 被词法拆成 截取+末尾 生成垃圾，改用 截取(行,j,字符串长度(行)))",
+        "L-039(退出循环 不是保留字，break 应写 跳出)"
+      ]
+    },
+    {
+      "编号": 40,
+      "功能": "ACP 转码纯逻辑核心（codec：harness 轮次终结原因 → ACP 终止原因词表映射 turnEndToStopReason）",
+      "原版包": "packages/acp/acp/src/codec.ts",
+      "光明模块": "src/acp转码.light",
+      "状态": "done",
+      "证据": [
+        "src/acp转码.light",
+        "examples/test_acp转码.light"
+      ],
+      "本轮目标": "done：对齐原版 codec.ts 唯一导出函数 turnEndToStopReason——把 {kind} 判别联合映射到 ACP 线缆的 StopReason 词表（completed→end_turn、max-tokens→max_tokens、aborted→end_turn、interrupted→cancelled、blocked/error→end_turn、未知 kind→end_turn default）。原版其余 ACP 线缆细节（序列化/反序列化、传输、握手）都在 index.ts/宿主胶水里，不在本纯逻辑文件内，故不属本次复刻。光明以 {\"kind\":字符串} 字典表达，键名一致。命名规避了 到/终/结束 等关键字（L-004 家族），函数名用 轮次转停止原因（转 仅为内置函数名前缀、非关键字，安全）。",
+      "反跑判据": "test_acp转码.light：把 轮次转停止原因({\"kind\":\"max-tokens\"}) 期望 \"max_tokens\" 改 \"end_turn\" 即红；把 interrupted→cancelled 改 end_turn 即红；把 未知 kind 期望 end_turn 改 cancelled 即红。",
+      "语言缺陷": [
+        "L-004(标识符含关键字子串会被拆：本模块函数名规避 到/终/结束；转 仅为内置函数名前缀、非关键字)"
+      ]
+    },
+    {
+      "编号": 41,
+      "功能": "工作流错误税目纯逻辑核心（workflow：WorkflowError 构造语义[致命默认真] / 致命判定 isFatalWorkflowError[等价 instanceof&&fatal] / 错误码族 WorkflowErrorCode 成员判定 / 监听错误渲染 renderListenerError[永不抛错兜底]）",
+      "原版包": "packages/workflow/workflow/src/index.ts",
+      "光明模块": "src/工作流错误.light",
+      "状态": "done",
+      "证据": [
+        "src/工作流错误.light",
+        "examples/test_工作流错误.light"
+      ],
+      "本轮目标": "done：对标 workflow/workflow/src/index.ts 可纯函数化逻辑层——建立工作流错误（fatal 默认 true，等价 new WorkflowError）、判定致命工作流错误（以 {名:WorkflowError, 致命} 标记建模 host instanceof 不可伪造语义）、已知工作流错误码（用集合成员判定规避 或 链）、渲染监听错误（尝试 序列化JSON 捕获后返回固定标签，绝不向上抛）。已剔除 Cordis Service/事件发射胶水、WorkflowError 类继承与 HarnessError 耦合。落地时连踩 5 处语言坑（见 语言缺陷）。",
+      "反跑判据": "test_工作流错误.light：把 建立工作流错误(\"bad meta\",\"META_INVALID\",空)[\"致命\"] 期望 真 改 假 即红；把 判定致命工作流错误(默认致命) 期望 真 改 假 即红；把 判定致命工作流错误(非致命) 期望 假 改 真 即红；把 已知工作流错误码(\"CANCELLED\") 期望 真 改 假 即红；把 渲染监听错误({\"名\":\"WorkflowError\",\"消息\":\"boom\"}) 期望 \"boom\" 改 \"x\" 即红。",
+      "语言缺陷": [
+        "L-040(函数定义参数须用 接收，不能用 段落 X(参数): 括号形式)",
+        "L-041(字典/映射 等关键字或内建前缀不可作变量名：字典包含键(字典,键) 被生成为 键(字典,键)，映射作变量名令 返回 映射[键] 解析失败；改用 对象)",
+        "L-043(且/或 布尔链 + 行内 否则 返回 同行解析失败；改顺序 如果)",
+        "L-037(断言 被降级为 no-op，本测试全程用 断言相等 做判据)"
+      ]
+    },
+    {
+      "编号": 42,
+      "功能": "工作流工具呈现纯逻辑核心（tool-workflow：stopReasonError 运行结果→错误信息 / renderResult 结果文本+返回值 JSON 渲染+超限截断）",
+      "原版包": "packages/workflow/tool-workflow/src/index.ts",
+      "光明模块": "src/工作流结果渲染.light",
+      "状态": "done",
+      "证据": [
+        "src/工作流结果渲染.light",
+        "examples/test_工作流结果渲染.light"
+      ],
+      "本轮目标": "done：对标 tool-workflow/src/index.ts 两个纯函数——stopReasonError（completed→空；cancelled/error 拼装可读错误文本，含可选 error 字段；未知 stopReason 走异常兜底）与 renderResult（渲染 meta 名称、代理数、返回值 JSON，超 上限 字符做截断并标注剩余字节数，agent/agents 单数复数）。已剔除 defineTool/Config/视图胶水。本轮严格套用既有语言坑绕法（接收 非括号、变量名避 字典/映射、布尔链用顺序 如果、断言用 断言相等），未触发新缺陷；仅确认 查找子串 返回 1-based 索引、-1 表示未找到（非 0-based）。",
+      "反跑判据": "test_工作流结果渲染.light：把 停止原因错误({\"stopReason\":\"completed\"}) 期望 空 改 \"x\" 即红；把 停止原因错误({\"stopReason\":\"cancelled\",\"error\":\"boom\"}) 期望 \"workflow run was cancelled (boom)\" 改 \"x\" 即红；把 渲染结果(\"foo\",1,{\"k\":1},1000) 含 \"1 agent\" 改 \"2 agents\" 即红；把 渲染结果(\"baz\",1,{\"key\":12345},8) 含 \"truncated\" 改不含即红。",
+      "语言缺陷": [
+        "L-040(函数定义参数须用 接收)",
+        "L-041(字典/映射 不可作变量名)",
+        "L-043(且/或 链 + 行内 否则 返回 同行失败)",
+        "L-037(断言 被降级为 no-op，用 断言相等)"
+      ]
+    },
+    {
+      "编号": 43,
+      "功能": "提示模板纯逻辑核心（system-prompt：interpolate 严格 {{变量}} 替换 / renderPrompt / renderContextSections / joinContextSections / renderContextSnapshot / 工具顺序校验与排序）",
+      "原版包": "packages/core/system-prompt/src/index.ts",
+      "光明模块": "src/提示模板.light",
+      "状态": "done",
+      "证据": [
+        "src/提示模板.light",
+        "examples/test_提示模板.light"
+      ],
+      "本轮目标": "done：对齐 packages/core/system-prompt/src/index.ts 纯逻辑层——interpolate（手写扫描 {{...}} 完整组、严格变量名校验 ^[a-z][a-z0-9_]*$、未知/未定义/畸形引用抛错、孤立 {{ 视为原文、替换值不再二次扫描）、renderPrompt（丢弃空段、双换行连接）、renderContextSections / joinContextSections / renderContextSnapshot（带信封）、validateToolOrder（去重 + 必含 <unlisted-tools> 标记）、orderTools（rest 处插入未列工具、未知名抛错、保留名抛错）、compareToolNames（码元序）。已剔除 SystemPrompt Cordis Service / ScopedLayers / waterfall / 注册胶水。注意：原版 packages/prompt 已重构进 packages/core/system-prompt，本模块即其「提示模板引擎」。落地全程套用既有绕法（接收 非括号、变量名避 字典、布尔链拆顺序 如果、断言用 断言相等），未触发新缺陷；已确认 查找子串 为 0-based。",
+      "反跑判据": "test_提示模板.light：把 插值(\"Hello {{name}}!\",{\"name\":\"World\"},...) 期望 \"Hello World!\" 改 \"x\" 即红；把 插值(\"{{x}}\",{},...) 期望抛错改不抛即红（未知变量）；把 渲染提示(装配1) 期望 \"XZY plain\" 改 \"x\" 即红；把 渲染上下文快照(装配2) 期望含信封 \"Current runtime context...\" 改不含即红；把 校验工具顺序([\"a\",\"a\"]) 期望抛错改不抛即红；把 排序工具(表,[\"c\",\"<unlisted-tools>\",\"a\"],...) 期望 [c,b,a] 改 [a,b,c] 即红。",
+      "语言缺陷": [
+        "L-037(断言 被降级为 no-op，全程用 断言相等 做判据)",
+        "L-041(字典 不可作变量名)",
+        "L-004(避免花括号捕获组正则，{{}} 用手写扫描)",
+        "L-040(函数定义用 接收)"
+      ]
+    },
+    {
+      "编号": 44,
+      "功能": "工作流报告校验与结果渲染纯逻辑核心（tool-ralph：resolveConfig / resolveMaxRounds / normalizedText·List / isRecord / validateReport / readReport / readRunResult / stopReasonError / boundResult / renderResult / renderRoundFailure）",
+      "原版包": "packages/workflow/tool-ralph/src/index.ts",
+      "光明模块": "src/工作流报告.light",
+      "状态": "done",
+      "证据": [
+        "src/工作流报告.light",
+        "examples/test_工作流报告.light"
+      ],
+      "本轮目标": "done：对齐 packages/workflow/tool-ralph/src/index.ts 可纯函数化逻辑层——resolveConfig（subagentProvider 非空规范化、maxRounds/maxHandoffChars/maxResultChars 正整数校验）、resolveMaxRounds（请求 ?? 上限、正整数、不超上限）、normalizedText/List/isRecord（防御式类型判定）、validateReport（按 status 不变式校验 + 序列化体积上限）、readReport/readRunResult（跨边界防御式解码 terminal result：complete/blocked/budget-limited/round-failed 键集与不变式）、stopReasonError（completed→空、cancelled/error 拼装、未知兜底）、boundResult（截断信封）、renderResult/renderRoundFailure（终态信封，lastReport===空 走无交接分支）。已剔除 defineTool / Cordis apply / 固定脚本 VM 执行胶水。注：当前仓库无独立 workflow DAG 引擎（workflow 包为 Cordis 胶水 + ralph 固定脚本顺序循环），本模块是 workflow 包现实中最近「工作流逻辑」的可纯函数核。",
+      "反跑判据": "test_工作流报告.light：把 校验配置({})[\"subagentProvider\"] 期望 \"spawn\" 改 \"x\" 即红；把 校验配置({\"subagentProvider\":\"\"}) 期望抛错改不抛即红；把 解析最大轮次(5,256) 期望 5 改 1 即红；把 停止原因错误({\"stopReason\":\"cancelled\",\"error\":\"boom\"}) 期望 \"Ralph workflow was cancelled (boom)\" 改 \"x\" 即红；把 读取运行结果(预算结果,256,1000)[\"status\"] 期望 \"budget-limited\" 改 \"x\" 即红；把 渲染结果({complete,1,report},1000) 含 \"1 round\" 改 \"2 rounds\" 即红；把 渲染轮失败({roundsStarted:3,lastReport:空},1000) 含 \"No previous handoff\" 改不含即红。",
+      "语言缺陷": [
+        "L-044(文本(变量) 被误编译为裸 文本 NameError，int→str 改用 序列化JSON(整数))",
+        "L-037(断言 no-op，用 断言相等)",
+        "L-041(字典 不可作变量名)",
+        "L-036(缺键抛错，stopReasonError 用 字典包含键 守卫 error)",
+        "L-040(函数定义用 接收)"
+      ]
+    },
+    {
+      "编号": 45,
+      "功能": "令牌估算纯逻辑核心（token-meter：estimateContent / estimateMessage / estimateSystemTokens / estimateToolsTokens / estimateHeader 固定密度启发式定价）",
+      "原版包": "packages/llm/token-meter/src/estimate.ts",
+      "光明模块": "src/令牌估算.light",
+      "状态": "done",
+      "证据": [
+        "src/令牌估算.light",
+        "examples/test_令牌估算.light"
+      ],
+      "本轮目标": "done：对齐 estimate.ts 固定密度启发式（每4字符≈1 token，块开销4、角色开销4）——estimateContent 递归定价 text/reasoning/tool-call/tool-result/未知块（未知块走 4+ceil(len(JSON)/4) 保守结构价）；estimateMessage=内容+角色开销；estimateSystemTokens/estimateToolsTokens 缺失或空返回0；estimateHeader=系统+工具。块字段命名沿用 消息.light（type/text/name/arguments/content 字符串键），可直接对接。已剔除 meter service / context-breakdown projection 的 Cordis 胶水。",
+      "反跑判据": "test_令牌估算.light：把 估算内容([text hello]) 期望 6 改 5 即红；把 估算内容([tool-result 递归]) 期望 9 改 8 即红；把 估算消息(混合) 期望 15 改 14 即红；把 估算系统令牌({system:abc}) 期望 5 改 4 即红；把 估算工具令牌(空表) 期望 0 改 1 即红；把 估算头部(两者) 期望 系统+工具 改 仅系统 即红（结构化）。",
+      "语言缺陷": [
+        "L-045(写 语句只吃掉首个字面量串、剩余 +变量 变悬空表达式导致 None+str：诊断一律走 抛出 新建 错误 表达式上下文；写 只用字面量串)",
+        "L-037(断言 no-op，用 断言相等)",
+        "L-041(字典 不可作变量名)",
+        "L-040(函数定义用 接收)",
+        "L-004(避免花括号捕获组正则，块类型用手写判别)"
+      ]
+    },
+    {
+      "编号": 46,
+      "功能": "外壳退出状态解析纯逻辑核心（shell/render：parseExitStatus 渲染结果末行 [exit code: N] / [killed by signal: X] 标记逆解析回 body + 退出码/信号）",
+      "原版包": "packages/shell/shell/src/render.ts",
+      "光明模块": "src/外壳退出解析.light",
+      "状态": "done",
+      "证据": [
+        "src/外壳退出解析.light",
+        "examples/test_外壳退出解析.light"
+      ],
+      "本轮目标": "done：对齐 parseExitStatus 纯解析逆函数——把渲染后的 shell 工具结果按末行标记拆回 body（连前导 \\n 一并切掉）+ exitCode/signal；标记须独占末行（前导 \\n + 字符串结尾，等价正则 \\n\\[...\\]$）否则不匹配；signal 优先于 exit code 判定（与原版顺序一致）；缺数字 exit code 或非行尾均回落 exitCode 0。已剔除 emit 标记渲染器与终端 pill 呈现胶水。",
+      "反跑判据": "test_外壳退出解析.light：把 解析退出状态(\"output\\n[exit code: 0]\")[\"exitCode\"] 期望 0 改 1 即红；把 非零退出 body 期望 \"hello\\nworld\" 改 \"x\" 即红；把 signal 用例 结果[\"signal\"] 期望 \"SIGTERM\" 改 \"x\" 即红；把 无前导换行用例 body 期望含标记 改不含即红（不匹配）；把 非数字用例 exitCode 期望 0 改 2 即红。",
+      "语言缺陷": [
+        "L-045(写 语句只吃首个字面量串，诊断走 抛出 新建 错误)",
+        "L-037(断言 no-op，用 断言相等)",
+        "L-041(字典 不可作变量名，数字集用 数字集)",
+        "L-040(函数定义用 接收)"
+      ]
+    },
+    {
+      "编号": 49,
+      "功能": "会话标题规范化纯逻辑核心（session-title/normalize：cleanTitleText 六遍控制序列清理 + truncateTitleUtf8 UTF-8 字节预算截断 + normalizeSessionTitle + fallbackSessionTitle）",
+      "原版包": "packages/session/session-title/src/normalize.ts",
+      "光明模块": "src/会话标题.light",
+      "状态": "done",
+      "证据": [
+        "src/会话标题.light",
+        "examples/test_会话标题.light"
+      ],
+      "本轮目标": "done：逐遍字符扫描等价复刻原版 5 条 Unicode 正则清理链（OSC→CSI→ESC序列→控制字符→方向控制→折叠空白→trim），再按 UTF-8 字节预算做码点安全截断（不劈开多字节码点），并补 规范化会话标题/回退会话标题。依赖：①字符串字面量 \\uXXXX 正确解码为单字符（实测确认）；②字符串 >= <= 按码点比较可用；③溢出.light 的 字节长度 为真 UTF-8 长度。已剔除原版 Unicode 正则与 Buffer 依赖。",
+      "反跑判据": "test_会话标题.light：把 清理标题文本(\"\\u001B[31mred\\u001B[0m\") 期望 \"red\" 改 \"x\" 即红；把 ANSI 多段用例结果改错即红；把 UTF-8 截断用例（中文 18 字节限 10）期望前 1 完整码点即红；把 回退会话标题 词数/字节边界改错即红；把 断言正整数 非正整数抛错路径（检查抛错）改不抛即红。",
+      "语言缺陷": [
+        "L-046(变量名 出 单独作标识符返回 None——与 输出/抛出/跳出 等组合关键字词法前缀冲突，改名用 累积；手工字符串替换须避开 溢出/抛出/跳出 等组合词)",
+        "L-045(写 语句只吃字面量串/变量，诊断走 抛出 新建 错误)",
+        "L-037(断言 no-op，用 断言相等)",
+        "L-036(缺键用 字典包含键 守卫)",
+        "L-041(字典 不可作变量名)",
+        "L-040(函数定义用 接收)",
+        "L-004(\\uXXXX 字面量可解码，勿用裸控制字符；近似 \\s 取常用 8 个码点)"
+      ]
+    }
+  ]
 }

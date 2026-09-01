@@ -1,0 +1,47 @@
+# 工作流错误税目纯逻辑核心
+# 对标 packages/workflow/workflow/src/index.ts
+# 原版要点：
+#   - WorkflowError extends HarnessError，构造时 fatal 默认 true；
+#     isFatalWorkflowError(error) = error instanceof WorkflowError && error.fatal
+#     （host instanceof 不可伪造，本复刻以 {名:"WorkflowError", 致命} 标记等价建模）
+#   - renderListenerError(error) = 尝试 String(error)；若连 String 都抛，则返回固定标签
+#     （绝不向上抛，保证监听容错）
+#   - WorkflowErrorCode 是「全部致命」的枚举并；
+#     fatality 标志存在仅为让每个 catch 处显式区分，而非隐含。
+# 本模块只保留可纯函数化的判定/构造/渲染逻辑，剔除 Cordis Service / 事件发射胶水。
+# 注：光明解析器对 且/或 布尔链 + 行内 否则 返回 极不稳定，本模块一律用顺序 如果 规避。
+
+段落 取可选 接收 对象, 键:
+  如果 (是字典(对象) == 假): 返回 空
+  如果 (字典包含键(对象, 键) == 假): 返回 空
+  返回 对象[键]
+
+# 已知工作流错误码（对应原版 WorkflowErrorCode 并），用集合成员判定规避 或 链
+段落 已知工作流错误码 接收 码:
+  设 已知集合 为 {"SCRIPT_PARSE": 真, "META_INVALID": 真, "INVALID_ARGUMENT": 真, "UNSUPPORTED_OPTION": 真, "UNSUPPORTED_SCHEMA": 真, "AGENT_CAP": 真, "ITEM_CAP": 真, "AGENT_START": 真, "AGENT_RESULT": 真, "RESULT_UNSERIALIZABLE": 真, "CANCELLED": 真}
+  如果 (字典包含键(已知集合, 码) == 真): 返回 真
+  返回 假
+
+# 构造一个工作流错误（等价于 new WorkflowError(message, code, {fatal?}），fatal 默认真）
+段落 建立工作流错误 接收 消息, 码, 致命:
+  设 实际致命 为 真
+  如果 致命 != 空: 设 实际致命 为 致命
+  返回 {"名": "WorkflowError", "致命": 实际致命, "码": 码, "消息": 消息}
+
+# 等价原版 isFatalWorkflowError：error instanceof WorkflowError && error.fatal
+# 以 名 标记 + 致命 标志建模 host instanceof 不可伪造语义（顺序 如果 规避 且 链）
+段落 判定致命工作流错误 接收 错误:
+  如果 (是字典(错误) == 假): 返回 假
+  如果 (字典包含键(错误, "名") == 假): 返回 假
+  如果 (字典包含键(错误, "致命") == 假): 返回 假
+  如果 错误["名"] != "WorkflowError": 返回 假
+  返回 错误["致命"] == 真
+
+# 等价原版 renderListenerError：try String(error) catch 固定标签，绝不向上抛
+段落 渲染监听错误 接收 错误:
+  尝试:
+    如果 (是字典(错误) == 真):
+      如果 (字典包含键(错误, "消息") == 真): 返回 错误["消息"]
+    返回 序列化JSON(错误)
+  捕获 抛了:
+    返回 "[unrenderable thrown value]"

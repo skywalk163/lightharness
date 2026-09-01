@@ -1,0 +1,292 @@
+# 目标折叠.light —— 对标原版 packages/goal/goal（fold.ts + domain.ts 纯逻辑核心）
+# 纯逻辑：goal/change 事件的严格解码 + 重放折叠（create/edit/pause/resume/complete/block/clear）
+#           及 user/message 轮次准入校验。对齐原版 fail-loud 语义。
+# 不可移植缺口：原版依赖 cordis 事件、agent 运行时、MessageSource 类型；
+#           此处只复刻「给定事件序列 → 折叠出当前目标投影」的纯逻辑，不接宿主。
+
+从 字符串工具 导入 去除首尾空白
+
+设 目标阶段集 为 ["active", "paused", "blocked", "complete"]
+设 快照操作集 为 ["create", "edit", "pause", "resume", "complete", "block"]
+设 小写字母 为 ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+设 数字字符 为 ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+# 列表取元素改用内置 列表获取（builtins.py:787 → 内置核心列表.light:30，即 表[索引]）；
+# 原自写「遍历+计数」版 列表取 已删除（L-035 冗余清理，包⑧）。
+
+# ===== 基础校验原语 =====
+
+段落 是字母小写 接收 字符:
+  返回 列表包含(小写字母, 字符)
+
+段落 是字母数字小写 接收 字符:
+  返回 列表包含(小写字母, 字符) 或 列表包含(数字字符, 字符)
+
+# 小写短横线（lower-kebab-case）：^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$
+段落 是小写短横线 接收 代码:
+  如果 是字符串(代码) == 假: 返回 假
+  设 长 为 字符串长度(代码)
+  如果 长 == 0: 返回 假
+  设 索引 为 0
+  当 索引 < 长:
+    设 字符 为 字符串获取(代码, 索引)
+    如果 索引 == 0:
+      如果 是字母小写(字符) == 假: 返回 假
+    否则:
+      如果 字符 == "-":
+        如果 索引 == 长 - 1: 返回 假
+        如果 是字母数字小写(字符串获取(代码, 索引 + 1)) == 假: 返回 假
+      否则如果 是字母数字小写(字符) == 假:
+        返回 假
+    设 索引 为 索引 + 1
+  返回 真
+
+段落 是正整数 接收 值, 字段:
+  如果 是整数(值) == 假 或 值 < 1:
+    抛出 新建 错误("goal change " + 字段 + " must be a positive safe integer")
+
+段落 是非负整数 接收 值, 字段:
+  如果 是整数(值) == 假 或 值 < 0:
+    抛出 新建 错误("goal change " + 字段 + " must be a non-negative safe integer")
+
+# 升序排序（选择排序，返回新表；绕过 列表排序 原地返回 None 的坑）
+段落 排序列表 接收 列表:
+  设 池 为 []
+  遍历 项 之 列表: 列表追加(池, 项)
+  设 结果 为 []
+  当 列表长度(池) > 0:
+    设 最小索引 为 0
+    设 索引 为 1
+    当 索引 < 列表长度(池):
+      如果 列表获取(池, 索引) < 列表获取(池, 最小索引): 设 最小索引 为 索引
+      设 索引 为 索引 + 1
+    列表追加(结果, 列表获取(池, 最小索引))
+    设 新池 为 []
+    设 索引 为 0
+    当 索引 < 列表长度(池):
+      如果 索引 != 最小索引: 列表追加(新池, 列表获取(池, 索引))
+      设 索引 为 索引 + 1
+    设 池 为 新池
+  返回 结果
+
+段落 键名串 接收 字典:
+  返回 连接字符串(排序列表(字典键列表(字典)), ",")
+
+# ===== 解码 =====
+
+段落 解码阻塞原因 接收 值:
+  如果 是字典(值) == 假 或 键名串(值) != "code,message":
+    抛出 新建 错误("goal change goal.blockedReason must have exactly code and message fields")
+  设 代码 为 字典获取(值, "code")
+  如果 是字符串(代码) == 假 或 是小写短横线(代码) == 假:
+    抛出 新建 错误("goal change goal.blockedReason.code must be lower-kebab-case")
+  设 消息 为 字典获取(值, "message")
+  如果 是字符串(消息) == 假 或 字符串长度(去除首尾空白(消息)) == 0 或 消息 != 去除首尾空白(消息):
+    抛出 新建 错误("goal change goal.blockedReason.message must be non-empty and normalized")
+  设 结果 为 {"code": 代码, "message": 消息}
+  返回 结果
+
+段落 解码快照 接收 值:
+  如果 是字典(值) == 假:
+    抛出 新建 错误("goal change goal must be a record")
+  设 编号 为 字典获取(值, "id")
+  如果 是字符串(编号) == 假 或 字符串长度(编号) == 0:
+    抛出 新建 错误("goal change goal.id must be a non-empty string")
+  设 目标 为 字典获取(值, "objective")
+  如果 是字符串(目标) == 假 或 字符串长度(去除首尾空白(目标)) == 0 或 目标 != 去除首尾空白(目标):
+    抛出 新建 错误("goal change goal.objective must be non-empty and normalized")
+  设 阶段 为 字典获取(值, "phase")
+  如果 是字符串(阶段) == 假 或 列表包含(目标阶段集, 阶段) == 假:
+    抛出 新建 错误("goal change goal.phase is invalid")
+  设 期望键 为 "id,maxGoalRounds,objective,phase,revision"
+  如果 阶段 == "blocked":
+    设 期望键 为 "blockedReason,id,maxGoalRounds,objective,phase,revision"
+  如果 键名串(值) != 期望键:
+    抛出 新建 错误("goal change goal for phase " + 阶段 + " must have exactly " + 期望键 + " fields")
+  设 结果 为 {"id": 编号, "objective": 目标, "phase": 阶段}
+  是正整数(字典获取(值, "revision"), "goal.revision")
+  字典设置(结果, "revision", 字典获取(值, "revision"))
+  是正整数(字典获取(值, "maxGoalRounds"), "goal.maxGoalRounds")
+  字典设置(结果, "maxGoalRounds", 字典获取(值, "maxGoalRounds"))
+  如果 阶段 == "blocked":
+    字典设置(结果, "blockedReason", 解码阻塞原因(字典获取(值, "blockedReason")))
+  返回 结果
+
+段落 解码引用 接收 值:
+  如果 是字典(值) == 假 或 键名串(值) != "id,revision":
+    抛出 新建 错误("goal clear tombstone must have exactly id and revision fields")
+  设 编号 为 字典获取(值, "id")
+  如果 是字符串(编号) == 假 或 字符串长度(编号) == 0:
+    抛出 新建 错误("goal clear tombstone id must be a non-empty string")
+  是正整数(字典获取(值, "revision"), "cleared.revision")
+  设 结果 为 {"id": 编号, "revision": 字典获取(值, "revision")}
+  返回 结果
+
+段落 解码目标变更 接收 值:
+  如果 是字典(值) == 假 或 字典获取(值, "kind") != "goal/change":
+    返回 空
+  设 版本 为 字典获取(值, "version")
+  如果 版本 != 1:
+    抛出 新建 错误("unsupported goal change version " + 转字符串(版本))
+  设 操作 为 字典获取(值, "operation")
+  如果 操作 == "clear":
+    设 允许 为 排序列表(["cleared", "clearedAt", "kind", "operation", "version"])
+    如果 键名串(值) != 连接字符串(允许, ","):
+      抛出 新建 错误("goal clear change must have exactly cleared,clearedAt,kind,operation,version fields")
+    设 结果 为 {"kind": "goal/change", "version": 1, "operation": "clear"}
+    字典设置(结果, "cleared", 解码引用(字典获取(值, "cleared")))
+    是非负整数(字典获取(值, "clearedAt"), "clearedAt")
+    字典设置(结果, "clearedAt", 字典获取(值, "clearedAt"))
+    返回 结果
+  如果 列表包含(快照操作集, 操作) == 假:
+    抛出 新建 错误("goal change operation is invalid")
+  设 允许 为 排序列表(["createdAt", "goal", "kind", "operation", "roundsStarted", "updatedAt", "version"])
+  如果 键名串(值) != 连接字符串(允许, ","):
+    抛出 新建 错误("goal snapshot change must have exactly createdAt,goal,kind,operation,roundsStarted,updatedAt,version fields")
+  是非负整数(字典获取(值, "createdAt"), "createdAt")
+  是非负整数(字典获取(值, "updatedAt"), "updatedAt")
+  如果 字典获取(值, "updatedAt") < 字典获取(值, "createdAt"):
+    抛出 新建 错误("goal change updatedAt cannot precede createdAt")
+  设 结果 为 {"kind": "goal/change", "version": 1, "operation": 操作}
+  字典设置(结果, "goal", 解码快照(字典获取(值, "goal")))
+  是非负整数(字典获取(值, "roundsStarted"), "roundsStarted")
+  字典设置(结果, "roundsStarted", 字典获取(值, "roundsStarted"))
+  字典设置(结果, "createdAt", 字典获取(值, "createdAt"))
+  字典设置(结果, "updatedAt", 字典获取(值, "updatedAt"))
+  返回 结果
+
+段落 目标变更引用 接收 变更:
+  如果 字典获取(变更, "operation") == "clear":
+    设 结果 为 字典获取(变更, "cleared")
+    返回 结果
+  设 当前目标 为 字典获取(变更, "goal")
+  设 结果 为 {"id": 字典获取(当前目标, "id"), "revision": 字典获取(当前目标, "revision")}
+  返回 结果
+
+段落 空目标折叠状态 接收:
+  返回 {"goal": 空, "roundsStarted": 0, "createdAt": 空, "updatedAt": 空, "lastRef": 空, "seenGoalIds": []}
+
+段落 要求同定义 接收 当前, 下一, 操作:
+  如果 字典获取(下一, "objective") != 字典获取(当前, "objective") 或 字典获取(下一, "maxGoalRounds") != 字典获取(当前, "maxGoalRounds"):
+    抛出 新建 错误("goal " + 操作 + " cannot change objective or maxGoalRounds")
+
+段落 要求下一修订 接收 当前, 下一, 操作:
+  如果 字典获取(下一, "id") != 字典获取(当前, "id") 或 字典获取(下一, "revision") != 字典获取(当前, "revision") + 1:
+    抛出 新建 错误("goal " + 操作 + " must advance the current goal by one revision")
+
+段落 校验快照转移 接收 状态, 变更, 当前:
+  设 下一 为 字典获取(变更, "goal")
+  设 操作 为 字典获取(变更, "operation")
+  要求下一修订(当前, 下一, 操作)
+  如果 字典获取(状态, "updatedAt") == 空:
+    抛出 新建 错误("current goal fold lacks updatedAt")
+  如果 字典获取(变更, "createdAt") != 字典获取(状态, "createdAt") 或 字典获取(变更, "updatedAt") < 字典获取(状态, "updatedAt") 或 字典获取(变更, "roundsStarted") != 字典获取(状态, "roundsStarted"):
+    抛出 新建 错误("goal " + 操作 + " does not preserve the current counters and timestamps")
+  如果 操作 == "edit":
+    如果 字典获取(下一, "phase") != 字典获取(当前, "phase") 或 序列化JSON(字典获取(下一, "blockedReason")) != 序列化JSON(字典获取(当前, "blockedReason")):
+      抛出 新建 错误("goal edit cannot change phase or blocked reason")
+  否则如果 操作 == "pause":
+    要求同定义(当前, 下一, 操作)
+    如果 字典获取(当前, "phase") != "active" 或 字典获取(下一, "phase") != "paused":
+      抛出 新建 错误("goal pause has an invalid phase transition")
+  否则如果 操作 == "resume":
+    要求同定义(当前, 下一, 操作)
+    如果 列表包含(目标阶段集, 字典获取(当前, "phase")) == 假 或 字典获取(下一, "phase") != "active" 或 字典获取(状态, "roundsStarted") >= 字典获取(下一, "maxGoalRounds"):
+      抛出 新建 错误("goal resume has an invalid phase transition or exhausted round budget")
+  否则如果 操作 == "complete":
+    要求同定义(当前, 下一, 操作)
+    如果 字典获取(当前, "phase") == "complete" 或 字典获取(下一, "phase") != "complete":
+      抛出 新建 错误("goal complete has an invalid phase transition")
+  否则如果 操作 == "block":
+    要求同定义(当前, 下一, 操作)
+    如果 字典获取(当前, "phase") != "active" 或 字典获取(下一, "phase") != "blocked":
+      抛出 新建 错误("goal block has an invalid phase transition")
+
+段落 应用目标变更 接收 状态, 变更:
+  设 引用 为 目标变更引用(变更)
+  如果 字典获取(变更, "operation") == "clear":
+    设 当前 为 字典获取(状态, "goal")
+    如果 当前 == 空:
+      抛出 新建 错误("goal clear requires a current goal")
+    要求下一修订(当前, 字典获取(变更, "cleared"), "clear")
+    如果 字典获取(状态, "updatedAt") == 空:
+      抛出 新建 错误("current goal fold lacks updatedAt")
+    如果 字典获取(变更, "clearedAt") < 字典获取(状态, "updatedAt"):
+      抛出 新建 错误("goal clear timestamp cannot precede the current goal update")
+    字典设置(状态, "goal", 空)
+    字典设置(状态, "roundsStarted", 0)
+    字典设置(状态, "createdAt", 空)
+    字典设置(状态, "updatedAt", 空)
+    字典设置(状态, "lastRef", 引用)
+    返回 空
+  如果 字典获取(变更, "operation") == "create":
+    设 目标快照 为 字典获取(变更, "goal")
+    设 当前目标 为 字典获取(状态, "goal")
+    设 已见 为 字典获取(状态, "seenGoalIds")
+    设 创建非法 为 假
+    如果 字典获取(目标快照, "revision") != 1: 设 创建非法 为 真
+    如果 字典获取(目标快照, "phase") != "active": 设 创建非法 为 真
+    如果 字典获取(变更, "roundsStarted") != 0: 设 创建非法 为 真
+    如果 当前目标 != 空 且 字典获取(当前目标, "phase") != "complete": 设 创建非法 为 真
+    如果 列表包含(已见, 字典获取(目标快照, "id")): 设 创建非法 为 真
+    如果 创建非法 == 真:
+      抛出 新建 错误("goal create requires a fresh active revision-one goal with zero rounds")
+    列表追加(已见, 字典获取(目标快照, "id"))
+  否则:
+    设 当前 为 字典获取(状态, "goal")
+    如果 当前 == 空:
+      抛出 新建 错误("goal " + 字典获取(变更, "operation") + " requires a current goal")
+    校验快照转移(状态, 变更, 当前)
+  字典设置(状态, "goal", 字典获取(变更, "goal"))
+  字典设置(状态, "roundsStarted", 字典获取(变更, "roundsStarted"))
+  字典设置(状态, "createdAt", 字典获取(变更, "createdAt"))
+  字典设置(状态, "updatedAt", 字典获取(变更, "updatedAt"))
+  字典设置(状态, "lastRef", 引用)
+
+段落 应用目标事件 接收 状态, 事件:
+  如果 字典获取(事件, "type") == "goal/change":
+    设 变更 为 解码目标变更(字典获取(事件, "data"))
+    如果 变更 == 空:
+      抛出 新建 错误("goal change at session event " + 转字符串(字典获取(事件, "seq")) + " has an invalid kind")
+    应用目标变更(状态, 变更)
+    返回 空
+  如果 字典获取(事件, "type") == "user/message":
+    设 来源 为 字典获取(字典获取(事件, "data"), "source")
+    如果 来源 == 空 或 是字典(来源) == 假 或 字典获取(来源, "kind") != "goal":
+      返回 空
+    如果 是字符串(字典获取(来源, "goalId")) == 假 或 字符串长度(字典获取(来源, "goalId")) == 0:
+      抛出 新建 错误("goal message source is invalid")
+    如果 是整数(字典获取(来源, "revision")) == 假 或 字典获取(来源, "revision") < 1:
+      抛出 新建 错误("goal message source is invalid")
+    如果 是整数(字典获取(来源, "round")) == 假 或 字典获取(来源, "round") < 1:
+      抛出 新建 错误("goal message source is invalid")
+    设 当前 为 字典获取(状态, "goal")
+    如果 当前 == 空:
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    如果 字典获取(当前, "phase") != "active":
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    如果 字典获取(来源, "goalId") != 字典获取(当前, "id"):
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    如果 字典获取(来源, "revision") != 字典获取(当前, "revision"):
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    如果 字典获取(来源, "round") != 字典获取(状态, "roundsStarted") + 1:
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    如果 字典获取(来源, "round") > 字典获取(当前, "maxGoalRounds"):
+      抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
+    字典设置(状态, "roundsStarted", 字典获取(来源, "round"))
+
+段落 折叠目标 接收 事件表:
+  设 状态 为 空目标折叠状态()
+  遍历 事件 之 事件表:
+    应用目标事件(状态, 事件)
+  设 结果 为 {}
+  如果 字典获取(状态, "goal") != 空:
+    字典设置(结果, "goal", 字典获取(状态, "goal"))
+  字典设置(结果, "roundsStarted", 字典获取(状态, "roundsStarted"))
+  如果 字典获取(状态, "createdAt") != 空:
+    字典设置(结果, "createdAt", 字典获取(状态, "createdAt"))
+  如果 字典获取(状态, "updatedAt") != 空:
+    字典设置(结果, "updatedAt", 字典获取(状态, "updatedAt"))
+  如果 字典获取(状态, "lastRef") != 空:
+    字典设置(结果, "lastRef", 字典获取(状态, "lastRef"))
+  返回 结果

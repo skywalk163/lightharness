@@ -1,0 +1,34 @@
+从 工作流结果渲染 导入 停止原因错误, 渲染结果
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 含子串 接收 文本, 子:
+  返回 查找子串(文本, 子) != -1
+
+段落 主:
+  # ---- stopReasonError ----
+  断言相等(停止原因错误({"stopReason": "completed"}), 空, "completed 返回空")
+  断言相等(停止原因错误({"stopReason": "cancelled"}), "workflow run was cancelled", "cancelled 无 error")
+  断言相等(停止原因错误({"stopReason": "cancelled", "error": "boom"}), "workflow run was cancelled (boom)", "cancelled 带 error")
+  断言相等(停止原因错误({"stopReason": "error"}), "workflow run failed: unknown error", "error 无 error")
+  断言相等(停止原因错误({"stopReason": "error", "error": "x"}), "workflow run failed: x", "error 带 error")
+  断言相等(停止原因错误({"stopReason": "weird"}), "workflow run ended abnormally (weird)", "未知 stopReason 兜底")
+
+  # ---- renderResult ----
+  设 满 为 渲染结果("foo", 1, {"k": 1}, 1000)
+  断言相等(含子串(满, "foo"), 真, "渲染含名称")
+  断言相等(含子串(满, "1 agent"), 真, "渲染含单数 agent")
+  断言相等(含子串(满, "Return value:"), 真, "渲染含返回值段")
+  断言相等(含子串(满, "truncated"), 假, "未截断不含 truncated")
+
+  设 复数 为 渲染结果("bar", 2, {"k": 1}, 1000)
+  断言相等(含子串(复数, "2 agents"), 真, "复数 agents")
+
+  设 裁 为 渲染结果("baz", 1, {"key": 12345}, 8)
+  断言相等(含子串(裁, "truncated"), 真, "超限触发截断")
+  断言相等(含子串(裁, "more characters"), 真, "截断含剩余字节数")
+
+  打印 "--- 工作流工具呈现纯逻辑核心（模块42）测试通过 ---"
+
+主()

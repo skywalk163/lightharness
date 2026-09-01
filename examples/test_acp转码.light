@@ -1,0 +1,23 @@
+# test_acp转码.light —— 模块40 ACP 转码纯逻辑核心 对齐判据
+# 运行：python 运行.py examples/test_acp转码.light
+# 对标原版 packages/acp/acp/src/codec.ts 的 turnEndToStopReason。
+
+从 acp转码 导入 轮次转停止原因
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 主:
+  # 各 kind → StopReason 映射（与原版 switch 分支一一对应）
+  断言相等(轮次转停止原因({"kind": "completed"}), "end_turn", "completed → end_turn")
+  断言相等(轮次转停止原因({"kind": "max-tokens"}), "max_tokens", "max-tokens → max_tokens")
+  断言相等(轮次转停止原因({"kind": "aborted"}), "end_turn", "aborted → end_turn（普通静默结束）")
+  断言相等(轮次转停止原因({"kind": "interrupted"}), "cancelled", "interrupted → cancelled")
+  断言相等(轮次转停止原因({"kind": "blocked"}), "end_turn", "blocked → end_turn")
+  断言相等(轮次转停止原因({"kind": "error"}), "end_turn", "error → end_turn")
+  # 未知 kind 走 default → end_turn
+  断言相等(轮次转停止原因({"kind": "unknown-reason"}), "end_turn", "未知 kind → end_turn（default）")
+
+  打印 "--- ACP 转码纯逻辑核心子系统（模块40）测试通过 ---"
+
+主()

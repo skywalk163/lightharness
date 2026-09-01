@@ -1,0 +1,102 @@
+# test_bash渲染.light —— 模块 #50 纯逻辑核心测试
+# 注意（解析器限制，见 L-047）：所有字典/列表字面量不可直接作函数实参，一律先赋变量再传参。
+#   含 文本 的函数名会被拆名（L-044 泛化），模块内已用 流内容/取可选值 规避。
+从 bash渲染 导入 流内容, 渲染结果, 渲染进程读取, 沙箱拒绝标记, 升级提示标记
+从 外壳退出解析 导入 解析退出状态
+从 JSON 导入 序列化JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败 [" + 标签 + "]: 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 含子串 接收 文本, 子, 标签:
+  如果 包含(文本, 子) == 假: 抛出 新建 错误("含子串失败 [" + 标签 + "]: 期望含 " + 子)
+
+段落 不含子串 接收 文本, 子, 标签:
+  如果 包含(文本, 子) == 真: 抛出 新建 错误("不含子串失败 [" + 标签 + "]: 不应含 " + 子)
+
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误:
+    设 抛了 为 真
+  如果 抛了 == 假: 抛出 新建 错误("应抛错未抛 [" + 标签 + "]")
+
+# 升级模式列表：空 / 含 sudo（绕 L-047 内联列表实参限制）
+设 无升级 为 []
+设 有升级 为 ["sudo"]
+
+# === 流文本（字典实参先赋变量，绕 L-047）===
+设 流_未截断 为 {"text": "hello", "truncated": 假}
+设 流_截有路径 为 {"text": "ab", "truncated": 真, "spillPath": "/tmp/x"}
+设 流_截无路径 为 {"text": "ab", "truncated": 真}
+断言相等(流内容(流_未截断), "hello", "流文本-未截断")
+断言相等(流内容(流_截有路径), "ab\n[output truncated; full output: /tmp/x]", "流文本-截断有路径")
+断言相等(流内容(流_截无路径), "ab\n[output truncated; full output: (unavailable)]", "流文本-截断无路径")
+
+# === 沙箱标记文案 ===
+断言相等(沙箱拒绝标记("docker"), "[sandbox: file access denied under docker mode]", "拒绝标记")
+断言相等(升级提示标记("command"), "[sandbox: escalation available \u2014 retry this exact command once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]", "升级标记-emdash")
+
+# === 渲染结果：stdout 仅 ===
+设 结果_stdout仅 为 {"stdout": {"text": "ok", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": 空}
+断言相等(渲染结果(结果_stdout仅, 无升级), "ok", "结果-stdout仅无标记")
+
+# === 渲染结果：stdout + stderr ===
+设 结果_混合 为 {"stdout": {"text": "out", "truncated": 假}, "stderr": {"text": "err", "truncated": 假}, "exitCode": 0, "signal": 空}
+断言相等(渲染结果(结果_混合, 无升级), "out\n[stderr]\nerr", "结果-stdout+stderr")
+
+# === 渲染结果：空输出 → (no output) ===
+设 结果_空 为 {"stdout": {"text": "", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": 空}
+断言相等(渲染结果(结果_空, 无升级), "(no output)", "结果-无输出")
+
+# === 渲染结果：非零退出码标记 ===
+设 结果_非零 为 {"stdout": {"text": "x", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 2, "signal": 空}
+断言相等(渲染结果(结果_非零, 无升级), "x\n[exit code: 2]", "结果-非零退出")
+
+# === 渲染结果：信号优先于退出码 ===
+设 结果_信号 为 {"stdout": {"text": "y", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": "SIGTERM"}
+断言相等(渲染结果(结果_信号, 无升级), "y\n[killed by signal: SIGTERM]", "结果-信号优先")
+
+# === 渲染结果：超时标记 ===
+设 结果_超时 为 {"stdout": {"text": "z", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": 空, "timedOut": 真, "timeoutMs": 5000}
+断言相等(渲染结果(结果_超时, 无升级), "z\n[timed out after 5000ms]", "结果-超时")
+
+# === 渲染结果：沙箱拒绝 + 升级提示 ===
+设 结果_拒绝 为 {"stdout": {"text": "w", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": 空, "sandbox": {"denied": 真, "mode": "docker"}}
+断言相等(渲染结果(结果_拒绝, 有升级), "w\n[sandbox: file access denied under docker mode]\n[sandbox: escalation available \u2014 retry this exact command once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]", "结果-沙箱拒绝+升级")
+
+# === 渲染结果：沙箱拒绝但无升级目标 → 无提示 ===
+断言相等(渲染结果(结果_拒绝, 无升级), "w\n[sandbox: file access denied under docker mode]", "结果-沙箱拒绝无升级")
+
+# === 渲染→解析 往返交叉验证（#50 渲染 → #46 解析）===
+设 结果_往返码 为 {"stdout": {"text": "ok", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 2, "signal": 空}
+设 结果_往返信号 为 {"stdout": {"text": "ok", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": "SIGTERM"}
+设 结果_往返体 为 {"stdout": {"text": "body", "truncated": 假}, "stderr": {"text": "", "truncated": 假}, "exitCode": 0, "signal": 空}
+断言相等(解析退出状态(渲染结果(结果_往返码, 无升级))["exitCode"], 2, "往返-非零退出")
+断言相等(解析退出状态(渲染结果(结果_往返信号, 无升级))["signal"], "SIGTERM", "往返-信号")
+含子串(渲染结果(结果_往返体, 无升级), "body", "往返-body保留")
+
+# === 渲染进程读取：仅 delta ===
+设 读取_delta 为 {"delta": "more", "lossy": 假}
+断言相等(渲染进程读取(读取_delta, 空, 无升级), "more", "进程读-仅delta")
+
+# === 渲染进程读取：lossy 有路径 ===
+设 读取_lossy有路径 为 {"delta": "d", "lossy": 真, "stdoutSpillPath": "/a", "stderrSpillPath": "/b"}
+断言相等(渲染进程读取(读取_lossy有路径, 空, 无升级), "d\n[some output was dropped from memory; full output: /a, /b]", "进程读-lossy有路径")
+
+# === 渲染进程读取：lossy 无路径 ===
+设 读取_lossy无 为 {"delta": "d", "lossy": 真}
+断言相等(渲染进程读取(读取_lossy无, 空, 无升级), "d\n[some output was dropped from memory; full output: (unavailable)]", "进程读-lossy无路径")
+
+# === 渲染进程读取：沙箱 runnerFailed ===
+设 沙箱_runner 为 {"runnerFailed": 真, "mode": "docker"}
+设 读取_runner 为 {"delta": "d", "lossy": 假}
+断言相等(渲染进程读取(读取_runner, 沙箱_runner, 无升级), "d\n[sandbox: the sandbox runner itself failed under docker mode \u2014 the command did not run; this is a sandbox problem, not a command failure]", "进程读-runnerFailed")
+
+# === 渲染进程读取：沙箱 denied + 升级 ===
+设 沙箱_denied 为 {"denied": 真, "mode": "docker"}
+设 读取_denied 为 {"delta": "d", "lossy": 假}
+断言相等(渲染进程读取(读取_denied, 沙箱_denied, 有升级), "d\n[sandbox: file access denied under docker mode]\n[sandbox: escalation available \u2014 retry this exact command once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]", "进程读-denied+升级")
+
+写 "--- bash 渲染纯逻辑核心（模块50）测试通过 ---"

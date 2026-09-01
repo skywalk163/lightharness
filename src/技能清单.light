@@ -1,0 +1,218 @@
+# 技能清单.light —— 对标原版 packages/skill/skill/src/index.ts 纯逻辑核心
+# 复刻范围：技能名校验、调用策略判定、技能内容渲染（含 XML 转义）、
+# 候选/定义校验、投影（到摘要 / 运行时候选）、比较与排序。
+#
+# 不可移植缺口（与原版一致，本模块只复刻纯逻辑层）：
+#   - 原版 SkillRegistry 是 Cordis Service，依赖 ScopedLayers / AbortSignal /
+#     事件总线 / 文件系统 provider / 缓存；本模块不含注册表、缓存与 IO，
+#     只保留可纯函数化的逻辑层。
+#   - 原版用 TypeError / Error 区分错误类型；光明只有单一 错误 类型，
+#     所有校验统一抛 错误，消息文本与原版保持一致（不影响纯逻辑行为）。
+#   - 原版 escapeAttr/escapeText 用 .replaceAll；光明用 替换字符串 等价复刻。
+#   - 原版 isSkillName 用正则 /^[a-z0-9]+(?:-[a-z0-9]+)*$/；光明以手写字符扫描
+#     复刻（规避 L-034 字符串内花括号词法陷阱，且与本项目「手写扫描」范式一致）。
+
+从 字符串工具 导入 去除首尾空白
+从 字符串处理 导入 匹配正则, 截取
+从 JSON 导入 序列化JSON
+
+# 允许字符集：小写字母 + 数字（kebab-case 主体的合法字符）
+字母数字小写集 = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+段落 是字母数字小写 接收 c:
+  返回 字符串包含(字母数字小写集, c)
+
+# 校验一个字符串是否为合法 kebab-case 技能名。
+# 等价于原版 /^  [a-z0-9]+(?:-[a-z0-9]+)*$/ ：
+# 至少一个字符；连字符不居首尾、不相邻、两侧均为字母数字；其余字符须为小写字母数字。
+段落 是技能名 接收 名:
+  设 n 为 字符串长度(名)
+  如果 n == 0: 返回 假
+  设 i 为 0
+  当 i < n:
+    设 c 为 字符串获取(名, i)
+    如果 c == "-":
+      如果 (i == 0) 或 (i == n - 1): 返回 假
+      设 前 为 字符串获取(名, i - 1)
+      设 后 为 字符串获取(名, i + 1)
+      如果 (是字母数字小写(前) == 假) 或 (是字母数字小写(后) == 假): 返回 假
+      设 i 为 i + 1
+      继续
+    否则如果 是字母数字小写(c):
+      设 i 为 i + 1
+    否则:
+      返回 假
+  返回 真
+
+# 调用策略：模型侧是否可调用
+段落 是模型可调用 接收 技能:
+  返回 技能["invocation"]["modelInvocable"]
+
+# 调用策略：用户指令侧是否可调用
+段落 是用户可调用 接收 技能:
+  返回 技能["invocation"]["userInvocable"]
+
+# 属性转义：& " <（用于 <skill_content name="..."> 的属性值）
+段落 转义属性 接收 值:
+  设 r 为 替换字符串(值, "&", "&amp;")
+  设 r 为 替换字符串(r, "\"", "&quot;")
+  设 r 为 替换字符串(r, "<", "&lt;")
+  返回 r
+
+# 文本转义：& < >（用于资源提示 / 技能正文等散文）
+段落 转义文本 接收 值:
+  设 r 为 替换字符串(值, "&", "&amp;")
+  设 r 为 替换字符串(r, "<", "&lt;")
+  设 r 为 替换字符串(r, ">", "&gt;")
+  返回 r
+
+# 取可选字段：光明对缺失键 [] 会抛 键错误，而原版 JS 取缺失属性得 undefined（即 空）。
+# 用 字典包含键 守卫，复刻「可选字段缺省为 空」的语义。
+段落 取可选 接收 d, 键:
+  如果 字典包含键(d, 键): 返回 d[键]
+  返回 空
+
+# 渲染资源提示（按 resourceBase.kind 分支，返回字符串列表，便于并入内容块）
+# 注意：光明不支持跨行列表字面量，故每个 返回 的列表都写在同一行。
+段落 渲染资源提示 接收 技能:
+  如果 字典包含键(技能, "resourceBase") == 假:
+    返回 ["Resources for this skill are managed by provider \"" + 转义文本(技能["provider"]) + "\".", "Load referenced resources only as needed."]
+  设 基 为 技能["resourceBase"]
+  设 种类 为 基["kind"]
+  如果 种类 == "directory":
+    返回 ["Base directory for this skill: " + 转义文本(基["path"]), "Resolve relative paths mentioned by this skill against the base directory before using them. Load referenced resources only as needed."]
+  如果 种类 == "url":
+    返回 ["Base URL for this skill: " + 转义文本(基["url"]), "Resolve relative URLs mentioned by this skill against the base URL before using them. Load referenced resources only as needed."]
+  如果 种类 == "opaque":
+    返回 ["Resources for this skill: " + 转义文本(基["description"]), "Load referenced resources only as needed."]
+  抛出 新建 错误("unhandled SkillResourceBase.kind")
+
+# 渲染一个已加载技能为面向模型的 <skill_content> 块（name 走属性转义，正文原样嵌入）
+段落 渲染技能内容 接收 技能:
+  设 提示 为 渲染资源提示(技能)
+  设 行 为 []
+  列表追加(行, "<skill_content name=\"" + 转义属性(技能["name"]) + "\">")
+  列表追加(行, "<skill_resources>")
+  遍历 h 之 提示:
+    列表追加(行, h)
+  列表追加(行, "</skill_resources>")
+  列表追加(行, "")
+  列表追加(行, "<skill_instructions>")
+  列表追加(行, 技能["content"])
+  列表追加(行, "</skill_instructions>")
+  列表追加(行, "</skill_content>")
+  返回 连接字符串(行, "\n")
+
+# 规范化 provider.list() 的返回值：数组 → {candidates, complete:true}；
+# 否则必须是 { candidates:数组, complete:布尔 }，否则抛错。
+段落 规范化提供方观察 接收 观察, 提供方名:
+  如果 是列表(观察):
+    返回 {"candidates": 观察, "complete": 真}
+  如果 (观察 == 空) 或 (是字典(观察) == 假):
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" list() must return an array or { candidates, complete } observation")
+  设 候选 为 观察["candidates"]
+  设 完成 为 观察["complete"]
+  如果 (是列表(候选) == 假) 或 ((完成 != 真) 且 (完成 != 假)):
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" list() must return an array or { candidates, complete } observation")
+  返回 {"candidates": 候选, "complete": 完成}
+
+# 校验调用策略对象：必须是 { modelInvocable:布尔, userInvocable:布尔 }（或 空 表示沿用默认）
+段落 校验调用 接收 调用, 主体:
+  如果 调用 == 空: 返回
+  如果 (是字典(调用) == 假) 或 (是列表(调用) == 真):
+    抛出 新建 错误(主体 + " with a non-object invocation policy")
+  设 m 为 调用["modelInvocable"]
+  设 u 为 调用["userInvocable"]
+  如果 (m != 真) 且 (m != 假):
+    抛出 新建 错误(主体 + " with a non-boolean invocation.modelInvocable")
+  如果 (u != 真) 且 (u != 假):
+    抛出 新建 错误(主体 + " with a non-boolean invocation.userInvocable")
+
+# 校验候选（provider 列表返回的单个候选），非法则抛错
+段落 校验候选 接收 候选, 提供方名:
+  如果 是字符串(候选["name"]) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned a non-string skill name")
+  如果 是技能名(候选["name"]) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned invalid skill name \"" + 候选["name"] + "\"")
+  如果 是字符串(候选["description"]) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with a non-string description")
+  如果 字符串长度(候选["description"]) == 0:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" without a description")
+  校验调用(候选["invocation"], "skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\"")
+  设 何时用 为 取可选(候选, "whenToUse")
+  如果 (何时用 != 空) 且 (是字符串(何时用) == 假):
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with a non-string whenToUse")
+  如果 是字符串(候选["source"]) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with a non-string source")
+  设 排名 为 候选["rank"]
+  如果 是整数(排名) == 假 且 是浮点(排名) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with an invalid rank")
+  如果 是字符串(候选["provider"]) == 假:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with a non-string provider")
+  如果 候选["provider"] != 提供方名:
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" for provider \"" + 候选["provider"] + "\"")
+  设 候选路径 为 取可选(候选, "path")
+  如果 (候选路径 != 空) 且 (是字符串(候选路径) == 假):
+    抛出 新建 错误("skill provider \"" + 提供方名 + "\" returned skill \"" + 候选["name"] + "\" with a non-string path")
+
+# 校验运行时注册技能，非法则抛错
+段落 校验运行时技能 接收 技能:
+  如果 是技能名(技能["name"]) == 假: 抛出 新建 错误("invalid skill name \"" + 技能["name"] + "\"")
+  如果 字符串长度(技能["description"]) == 0: 抛出 新建 错误("skill \"" + 技能["name"] + "\" requires a description")
+  校验调用(技能["invocation"], "runtime skill \"" + 技能["name"] + "\"")
+
+# 校验由 provider 解析得到的定义，非法则抛错
+段落 校验定义 接收 技能:
+  设 名 为 技能["name"]
+  如果 是字符串(名) == 假: 抛出 新建 错误("loaded skill name must be a string")
+  如果 是技能名(名) == 假: 抛出 新建 错误("loaded skill has invalid name \"" + 名 + "\"")
+  如果 是字符串(技能["description"]) == 假: 抛出 新建 错误("loaded skill \"" + 名 + "\" description must be a string")
+  如果 字符串长度(技能["description"]) == 0: 抛出 新建 错误("loaded skill \"" + 名 + "\" requires a description")
+  校验调用(技能["invocation"], "loaded skill \"" + 名 + "\"")
+  设 何时用 为 取可选(技能, "whenToUse")
+  如果 (何时用 != 空) 且 (是字符串(何时用) == 假): 抛出 新建 错误("loaded skill \"" + 名 + "\" whenToUse must be a string")
+  如果 是字符串(技能["source"]) == 假: 抛出 新建 错误("loaded skill \"" + 名 + "\" source must be a string")
+  如果 是字符串(技能["provider"]) == 假: 抛出 新建 错误("loaded skill \"" + 名 + "\" provider must be a string")
+  如果 是字符串(技能["content"]) == 假: 抛出 新建 错误("loaded skill \"" + 名 + "\" content must be a string")
+  设 sk路径 为 取可选(技能, "path")
+  如果 (sk路径 != 空) 且 (是字符串(sk路径) == 假): 抛出 新建 错误("loaded skill \"" + 名 + "\" path must be a string")
+
+# 投影：定义/候选 → 调用中立的摘要（去掉 locator / path / metadata 等内部字段）
+段落 到摘要 接收 技能:
+  设 摘要 为 {"name": 技能["name"], "description": 技能["description"], "invocation": 技能["invocation"], "source": 技能["source"], "provider": 技能["provider"]}
+  设 wt 为 取可选(技能, "whenToUse")
+  如果 wt != 空: 摘要["whenToUse"] = wt
+  设 rb 为 取可选(技能, "resourceBase")
+  如果 rb != 空: 摘要["resourceBase"] = rb
+  返回 摘要
+
+# 投影：运行时技能定义 → 候选（RUNTIME_RANK=250），保留可选字段
+段落 运行时候选 接收 技能:
+  设 c 为 {"name": 技能["name"], "description": 技能["description"], "invocation": 技能["invocation"], "source": 技能["source"], "provider": 技能["provider"], "rank": 250, "locator": 技能}
+  设 wt 为 取可选(技能, "whenToUse")
+  如果 wt != 空: c["whenToUse"] = wt
+  设 rb 为 取可选(技能, "resourceBase")
+  如果 rb != 空: c["resourceBase"] = rb
+  设 p 为 取可选(技能, "path")
+  如果 p != 空: c["path"] = p
+  设 md 为 取可选(技能, "metadata")
+  如果 md != 空: c["metadata"] = md
+  返回 c
+
+# 按技能名做字典序比较（等价于原版 compareCodePoints 的逐代码点比较）
+段落 比较技能摘要 接收 左, 右:
+  如果 左["name"] < 右["name"]: 返回 -1
+  如果 左["name"] > 右["name"]: 返回 1
+  返回 0
+
+# 候选比较：rank → providerOrder → localOrder 三级优先级
+段落 比较候选 接收 左, 右:
+  设 lc 为 左["candidate"]
+  设 rc 为 右["candidate"]
+  如果 lc["rank"] < rc["rank"]: 返回 -1
+  如果 lc["rank"] > rc["rank"]: 返回 1
+  如果 左["providerOrder"] < 右["providerOrder"]: 返回 -1
+  如果 左["providerOrder"] > 右["providerOrder"]: 返回 1
+  如果 左["localOrder"] < 右["localOrder"]: 返回 -1
+  如果 左["localOrder"] > 右["localOrder"]: 返回 1
+  返回 0

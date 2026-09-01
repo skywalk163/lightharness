@@ -1,0 +1,31 @@
+# acp转码.light —— 对标原版 packages/acp/acp/src/codec.ts 纯逻辑核心
+# 复刻范围：把 harness 轮次终结原因（TurnEndReason）映射到自动化专属 ACP 线缆的
+# 终止原因词表（StopReason）。这是 harness 生命周期与 ACP 线缆之间的纯翻译层。
+#
+# 不可移植缺口（与原版一致，本模块只复刻纯逻辑层）：
+#   - 原版 codec.ts 仅此一个导出函数 turnEndToStopReason；其余 ACP 线缆细节
+#     （codec 的序列化/反序列化、传输、协议握手）均在 index.ts / 宿主胶水里，
+#     不在本纯逻辑文件内，故不属本次复刻范围。
+#   - 原版 reason 是 TypeScript 判别联合 { kind: ... }；光明以 { "kind": 字符串 }
+#     字典表达，键名保持一致。
+#   - 原版对未列明的 kind 走 default 分支返回 "end_turn"；光明同样以末行 返回 "end_turn"
+#     覆盖未知 kind（与原版闭包枚举的 default 语义一致）。
+
+# 把 harness 轮次终结原因映射到 ACP 的终止原因词表。
+# 语义要点（与原版注释一致）：
+#   - completed          → end_turn
+#   - max-tokens         → max_tokens
+#   - aborted            → end_turn（钩子/其它 owner 中止视为普通静默结束，
+#                          显式客户端取消走 cancelled 分支，但那是 session/cancel 越带结算）
+#   - interrupted        → cancelled
+#   - blocked / error    → end_turn
+#   - 未知 kind          → end_turn（default）
+段落 轮次转停止原因 接收 原因:
+  设 种类 为 原因["kind"]
+  如果 种类 == "completed": 返回 "end_turn"
+  如果 种类 == "max-tokens": 返回 "max_tokens"
+  如果 种类 == "aborted": 返回 "end_turn"
+  如果 种类 == "interrupted": 返回 "cancelled"
+  如果 种类 == "blocked": 返回 "end_turn"
+  如果 种类 == "error": 返回 "end_turn"
+  返回 "end_turn"

@@ -1,0 +1,96 @@
+# test_acp内容.light —— 模块37 ACP 内容准入/投影 对齐判据
+# 运行：python 运行.py examples/test_acp内容.light
+
+从 acp内容 导入 admitAcpPrompt, assistantBlockToAcp, 图像媒体类型, 是规范base64, 资源链接文本, 列表取
+
+段落 断言 接收 条件, 标签:
+  如果 条件 == 假: 抛出 新建 错误("断言失败: " + 标签)
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+# 把「应抛错」收敛到一个助手：在 try 内调用 admitAcpPrompt
+段落 断言抛出 接收 标签, 块表, 图像启用:
+  设 已抛 为 假
+  尝试:
+    设 _r 为 admitAcpPrompt(块表, 图像启用)
+  捕获 错误:
+    设 已抛 为 真
+  断言(已抛, 标签)
+
+段落 主:
+  # ---- 媒体类型收窄 ----
+  断言相等(图像媒体类型("image/png"), "image/png", "png 收窄")
+  断言相等(图像媒体类型("image/gif"), "image/gif", "gif 收窄")
+  断言相等(图像媒体类型("image/bmp"), 空, "bmp 非白名单→空")
+  断言相等(图像媒体类型("image/webp"), "image/webp", "webp 收窄")
+
+  # ---- 规范 base64 校验 ----
+  断言(是规范base64(""), "空串规范")
+  断言(是规范base64("ABCD"), "整组规范")
+  断言(是规范base64("AB=="), "双等号尾规范")
+  断言(是规范base64("ABC="), "单等号尾规范")
+  断言(是规范base64("A===") == 假, "三等号尾非规范")
+  断言(是规范base64("A B") == 假, "含空格非规范")
+  断言(是规范base64("AB=C") == 假, "等号错位非规范")
+  断言(是规范base64("====") == 假, "全等号非规范")
+  断言(是规范base64("AB=D") == 假, "等号后非等号非规范")
+
+  # ---- 资源链接渲染 ----
+  断言相等(资源链接文本("x", "y"), "\n[resource_link name=\"x\" uri=\"y\"]\n", "资源链接文本")
+
+  # ---- admitAcpPrompt：纯文本 ----
+  设 r1 为 admitAcpPrompt([{"type": "text", "text": "hello"}], 假)
+  断言相等(r1, [{"type": "text", "text": "hello"}], "文本提示")
+
+  # ---- admitAcpPrompt：resource_link 投影为文本 ----
+  设 r2 为 admitAcpPrompt([{"type": "resource_link", "name": "x", "uri": "y"}], 真)
+  断言(查找子串(列表取(r2, 0)["text"], "resource_link") != -1, "资源链接投影进文本")
+
+  # ---- admitAcpPrompt：图像未启用 → 抛 invalid ----
+  断言抛出("image 未启用须抛", [{"type": "image", "mimeType": "image/png", "data": "ABCD"}], 假)
+
+  # ---- admitAcpPrompt：图像合法 → 投影为引用 ----
+  设 r3 为 admitAcpPrompt([{"type": "image", "mimeType": "image/png", "data": "ABCD"}], 真)
+  断言相等(r3, [{"type": "image", "attachment": {"mediaType": "image/png", "data": "ABCD"}}], "图像提示")
+
+  # ---- admitAcpPrompt：非法 mimeType → 抛 ----
+  断言抛出("非法 mimeType 须抛", [{"type": "image", "mimeType": "image/bmp", "data": "ABCD"}], 真)
+
+  # ---- admitAcpPrompt：非法 base64 → 抛 ----
+  断言抛出("非法 base64 须抛", [{"type": "image", "mimeType": "image/png", "data": "A==="}], 真)
+
+  # ---- admitAcpPrompt：audio 不支持 → 抛 ----
+  断言抛出("audio 须抛", [{"type": "audio", "data": "x"}], 真)
+
+  # ---- admitAcpPrompt：resource 内嵌不支持 → 抛 ----
+  断言抛出("resource 须抛", [{"type": "resource", "uri": "x"}], 真)
+
+  # ---- admitAcpPrompt：空提示（仅空白文本）→ 抛 ----
+  断言抛出("空提示须抛", [{"type": "text", "text": "   "}], 真)
+
+  # ---- admitAcpPrompt：混合 text + image 顺序投影 ----
+  设 r4 为 admitAcpPrompt([{"type": "text", "text": "hi"}, {"type": "image", "mimeType": "image/png", "data": "AB=="}], 真)
+  断言相等(列表取(r4, 0)["type"], "text", "混合首块为文本")
+  断言相等(列表取(r4, 1)["type"], "image", "混合次块为图像")
+
+  # ---- assistantBlockToAcp：文本回投 ----
+  断言相等(assistantBlockToAcp({"type": "text", "text": "hi"}, {}), {"type": "text", "text": "hi"}, "assistant 文本")
+  # ---- assistantBlockToAcp：空文本 → 空 ----
+  断言相等(assistantBlockToAcp({"type": "text", "text": ""}, {}), 空, "assistant 空文本→空")
+  # ---- assistantBlockToAcp：图像经注入附件库回投 ----
+  设 库 为 {"ref1": {"data": "ABCD", "mediaType": "image/png"}}
+  断言相等(assistantBlockToAcp({"type": "image", "attachment": "ref1"}, 库), {"type": "image", "data": "ABCD", "mimeType": "image/png"}, "assistant 图像")
+  # ---- assistantBlockToAcp：附件缺失 → 抛 internal ----
+  设 已抛2 为 假
+  尝试:
+    设 _r5 为 assistantBlockToAcp({"type": "image", "attachment": "missing"}, {})
+  捕获 错误:
+    设 已抛2 为 真
+  断言(已抛2, "assistant 缺失附件须抛")
+  # ---- assistantBlockToAcp：非输出块 → 空 ----
+  断言相等(assistantBlockToAcp({"type": "thinking", "text": "x"}, {}), 空, "assistant 非输出→空")
+
+  打印 "--- ACP 内容准入/投影子系统（模块37）测试通过 ---"
+
+主()

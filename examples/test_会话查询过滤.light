@@ -1,0 +1,95 @@
+# test_会话查询过滤.light —— 模块36 会话查询过滤 对齐判据
+# 运行：python 运行.py examples/test_会话查询过滤.light
+
+从 会话查询过滤 导入 过滤会话结果, 过滤会话事件文档, 物化会话结果过滤器, 物化会话事件结果过滤器, 编译会话文本过滤, 文本过滤匹配
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 列表取 接收 列表, i:
+  设 计数 为 0
+  遍历 元素 之 列表:
+    如果 计数 == i: 返回 元素
+    设 计数 为 计数 + 1
+  返回 空
+
+段落 主:
+  # ---- 逻辑会话记录 ----
+  设 记录1 为 {"header": {"id": "s1", "cwd": "/a", "createdAt": 10, "parentSession": 空}, "live": 真, "persisted": 假}
+  设 记录2 为 {"header": {"id": "s2", "cwd": "/b", "createdAt": 20, "parentSession": "s1"}, "live": 假, "persisted": 真}
+  设 记录表 为 [记录1, 记录2]
+
+  # id 过滤
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "id", "values": ["s1"]}])), 1, "id=s1 命中 1 条")
+  设 命中1 为 过滤会话结果(记录表, [{"kind": "id", "values": ["s1"]}])
+  断言相等(字典获取(字典获取(列表取(命中1, 0), "header"), "id"), "s1", "命中记录为 s1")
+
+  # cwd 过滤
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "cwd", "values": ["/b"]}])), 1, "cwd=/b 命中 1 条")
+
+  # created-at 范围
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "created-at", "from": 15}])), 1, "created-at>=15 命中 s2")
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "created-at", "to": 15}])), 1, "created-at<=15 命中 s1")
+
+  # parent 过滤
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "parent", "values": ["s1"]}])), 1, "parent=s1 命中 s2")
+
+  # availability 过滤
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "availability", "values": ["live"]}])), 1, "availability=live 命中 s1")
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "availability", "values": ["persisted"]}])), 1, "availability=persisted 命中 s2")
+
+  # 多条件 AND
+  断言相等(列表长度(过滤会话结果(记录表, [{"kind": "id", "values": ["s1", "s2"]}, {"kind": "availability", "values": ["live"]}])), 1, "id 含 s1/s2 且 live 命中 s1")
+
+  # 空过滤器返回全部（保留顺序）
+  断言相等(列表长度(过滤会话结果(记录表, [])), 2, "空过滤器返回全部")
+
+  # ---- 物化：合法 + 非法值拒绝 ----
+  设 物化 为 物化会话结果过滤器([{"kind": "id", "values": ["s1"]}, {"kind": "availability", "values": ["live"]}])
+  断言相等(列表长度(物化), 2, "物化返回两条")
+  设 坏值 为 假
+  尝试:
+    物化会话结果过滤器([{"kind": "availability", "values": ["bogus"]}])
+  捕获 错误:
+    设 坏值 为 真
+  断言相等(坏值, 真, "availability 含非法值应抛错")
+
+  # ---- 事件文档 ----
+  设 文档1 为 {"seq": 1, "time": 5, "type": "user", "surface": "current", "text": "Hello World Foo"}
+  设 文档2 为 {"seq": 2, "time": 50, "type": "tool", "surface": "shadowed", "text": "another line"}
+  设 文档表 为 [文档1, 文档2]
+
+  断言相等(列表长度(过滤会话事件文档(文档表, [{"kind": "type", "values": ["user"]}])), 1, "type=user 命中 1 条")
+  断言相等(列表长度(过滤会话事件文档(文档表, [{"kind": "seq", "from": 2}])), 1, "seq>=2 命中 文档2")
+  断言相等(列表长度(过滤会话事件文档(文档表, [{"kind": "surface", "values": ["current"]}])), 1, "surface=current 命中 文档1")
+
+  # 多条件 AND
+  断言相等(列表长度(过滤会话事件文档(文档表, [{"kind": "type", "values": ["user", "tool"]}, {"kind": "surface", "values": ["current"]}])), 1, "type 含 user/tool 且 surface=current 命中 文档1")
+
+  # 文本过滤：大小写不敏感 + 空白灵活
+  断言相等(文本过滤匹配("Hello World Foo", "hello world"), 真, "大小写不敏感 + 顺序匹配")
+  断言相等(文本过滤匹配("Hello   World   Foo", "hello   world"), 真, "空白灵活折叠")
+  断言相等(文本过滤匹配("Hello World Foo", "world hello"), 假, "顺序必须保持")
+  断言相等(文本过滤匹配("Hello World Foo", "nope"), 假, "无令牌则不命中")
+
+  # 编译：空文本抛错、否则返回修剪串
+  设 空编译 为 假
+  尝试:
+    编译会话文本过滤("   ")
+  捕获 错误:
+    设 空编译 为 真
+  断言相等(空编译, 真, "空白文本编译应抛错")
+  断言相等(编译会话文本过滤("  foo bar  "), "foo bar", "编译返回修剪串")
+
+  # 事件物化：非法 surface 值拒绝
+  设 坏面 为 假
+  尝试:
+    物化会话事件结果过滤器([{"kind": "surface", "values": ["bogus"]}])
+  捕获 错误:
+    设 坏面 为 真
+  断言相等(坏面, 真, "surface 含非法值应抛错")
+
+  打印("--- 会话查询过滤子系统（模块36）测试通过 ---")
+
+主()

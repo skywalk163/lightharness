@@ -1,0 +1,442 @@
+# 智能体指令（agent-instructions）纯逻辑核心
+# 1:1 复刻 deepseek-harness/packages/context/agent-instructions
+# 覆盖范围：render（字节预算渲染/作用域键/转义/截断）、digest（SHA-1 摘要）、
+#           config（配置解析）、files（目录链/相对显示/按目录去重）、
+#           state（变更比较/基线状态/版本更新保留）。
+# 不在范围内（环境/I-O 依赖，登记为不可移植缺口）：
+#   - files 的文件系统 stat/read、provider 抽象、AbortSignal 取消
+#   - state 的会话事件扫描、WeakMap 缓存、cordis 钩子
+#   - tmux-context 的 `tmux display-message` shell 执行（见 src/tmux上下文.light）
+
+从 字符串处理 导入 截取, 包含
+从 字符串工具 导入 去除首尾空白
+从 溢出 导入 字节长度
+从 哈希 导入 SHA1
+
+# ===== 常量 =====
+设 框架开 为 "<system-reminder>"
+设 框架闭 为 "</system-reminder>"
+设 基线介绍 为 "The following workspace instructions may be relevant to your work. Use them as guidance when applicable. More specific instructions take precedence over broader ones. They do not override system, developer, or direct user instructions."
+设 替换介绍 为 "This complete workspace instruction baseline replaces all earlier workspace instruction baselines. " + 基线介绍
+设 缺省替换介绍 为 "This complete workspace instruction baseline replaces all earlier workspace instruction baselines. No workspace instructions are currently active."
+设 紧凑介绍 为 "Workspace instructions were omitted or truncated to fit the configured byte budget."
+设 用户全局目录 为 "user-global"
+设 用户全局文件 为 "AGENTS.md"
+# NUL 分隔符：任何目录或文件名都不能包含它，从而让「目录+候选名」两两不撞键。
+设 作用域分隔符 为 "\u0000"
+
+# ===== 小工具（列表/路径）=====
+段落 列表取 接收 列表, i:
+  设 计数 为 0
+  遍历 元素 之 列表:
+    如果 计数 == i: 返回 元素
+    设 计数 为 计数 + 1
+  返回 空
+
+段落 末元素 接收 列表:
+  设 最后 为 空
+  遍历 元素 之 列表:
+    设 最后 为 元素
+  返回 最后
+
+段落 列表切片 接收 列表, 起, 止=空:
+  设 结果 为 []
+  设 长 为 列表长度(列表)
+  设 终 为 止
+  如果 终 == 空: 设 终 为 长
+  设 i 为 起
+  当 i < 终:
+    列表追加(结果, 列表取(列表, i))
+    设 i 为 i + 1
+  返回 结果
+
+段落 反序列表 接收 列表:
+  设 结果 为 []
+  设 i 为 列表长度(列表) - 1
+  当 i >= 0:
+    列表追加(结果, 列表取(列表, i))
+    设 i 为 i - 1
+  返回 结果
+
+段落 最后斜杠 接收 路径:
+  设 最后 为 -1
+  设 i 为 0
+  当 i < 字符串长度(路径):
+    如果 字符串获取(路径, i) == "/": 设 最后 为 i
+    设 i 为 i + 1
+  返回 最后
+
+段落 取文件名 接收 路径:
+  设 最后斜 为 最后斜杠(路径)
+  如果 最后斜 < 0: 返回 路径
+  返回 截取(路径, 最后斜 + 1, 字符串长度(路径))
+
+段落 取目录 接收 路径:
+  设 最后斜 为 最后斜杠(路径)
+  如果 最后斜 < 0: 返回 "."
+  返回 截取(路径, 0, 最后斜)
+
+段落 是绝对路径 接收 路径:
+  如果 开头(路径, "/"): 返回 真
+  如果 字符串长度(路径) >= 2 且 字符串获取(路径, 1) == ":": 返回 真
+  返回 假
+
+段落 解析路径 接收 路径:
+  # 最小规范化：去掉尾随斜杠（根 "/" 除外）。
+  如果 路径 == "/": 返回 "/"
+  当 字符串长度(路径) > 1 且 结尾(路径, "/"):
+    设 路径 为 截取(路径, 0, 字符串长度(路径) - 1)
+  返回 路径
+
+段落 相对路径 接收 根, 路径:
+  # 去掉共同的「根/」前缀；非父子关系则原样返回（与原版 relative 行为在绝对路径下一致）。
+  设 解根 为 解析路径(根)
+  设 目标 为 解析路径(路径)
+  如果 目标 == 解根: 返回 ""
+  设 前缀 为 解根 + "/"
+  如果 字符串长度(目标) > 字符串长度(前缀) 且 开头(目标, 前缀):
+    返回 截取(目标, 字符串长度(前缀), 字符串长度(目标))
+  返回 目标
+
+# ===== digest =====
+段落 指令内容SHA1 接收 内容:
+  返回 SHA1(内容)
+
+段落 去空白指令摘要 接收 内容:
+  # 对应 TS trimmedInstructionDigest：仅首尾去空白（content.trim()），内部空白保留（不折叠）。
+  返回 SHA1(去除首尾空白(内容))
+
+# ===== config =====
+段落 解析指令文件候选 接收 候选, 默认:
+  设 源 为 默认
+  如果 候选 != 空: 设 源 为 候选
+  设 结果 为 []
+  遍历 候选名 之 源:
+    # 跳过保留段（"" / "." / ".."）与含斜杠的（不能是单文件候选名）。
+    如果 候选名 == "" 或 候选名 == "." 或 候选名 == "..": 继续
+    如果 包含(候选名, "/") 或 包含(候选名, "\\"): 继续
+    列表追加(结果, 候选名)
+  返回 结果
+
+段落 解析发现配置 接收 配置:
+  设 默认根标记 为 ["\.git"]
+  设 默认可选 为 ["AGENTS.md", "CLAUDE.md"]
+  设 默认本地 为 ["AGENTS.local.md", "CLAUDE.local.md"]
+  设 主目录 为 "$DSH_HOME"
+  如果 字典包含键(配置, "dshHome"): 设 主目录 为 配置["dshHome"]
+  设 根标记 为 默认根标记
+  如果 字典包含键(配置, "projectRootMarkers"): 设 根标记 为 配置["projectRootMarkers"]
+  返回 {
+    "dshHome": 主目录,
+    "projectRootMarkers": 根标记,
+    "instructionFileCandidates": 解析指令文件候选(字典获取(配置, "instructionFileCandidates"), 默认可选),
+    "localInstructionFileCandidates": 解析指令文件候选(字典获取(配置, "localInstructionFileCandidates"), 默认本地),
+  }
+
+段落 解析配置 接收 配置:
+  设 发现 为 解析发现配置(配置)
+  设 最大源字节 为 1048576
+  如果 字典包含键(配置, "maxSourceBytes"): 设 最大源字节 为 配置["maxSourceBytes"]
+  返回 {
+    "dshHome": 发现["dshHome"],
+    "projectRootMarkers": 发现["projectRootMarkers"],
+    "instructionFileCandidates": 发现["instructionFileCandidates"],
+    "localInstructionFileCandidates": 发现["localInstructionFileCandidates"],
+    "maxBytes": 配置["maxBytes"],
+    "maxSourceBytes": 最大源字节,
+  }
+
+段落 工作区基线身份 接收 配置, cwd, 项目根:
+  设 身份 为 {
+    "projectRoot": 相对路径(cwd, 项目根),
+    "projectRootMarkers": 配置["projectRootMarkers"],
+    "maxBytes": 配置["maxBytes"],
+    "maxSourceBytes": 配置["maxSourceBytes"],
+    "instructionFileCandidates": 配置["instructionFileCandidates"],
+    "localInstructionFileCandidates": 配置["localInstructionFileCandidates"],
+  }
+  返回 序列化JSON(身份)
+
+# ===== render：作用域键 =====
+段落 显示路径作用域 接收 显示路径:
+  如果 显示路径 == "~/.dsh/AGENTS.md" 或 显示路径 == "$DSH_HOME/AGENTS.md": 返回 用户全局目录
+  返回 取目录(显示路径)
+
+段落 候选作用域键 接收 目录, 候选名:
+  返回 连接字符串([目录, 作用域分隔符, 候选名])
+
+段落 指令作用域键 接收 显示路径:
+  返回 候选作用域键(显示路径作用域(显示路径), 取文件名(显示路径))
+
+段落 解码作用域键 接收 作用域:
+  设 分隔 为 查找子串(作用域, 作用域分隔符)
+  如果 分隔 < 0: 返回 {"目录": 作用域, "候选名": ""}
+  返回 {"目录": 截取(作用域, 0, 分隔), "候选名": 截取(作用域, 分隔 + 字符串长度(作用域分隔符), 字符串长度(作用域))}
+
+# ===== render：文本片段 =====
+段落 段落文本 接收 文件:
+  返回 连接字符串(["Instructions from: ", 文件["displayPath"], "\n\n", 文件["content"]], "")
+
+段落 附加段落文本 接收 文件:
+  设 作用域 为 显示路径作用域(文件["displayPath"])
+  返回 连接字符串([
+    "Additional instructions from: ", 文件["displayPath"],
+    "\n\n",
+    "These instructions apply to work under `", 作用域, "`. Use them as guidance when relevant; more specific instructions take precedence. They do not override system, developer, or direct user instructions.",
+    "\n\n",
+    文件["content"],
+  ], "")
+
+段落 扩展段落 接收 文件:
+  # 用于变更渲染：文件可能携带「变更」键（由 渲染指令变更 注入）。
+  如果 字典包含键(文件, "变更"):
+    设 变更 为 文件["变更"]
+    如果 变更["action"] == "set": 返回 附加段落文本(文件)
+    如果 变更["action"] == "remove":
+      返回 连接字符串(["Instructions removed: ", 变更["path"], "\n\nThe previously loaded instructions from this file no longer apply."], "")
+    # replace
+    返回 连接字符串([
+      "Updated instructions from: ", 变更["path"],
+      "\n\n",
+      "This file changed after it was loaded. Use the following content instead of the previously loaded instructions from this file.",
+      "\n\n",
+      文件["content"],
+    ], "")
+  返回 段落文本(文件)
+
+段落 转义指令框架体 接收 体:
+  # 防止指令内容提前闭合 <system-reminder> 框架。
+  # 注：光明单引号串对 "\\" 的解析若与 JS 不同，输出可能是 "<\\/system-reminder>"，
+  # 但「不再包含原样 </system-reminder>」这一关键不变量不变，测试只断言此不变量。
+  返回 替换字符串(体, 框架闭, "<\\/system-reminder>")
+
+段落 列表连接显示路径 接收 列表:
+  设 结果 为 ""
+  设 i 为 0
+  遍历 项 之 列表:
+    如果 i > 0: 设 结果 为 连接字符串([结果, ", "], "")
+    设 结果 为 连接字符串([结果, 项["displayPath"]], "")
+    设 i 为 i + 1
+  返回 结果
+
+段落 标记文本 接收 最大字节, 省略, 截断:
+  如果 列表长度(省略) == 0 且 列表长度(截断) == 0: 返回 ""
+  设 部分 为 []
+  如果 列表长度(省略) > 0:
+    列表追加(部分, 连接字符串(["omitted ", 列表连接显示路径(省略)], ""))
+  如果 列表长度(截断) > 0:
+    设 文案 为 []
+    遍历 项 之 截断:
+      列表追加(文案, 连接字符串([项["displayPath"], " from ", 转字符串(项["originalBytes"]), " to ", 转字符串(项["includedBytes"]), " bytes"], ""))
+    列表追加(部分, 连接字符串(["truncated ", 连接字符串(文案, ", ")], ""))
+  返回 连接字符串(["Workspace instruction budget ", 转字符串(最大字节), " bytes: ", 连接字符串(部分, ", ")], "")
+
+段落 截断UTF8 接收 值, 最大字节:
+  # 按 UTF-8 字节截断，整字符累加保证不切断码点（等价于原版回退续字节边界）。
+  如果 字节长度(值) <= 最大字节: 返回 值
+  设 计数 为 0
+  设 累计 为 0
+  当 计数 < 字符串长度(值):
+    设 字符 为 字符串获取(值, 计数)
+    设 字符字节 为 字节长度(字符)
+    如果 累计 + 字符字节 > 最大字节: 跳出
+    设 累计 为 累计 + 字符字节
+    设 计数 为 计数 + 1
+  返回 截取(值, 0, 计数)
+
+段落 带截断内容 接收 文件, 包含字节:
+  设 新内容 为 截断UTF8(文件["content"], 包含字节)
+  返回 {"absolutePath": 文件["absolutePath"], "displayPath": 文件["displayPath"], "content": 新内容}
+
+段落 构建指令文本 接收 文件表, 最大字节, 省略, 截断, 风格:
+  设 标记 为 标记文本(最大字节, 省略, 截断)
+  设 块 为 []
+  如果 字符串长度(标记) > 0: 列表追加(块, 标记)
+  如果 字符串长度(风格["intro"]) > 0: 列表追加(块, 风格["intro"])
+  遍历 文件 之 文件表:
+    列表追加(块, 风格["段落"](文件))
+  # 过滤空块
+  设 非空段落 为 []
+  遍历 块项 之 块:
+    如果 字符串长度(块项) > 0: 列表追加(非空段落, 块项)
+  设 体 为 转义指令框架体(连接字符串(非空段落, "\n\n"))
+  返回 连接字符串([框架开, 体, 框架闭], "\n")
+
+段落 适配截断 接收 文件, 最大字节, 省略, 风格:
+  设 原字节 为 字节长度(文件["content"])
+  设 低 为 0
+  设 高 为 原字节
+  设 最佳 为 带截断内容(文件, 0)
+  当 低 <= 高:
+    设 中 为 (低 + 高) // 2
+    设 候选 为 带截断内容(文件, 中)
+    设 截断 为 [{"displayPath": 文件["displayPath"], "originalBytes": 原字节, "includedBytes": 字节长度(候选["content"])}]
+    设 文本 为 构建指令文本([候选], 最大字节, 省略, 截断, 风格)
+    如果 字节长度(文本) <= 最大字节:
+      设 最佳 为 候选
+      设 低 为 中 + 1
+    否则:
+      设 高 为 中 - 1
+  返回 最佳
+
+段落 渲染指令上下文 接收 文件表, 最大字节, 风格:
+  如果 最大字节 <= 0:
+    设 空列表 为 []
+    返回 {"文本": "", "省略": 文件表, "截断": 空列表, "表示": 空列表}
+  设 完整 为 构建指令文本(文件表, 最大字节, [], [], 风格)
+  如果 字节长度(完整) <= 最大字节: 返回 {"文本": 完整, "省略": [], "截断": [], "表示": 文件表}
+  # 尝试省略前缀，保留后缀。
+  设 起点 为 1
+  当 起点 < 列表长度(文件表):
+    设 后缀片段 为 列表切片(文件表, 起点)
+    设 省略前 为 列表切片(文件表, 0, 起点)
+    设 省略 为 []
+    遍历 文件 之 省略前:
+      列表追加(省略, {"absolutePath": 文件["absolutePath"], "displayPath": 文件["displayPath"]})
+    设 后缀文本 为 构建指令文本(后缀片段, 最大字节, 省略, [], 风格)
+    如果 字节长度(后缀文本) <= 最大字节:
+      设 截断列表 为 []
+      设 后缀结果 为 {"文本": 后缀文本, "省略": 省略, "截断": 截断列表, "表示": 后缀片段}
+      返回 后缀结果
+    设 起点 为 起点 + 1
+  # 只剩最具体的单个文件：二分截断。
+  设 最具体 为 末元素(文件表)
+  如果 最具体 == 空: 返回 {"文本": "", "省略": [], "截断": [], "表示": []}
+  设 省略 为 []
+  设 索引 为 0
+  当 索引 < 列表长度(文件表) - 1:
+    设 文件 为 列表取(文件表, 索引)
+    列表追加(省略, {"absolutePath": 文件["absolutePath"], "displayPath": 文件["displayPath"]})
+    设 索引 为 索引 + 1
+  设 原字节 为 字节长度(最具体["content"])
+  设 风格变体表 为 [风格, {"intro": 紧凑介绍, "段落": 风格["段落"]}]
+  遍历 风格变体 之 风格变体表:
+    设 截断文件 为 适配截断(最具体, 最大字节, 省略, 风格变体)
+    设 包含字节 为 字节长度(截断文件["content"])
+    设 截断 为 [{"displayPath": 最具体["displayPath"], "originalBytes": 原字节, "includedBytes": 包含字节}]
+    设 文本 为 构建指令文本([截断文件], 最大字节, 省略, 截断, 风格变体)
+    如果 字节长度(文本) <= 最大字节:
+      设 表示 为 []
+      如果 包含字节 > 0 或 原字节 == 0: 设 表示 为 [最具体]
+      设 结果甲 为 {"文本": 文本, "省略": 省略, "截断": 截断, "表示": 表示}
+      返回 结果甲
+  # 连紧凑提示都放不下：只发预算标记（必要时再截断标记本身）。
+  设 截断 为 [{"displayPath": 最具体["displayPath"], "originalBytes": 原字节, "includedBytes": 0}]
+  设 紧凑标记 为 转义指令框架体(标记文本(最大字节, 省略, 截断))
+  设 紧凑含标题 为 转义指令框架体(连接字符串([紧凑标记, 风格["段落"](最具体)], "\n\n"))
+  如果 字节长度(紧凑含标题) <= 最大字节:
+    设 表示 为 []
+    如果 原字节 == 0: 设 表示 为 [最具体]
+    设 结果乙 为 {"文本": 紧凑含标题, "省略": 省略, "截断": 截断, "表示": 表示}
+    返回 结果乙
+  设 文本 为 紧凑标记
+  如果 字节长度(紧凑标记) > 最大字节: 设 文本 为 截断UTF8(紧凑标记, 最大字节)
+  设 表示列表 为 []
+  设 结果丙 为 {"文本": 文本, "省略": 省略, "截断": 截断, "表示": 表示列表}
+  返回 结果丙
+
+段落 基线渲染风格 接收 文件表, 替换先前基线=假:
+  如果 替换先前基线 != 真: 返回 {"intro": 基线介绍, "段落": 段落文本}
+  如果 列表长度(文件表) == 0: 返回 {"intro": 缺省替换介绍, "段落": 段落文本}
+  返回 {"intro": 替换介绍, "段落": 段落文本}
+
+段落 渲染工作区指令集 接收 文件表, 最大字节, 替换先前基线=假:
+  设 风格 为 基线渲染风格(文件表, 替换先前基线)
+  设 结果 为 渲染指令上下文(文件表, 最大字节, 风格)
+  返回 {"渲染": 结果, "包含": 结果["表示"]}
+
+段落 渲染工作区上下文 接收 文件表, 最大字节, 替换先前基线=假:
+  设 风格 为 基线渲染风格(文件表, 替换先前基线)
+  返回 渲染指令上下文(文件表, 最大字节, 风格)
+
+段落 渲染指令变更 接收 项表, 最大字节:
+  # 把 ChangeRenderItem 展开为「扩展 LoadedInstructionFile（携带 变更 键）」，
+  # 段落函数据此渲染 set/additional、remove、replace 三种文案。
+  设 扩展表 为 []
+  遍历 项 之 项表:
+    设 文件 为 项["file"]
+    设 扩展 为 {"absolutePath": 文件["absolutePath"], "displayPath": 文件["displayPath"], "content": 文件["content"], "变更": 项["change"]}
+    列表追加(扩展表, 扩展)
+  设 风格 为 {"intro": "", "段落": 扩展段落}
+  设 结果 为 渲染指令上下文(扩展表, 最大字节, 风格)
+  设 表示集 为 {}
+  遍历 表示文件 之 结果["表示"]:
+    字典设置(表示集, 表示文件["absolutePath"], 真)
+  设 变更表 为 []
+  遍历 项 之 项表:
+    如果 字典包含键(表示集, 项["file"]["absolutePath"]):
+      列表追加(变更表, 项["change"])
+  返回 {"文本": 结果["文本"], "变更": 变更表}
+
+# ===== files 纯逻辑 =====
+段落 祖先链 接收 根, cwd:
+  设 链 为 []
+  设 当前 为 解析路径(cwd)
+  设 解根 为 解析路径(根)
+  当 当前 != 解根:
+    列表追加(链, 当前)
+    设 上层目录 为 取目录(当前)
+    如果 上层目录 == 当前: 跳出
+    设 当前 为 上层目录
+  列表追加(链, 解根)
+  返回 反序列表(链)
+
+段落 后代目录间 接收 根, 触碰路径:
+  设 解根 为 解析路径(根)
+  如果 是绝对路径(触碰路径):
+    设 目标路径 为 解析路径(触碰路径)
+  否则:
+    设 目标路径 为 解析路径(连接字符串([解根, "/", 触碰路径], ""))
+  设 目标目录 为 取目录(目标路径)
+  设 相对 为 相对路径(解根, 目标目录)
+  如果 字符串长度(相对) == 0 或 开头(相对, "..") 或 是绝对路径(相对): 返回 []
+  返回 列表切片(祖先链(解根, 目标目录), 1)
+
+段落 相对显示 接收 根, 路径:
+  返回 相对路径(根, 路径)
+
+段落 按目录去重指令文件 接收 文件表:
+  设 按目录摘要 为 {}
+  设 保留 为 []
+  遍历 文件 之 文件表:
+    设 目录 为 取目录(文件["displayPath"])
+    设 已有 为 字典获取(按目录摘要, 目录)
+    如果 已有 == 空:
+      设 已有 为 {}
+      字典设置(按目录摘要, 目录, 已有)
+    设 摘要 为 去空白指令摘要(文件["content"])
+    如果 字典包含键(已有, 摘要): 继续
+    字典设置(已有, 摘要, 真)
+    列表追加(保留, 文件)
+  返回 保留
+
+# ===== state 纯逻辑 =====
+段落 相同指令变更 接收 a, b:
+  返回 a["action"] == b["action"] 且 a["scope"] == b["scope"] 且 a["path"] == b["path"] 且 a["digest"] == b["digest"]
+
+段落 基线指令状态 接收 文件表:
+  设 变更表 为 {}
+  设 版本表 为 {}
+  遍历 文件 之 文件表:
+    设 摘要 为 指令内容SHA1(文件["content"])
+    设 变更 为 {"action": "set", "scope": 指令作用域键(文件["displayPath"]), "path": 文件["displayPath"], "digest": 摘要}
+    字典设置(变更表, 变更["scope"], 变更)
+    如果 字典包含键(文件, "version"):
+      字典设置(版本表, 变更["scope"], {
+        "path": 文件["displayPath"],
+        "version": 文件["version"],
+        "digest": 摘要,
+        "trimmedDigest": 去空白指令摘要(文件["content"]),
+      })
+  返回 {"变更": 变更表, "版本": 版本表}
+
+段落 保留的指令版本更新 接收 更新表, 渲染变更表:
+  设 结果 为 []
+  遍历 更新 之 更新表:
+    设 匹配 为 假
+    遍历 变更 之 渲染变更表:
+      如果 相同指令变更(更新["change"], 变更):
+        设 匹配 为 真
+        跳出
+    如果 匹配: 列表追加(结果, 更新)
+  返回 结果

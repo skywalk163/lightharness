@@ -1,0 +1,143 @@
+# test_计划模式.light —— 模块39 计划模式纯逻辑核心 对齐判据
+# 运行：python 运行.py examples/test_计划模式.light
+# 对标原版 packages/plan/plan-mode/src/index.ts 的纯逻辑层。
+#
+# 注意：光明编译器将 断言(条件, 标签) 降级为 assert (条件, 标签)（元组），
+# 永远为真、永不报错（见语言缺陷账 L-037）。因此本测试一律用 断言相等
+# （真正的函数调用，会抛出）做判据；抛错用例用 检查抛错（基于 如果/抛出，
+# 非 断言 前缀，故真正生效）。
+
+从 计划模式 导入 首个标题, 校验配置, 折叠计划模式, 有未闭合轮次, 计划模式在末标题
+从 计划模式 导入 投影初始, 投影应用, 投影视图
+
+# 列表取下标：光明列表无内置下标，自写（L-035 同款实现）
+段落 列表取 接收 列表, i:
+  设 k 为 0
+  遍历 x 之 列表:
+    如果 k == i: 返回 x
+    设 k 为 k + 1
+  抛出 新建 错误("列表取下标越界")
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+# 真正生效的抛错检查（不使用 断言 前缀，避免被降级为 no-op assert 元组）
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误:
+    设 抛了 为 真
+  如果 抛了 == 假: 抛出 新建 错误("应抛未抛: " + 标签)
+
+# ---- 校验配置 的抛错分支 ----
+段落 t_配置缺失段:
+  校验配置({"extra": 1})
+段落 t_配置非字符串段:
+  校验配置({"section": 1})
+段落 t_配置空段:
+  校验配置({"section": ""})
+段落 t_配置空白段:
+  校验配置({"section": "   "})
+段落 t_配置未知键:
+  校验配置({"section": "x", "extra": 1})
+
+段落 主:
+  # ---- 首个标题（firstHeading）----
+  断言相等(首个标题("# Hello"), "Hello", "一级标题")
+  断言相等(首个标题("##  Sub  "), "Sub", "二级标题去首尾空白")
+  断言相等(首个标题("### Title"), "Title", "三级标题")
+  断言相等(首个标题("no heading here"), 空, "无标题返回空")
+  断言相等(首个标题("#"), 空, "仅 # 无空格返回空")
+  断言相等(首个标题("#text"), 空, "# 后非空白返回空")
+  断言相等(首个标题("intro\n# Real\nmore"), "Real", "多行取首个标题")
+  断言相等(首个标题("#  Plan: Foo  "), "Plan: Foo", "含冒号标题去空白")
+
+  # ---- 校验配置（resolveConfig）：通过分支 ----
+  设 好配置 为 校验配置({"section": "x"})
+  断言相等(好配置["section"], "x", "合法配置返回 section")
+  设 好配置2 为 校验配置({"section": "  y  "})
+  断言相等(好配置2["section"], "  y  ", "空白段仅校验 trim 后非空，原值保留")
+
+  # ---- 折叠计划模式（foldPlanMode）----
+  断言相等(折叠计划模式([], 0), 假, "空日志非激活")
+  断言相等(折叠计划模式([{"type": "plan/mode", "data": {"active": 真}}], 1), 真, "单一激活事件")
+  断言相等(折叠计划模式([{"type": "plan/mode", "data": {"active": 真}}, {"type": "plan/mode", "data": {"active": 假}}], 2), 假, "末事件胜出")
+  断言相等(折叠计划模式([{"type": "plan/mode", "data": {"active": 真}}, {"type": "plan/mode", "data": {"active": 假}}], 1), 真, "截止前缀末胜出")
+  断言相等(折叠计划模式([{"type": "x"}, {"type": "plan/mode", "data": {"active": 真}}], 2), 真, "无关事件忽略")
+
+  # ---- 有未闭合轮次（hasOpenTurn）----
+  断言相等(有未闭合轮次([]), 假, "空日志无未闭合轮次")
+  断言相等(有未闭合轮次([{"type": "turn/start"}]), 真, "仅 start 未闭合")
+  断言相等(有未闭合轮次([{"type": "turn/start"}, {"type": "turn/end"}]), 假, "start/end 闭合")
+  断言相等(有未闭合轮次([{"type": "turn/start"}, {"type": "turn/end"}, {"type": "turn/start"}]), 真, "末 start 未闭合")
+
+  # ---- 计划模式在末标题（planModeAtLastHeader）----
+  断言相等(计划模式在末标题([]), 空, "无事件返回空")
+  断言相等(计划模式在末标题([{"type": "plan/mode", "data": {"active": 真}}]), 空, "无 header 返回空")
+  断言相等(计划模式在末标题([{"type": "plan/mode", "data": {"active": 真}}, {"type": "request/header"}]), 真, "末 header 前已激活 → 真")
+  断言相等(计划模式在末标题([{"type": "request/header"}, {"type": "plan/mode", "data": {"active": 真}}]), 假, "末 header 后激活不计入 → 假")
+  断言相等(计划模式在末标题([{"type": "plan/mode", "data": {"active": 真}}, {"type": "request/header"}, {"type": "plan/mode", "data": {"active": 假}}]), 真, "取末 header 前缀（之前已激活）")
+
+  # ---- 投影单元：init / apply / view 状态机 ----
+  设 初态 为 投影初始()
+  断言相等(初态["active"], 假, "初始 active 假")
+  断言相等(初态["wanted"], 空, "初始 wanted 空")
+  断言相等(初态["running"], 空, "初始 running 空")
+
+  # command/run plan off → 记录 running，wanted=false
+  设 状态 为 投影应用(初态, {"type": "command/run", "data": {"name": "plan", "commandId": "c1", "args": "off"}})
+  断言相等(状态["active"], 假, "off: active 仍假")
+  断言相等(状态["running"] != 空, 真, "off: running 已记录")
+  断言相等(状态["running"]["commandId"], "c1", "off: running commandId")
+  断言相等(状态["running"]["wanted"], 假, "off: running wanted 假")
+  设 视图 为 投影视图(状态)
+  断言相等(视图["active"], 假, "off 视图 active 假")
+  断言相等(视图["pending"], 假, "off 但已非激活 → 不待定")
+
+  # command/run plan "on" → wanted=true，pending 真（与 active 相反）
+  设 状态2 为 投影应用(初态, {"type": "command/run", "data": {"name": "plan", "commandId": "c2", "args": "on"}})
+  断言相等(状态2["running"]["wanted"], 真, "on: running wanted 真")
+  断言相等(投影视图(状态2)["pending"], 真, "on: 与 active 相反 → 待定")
+
+  # command/run plan " off " → trim 后 off
+  设 状态3 为 投影应用(初态, {"type": "command/run", "data": {"name": "plan", "commandId": "c3", "args": " off "}})
+  断言相等(状态3["running"]["wanted"], 假, "带空格 off 仍解析为关")
+
+  # command/run plan 无 args → 状态不变
+  设 状态4 为 投影应用(初态, {"type": "command/run", "data": {"name": "plan", "commandId": "c4"}})
+  断言相等(状态4["running"], 空, "无 args 的 plan 命令不改变状态")
+
+  # command/done 成功且 wanted 与 active 相反 → 落实 wanted，清 running
+  设 状态5 为 投影应用(状态2, {"type": "command/done", "data": {"commandId": "c2", "kind": "success"}})
+  断言相等(状态5["running"], 空, "done 成功清 running")
+  断言相等(状态5["wanted"], 真, "done 成功落实 wanted=true")
+  断言相等(投影视图(状态5)["pending"], 真, "done 后 wanted 未提交 → 待定")
+
+  # command/done 失败 → wanted 空，running 清
+  设 状态6 为 投影应用(状态2, {"type": "command/done", "data": {"commandId": "c2", "kind": "error"}})
+  断言相等(状态6["running"], 空, "done 失败清 running")
+  断言相等(状态6["wanted"], 空, "done 失败 wanted 空")
+
+  # command/done 不匹配 commandId → 状态不变
+  设 状态7 为 投影应用(状态2, {"type": "command/done", "data": {"commandId": "其它", "kind": "success"}})
+  断言相等(状态7["running"] != 空, 真, "不匹配 done 保留 running")
+  断言相等(状态7["running"]["commandId"], "c2", "不匹配 done 不改 running")
+
+  # plan/mode 落实 active，清 wanted，保留 running
+  设 状态8 为 投影应用(状态2, {"type": "plan/mode", "data": {"active": 真}})
+  断言相等(状态8["active"], 真, "plan/mode 落实 active")
+  断言相等(状态8["wanted"], 空, "plan/mode 清 wanted")
+  断言相等(状态8["running"] != 空, 真, "plan/mode 保留 running")
+  断言相等(投影视图(状态8)["pending"], 假, "active 已落实 → 不待定")
+
+  # ---- 抛错分支（真正生效）----
+  检查抛错("配置缺失段", t_配置缺失段)
+  检查抛错("配置非字符串段", t_配置非字符串段)
+  检查抛错("配置空段", t_配置空段)
+  检查抛错("配置空白段", t_配置空白段)
+  检查抛错("配置未知键", t_配置未知键)
+
+  打印 "--- 计划模式纯逻辑核心子系统（模块39）测试通过 ---"
+
+主()

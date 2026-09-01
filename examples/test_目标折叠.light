@@ -1,0 +1,89 @@
+# test_目标折叠.light —— 模块35 目标折叠 对齐判据
+# 运行：python 运行.py examples/test_目标折叠.light
+
+从 目标折叠 导入 解码目标变更, 折叠目标, 是小写短横线
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败(应为真)：" + 信息)
+
+段落 变更 接收 操作, 目标, 轮次, 创建于, 更新于:
+  设 数据 为 {"kind": "goal/change", "version": 1, "operation": 操作}
+  字典设置(数据, "goal", 目标)
+  字典设置(数据, "roundsStarted", 轮次)
+  字典设置(数据, "createdAt", 创建于)
+  字典设置(数据, "updatedAt", 更新于)
+  返回 数据
+
+段落 快照 接收 编号, 目标文本, 阶段, 最大轮, 修订:
+  设 结果 为 {"id": 编号, "objective": 目标文本, "phase": 阶段, "maxGoalRounds": 最大轮, "revision": 修订}
+  返回 结果
+
+段落 构造事件 接收 类型, 序号, 数据:
+  返回 {"type": 类型, "seq": 序号, "data": 数据}
+
+段落 主:
+  # ---- 完整生命周期：create → edit → user/message(round1) → pause → resume → complete → clear ----
+  设 创建 为 构造事件("goal/change", 1, 变更("create", 快照("g1", "obj", "active", 3, 1), 0, 100, 100))
+  设 编辑 为 构造事件("goal/change", 2, 变更("edit", 快照("g1", "obj", "active", 3, 2), 0, 100, 200))
+  设 用户消息 为 构造事件("user/message", 3, {"source": {"kind": "goal", "goalId": "g1", "revision": 2, "round": 1}})
+  设 暂停 为 构造事件("goal/change", 4, 变更("pause", 快照("g1", "obj", "paused", 3, 3), 1, 100, 300))
+  设 恢复 为 构造事件("goal/change", 5, 变更("resume", 快照("g1", "obj", "active", 3, 4), 1, 100, 400))
+  设 完成 为 构造事件("goal/change", 6, 变更("complete", 快照("g1", "obj", "complete", 3, 5), 1, 100, 500))
+  设 清除 为 构造事件("goal/change", 7, {"kind": "goal/change", "version": 1, "operation": "clear", "cleared": {"id": "g1", "revision": 6}, "clearedAt": 600})
+
+  设 事件表 为 [创建, 编辑, 用户消息, 暂停, 恢复, 完成, 清除]
+  设 折叠 为 折叠目标(事件表)
+  断言相等(字典包含键(折叠, "goal"), 假, "clear 后无当前目标")
+  断言相等(字典获取(折叠, "roundsStarted"), 0, "clear 后轮次归零")
+  断言相等(字典包含键(折叠, "createdAt"), 假, "clear 后无 createdAt")
+  断言相等(字典包含键(折叠, "updatedAt"), 假, "clear 后无 updatedAt")
+  断言相等(字典获取(折叠, "lastRef"), {"id": "g1", "revision": 6}, "clear 后 lastRef 为墓碑")
+
+  # ---- 暂停后立即折叠应见 paused ----
+  设 折叠中 为 折叠目标([创建, 编辑, 用户消息, 暂停])
+  断言相等(字典获取(字典获取(折叠中, "goal"), "phase"), "paused", "pause 后阶段为 paused")
+  断言相等(字典获取(折叠中, "roundsStarted"), 1, "user/message 后 roundsStarted=1")
+
+  # ---- decodeGoalChange 对非 goal 值返回 空 ----
+  断言相等(解码目标变更({"foo": "bar"}), 空, "非 goal 变更返回 空")
+
+  # ---- decodeGoalChange 拒绝未知版本 ----
+  设 越界 为 假
+  尝试:
+    解码目标变更({"kind": "goal/change", "version": 2, "operation": "create"})
+  捕获 错误:
+    设 越界 为 真
+  断言真(越界, "未知版本应抛错")
+
+  # ---- blockedReason.code 必须小写短横线 ----
+  设 坏码 为 假
+  尝试:
+    解码目标变更(变更("create", {"id": "g2", "objective": "o", "phase": "blocked", "maxGoalRounds": 2, "revision": 1, "blockedReason": {"code": "Bad_Code", "message": "x"}}, 0, 1, 1))
+  捕获 错误:
+    设 坏码 为 真
+  断言真(坏码, "非小写短横线 code 应抛错")
+
+  # ---- 是小写短横线 校验 ----
+  断言真(是小写短横线("abc-def"), "abc-def 合法")
+  断言相等(是小写短横线("Abc"), 假, "首字母大写非法")
+  断言相等(是小写短横线("abc-"), 假, "尾随连字符非法")
+  断言相等(是小写短横线("a--b"), 假, "双连字符非法")
+
+  # ---- 轮次预算耗尽（resume 时 roundsStarted >= maxGoalRounds）应抛错 ----
+  设 用户消息2 为 构造事件("user/message", 8, {"source": {"kind": "goal", "goalId": "g1", "revision": 1, "round": 1}})
+  设 恢复耗尽 为 构造事件("goal/change", 9, 变更("resume", 快照("g1", "obj", "active", 1, 2), 1, 100, 200))
+  设 耗尽 为 假
+  尝试:
+    折叠目标([创建, 用户消息2, 恢复耗尽])
+  捕获 错误:
+    设 耗尽 为 真
+  断言真(耗尽, "轮次预算耗尽应抛错")
+
+  打印("--- 目标折叠子系统（模块35）测试通过 ---")
+
+主()

@@ -1,0 +1,97 @@
+# bash渲染.light —— bash 工具面向模型的执行结果渲染纯逻辑核心
+# 对齐原版 packages/shell/tool-bash/src/render.ts
+#
+# 原版把「一次完成的 foreground 运行」与「一次后台进程读取增量」整形成模型可见文本：
+#   - stdout，再以 [stderr] 段拼 stderr，再逐行追加退出状态标记；
+#   - 非零退出只「报告」不「报错」（模型自己决定如何反应）；
+#   - 沙箱拒绝 / 超时 / 信号 / 退出码 各为独立标记，退出码标记必须留在末行
+#     （因为 dsh-shell 的 parseExitStatus 以末行锚定逆解析——本模块 #46 已实现该逆解析）。
+# 本模块 1:1 复刻 streamText / renderResult / renderProcessRead 三个纯函数，
+# 并把沙箱标记文案（原版在 @deepseek-ai/dsh-sandbox/escalation.ts）内联为本模块纯函数，
+# 以便 lightharness 不依赖 sandbox 包即可独立测试渲染→解析往返。
+#
+# 语言坑规避：函数用 接收；变量名避 字典/映射/文本/出/仅；写 只吃字面量串（L-045）；
+#   缺键用 字典包含键 守卫（L-036）；布尔链拆成顺序 如果（L-043，禁止 如果 ... 且/或 ... :）。
+
+从 JSON 导入 序列化JSON
+
+# 取可选值字段（缺键或空值回落默认），等价于 原版 结果["x"] ?? 默认
+段落 取可选值 接收 表, 键, 默认:
+  如果 字典包含键(表, 键) == 假: 返回 默认
+  设 值 为 表[键]
+  如果 值 == 空: 返回 默认
+  返回 值
+
+# 沙箱拒绝标记（对齐 @deepseek-ai/dsh-sandbox/escalation.ts: sandboxDenialMarker）
+段落 沙箱拒绝标记 接收 模式:
+  返回 "[sandbox: file access denied under " + 模式 + " mode]"
+
+# 升级提示标记（对齐 escalation.ts: escalationHintMarker；em-dash 用 \u2014）
+段落 升级提示标记 接收 主题:
+  返回 "[sandbox: escalation available \u2014 retry this exact " + 主题 + " once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]"
+
+# 单条流内容：未截断直接返回；截断则追加溢出提示（含 spill 路径或 (unavailable)）
+段落 流内容 接收 流数据:
+  设 正文 为 流数据["text"]
+  如果 流数据["truncated"] == 真:
+    设 溢出路径 为 取可选值(流数据, "spillPath", "(unavailable)")
+    返回 正文 + "\n[output truncated; full output: " + 溢出路径 + "]"
+  返回 正文
+
+# 渲染一次完成的 foreground 运行（对齐 renderResult）
+段落 渲染结果 接收 结果, 升级模式列表:
+  设 out 为 流内容(结果["stdout"])
+  设 err 为 流内容(结果["stderr"])
+  设 主体 为 out
+  如果 字符串长度(err) > 0:
+    如果 字符串长度(主体) > 0:
+      如果 结尾(主体, "\n") == 假: 设 主体 为 主体 + "\n"
+    设 主体 为 主体 + "[stderr]\n" + err
+  如果 字符串长度(主体) == 0: 设 主体 为 "(no output)"
+  设 标记 为 []
+  如果 字典包含键(结果, "sandbox") == 真:
+    如果 结果["sandbox"]["denied"] == 真:
+      列表追加(标记, 沙箱拒绝标记(结果["sandbox"]["mode"]))
+      如果 列表长度(升级模式列表) > 0: 列表追加(标记, 升级提示标记("command"))
+  如果 字典包含键(结果, "timedOut") == 真:
+    如果 结果["timedOut"] == 真: 列表追加(标记, "[timed out after " + 序列化JSON(结果["timeoutMs"]) + "ms]")
+  设 有信号 为 假
+  如果 字典包含键(结果, "signal") == 真:
+    如果 结果["signal"] != 空: 设 有信号 为 真
+  如果 有信号 == 真:
+    列表追加(标记, "[killed by signal: " + 结果["signal"] + "]")
+  否则:
+    设 有退出码 为 假
+    如果 字典包含键(结果, "exitCode") == 真:
+      如果 结果["exitCode"] != 0: 设 有退出码 为 真
+    如果 有退出码 == 真: 列表追加(标记, "[exit code: " + 序列化JSON(结果["exitCode"]) + "]")
+  如果 列表长度(标记) == 0: 返回 主体
+  如果 结尾(主体, "\n") == 假: 设 主体 为 主体 + "\n"
+  返回 主体 + 连接字符串(标记, "\n")
+
+# 渲染一次后台进程读取增量（对齐 renderProcessRead）
+段落 渲染进程读取 接收 读取, 沙箱, 升级模式列表:
+  设 通知 为 []
+  如果 字典包含键(读取, "lossy") == 真:
+    如果 读取["lossy"] == 真:
+      设 路径列表 为 []
+      如果 字典包含键(读取, "stdoutSpillPath") == 真:
+        如果 读取["stdoutSpillPath"] != 空: 列表追加(路径列表, 读取["stdoutSpillPath"])
+      如果 字典包含键(读取, "stderrSpillPath") == 真:
+        如果 读取["stderrSpillPath"] != 空: 列表追加(路径列表, 读取["stderrSpillPath"])
+      如果 列表长度(路径列表) > 0:
+        列表追加(通知, "[some output was dropped from memory; full output: " + 连接字符串(路径列表, ", ") + "]")
+      否则:
+        列表追加(通知, "[some output was dropped from memory; full output: (unavailable)]")
+  如果 字典包含键(沙箱) == 真:
+    如果 沙箱["runnerFailed"] == 真:
+      列表追加(通知, "[sandbox: the sandbox runner itself failed under " + 沙箱["mode"] + " mode \u2014 the command did not run; this is a sandbox problem, not a command failure]")
+    否则:
+      如果 沙箱["denied"] == 真:
+        列表追加(通知, 沙箱拒绝标记(沙箱["mode"]))
+        如果 列表长度(升级模式列表) > 0: 列表追加(通知, 升级提示标记("command"))
+  如果 列表长度(通知) == 0: 返回 读取["delta"]
+  设 分隔 为 ""
+  如果 字符串长度(读取["delta"]) > 0:
+    如果 结尾(读取["delta"], "\n") == 假: 设 分隔 为 "\n"
+  返回 读取["delta"] + 分隔 + 连接字符串(通知, "\n")

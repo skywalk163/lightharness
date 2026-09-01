@@ -1,0 +1,133 @@
+# 计划模式.light —— 对标原版 packages/plan/plan-mode/src/index.ts 纯逻辑核心
+# 复刻范围：配置校验（resolveConfig）、计划模式折叠（foldPlanMode）、
+# 首个标题抽取（firstHeading）、未闭合轮次判定（hasOpenTurn）、
+# 末标题处的计划模式（planModeAtLastHeader），以及「plan」投影单元的状态机
+# （init / apply / view，对 command/run、command/done、plan/mode 折叠出
+# { active, pending }）。
+#
+# 不可移植缺口（与原版一致，本模块只复刻纯逻辑层）：
+#   - 原版 PlanModeController 是 Cordis Service，依赖事件总线、WeakMap
+#     pendingIntents、systemPrompt.section、commands.register、tools.register、
+#     userQuestions 交互与 session.append 等运行时胶水；本模块不含这些 IO/胶水，
+#     只保留可纯函数化的折叠与校验逻辑。
+#   - 原版用 TypeError / Error 区分错误；光明只有单一 错误 类型，统一抛 错误，
+#     消息文本与原版保持一致（不影响纯逻辑行为）。
+#   - 原版 firstHeading 用正则 /^#{1,6}\s+(.+?)\s*$/ 取首个捕获组；光明 匹配正则
+#     仅返回布尔（见 L-034 词法陷阱备注），本模块以手写字符扫描复刻同样的语义：
+#     数前导 #（1-6），其后是空白，再取首行剩余内容并去除首尾空白。
+
+从 字符串工具 导入 去除首尾空白
+从 字符串处理 导入 截取
+
+# 抽取一段 markdown 行的首个标题内容（等价于正则首个捕获组）。
+# 返回 去除首尾空白 后的标题文本；非标题行返回 空。
+段落 解析标题 接收 行:
+  设 n 为 字符串长度(行)
+  设 i 为 0
+  # 数前导 #，最多 6 个（对应 #{1,6}）
+  当 i < n 且 i < 6 且 字符串获取(行, i) == "#":
+    设 i 为 i + 1
+  如果 i == 0: 返回 空            # 不以 # 开头，不是标题
+  如果 i >= n: 返回 空            # 全是 #、无内容，不是标题
+  设 紧跟 为 字符串获取(行, i)
+  # 紧跟 # 的必须是空白（对应 \s+，至少一个）
+  如果 (紧跟 != " ") 且 (紧跟 != "\t"): 返回 空
+  # 跳过紧随的所有空白
+  设 j 为 i
+  当 j < n 且 ((字符串获取(行, j) == " ") 或 (字符串获取(行, j) == "\t") 或 (字符串获取(行, j) == "\r")):
+    设 j 为 j + 1
+  设 内容 为 截取(行, j, 字符串长度(行))
+  返回 去除首尾空白(内容)
+
+# 首个标题：返回计划文本的首个 markdown 标题内容，无标题时返回 空。
+段落 首个标题 接收 计划:
+  设 行们 为 分割字符串(计划, "\n")
+  遍历 行 之 行们:
+    设 标题 为 解析标题(行)
+    如果 标题 != 空: 返回 标题
+  返回 空
+
+# 校验部署方计划指引配置。缺失 / 非字符串 / 空白 / 含未知字段均在加载期抛错。
+段落 校验配置 接收 配置:
+  如果 字典包含键(配置, "section") == 假:
+    抛出 新建 错误("PlanModeConfig needs a string `section`")
+  设 段 为 配置["section"]
+  如果 是字符串(段) == 假:
+    抛出 新建 错误("PlanModeConfig needs a string `section`")
+  如果 去除首尾空白(段) == "":
+    抛出 新建 错误("PlanModeConfig needs a non-empty `section`")
+  设 键们 为 字典键列表(配置)
+  设 未知 为 []
+  遍历 键 之 键们:
+    如果 键 != "section": 列表追加(未知, 键)
+  如果 列表长度(未知) > 0:
+    抛出 新建 错误("PlanModeConfig has unknown key(s) " + 连接字符串(未知, ", ") + " — config is { section }")
+  返回 {"section": 段}
+
+# 折叠计划模式：events[0, 截止) 内最后一个 plan/mode 的 active 胜出；无则非激活。
+段落 折叠计划模式 接收 事件, 截止:
+  设 激活 为 假
+  设 索引 为 0
+  遍历 事件项 之 事件:
+    如果 索引 >= 截止: 跳出
+    设 索引 为 索引 + 1
+    如果 事件项["type"] == "plan/mode":
+      设 激活 为 事件项["data"]["active"]
+  返回 激活
+
+# 日志中是否持有一个未闭合的轮次（turn/start 之后无对应 turn/end）。
+段落 有未闭合轮次 接收 事件:
+  设 开 为 假
+  遍历 事件项 之 事件:
+    如果 事件项["type"] == "turn/start": 设 开 为 真
+    否则如果 事件项["type"] == "turn/end": 设 开 为 假
+  返回 开
+
+# 末个 request/header 处的计划模式；在首个 header 之前返回 空。
+段落 计划模式在末标题 接收 事件:
+  设 末标题 为 -1
+  设 索引 为 0
+  遍历 事件项 之 事件:
+    如果 事件项["type"] == "request/header": 设 末标题 为 索引
+    设 索引 为 索引 + 1
+  如果 末标题 < 0: 返回 空
+  返回 折叠计划模式(事件, 末标题 + 1)
+
+# ——「plan」投影单元：纯事件折叠，服务于客户端整体 { active, pending } 值 ——
+
+# 投影初始状态：{ active:假, wanted:空, running:空 }
+段落 投影初始 接收:
+  返回 {"active": 假, "wanted": 空, "running": 空}
+
+# 应用一个事件到投影状态，返回新状态（不可变更新）。
+段落 投影应用 接收 状态, 事件:
+  设 型 为 事件["type"]
+  如果 型 == "command/run":
+    设 数据 为 事件["data"]
+    如果 数据["name"] == "plan":
+      如果 字典包含键(数据, "args") == 假: 返回 状态
+      设 参 为 数据["args"]
+      如果 参 == 空: 返回 状态
+      设 期望 为 (去除首尾空白(参) != "off")
+      返回 {"active": 状态["active"], "wanted": 状态["wanted"], "running": {"commandId": 数据["commandId"], "wanted": 期望}}
+  如果 型 == "command/done":
+    如果 状态["running"] != 空:
+      如果 事件["data"]["commandId"] == 状态["running"]["commandId"]:
+        设 数据 为 事件["data"]
+        设 期望 为 空
+        如果 (数据["kind"] == "success") 且 (状态["running"]["wanted"] != 状态["active"]):
+          设 期望 为 状态["running"]["wanted"]
+        返回 {"active": 状态["active"], "wanted": 期望, "running": 空}
+  如果 型 == "plan/mode":
+    返回 {"active": 事件["data"]["active"], "wanted": 空, "running": 状态["running"]}
+  返回 状态
+
+# 将投影状态投影为 { active, pending } 供客户端读取。
+段落 投影视图 接收 状态:
+  设 期望 为 空
+  如果 状态["running"] != 空:
+    设 期望 为 状态["running"]["wanted"]
+  否则:
+    设 期望 为 状态["wanted"]
+  设 待定 为 (期望 != 空) 且 (期望 != 状态["active"])
+  返回 {"active": 状态["active"], "pending": 待定}

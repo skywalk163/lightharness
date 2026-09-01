@@ -1,0 +1,116 @@
+# test_附件准入.light —— 模块 #48 反跑测试
+# 覆盖：规范 base64 四判据（字符集/长度/填充/尾比特）、解码字节长度推算、存输入（空串/非规范/带 name）、
+#       批次三限额（数量/聚合字节/媒体类型白名单）、准入编码图片 端到端。
+# 反跑判据：把任一 断言相等 的期望值改反即红；把任一 检查抛错 用例改为不抛即红。
+# 注意：写 只接受字面量串（L-045）；诊断一律走 抛出 新建 错误（表达式上下文）。
+
+从 JSON 导入 序列化JSON
+从 附件准入 导入 是规范base64, 解码字节长度, 列表包含, 存输入, 校验图片批次, 准入编码图片
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误:
+    设 抛了 为 真
+  如果 (抛了 == 假): 抛出 新建 错误("期望抛错但未抛: " + 标签)
+
+# ---- 规范 base64 判定 ----
+段落 用例规范:
+  断言相等(是规范base64("AAAA"), 真, "无填充→规范")
+  断言相等(是规范base64("AAA="), 真, "1填充+尾比特为0→规范")
+  断言相等(是规范base64("AA=="), 真, "2填充+尾4比特为0→规范")
+  断言相等(是规范base64("AAB="), 假, "1填充但尾比特非0→非规范")
+  断言相等(是规范base64("AB=="), 假, "2填充但尾比特非0→非规范")
+  断言相等(是规范base64("AAA"), 假, "长度非4倍数→非规范")
+  断言相等(是规范base64("A==="), 假, "填充超过2个→非规范")
+  断言相等(是规范base64("AB=C"), 假, "中间含等号→非规范")
+  断言相等(是规范base64("AAA*"), 假, "非法字符→非规范")
+
+段落 用例字节长度:
+  断言相等(解码字节长度("AAAA"), 3, "4字符→3字节")
+  断言相等(解码字节长度("AAA="), 2, "1填充→2字节")
+  断言相等(解码字节长度("AA=="), 1, "2填充→1字节")
+  断言相等(解码字节长度(""), 0, "空串→0字节")
+
+段落 用例列表包含:
+  断言相等(列表包含(["a", "b"], "a"), 真, "命中")
+  断言相等(列表包含(["a", "b"], "z"), 假, "未命中")
+
+# ---- 存输入 ----
+段落 用例存输入:
+  设 结果 为 存输入(["data": "AAAA", "mediaType": "image/png"])
+  断言相等(结果["data"], 3, "data 记解码字节数")
+  断言相等(结果["mediaType"], "image/png", "媒体类型透传")
+  断言相等(字典包含键(结果, "name"), 假, "未传 name 时不带该键")
+
+段落 用例存输入带名:
+  设 结果 为 存输入(["data": "AAAA", "mediaType": "image/png", "name": "a.png"])
+  断言相等(结果["name"], "a.png", "带 name 时透传")
+
+段落 段_空数据:
+  存输入(["data": "", "mediaType": "image/png"])
+
+段落 段_非规范:
+  存输入(["data": "AAB=", "mediaType": "image/png"])
+
+段落 用例存输入抛错:
+  检查抛错("空数据应抛", 段_空数据)
+  检查抛错("非规范 base64 应抛", 段_非规范)
+
+# ---- 批次限额 ----
+段落 用例批次通过:
+  设 限制 为 ["maxImagesPerMessage": 2, "maxMessageImageBytes": 100, "mediaTypes": ["image/png", "image/jpeg"]]
+  设 表 为 [["data": 3, "mediaType": "image/png"], ["data": 3, "mediaType": "image/jpeg"]]
+  断言相等(校验图片批次(表, 限制), 真, "限额内→通过")
+
+段落 段_超数量:
+  设 限制 为 ["maxImagesPerMessage": 2, "maxMessageImageBytes": 100, "mediaTypes": ["image/png"]]
+  设 表 为 [["data": 1, "mediaType": "image/png"], ["data": 1, "mediaType": "image/png"], ["data": 1, "mediaType": "image/png"]]
+  校验图片批次(表, 限制)
+
+段落 段_超字节:
+  设 限制 为 ["maxImagesPerMessage": 5, "maxMessageImageBytes": 5, "mediaTypes": ["image/png"]]
+  设 表 为 [["data": 3, "mediaType": "image/png"], ["data": 3, "mediaType": "image/png"]]
+  校验图片批次(表, 限制)
+
+段落 段_不支持类型:
+  设 限制 为 ["maxImagesPerMessage": 5, "maxMessageImageBytes": 100, "mediaTypes": ["image/png"]]
+  设 表 为 [["data": 1, "mediaType": "image/gif"]]
+  校验图片批次(表, 限制)
+
+段落 用例批次抛错:
+  检查抛错("超数量应抛", 段_超数量)
+  检查抛错("超聚合字节应抛", 段_超字节)
+  检查抛错("不支持媒体类型应抛", 段_不支持类型)
+
+# ---- 端到端准入 ----
+段落 用例准入:
+  设 限制 为 ["maxImagesPerMessage": 2, "maxMessageImageBytes": 100, "mediaTypes": ["image/png", "image/jpeg"]]
+  设 结果 为 准入编码图片([["data": "AAAA", "mediaType": "image/png"], ["data": "AAA=", "mediaType": "image/jpeg"]], 限制)
+  断言相等(长度(结果), 2, "返回与入参同序同长")
+  断言相等(结果[0]["data"], 3, "首元素字节数")
+  断言相等(结果[1]["data"], 2, "次元素字节数（1填充）")
+  断言相等(结果[0]["mediaType"], "image/png", "首元素媒体类型")
+
+段落 段_准入内含非规范:
+  设 限制 为 ["maxImagesPerMessage": 5, "maxMessageImageBytes": 100, "mediaTypes": ["image/png"]]
+  准入编码图片([["data": "AAAA", "mediaType": "image/png"], ["data": "AB==", "mediaType": "image/png"]], 限制)
+
+段落 用例准入抛错:
+  检查抛错("批次内含非规范应抛", 段_准入内含非规范)
+
+用例规范()
+用例字节长度()
+用例列表包含()
+用例存输入()
+用例存输入带名()
+用例存输入抛错()
+用例批次通过()
+用例批次抛错()
+用例准入()
+用例准入抛错()
+写 "--- 附件准入纯逻辑核心（模块48）测试通过 ---"

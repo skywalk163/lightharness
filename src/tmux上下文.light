@@ -1,0 +1,60 @@
+# tmux-context 纯逻辑核心（对标 @deepseek-ai/dsh-tmux-context）
+#
+# 仅抽取可在「无 shell / 无 tmux」环境下 1:1 复现的纯逻辑：
+#   - 渲染状态(renderState)：稳定 tmux 状态块（变化抑制比较时不参与的部分）
+#   - 渲染阅读(renderReading)：完整持久阅读（含易变轮次前导行）
+#   - 最近注入状态(latestInjectedState)：从事件表回溯本插件最近一次注入的状态块
+#   - 校验刷新间隔(validateRefreshInterval)：配置校验，非法则抛 TypeError
+#
+# 非可移植缺口（登记到 docs/功能对标/语言缺陷账.md）：
+#   queryTmuxLocation 依赖 `tmux display-message` + `ps -o tty=` 的外部 shell 执行，
+#   属环境依赖，无法在纯逻辑层 1:1 复现；本文件只覆盖其上游/下游纯函数。
+
+段落 反序列表 接收 列表:
+  设 结果 为 []
+  设 i 为 列表长度(列表) - 1
+  当 i >= 0:
+    列表追加(结果, 列表获取(列表, i))
+    设 i 为 i - 1
+  返回 结果
+
+# 渲染稳定 tmux 状态块：与 TS renderState 完全对齐。
+# windowName 经 序列化JSON 包裹引号，等价于原版 JSON.stringify(location.windowName)。
+段落 渲染状态 接收 位置:
+  设 行甲 为 "session " 加上 位置["会话名"] 加上 ", window " 加上 位置["窗口索引"] 加上 " " 加上 序列化JSON(位置["窗口名"]) 加上 ", pane " 加上 位置["窗格索引"] 加上 " " 加上 位置["窗格ID"]
+  设 行乙 为 "window active=" 加上 位置["窗口活跃"] 加上 ", pane active=" 加上 位置["窗格活跃"] 加上 ", layout " 加上 位置["窗口布局"]
+  返回 行甲 加上 "\n" 加上 行乙
+
+# 渲染完整持久阅读：易变轮次前导行 + 稳定状态块。
+# 等价于 TS renderReading：`${READING_PREFIX}${turn}):\n${renderState(location)}`
+段落 渲染阅读 接收 位置, 轮次:
+  设 前导 为 "tmux location (turn " 加上 转字符串(轮次) 加上 "):\n"
+  返回 前导 加上 渲染状态(位置)
+
+# 从事件表回溯本插件最近一次「持久注入」的稳定状态块；
+# 未注入过、或最近一次插件阅读非文本块，则返回 空（= 原版 undefined，视作「无先前状态」）。
+# 等价于 TS latestInjectedState：倒序扫描事件，命中首个
+#   event.type==='user/message' && source.kind==='plugin' && source.plugin==='tmux-context'
+# 取首个内容块；非 text 则返回 undefined；按首个 '\n' 切出状态块（无换行则状态为空串）。
+段落 最近注入状态 接收 事件表:
+  遍历 事件 之 反序列表(事件表):
+    如果 事件["类型"] != "user/message": 继续
+    设 来源 为 事件["数据"]["来源"]
+    如果 来源["种类"] != "plugin": 继续
+    如果 来源["插件"] != "tmux-context": 继续
+    设 区块 为 列表获取(事件["数据"]["内容"], 0)
+    如果 区块 == 空: 返回 空
+    如果 区块["类型"] != "text": 返回 空
+    设 文本 为 区块["文本"]
+    设 换行 为 查找子串(文本, "\n")
+    如果 换行 == -1: 返回 {"状态": "", "时间": 事件["时间"]}
+    设 状态 为 截取(文本, 换行 + 1, 字符串长度(文本))
+    返回 {"状态": 状态, "时间": 事件["时间"]}
+  返回 空
+
+# 校验刷新间隔：非「非负安全整数」则抛 TypeError（对齐原版 validateRefreshInterval）。
+# 光明 整数 判定用 是整数()；负数与浮点（如 1.5）均判为非法。
+段落 校验刷新间隔 接收 刷新间隔毫秒:
+  如果 刷新间隔毫秒 != 空:
+    如果 是整数(刷新间隔毫秒) == 假 或 刷新间隔毫秒 < 0:
+      抛出 新建 错误("tmux-context: refreshIntervalMs must be a non-negative safe integer, got " 加上 转字符串(刷新间隔毫秒))

@@ -1,0 +1,99 @@
+# 附件准入.light —— 附件（base64 图片）准入纯逻辑核心
+# 对齐原版 packages/attachment/attachment/src/admission.ts（decodeBase64 / saveInput / admitEncodedImages）
+#      与 packages/attachment/attachment/src/index.ts（AttachmentStore.saveImages 的批次限额）
+#
+# 已剔除：AttachmentStore 的 Cordis Service 继承、validateImage/saveImage 抽象持久化、Buffer 字节操作。
+# 抽象说明：原版 decodeBase64 用 Buffer 往返（decode 再 re-encode 比对）判定「规范 base64」。
+#   纯光明无字节缓冲区，此处以等价的**纯字符判定**复刻，四条判据与原版往返等价：
+#     ① 字符集 ∈ [A-Za-z0-9+/]（填充 = 除外）  ② 长度 % 4 == 0
+#     ③ 尾部 = 至多 2 个且必须连续              ④ 尾比特规范性（往返相等的关键）
+#        填充 1 个 → 末数据字符索引 % 4 == 0；填充 2 个 → 索引 % 16 == 0
+#   解码字节长度由 (组数*3 - 填充数) 纯算术得出，无需真实解码。
+#   空串按原版 `data.length === 0` 由 存输入 显式拒绝（是规范base64("") 仍返回 真，两条件分离）。
+#
+# 语言坑规避：函数用 接收；变量名避 字典/映射；布尔链用多行块（L-043）；缺键用 字典包含键 守卫（L-036）。
+
+# base64 标准字母表（RFC 4648）
+设 字母表 为 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+# 字符在字母表中的索引；非字母表字符返回 -1
+段落 字符索引 接收 c:
+  返回 查找子串(字母表, c)
+
+# 统计尾部连续填充符 = 的个数
+段落 填充个数 接收 数据:
+  设 填充 为 0
+  设 i 为 字符串长度(数据) - 1
+  当 i >= 0 且 字符串获取(数据, i) == "=":
+    设 填充 为 填充 + 1
+    设 i 为 i - 1
+  返回 填充
+
+# 判定是否为规范 base64（等价于原版 decode → re-encode 后与原文相等）
+段落 是规范base64 接收 数据:
+  设 n 为 字符串长度(数据)
+  如果 n == 0: 返回 真
+  如果 n % 4 != 0: 返回 假
+  设 填充 为 填充个数(数据)
+  如果 填充 > 2: 返回 假
+  # 主体字符（尾部填充之前）必须全在字母表内；中间的 = 在此被拒绝
+  设 主体长 为 n - 填充
+  设 i 为 0
+  当 i < 主体长:
+    如果 字符索引(字符串获取(数据, i)) < 0: 返回 假
+    设 i 为 i + 1
+  # 尾比特规范性：多余比特必须为 0，否则 re-encode 会规范化成别的串
+  如果 填充 == 1:
+    设 末字符 为 字符串获取(数据, n - 2)
+    如果 字符索引(末字符) % 4 != 0: 返回 假
+  如果 填充 == 2:
+    设 末字符 为 字符串获取(数据, n - 3)
+    如果 字符索引(末字符) % 16 != 0: 返回 假
+  返回 真
+
+# 由 base64 串长度推算解码后的字节数（不需真实解码）
+段落 解码字节长度 接收 数据:
+  设 n 为 字符串长度(数据)
+  设 组数 为 n 整除 4
+  设 填充 为 填充个数(数据)
+  返回 组数 * 3 - 填充
+
+# 列表成员判定
+段落 列表包含 接收 列表, 值:
+  遍历 项 之 列表:
+    如果 项 == 值: 返回 真
+  返回 假
+
+# 单个上传：严格 base64 准入后产出待存结构（data 记解码字节数；name 仅在传入时携带）
+段落 存输入 接收 图片:
+  设 数据 为 图片["data"]
+  如果 字符串长度(数据) == 0:
+    抛出 新建 错误("Image upload is not canonical base64.")
+  如果 是规范base64(数据) == 假:
+    抛出 新建 错误("Image upload is not canonical base64.")
+  设 结果 为 ["data": 解码字节长度(数据), "mediaType": 图片["mediaType"]]
+  如果 字典包含键(图片, "name"):
+    结果["name"] 为 图片["name"]
+  返回 结果
+
+# 批次限额校验：数量上限 → 聚合字节上限 → 媒体类型白名单（顺序与原版一致）
+段落 校验图片批次 接收 输入表, 限制:
+  如果 长度(输入表) > 限制["maxImagesPerMessage"]:
+    抛出 新建 错误("Image batch exceeds the configured image-count limit.")
+  设 总 为 0
+  遍历 输入 之 输入表:
+    设 总 为 总 + 输入["data"]
+  如果 总 > 限制["maxMessageImageBytes"]:
+    抛出 新建 错误("Image batch exceeds the configured aggregate image-byte limit.")
+  遍历 输入 之 输入表:
+    如果 列表包含(限制["mediaTypes"], 输入["mediaType"]) == 假:
+      抛出 新建 错误("Image type is not accepted by this deployment.")
+  返回 真
+
+# 准入一批 base64 编码图片：逐个严格解码（保持入参顺序）后做批次校验
+段落 准入编码图片 接收 输入表, 限制:
+  设 结果 为 []
+  遍历 图片 之 输入表:
+    列表追加(结果, 存输入(图片))
+  校验图片批次(结果, 限制)
+  返回 结果

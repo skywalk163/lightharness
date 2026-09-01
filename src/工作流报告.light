@@ -1,0 +1,164 @@
+从 字符串工具 导入 去除首尾空白
+从 JSON 导入 序列化JSON
+段落 表包含 接收 列表, 值:
+  遍历 x 之 列表:
+    如果 (x == 值): 返回 真
+  返回 假
+段落 是记录 接收 值:
+  如果 (值 == 空): 返回 假
+  如果 (是字典(值) == 假): 返回 假
+  如果 (是列表(值) == 真): 返回 假
+  返回 真
+段落 标准化文本 接收 值:
+  如果 (是字符串(值) == 假): 返回 假
+  如果 (字符串长度(值) == 0): 返回 假
+  如果 (值 != 去除首尾空白(值)): 返回 假
+  返回 真
+段落 标准化列表 接收 值:
+  如果 (是列表(值) == 假): 返回 假
+  遍历 x 之 值:
+    如果 (标准化文本(x) == 假): 返回 假
+  返回 真
+段落 键集合相等 接收 值, 期望键:
+  设 实际键 为 字典键列表(值)
+  如果 (列表长度(实际键) != 列表长度(期望键)): 返回 假
+  遍历 k 之 期望键:
+    如果 (表包含(实际键, k) == 假): 返回 假
+  返回 真
+段落 取可选文本 接收 表, 键, 默认:
+  如果 (字典包含键(表, 键) == 假): 返回 默认
+  返回 表[键]
+段落 校验配置 接收 配置:
+  设 提供方 为 取可选文本(配置, "subagentProvider", "spawn")
+  设 轮次 为 取可选文本(配置, "maxRounds", 256)
+  设 交接上限 为 取可选文本(配置, "maxHandoffChars", 16384)
+  设 结果上限 为 取可选文本(配置, "maxResultChars", 16384)
+  如果 (字符串长度(提供方) == 0 或 提供方 != 去除首尾空白(提供方)):
+    抛出 新建 错误("subagentProvider must be a non-empty normalized string")
+  如果 (是整数(轮次) == 假 或 轮次 < 1):
+    抛出 新建 错误("maxRounds must be a positive safe integer")
+  如果 (是整数(交接上限) == 假 或 交接上限 < 1):
+    抛出 新建 错误("maxHandoffChars must be a positive safe integer")
+  如果 (是整数(结果上限) == 假 或 结果上限 < 1):
+    抛出 新建 错误("maxResultChars must be a positive safe integer")
+  返回 {"subagentProvider": 提供方, "maxRounds": 轮次, "maxHandoffChars": 交接上限, "maxResultChars": 结果上限}
+段落 解析最大轮次 接收 请求, 上限:
+  设 值 为 请求
+  如果 (请求 == 空): 设 值 为 上限
+  如果 (是整数(值) == 假 或 值 < 1): 抛出 新建 错误("Ralph maxRounds must be a positive safe integer")
+  如果 (值 > 上限): 抛出 新建 错误("Ralph maxRounds exceeds the deployment ceiling")
+  返回 值
+段落 校验报告 接收 报告, 上限:
+  如果 ((报告 == 空) 或 (是字典(报告) == 假) 或 (是列表(报告) == 真)):
+    抛出 新建 错误("Ralph child returned no structured round report")
+  如果 (标准化文本(报告["summary"]) == 假):
+    抛出 新建 错误("Ralph round report summary must be non-empty and normalized")
+  如果 ((标准化列表(报告["evidence"]) == 假) 或 (标准化列表(报告["nextSteps"]) == 假)):
+    抛出 新建 错误("Ralph round report evidence and nextSteps must contain only non-empty normalized strings")
+  如果 ((是字符串(报告["blocker"]) == 假) 或 (报告["blocker"] != 去除首尾空白(报告["blocker"]))):
+    抛出 新建 错误("Ralph round report blocker must be a normalized string")
+  如果 (报告["status"] == "continue"):
+    如果 ((列表长度(报告["nextSteps"]) == 0) 或 (报告["blocker"] != "")):
+      抛出 新建 错误("a continuing Ralph report needs nextSteps and an empty blocker")
+  否则 如果 (报告["status"] == "complete"):
+    如果 ((列表长度(报告["evidence"]) == 0) 或 (列表长度(报告["nextSteps"]) != 0) 或 (报告["blocker"] != "")):
+      抛出 新建 错误("a complete Ralph report needs evidence, no nextSteps, and an empty blocker")
+  否则 如果 (报告["status"] == "blocked"):
+    如果 (标准化文本(报告["blocker"]) == 假):
+      抛出 新建 错误("a blocked Ralph report needs a concrete blocker")
+  否则:
+    抛出 新建 错误("Ralph round report status is invalid")
+  如果 (字符串长度(序列化JSON(报告)) > 上限):
+    抛出 新建 错误("Ralph round report exceeds maxHandoffChars")
+  返回 报告
+段落 读取报告 接收 值, 期望状态, 上限:
+  如果 (是记录(值) == 假):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  如果 (键集合相等(值, ["blocker", "evidence", "nextSteps", "status", "summary"]) == 假):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  如果 (值["status"] != 期望状态):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  如果 (标准化文本(值["summary"]) == 假):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  如果 ((标准化列表(值["evidence"]) == 假) 或 (标准化列表(值["nextSteps"]) == 假)):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  如果 ((是字符串(值["blocker"]) == 假) 或 (值["blocker"] != 去除首尾空白(值["blocker"]))):
+    抛出 新建 错误("Ralph workflow returned a malformed round report")
+  设 报告 为 {"status": 期望状态, "summary": 值["summary"], "evidence": 值["evidence"], "nextSteps": 值["nextSteps"], "blocker": 值["blocker"]}
+  如果 ((期望状态 == "continue") 且 ((列表长度(报告["nextSteps"]) == 0) 或 (报告["blocker"] != ""))):
+    抛出 新建 错误("Ralph workflow returned an invalid continuing report")
+  如果 ((期望状态 == "complete") 且 ((列表长度(报告["evidence"]) == 0) 或 (列表长度(报告["nextSteps"]) != 0) 或 (报告["blocker"] != ""))):
+    抛出 新建 错误("Ralph workflow returned an invalid completion report")
+  如果 ((期望状态 == "blocked") 且 (标准化文本(报告["blocker"]) == 假)):
+    抛出 新建 错误("Ralph workflow returned an invalid blocked report")
+  如果 (字符串长度(序列化JSON(报告)) > 上限):
+    抛出 新建 错误("Ralph workflow returned an oversized handoff")
+  返回 报告
+段落 读取运行结果 接收 值, 上限轮次, 上限交接:
+  如果 (是记录(值) == 假):
+    抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+  如果 (是整数(值["roundsStarted"]) == 假):
+    抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+  设 轮次 为 值["roundsStarted"]
+  如果 ((轮次 < 1) 或 (轮次 > 上限轮次)):
+    抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+  如果 (值["status"] == "complete"):
+    如果 (键集合相等(值, ["report", "roundsStarted", "status"]) == 假):
+      抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+    返回 {"status": "complete", "roundsStarted": 轮次, "report": 读取报告(值["report"], "complete", 上限交接)}
+  否则 如果 (值["status"] == "blocked"):
+    如果 (键集合相等(值, ["report", "roundsStarted", "status"]) == 假):
+      抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+    返回 {"status": "blocked", "roundsStarted": 轮次, "report": 读取报告(值["report"], "blocked", 上限交接)}
+  否则 如果 (值["status"] == "budget-limited"):
+    如果 (键集合相等(值, ["report", "roundsStarted", "status"]) == 假):
+      抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+    如果 (轮次 != 上限轮次):
+      抛出 新建 错误("Ralph workflow returned budget-limited before the round limit")
+    返回 {"status": "budget-limited", "roundsStarted": 轮次, "report": 读取报告(值["report"], "continue", 上限交接)}
+  否则 如果 (值["status"] == "round-failed"):
+    如果 (键集合相等(值, ["lastReport", "roundsStarted", "status"]) == 假):
+      抛出 新建 错误("Ralph workflow returned a malformed terminal result")
+    如果 (轮次 == 1):
+      如果 (值["lastReport"] != 空):
+        抛出 新建 错误("Ralph workflow returned an invalid first-round failure")
+      返回 {"status": "round-failed", "roundsStarted": 轮次}
+    如果 (值["lastReport"] == 空):
+      抛出 新建 错误("Ralph workflow returned a round failure without its last handoff")
+    返回 {"status": "round-failed", "roundsStarted": 轮次, "lastReport": 读取报告(值["lastReport"], "continue", 上限交接)}
+  否则:
+    抛出 新建 错误("Ralph workflow returned an unknown terminal status")
+段落 停止原因错误 接收 结果:
+  如果 (结果["stopReason"] == "completed"): 返回 空
+  如果 (结果["stopReason"] == "cancelled"):
+    如果 (字典包含键(结果, "error") == 假): 返回 "Ralph workflow was cancelled"
+    返回 "Ralph workflow was cancelled (" + 结果["error"] + ")"
+  如果 (结果["stopReason"] == "error"):
+    如果 (字典包含键(结果, "error") == 假): 返回 "Ralph workflow failed: unknown error"
+    返回 "Ralph workflow failed: " + 结果["error"]
+  返回 "Ralph workflow ended abnormally (" + 结果["stopReason"] + ")"
+段落 约束结果 接收 原文, 上限:
+  如果 (字符串长度(原文) <= 上限): 返回 原文
+  设 标记 为 "\n… [truncated]"
+  如果 (上限 <= 字符串长度(标记)): 返回 截取(标记, 0, 上限)
+  返回 截取(原文, 0, 上限 - 字符串长度(标记)) + 标记
+段落 渲染结果 接收 结果, 上限:
+  设 数 为 结果["roundsStarted"]
+  设 轮数 为 序列化JSON(数) + " round"
+  如果 (数 != 1): 设 轮数 为 序列化JSON(数) + " rounds"
+  设 主体 为 ""
+  如果 (结果["status"] == "complete"):
+    设 主体 为 "Ralph worker reported completion after " + 轮数 + ".\nFinal report:\n" + 序列化JSON(结果["report"])
+  否则 如果 (结果["status"] == "blocked"):
+    设 主体 为 "Ralph worker reported a blocker after " + 轮数 + ".\nFinal report:\n" + 序列化JSON(结果["report"])
+  否则:
+    设 主体 为 "Ralph reached its " + 轮数 + " limit; the worker reported work remaining.\nFinal report:\n" + 序列化JSON(结果["report"])
+  返回 约束结果(主体, 上限)
+段落 渲染轮失败 接收 结果, 上限:
+  设 头 为 "Ralph round " + 序列化JSON(结果["roundsStarted"]) + " child failed before producing a structured report."
+  设 正文 为 ""
+  如果 (结果["lastReport"] == 空):
+    设 正文 为 头 + "\nNo previous handoff was available."
+  否则:
+    设 正文 为 头 + "\nLast successful handoff:\n" + 序列化JSON(结果["lastReport"])
+  返回 约束结果(正文, 上限)

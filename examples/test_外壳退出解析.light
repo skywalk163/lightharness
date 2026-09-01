@@ -1,0 +1,55 @@
+# test_外壳退出解析.light —— 模块 #46 反跑测试
+# 覆盖：exit code 0 / 非零、signal、无标记、无前导换行、非行尾、非数字 七类。
+# 反跑判据：把任一 断言相等 的期望值改反即红。
+
+从 JSON 导入 序列化JSON
+从 外壳退出解析 导入 解析退出状态
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 用例退出码0:
+  设 结果 为 解析退出状态("output\n[exit code: 0]")
+  断言相等(结果["body"], "output", "exit0 body")
+  断言相等(结果["exitCode"], 0, "exit0 code")
+
+段落 用例非零退出:
+  设 结果 为 解析退出状态("hello\nworld\n[exit code: 2]")
+  断言相等(结果["body"], "hello\nworld", "exit2 body")
+  断言相等(结果["exitCode"], 2, "exit2 code")
+
+段落 用例信号:
+  设 结果 为 解析退出状态("Output\n[killed by signal: SIGTERM]")
+  断言相等(结果["body"], "Output", "signal body")
+  断言相等(结果["signal"], "SIGTERM", "signal name")
+
+段落 用例无标记:
+  设 结果 为 解析退出状态("plain output")
+  断言相等(结果["body"], "plain output", "plain body")
+  断言相等(结果["exitCode"], 0, "plain code0")
+
+段落 用例无前导换行:
+  # 标记在开头、无前导 \n → 不匹配（与原版正则 \n\[ 一致）
+  设 结果 为 解析退出状态("[exit code: 0]")
+  断言相等(结果["body"], "[exit code: 0]", "no-nl body")
+  断言相等(结果["exitCode"], 0, "no-nl code0")
+
+段落 用例非行尾:
+  # 标记后还有内容 → 不匹配
+  设 结果 为 解析退出状态("out\n[exit code: 0]\nmore")
+  断言相等(结果["body"], "out\n[exit code: 0]\nmore", "not-end body")
+  断言相等(结果["exitCode"], 0, "not-end code0")
+
+段落 用例非数字:
+  设 结果 为 解析退出状态("out\n[exit code: abc]")
+  断言相等(结果["body"], "out\n[exit code: abc]", "non-digit body")
+  断言相等(结果["exitCode"], 0, "non-digit code0")
+
+用例退出码0()
+用例非零退出()
+用例信号()
+用例无标记()
+用例无前导换行()
+用例非行尾()
+用例非数字()
+写 "--- 外壳退出状态解析纯逻辑核心（模块46）测试通过 ---"

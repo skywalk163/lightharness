@@ -1,0 +1,91 @@
+从 工作流报告 导入 校验配置, 解析最大轮次, 校验报告, 读取报告, 读取运行结果, 停止原因错误, 约束结果, 渲染结果, 渲染轮失败
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误:
+    设 抛了 为 真
+  如果 (抛了 == 假): 抛出 新建 错误("期望抛错但未抛: " + 标签)
+段落 含子串 接收 文本, 子:
+  返回 查找子串(文本, 子) != -1
+段落 主:
+  # ---- 校验配置 ----
+  断言相等(校验配置({}), {"subagentProvider": "spawn", "maxRounds": 256, "maxHandoffChars": 16384, "maxResultChars": 16384}, "默认配置")
+  断言相等(校验配置({"subagentProvider": "x", "maxRounds": 3, "maxHandoffChars": 10, "maxResultChars": 20}), {"subagentProvider": "x", "maxRounds": 3, "maxHandoffChars": 10, "maxResultChars": 20}, "显式配置")
+  检查抛错("空提供方抛错", 段_空提供方)
+  检查抛错("非整数轮次抛错", 段_非整数轮次)
+  检查抛错("轮次过小抛错", 段_轮次过小)
+  # ---- 解析最大轮次 ----
+  断言相等(解析最大轮次(空, 256), 256, "未请求取上限")
+  断言相等(解析最大轮次(5, 256), 5, "请求合法")
+  检查抛错("超上限抛错", 段_超上限)
+  检查抛错("非整数抛错", 段_非整数)
+  # ---- 校验报告 ----
+  设 续 为 {"status": "continue", "summary": "s", "evidence": ["e"], "nextSteps": ["n"], "blocker": ""}
+  断言相等(校验报告(续, 1000), 续, "继续报告合法")
+  设 成 为 {"status": "complete", "summary": "s", "evidence": ["e"], "nextSteps": [], "blocker": ""}
+  断言相等(校验报告(成, 1000), 成, "完成报告合法")
+  设 阻 为 {"status": "blocked", "summary": "s", "evidence": ["e"], "nextSteps": [], "blocker": "bk"}
+  断言相等(校验报告(阻, 1000), 阻, "阻塞报告合法")
+  检查抛错("完成报告带 nextSteps 抛错", 段_完成带步骤)
+  检查抛错("继续报告缺 nextSteps 抛错", 段_继续缺步骤)
+  检查抛错("报告超大抛错", 段_报告超大)
+  # ---- 读取报告 ----
+  断言相等(读取报告(续, "continue", 1000), 续, "读取继续报告")
+  检查抛错("状态不符抛错", 段_状态不符)
+  检查抛错("键缺失抛错", 段_键缺失)
+  # ---- 读取运行结果 ----
+  设 完成结果 为 {"status": "complete", "roundsStarted": 2, "report": 成}
+  断言相等(读取运行结果(完成结果, 256, 1000), {"status": "complete", "roundsStarted": 2, "report": 成}, "读取完成结果")
+  设 预算结果 为 {"status": "budget-limited", "roundsStarted": 256, "report": 续}
+  断言相等(读取运行结果(预算结果, 256, 1000)["status"], "budget-limited", "读取预算受限")
+  设 失败首轮 为 {"status": "round-failed", "roundsStarted": 1, "lastReport": 空}
+  断言相等(读取运行结果(失败首轮, 256, 1000)["status"], "round-failed", "读取首轮失败")
+  检查抛错("未知终态抛错", 段_未知终态)
+  检查抛错("预算未到上限抛错", 段_预算未到)
+  # ---- 停止原因错误 ----
+  断言相等(停止原因错误({"stopReason": "completed"}), 空, "completed 返回空")
+  断言相等(停止原因错误({"stopReason": "cancelled"}), "Ralph workflow was cancelled", "cancelled 无 error")
+  断言相等(停止原因错误({"stopReason": "cancelled", "error": "boom"}), "Ralph workflow was cancelled (boom)", "cancelled 带 error")
+  断言相等(停止原因错误({"stopReason": "error"}), "Ralph workflow failed: unknown error", "error 无 error")
+  断言相等(停止原因错误({"stopReason": "error", "error": "x"}), "Ralph workflow failed: x", "error 带 error")
+  断言相等(停止原因错误({"stopReason": "weird"}), "Ralph workflow ended abnormally (weird)", "未知兜底")
+  # ---- 约束结果 / 渲染结果 / 渲染轮失败 ----
+  断言相等(约束结果("abc", 100), "abc", "未超限原样")
+  断言相等(含子串(约束结果("abcdefghijklmnopqrstuvwxyz", 20), "truncated"), 真, "超限截断带标记")
+  设 渲染 为 渲染结果({"status": "complete", "roundsStarted": 1, "report": 成}, 1000)
+  断言相等(含子串(渲染, "Ralph worker reported completion after 1 round"), 真, "渲染完成含轮数")
+  断言相等(含子串(渲染, "Final report:"), 真, "渲染完成含报告")
+  设 渲染阻 为 渲染结果({"status": "blocked", "roundsStarted": 1, "report": 阻}, 1000)
+  断言相等(含子串(渲染阻, "Ralph worker reported a blocker after 1 round"), 真, "渲染阻塞")
+  设 渲染失败 为 渲染轮失败({"roundsStarted": 3, "lastReport": 空}, 1000)
+  断言相等(含子串(渲染失败, "Ralph round 3 child failed"), 真, "渲染失败含轮次")
+  断言相等(含子串(渲染失败, "No previous handoff was available."), 真, "渲染失败无交接")
+  打印 "--- 工作流报告校验与结果渲染纯逻辑核心（模块44）测试通过 ---"
+段落 段_空提供方:
+  校验配置({"subagentProvider": "", "maxRounds": 1, "maxHandoffChars": 1, "maxResultChars": 1})
+段落 段_非整数轮次:
+  校验配置({"subagentProvider": "x", "maxRounds": 1.5, "maxHandoffChars": 1, "maxResultChars": 1})
+段落 段_轮次过小:
+  校验配置({"subagentProvider": "x", "maxRounds": 0, "maxHandoffChars": 1, "maxResultChars": 1})
+段落 段_超上限:
+  解析最大轮次(300, 256)
+段落 段_非整数:
+  解析最大轮次(1.5, 256)
+段落 段_完成带步骤:
+  校验报告({"status": "complete", "summary": "s", "evidence": ["e"], "nextSteps": ["n"], "blocker": ""}, 1000)
+段落 段_继续缺步骤:
+  校验报告({"status": "continue", "summary": "s", "evidence": ["e"], "nextSteps": [], "blocker": ""}, 1000)
+段落 段_报告超大:
+  校验报告({"status": "complete", "summary": "s", "evidence": ["e"], "nextSteps": [], "blocker": ""}, 1)
+段落 段_状态不符:
+  读取报告({"status": "complete", "summary": "s", "evidence": ["e"], "nextSteps": [], "blocker": ""}, "continue", 1000)
+段落 段_键缺失:
+  读取报告({"status": "continue", "summary": "s", "evidence": ["e"], "nextSteps": ["n"]}, "continue", 1000)
+段落 段_未知终态:
+  读取运行结果({"status": "bogus", "roundsStarted": 1, "report": {}}, 256, 1000)
+段落 段_预算未到:
+  读取运行结果({"status": "budget-limited", "roundsStarted": 10, "report": 续}, 256, 1000)
+主()

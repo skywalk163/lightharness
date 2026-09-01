@@ -1,0 +1,177 @@
+# test_技能清单.light —— 模块38 技能纯逻辑核心 对齐判据
+# 运行：python 运行.py examples/test_技能清单.light
+
+从 技能清单 导入 是技能名, 是模型可调用, 是用户可调用, 转义属性, 转义文本
+从 技能清单 导入 渲染资源提示, 渲染技能内容, 规范化提供方观察, 校验调用, 校验候选
+从 技能清单 导入 校验运行时技能, 校验定义, 到摘要, 运行时候选, 比较技能摘要, 比较候选
+
+# 列表取下标：光明列表无内置下标，自写（L-035 同款实现）
+段落 列表取 接收 列表, i:
+  设 k 为 0
+  遍历 x 之 列表:
+    如果 k == i: 返回 x
+    设 k 为 k + 1
+  抛出 新建 错误("列表取下标越界")
+
+段落 断言 接收 条件, 标签:
+  如果 条件 == 假: 抛出 新建 错误("断言失败: " + 标签)
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言抛出 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误:
+    设 抛了 为 真
+  断言(抛了, 标签)
+
+# ---- 校验调用 的抛错分支（两参校验器，各自写 thunk）----
+段落 t_调用非对象:
+  校验调用("not-object", "主体")
+段落 t_调用非布尔model:
+  校验调用({"modelInvocable": "x", "userInvocable": 真}, "主体")
+段落 t_调用非布尔user:
+  校验调用({"modelInvocable": 真, "userInvocable": "x"}, "主体")
+
+段落 t_候选非字符串名:
+  校验候选({"name": 1, "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "rank": 1}, "p")
+段落 t_候选非法名:
+  校验候选({"name": "Foo", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "rank": 1}, "p")
+段落 t_候选空描述:
+  校验候选({"name": "foo-bar", "description": "", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "rank": 1}, "p")
+段落 t_候选非法rank:
+  校验候选({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "rank": "x"}, "p")
+段落 t_候选provider不符:
+  校验候选({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "q", "rank": 1}, "p")
+
+段落 t_运行非法名:
+  校验运行时技能({"name": "Foo", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}})
+段落 t_运行空描述:
+  校验运行时技能({"name": "foo-bar", "description": "", "invocation": {"modelInvocable": 真, "userInvocable": 真}})
+
+段落 t_定义非法名:
+  校验定义({"name": "Foo", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "content": "c"})
+段落 t_定义非字符串内容:
+  校验定义({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "content": 1})
+
+段落 t_规范化空:
+  规范化提供方观察(空, "p")
+段落 t_规范化非法候选:
+  规范化提供方观察({"candidates": "x", "complete": 真}, "p")
+
+段落 t_资源提示未处理:
+  渲染资源提示({"provider": "p", "resourceBase": {"kind": "bogus"}})
+
+段落 主:
+  # ---- 是技能名 ----
+  断言(是技能名("foo-bar"), "foo-bar 合法")
+  断言(是技能名("foo"), "foo 合法")
+  断言(是技能名("a"), "a 合法")
+  断言(是技能名("1a"), "1a 合法")
+  断言(是技能名("foo-bar-baz"), "多级合法")
+  断言(是技能名("") == 假, "空串非法")
+  断言(是技能名("Foo") == 假, "大写非法")
+  断言(是技能名("-x") == 假, "连字符开头非法")
+  断言(是技能名("x-") == 假, "连字符结尾非法")
+  断言(是技能名("x--y") == 假, "相邻连字符非法")
+  断言(是技能名("foo_bar") == 假, "下划线非法")
+
+  # ---- 调用策略 ----
+  设 技能A 为 {"name": "a", "invocation": {"modelInvocable": 真, "userInvocable": 假}}
+  断言(是模型可调用(技能A), "模型可调用")
+  断言(是用户可调用(技能A) == 假, "用户不可调用")
+
+  # ---- 转义 ----
+  断言相等(转义属性("a&b\"c<d"), "a&amp;b&quot;c&lt;d", "转义属性")
+  断言相等(转义文本("a&b<c>d"), "a&amp;b&lt;c&gt;d", "转义文本")
+
+  # ---- 渲染资源提示：provider 托管（无 resourceBase）----
+  设 提示0 为 渲染资源提示({"provider": "myprov"})
+  断言(查找子串(列表取(提示0, 0), "myprov") != -1, "provider 分支含 provider 名")
+  设 提示1 为 渲染资源提示({"provider": "p", "resourceBase": {"kind": "directory", "path": "/x"}})
+  断言(查找子串(列表取(提示1, 0), "/x") != -1, "directory 分支含路径")
+  设 提示2 为 渲染资源提示({"provider": "p", "resourceBase": {"kind": "url", "url": "http://u"}})
+  断言(查找子串(列表取(提示2, 0), "http://u") != -1, "url 分支含 url")
+  设 提示3 为 渲染资源提示({"provider": "p", "resourceBase": {"kind": "opaque", "description": "desc"}})
+  断言(查找子串(列表取(提示3, 0), "desc") != -1, "opaque 分支含描述")
+
+  # ---- 渲染技能内容 ----
+  设 全技能 为 {"name": "my-skill", "provider": "p", "content": "do <thing> & stuff", "resourceBase": {"kind": "directory", "path": "/b"}}
+  设 渲染 为 渲染技能内容(全技能)
+  断言(查找子串(渲染, "<skill_content name=\"my-skill\">") != -1, "技能内容含 name")
+  断言(查找子串(渲染, "<skill_instructions>") != -1, "技能内容含 instructions 起点")
+  断言(查找子串(渲染, "do &lt;thing&gt; &amp; stuff") != -1, "技能正文转义")
+
+  # ---- 校验调用：通过分支 ----
+  校验调用(空, "x")
+  校验调用({"modelInvocable": 真, "userInvocable": 假}, "x")
+
+  # ---- 校验候选：通过分支 ----
+  校验候选({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "rank": 1}, "p")
+
+  # ---- 校验运行时技能：通过分支 ----
+  校验运行时技能({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}})
+
+  # ---- 校验定义：通过分支 ----
+  校验定义({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "content": "c"})
+
+  # ---- 规范化提供方观察 ----
+  设 o1 为 规范化提供方观察(["a", "b"], "p")
+  断言相等(o1["complete"], 真, "数组观察 complete=true")
+  断言相等(列表取(o1["candidates"], 0), "a", "数组观察候选保留")
+  设 o2 为 规范化提供方观察({"candidates": [1], "complete": 假}, "p")
+  断言相等(o2["complete"], 假, "对象观察 complete=false")
+
+  # ---- 到摘要：投影去掉内部字段 ----
+  设 技能定义 为 {"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "whenToUse": "w", "content": "c", "path": "/x", "metadata": {"k": 1}, "locator": "L"}
+  设 摘要 为 到摘要(技能定义)
+  断言相等(摘要["name"], "foo-bar", "摘要 name")
+  断言(字典包含键(摘要, "whenToUse"), "摘要保留可选 whenToUse")
+  断言(字典包含键(摘要, "locator") == 假, "摘要去掉 locator")
+  断言(字典包含键(摘要, "path") == 假, "摘要去掉 path")
+  断言(字典包含键(摘要, "metadata") == 假, "摘要去掉 metadata")
+  断言(字典包含键(摘要, "content") == 假, "摘要去掉 content")
+
+  # ---- 运行时候选：rank=250 + 保留 locator/可选 ----
+  设 候选0 为 运行时候选({"name": "foo-bar", "description": "d", "invocation": {"modelInvocable": 真, "userInvocable": 真}, "source": "s", "provider": "p", "whenToUse": "w", "path": "/x", "metadata": {"k": 1}, "content": "c"})
+  断言相等(候选0["rank"], 250, "运行时候选 rank=250")
+  断言(字典包含键(候选0, "locator"), "运行时候选保留 locator")
+  断言(字典包含键(候选0, "path"), "运行时候选保留 path")
+  断言(字典包含键(候选0, "metadata"), "运行时候选保留 metadata")
+
+  # ---- 比较技能摘要（字典序）----
+  断言相等(比较技能摘要({"name": "a"}, {"name": "b"}), -1, "摘要 a<b")
+  断言相等(比较技能摘要({"name": "b"}, {"name": "a"}), 1, "摘要 b>a")
+  断言相等(比较技能摘要({"name": "a"}, {"name": "a"}), 0, "摘要相等")
+
+  # ---- 比较候选（rank → providerOrder → localOrder）----
+  设 左 为 {"candidate": {"rank": 1}, "providerOrder": 0, "localOrder": 0}
+  设 右 为 {"candidate": {"rank": 2}, "providerOrder": 0, "localOrder": 0}
+  断言(比较候选(左, 右) == -1, "候选 rank 小者优先")
+  设 右2 为 {"candidate": {"rank": 1}, "providerOrder": 1, "localOrder": 0}
+  断言(比较候选(左, 右2) == -1, "候选 providerOrder 小者优先")
+  设 右3 为 {"candidate": {"rank": 1}, "providerOrder": 0, "localOrder": 1}
+  断言(比较候选(左, 右3) == -1, "候选 localOrder 小者优先")
+
+  # ---- 抛错分支 ----
+  断言抛出("校验调用非对象", t_调用非对象)
+  断言抛出("校验调用非布尔model", t_调用非布尔model)
+  断言抛出("校验调用非布尔user", t_调用非布尔user)
+  断言抛出("校验候选非字符串名", t_候选非字符串名)
+  断言抛出("校验候选非法名", t_候选非法名)
+  断言抛出("校验候选空描述", t_候选空描述)
+  断言抛出("校验候选非法rank", t_候选非法rank)
+  断言抛出("校验候选provider不符", t_候选provider不符)
+  断言抛出("校验运行时技能非法名", t_运行非法名)
+  断言抛出("校验运行时技能空描述", t_运行空描述)
+  断言抛出("校验定义非法名", t_定义非法名)
+  断言抛出("校验定义非字符串内容", t_定义非字符串内容)
+  断言抛出("规范化空", t_规范化空)
+  断言抛出("规范化非法候选", t_规范化非法候选)
+  断言抛出("资源提示未处理", t_资源提示未处理)
+
+  打印 "--- 技能纯逻辑核心子系统（模块38）测试通过 ---"
+
+主()
