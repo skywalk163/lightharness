@@ -8,9 +8,11 @@
     抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
 
 段落 主:
-  # 注：-c 的参数必须加引号。运行进程走 shell=True，POSIX sh 把未加引号的 ( )
-  # 当元字符 → "Syntax error: ( unexpected"，sh 返回 2，而不是 python 的退出码 3。
-  # cmd.exe 不把 ( 当元字符，故 Windows 上不加引号也能过——这正是本例只在 FreeBSD 红的原因。
+  # 注：-c 的参数必须加引号。运行进程走 shell=True：
+  #   POSIX sh 会把未加引号的 ( ) 当元字符 → "Syntax error: ( unexpected"，sh 返回 2，
+  #   而非 python 的退出码 3；加引号后两种 shell（POSIX sh 与 cmd.exe）都能正确拿到 3。
+  #   本例在两类平台均应为绿；唯一前提是子进程 PATH 上能找到 python（FreeBSD 自带，
+  #   Windows 开发机需把 python 加进 PATH，否则报「命令未找到」退 1）。
   设 结果3 为 运行进程("python -c \"exit(3)\"", 空)
   断言等于(结果3["码"], 3, "exit(3) 退出码应为 3")
   断言等于(结果3["成功"], 假, "exit(3) 应非成功")

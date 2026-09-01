@@ -83,10 +83,11 @@
         列表追加(通知, "[some output was dropped from memory; full output: " + 连接字符串(路径列表, ", ") + "]")
       否则:
         列表追加(通知, "[some output was dropped from memory; full output: (unavailable)]")
-  如果 字典包含键(沙箱) == 真:
-    如果 沙箱["runnerFailed"] == 真:
-      列表追加(通知, "[sandbox: the sandbox runner itself failed under " + 沙箱["mode"] + " mode \u2014 the command did not run; this is a sandbox problem, not a command failure]")
-    否则:
+  如果 沙箱 != 空:
+    如果 字典包含键(沙箱, "runnerFailed") == 真:
+      如果 沙箱["runnerFailed"] == 真:
+        列表追加(通知, "[sandbox: the sandbox runner itself failed under " + 沙箱["mode"] + " mode \u2014 the command did not run; this is a sandbox problem, not a command failure]")
+    否则如果 字典包含键(沙箱, "denied") == 真:
       如果 沙箱["denied"] == 真:
         列表追加(通知, 沙箱拒绝标记(沙箱["mode"]))
         如果 列表长度(升级模式列表) > 0: 列表追加(通知, 升级提示标记("command"))
