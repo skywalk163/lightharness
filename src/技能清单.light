@@ -87,7 +87,7 @@
     返回 ["Resources for this skill: " + 转义文本(基["description"]), "Load referenced resources only as needed."]
   抛出 新建 错误("unhandled SkillResourceBase.kind")
 
-# 渲染一个已加载技能为面向模型的 <skill_content> 块（name 走属性转义，正文原样嵌入）
+# 渲染一个已加载技能为面向模型的 <skill_content> 块（name 走属性转义，正文走文本转义）
 段落 渲染技能内容 接收 技能:
   设 提示 为 渲染资源提示(技能)
   设 行 为 []
@@ -98,7 +98,7 @@
   列表追加(行, "</skill_resources>")
   列表追加(行, "")
   列表追加(行, "<skill_instructions>")
-  列表追加(行, 技能["content"])
+  列表追加(行, 转义文本(技能["content"]))
   列表追加(行, "</skill_instructions>")
   列表追加(行, "</skill_content>")
   返回 连接字符串(行, "\n")
