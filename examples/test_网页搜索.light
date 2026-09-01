@@ -1,0 +1,280 @@
+# 网页搜索（模块51）测试 —— 反跑判据：改期望值即红
+#
+# 反跑判据说明：
+#   1) 把 判定深度超限(深嵌套) 的期望值 真 改为 假（真↔假），测试必须红（退出码 ≠ 0）
+#   2) 把 判定搜索参数 去重用例的期望 ["a","b"] 改为 ["a","a","b"]（值↔他值），测试必须红
+#   3) 把 净化高亮条目 无snippet用例的期望 空 改为 { "url":"http://x.com" }（抛↔不抛），测试必须红
+
+从 网页搜索 导入 判定搜索参数, 整理搜索结果, 构造源标签, 净化源投影, 渲染搜索文本, 判定网址参数, 判定深度超限, 渲染正文, 计算正文文本, 净化高亮条目, 净化高亮响应, 收集引用片段, 净化引用响应, 净化对话条目, 净化对话响应
+
+段落 断言相等 接收 甲, 乙, 信息:
+  如果 甲 != 乙:
+    抛出 "断言失败: " + 信息 + " (期望 " + 转字符串(乙) + " 实得 " + 转字符串(甲) + ")"
+
+# 恒等转换器：传入渲染正文时模拟"转换可用"
+段落 恒等转换 接收 文本:
+  返回 文本
+
+段落 主:
+  # 语言缺陷 L-042 绕法：主函数体首句非 设 时，长函数后段变量解析丢失；
+  #                 在首行加 设 哑变量 可规避。详见模块尾部语言缺陷段。
+  设 启动标记 为 0
+  # ========== 判定搜索参数 ==========
+  # 用例1：正常去重
+  断言相等(判定搜索参数({ "queries": ["a", "a", "b"] }, 5), ["a", "b"], "搜索参数 去重")
+  # 反跑判据：把 ["a","b"] 改为 ["a","a","b"] 即红
+
+  # 用例2：空查询列表抛错
+  设 bad1 为 假
+  尝试:
+    判定搜索参数({ "queries": [] }, 5)
+  捕获 异常 e:
+    设 bad1 为 真
+  断言相等(bad1, 真, "搜索参数 空查询抛错")
+  # 反跑判据：把 真 改 假 即红
+
+  # 用例3：超限抛错
+  设 bad2 为 假
+  尝试:
+    判定搜索参数({ "queries": ["a", "b", "c"] }, 2)
+  捕获 异常 e:
+    设 bad2 为 真
+  断言相等(bad2, 真, "搜索参数 超限抛错")
+
+  # 用例4：空白查询抛错
+  设 bad3 为 假
+  尝试:
+    判定搜索参数({ "queries": ["  "] }, 5)
+  捕获 异常 e:
+    设 bad3 为 真
+  断言相等(bad3, 真, "搜索参数 空白查询抛错")
+
+  # ========== 整理搜索结果 ==========
+  # 用例5：URL 去重 + 轮次合并
+  设 结果1 为 { "sources": [{ "url": "http://a.com" }, { "url": "http://b.com" }], "truncated": 假 }
+  设 结果2 为 { "sources": [{ "url": "http://b.com" }, { "url": "http://c.com" }], "truncated": 假 }
+  设 合并 为 整理搜索结果(["q1", "q2"], [结果1, 结果2], 10)
+  断言相等(列表长度(合并["sources"]), 3, "合并 URL去重后3源")
+  断言相等(合并["sources"][0]["url"], "http://a.com", "合并 首源 a")
+  断言相等(合并["sources"][1]["url"], "http://b.com", "合并 次源 b")
+  断言相等(合并["sources"][2]["url"], "http://c.com", "合并 末源 c")
+
+  # 用例6：maxResults 截断 + droppedSource
+  设 合并2 为 整理搜索结果(["q1"], [结果1], 1)
+  断言相等(列表长度(合并2["sources"]), 1, "截断后1源")
+  断言相等(合并2["truncated"], 真, "截断标记 droppedSource")
+
+  # 用例7：content 拼接
+  设 结果3 为 { "sources": [], "content": "答案1", "truncated": 假 }
+  设 结果4 为 { "sources": [], "content": "答案2", "truncated": 假 }
+  设 合并3 为 整理搜索结果(["q1", "q2"], [结果3, 结果4], 10)
+  断言相等(合并3["content"], "### q1\n\n答案1\n\n### q2\n\n答案2", "合并 content拼接")
+
+  # 用例8：truncated 传播
+  设 结果5 为 { "sources": [], "truncated": 真 }
+  设 合并4 为 整理搜索结果(["q1"], [结果5], 10)
+  断言相等(合并4["truncated"], 真, "truncated 传播")
+
+  # ========== 构造源标签 ==========
+  # 用例9：有标题
+  断言相等(构造源标签("http://a.com/page", "页面A"), "页面A", "源标签 用标题")
+
+  # 用例10：无标题用主机名
+  断言相等(构造源标签("http://a.com/page", 空), "a.com", "源标签 用主机名")
+
+  # 用例11：无协议用原始URL
+  断言相等(构造源标签("not-a-url", 空), "not-a-url", "源标签 无协议")
+
+  # ========== 净化源投影 ==========
+  # 用例12：全字段
+  设 投影1 为 净化源投影({ "url": "http://a.com", "title": "T", "snippet": "S", "publishedAt": "2024" })
+  断言相等(投影1["title"], "T", "投影 title")
+  断言相等(投影1["snippet"], "S", "投影 snippet")
+  断言相等(投影1["publishedAt"], "2024", "投影 publishedAt")
+
+  # 用例13：省略空字段
+  设 投影2 为 净化源投影({ "url": "http://a.com" })
+  断言相等(字典包含键(投影2, "title"), 假, "投影 省略title")
+  断言相等(字典包含键(投影2, "snippet"), 假, "投影 省略snippet")
+
+  # ========== 渲染搜索文本 ==========
+  # 用例14：有内容和源
+  设 渲染输入 为 { "sources": [{ "url": "http://a.com", "title": "A" }], "content": "结果", "truncated": 假 }
+  设 文本1 为 渲染搜索文本(渲染输入)
+  断言相等(字符串包含(文本1, "结果"), 真, "渲染 含content")
+  断言相等(字符串包含(文本1, "Sources:"), 真, "渲染 含Sources")
+  断言相等(字符串包含(文本1, "A"), 真, "渲染 含标题A")
+
+  # 用例15：无结果
+  设 空结果 为 { "sources": [], "truncated": 假 }
+  断言相等(渲染搜索文本(空结果), "No results found.", "渲染 无结果")
+
+  # 用例16：截断标记（需有源才能触达 truncated 分支）
+  设 截断结果 为 { "sources": [{ "url": "http://a.com" }], "truncated": 真 }
+  断言相等(字符串包含(渲染搜索文本(截断结果), "truncated"), 真, "渲染 截断标记")
+
+  # ========== 判定网址参数 ==========
+  # 用例17：正常URL
+  断言相等(判定网址参数({ "url": "http://a.com" }), "http://a.com", "网址参数 正常")
+
+  # 用例18：空白URL抛错
+  设 bad4 为 假
+  尝试:
+    判定网址参数({ "url": "  " })
+  捕获 异常 e:
+    设 bad4 为 真
+  断言相等(bad4, 真, "网址参数 空白抛错")
+
+  # ========== 判定深度超限 ==========
+  # 用例19：浅嵌套不超限
+  断言相等(判定深度超限("<div><p>hello</p></div>"), 假, "深度 浅嵌套不超限")
+
+  # 用例20：深嵌套超限（513层 div）
+  设 深嵌套 为 ""
+  设 i 为 0
+  当 i < 513:
+    设 深嵌套 为 深嵌套 + "<div>"
+    设 i 为 i + 1
+  断言相等(判定深度超限(深嵌套), 真, "深度 513层超限")
+  # 反跑判据：把 真 改为 假 即红
+
+  # 用例21：空标签不进栈
+  断言相等(判定深度超限("<br><img src=\"x\"><hr>"), 假, "深度 空标签不进栈")
+
+  # 用例22：自闭合不进栈
+  断言相等(判定深度超限("<div/><br/><p>text</p>"), 假, "深度 自闭合不进栈")
+
+  # 用例23：注释跳过
+  断言相等(判定深度超限("<!-- comment --><p>text</p>"), 假, "深度 注释跳过")
+
+  # 用例24：script 原文跳过
+  断言相等(判定深度超限("<script>var x = 1;</script><p>text</p>"), 假, "深度 script原文跳过")
+
+  # ========== 渲染正文 ==========
+  # 用例25：text 种类直通
+  设 正文1 为 { "kind": "text", "content": "hello" }
+  设 渲染1 为 渲染正文(正文1, 1000, 空)
+  断言相等(渲染1["text"], "hello", "正文 text直通")
+  断言相等(渲染1["sourceTruncated"], 假, "正文 text未截断")
+
+  # 用例26：html 种类浅嵌套无转换器 → 原样
+  设 正文2 为 { "kind": "html", "content": "<p>hello</p>" }
+  设 渲染2 为 渲染正文(正文2, 1000, 空)
+  断言相等(渲染2["text"], "<p>hello</p>", "正文 html无转换器原样")
+
+  # 用例27：html 种类浅嵌套有转换器 → 转换
+  设 渲染3 为 渲染正文(正文2, 1000, 恒等转换)
+  断言相等(渲染3["text"], "<p>hello</p>", "正文 html有转换器")
+
+  # 用例28：html 种类深嵌套 → 原样（深度检测拦截）
+  设 正文3 为 { "kind": "html", "content": 深嵌套 }
+  设 渲染4 为 渲染正文(正文3, 100000, 空)
+  断言相等(渲染4["text"], 深嵌套, "正文 深嵌套原样")
+
+  # 用例29：内容截断
+  设 正文4 为 { "kind": "text", "content": "abcdefghij" }
+  设 渲染5 为 渲染正文(正文4, 5, 空)
+  断言相等(渲染5["text"], "abcde", "正文 截断5字符")
+  断言相等(渲染5["sourceTruncated"], 真, "正文 截断标记")
+
+  # ========== 计算正文文本 ==========
+  # 用例30：正常输出
+  设 抓取结果 为 { "url": "http://a.com", "statusCode": 200, "body": { "kind": "text", "content": "hello" } }
+  设 输出1 为 计算正文文本(抓取结果, 1000)
+  断言相等(字符串包含(输出1["text"], "Fetched http://a.com"), 真, "正文文本 含URL")
+  断言相等(字符串包含(输出1["text"], "HTTP 200"), 真, "正文文本 含状态码")
+  断言相等(字符串包含(输出1["text"], "hello"), 真, "正文文本 含内容")
+  断言相等(输出1["truncated"], 假, "正文文本 未截断")
+
+  # 用例31：截断加尾注
+  设 输出2 为 计算正文文本(抓取结果, 30)
+  断言相等(输出2["truncated"], 真, "正文文本 截断标记")
+  断言相等(字符串包含(输出2["text"], "Content truncated"), 真, "正文文本 含截断尾注")
+
+  # ========== 净化高亮条目 ==========
+  # 用例32：highlight 首行 → snippet
+  设 exa1 为 净化高亮条目({ "url": "http://a.com", "highlight": "hello" })
+  断言相等(exa1["snippet"], "hello", "Exa highlight转snippet")
+
+  # 用例33：多行 highlight 取首行
+  设 exa2 为 净化高亮条目({ "url": "http://a.com", "highlight": "first\nsecond" })
+  断言相等(exa2["snippet"], "first", "Exa 多行取首行")
+
+  # 用例34：highlight 前后空白去除
+  设 exa3 为 净化高亮条目({ "url": "http://a.com", "highlight": "  hi  " })
+  断言相等(exa3["snippet"], "hi", "Exa 去空白")
+
+  # 用例35：无 highlight 用 text
+  设 exa4 为 净化高亮条目({ "url": "http://a.com", "text": "fallback" })
+  断言相等(exa4["snippet"], "fallback", "Exa text回退")
+
+  # 用例36：无 snippet 返回空
+  断言相等(净化高亮条目({ "url": "http://x.com" }), 空, "Exa 无snippet返回空")
+  # 反跑判据：把 空 改为 { "url":"http://x.com" } 即红
+
+  # 用例37：含 title 和 publishedDate
+  设 exa5 为 净化高亮条目({ "url": "http://a.com", "highlight": "x", "title": "T", "publishedDate": "2024" })
+  断言相等(exa5["title"], "T", "Exa 含title")
+  断言相等(exa5["publishedAt"], "2024", "Exa publishedDate转publishedAt")
+
+  # ========== 净化高亮响应 ==========
+  # 用例38：过滤空条目
+  设 exa响应 为 净化高亮响应({ "results": [{ "url": "http://a.com", "highlight": "A" }, { "url": "http://b.com" }, { "url": "http://c.com", "highlight": "C" }] })
+  断言相等(列表长度(exa响应["sources"]), 2, "Exa响应 过滤空条目")
+  断言相等(exa响应["truncated"], 假, "Exa响应 truncated假")
+
+  # ========== 收集引用片段 ==========
+  # 用例39：提取 url → cited_text
+  设 片段表 为 收集引用片段([{ "type": "text", "citations": [{ "url": "http://a.com", "cited_text": "引用A" }] }, { "type": "image", "url": "http://b.com" }, { "type": "text", "citations": [{ "url": "http://a.com", "cited_text": "重复" }] }, { "type": "text", "citations": [{ "url": "http://c.com", "cited_text": "引用C" }] }])
+  断言相等(片段表["http://a.com"], "引用A", "引用 首次出现")
+  断言相等(片段表["http://c.com"], "引用C", "引用 第三条")
+  断言相等(字典包含键(片段表, "http://b.com"), 假, "引用 非text块跳过")
+
+  # ========== 净化引用响应 ==========
+  # 用例40：正常归一化 + URL 去重 + snippet 从引用取
+  设 引用响应 为 净化引用响应({ "content": [{ "type": "text", "citations": [{ "url": "http://a.com", "cited_text": "引用A" }] }, { "type": "web_search_tool_result", "sources": [{ "url": "http://a.com", "title": "站点A" }, { "url": "http://b.com" }, { "url": "http://a.com", "title": "重复A" }] }] })
+  断言相等(列表长度(引用响应["sources"]), 2, "引用响应 URL去重2源")
+  断言相等(引用响应["sources"][0]["url"], "http://a.com", "引用响应 首源")
+  断言相等(引用响应["sources"][0]["snippet"], "引用A", "引用响应 snippet从引用取")
+  断言相等(引用响应["sources"][0]["title"], "站点A", "引用响应 含title")
+  断言相等(引用响应["truncated"], 假, "引用响应 truncated假")
+
+  # 用例41：无 web_search_tool_result 块抛错
+  设 bad5 为 假
+  尝试:
+    净化引用响应({ "content": [{ "type": "text", "citations": [] }] })
+  捕获 异常 e:
+    设 bad5 为 真
+  断言相等(bad5, 真, "引用响应 无结果块抛错")
+
+  # ========== 净化对话条目 ==========
+  # 用例42：全字段 + date→publishedAt
+  设 pp1 为 净化对话条目({ "url": "http://a.com", "title": "T", "snippet": "S", "date": "2024-01-01" })
+  断言相等(pp1["url"], "http://a.com", "Perplexity url必带")
+  断言相等(pp1["title"], "T", "Perplexity title")
+  断言相等(pp1["snippet"], "S", "Perplexity snippet")
+  断言相等(pp1["publishedAt"], "2024-01-01", "Perplexity date转publishedAt")
+
+  # 用例43：仅 url
+  设 pp2 为 净化对话条目({ "url": "http://a.com" })
+  断言相等(字典包含键(pp2, "title"), 假, "Perplexity 省略title")
+  断言相等(字典包含键(pp2, "snippet"), 假, "Perplexity 省略snippet")
+
+  # ========== 净化对话响应 ==========
+  # 用例44：search_results 优先 + content
+  设 pp响应1 为 净化对话响应({ "choices": [{ "message": { "content": "回答", "search_results": [{ "url": "http://a.com", "title": "A" }] } }] })
+  断言相等(列表长度(pp响应1["sources"]), 1, "Perplexity响应 search_results")
+  断言相等(pp响应1["sources"][0]["url"], "http://a.com", "Perplexity响应 首源")
+  断言相等(pp响应1["content"], "回答", "Perplexity响应 content")
+  断言相等(pp响应1["truncated"], 假, "Perplexity响应 truncated假")
+
+  # 用例45：citations[] 降级为 {url}
+  设 pp响应2 为 净化对话响应({ "choices": [{ "message": { "citations": ["http://a.com", "http://b.com"] } }] })
+  断言相等(列表长度(pp响应2["sources"]), 2, "Perplexity响应 citations降级")
+  断言相等(pp响应2["sources"][0]["url"], "http://a.com", "Perplexity响应 降级首源")
+  断言相等(pp响应2["sources"][1]["url"], "http://b.com", "Perplexity响应 降级次源")
+  断言相等(字典包含键(pp响应2, "content"), 假, "Perplexity响应 无content")
+
+  打印("--- 网页搜索 测试通过 ---")
+
+主()

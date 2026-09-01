@@ -910,6 +910,78 @@
         "L-044(含 文本 的函数名会被拆名，模块内用 流内容/取可选值 规避)",
         "L-045(写 语句只吃字面量串，诊断走 抛出 新建 错误)"
       ]
+    },
+    {
+      "编号": 51,
+      "功能": "web 搜索与抓取工具纯逻辑核心（tool-web：parseSearchArgs 参数校验去重、mergeSearchResults 按 URL 去重+轮次合并+maxResults 截断、exceedsConversionDepth 转换深度栈检测、renderBody/computeFetchOutput 正文渲染与截断；web-search-exa/deepseek/perplexity 三个 provider 响应归一化）",
+      "原版包": "packages/web/tool-web/src/(search.ts+fetch.ts) + packages/web/web-search-exa|deepseek|perplexity/src/provider.ts + packages/web/web/src/types.ts",
+      "光明模块": "src/网页搜索.light",
+      "状态": "done",
+      "证据": [
+        "src/网页搜索.light",
+        "examples/test_网页搜索.light"
+      ],
+      "本轮目标": "done：复刻搜索参数校验/去重、结果合并去重截断、转换深度栈检测、正文渲染与截断、三个 provider 归一化。剔除真实网络 IO/Cordis 事件发射：URL 去重用字典模拟 Set、hostname/标签名手写 ASCII 判定、turndown 转换器抽象为可选入参（传空时 HTML 透传）。",
+      "反跑判据": "test_网页搜索.light：把 判定深度超限(深嵌套) 期望值 真 改 假（真↔假）即红；任一 断言相等 期望值改反即红（共 80 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键下标抛 键错误，访问可选字段先 字典包含键 守卫)",
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)"
+      ]
+    },
+    {
+      "编号": 52,
+      "功能": "超时策略与超时工具纯逻辑核心（util/timeout：clampTimeout 读超时限定、deadline 推导截止、timeoutOf 推导缘由；guard/timeout-policy：timeoutMs 读取 + 推导 + 超时获胜产出结构化 TOOL_TIMEOUT 结果）",
+      "原版包": "packages/util/timeout/src/index.ts + packages/guard/timeout-policy/src/index.ts",
+      "光明模块": "src/超时策略.light",
+      "状态": "done",
+      "证据": [
+        "src/超时策略.light",
+        "examples/test_超时策略.light"
+      ],
+      "本轮目标": "done：复刻读超时限定/推导截止/推导缘由纯决策，超时获胜产出结构时限超时结果。不做真 sleep/不握主机时钟/不挂定时器与 AbortSignal：真实定时器与 cancel 抽象成入参时间点比较（序号毫秒+已中止布尔），调用方每轮注入即可。",
+      "反跑判据": "test_超时策略.light：把 读超时限定 边界（负数/0/超阈值/缺省/无上限）或 推导截止 各分支（无超时/取消优先/超时优先/正常剩余/已超时后取消）期望值改反即红（共 54 处断言）。",
+      "语言缺陷": [
+        "L-040(函数定义参数用 接收 非括号形式)",
+        "L-036(缺键用 字典包含键 守卫)"
+      ]
+    },
+    {
+      "编号": 53,
+      "功能": "后台任务 jobs 子系统纯逻辑核心（jobs-local：start 入口校验/并发槽位/kind-count ID、list 归属过滤、read 产出投影+终态 reported、kill 状态迁移、wait 时限校验+等待超时/取消区分、activeTaskCount、settle 首胜结算；tool-jobs：插件配置预算 waitTimeoutMs/maxWaitTimeoutMs/completionDelivery/maxConsecutiveWakes + 人类输入重置连续唤醒预算）",
+      "原版包": "packages/jobs/jobs-local/src/index.ts + packages/jobs/tool-jobs/src/index.ts",
+      "光明模块": "src/任务系统.light",
+      "状态": "done",
+      "证据": [
+        "src/任务系统.light",
+        "examples/test_任务系统.light"
+      ],
+      "本轮目标": "done：复刻任务入口校验、并发槽位判定、kind-count ID、kill 状态流转与返回码、wait 超时区分。剔除真实进程/协程调度、Promise/AbortSignal/定时器：等待结局由调用方以「信号中止/到达期限/结算阶段」三个确定入参注入，使等待超时与 caller 取消在纯函数下可判定。",
+      "反跑判据": "test_任务系统.light：把 kill 状态迁移返回码、并发槽位判定、kind-count ID、wait 超时/取消路径任一期望改反即红（共 195 处断言）。",
+      "语言缺陷": [
+        "L-041(状态/字典/映射 不可作变量名，用 阶段)",
+        "L-046(变量名不单独作标识符，改名 累积)",
+        "L-032(变量不用单字 父)",
+        "L-043(布尔链不配行内 否则，改顺序 如果)"
+      ]
+    },
+    {
+      "编号": 54,
+      "功能": "compaction 压缩配套纯逻辑核心（compaction-tool-result-pruner：codePointLength/measureContent/pruneContent head-middle-tail 裁剪+PRUNE_MARKER、resolveConfig 阈值/头/尾校验+不变量；compaction-basic：resolveConfig/resolveTargetPolicy/resolveCompactSpec token 预算、selectCompactableRange region 自后向前累积；compaction：toolPairingBalancedBefore/After 未闭合 tool-call 计数、compactCheckpointSource/isCompactCheckpointSource checkpoint 标识）",
+      "原版包": "packages/compaction/compaction-tool-result-pruner/src/(config.ts+index.ts) + compaction-basic/src/(config.ts+region.ts) + compaction/src/(tool-pairing.ts+checkpoint.ts)",
+      "光明模块": "src/压缩配套.light",
+      "状态": "done",
+      "证据": [
+        "src/压缩配套.light",
+        "examples/test_压缩配套.light"
+      ],
+      "本轮目标": "done：复刻长度测量、head/middle/tail 预算裁剪+省略标记、裁剪配置不变量、token 预算推导、region 选择、tool-pairing 平衡、checkpoint 标识。剔除 LLM 总结/会话 append/落盘 IO 胶水；policy 命名用 目标策略 绕 模式(含模) 词根，事件增量 用 条目增量 绕 事件 词根。",
+      "反跑判据": "test_压缩配套.light：把任一 断言相等/断言真 期望值改反即红（含 headChars 超限、未闭合 tool-call 边界，共 114 处断言）。",
+      "语言缺陷": [
+        "L-041(模式一行内换行符 + 字典/映射/状态 不作变量名)",
+        "L-036(缺键 [] 抛错、可选字段用 取可选 守卫)",
+        "L-037(断言 降级 no-op，判据用 断言相等/断言真)",
+        "L-040(参数用 接收 形式)"
+      ]
     }
   ]
 }
