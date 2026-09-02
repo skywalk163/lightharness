@@ -1,0 +1,567 @@
+# 团队折叠.light —— 团队事件折叠状态机 + 消息接受判定（对标 #67）
+# 原版：packages/experimental/agent-team/src/{fold.ts, session-message.ts}
+#       （输入形状对照 types.ts / task-graph.ts，但本卡自包含，不复用其他 .light）
+#
+# 复刻口径（事件溯源的最纯内核，纯内存状态转换）：
+#   - 真实 IO / Cordis ctx / @deepseek-ai/dsh-session / @deepseek-ai/dsh-llm / Agent /
+#     AbortSignal / setTimeout 一律抽象为入参能力函数或字典投影。
+#     不实例化任何宿主服务、不落盘、不发网络、不起子进程。
+#   - 持久化载荷校验（原版 zod schema）以「键集严格校验 + 字段类型校验」的纯函数表达，
+#     失败一律抛 "persisted Agent Teams <type> payload is invalid"。
+#
+# fold.ts 复刻面：
+#   空折叠状态(rootId)         -> emptyTeamFoldState
+#   是否团队记录(record)        -> isTeamEvent
+#   套用记录(局面, record)      -> applyTeamEvent（成员身份/生命周期、task revision 递增、
+#                                依赖图四类违规、mailbox queued/delivered 关系）
+#   折叠团队(rootId, records)   -> foldTeam
+# session-message.ts 复刻面：
+#   待领信匣(records)          -> pendingInboxMessages（agent/inbox/spliced 的
+#                                target ∈ {'next-turn','next-step'} 剪枝拼接）
+#   已入列(records, 判定)      -> messageAccepted（历史命中 或 待领队列命中）
+#
+# ⚠️ 命名铁律（光明 parser 按关键字边界拆标识符，L-004/L-007/L-041 教训）：
+#   避开危险词根 取/生成/导出/导入/新建/模型/事件/类型/工具/匹配/排序/接收/回调/返回/接口/
+#            属性/异步/包含/全部/用量/部分/原因/打印/抛出。
+#      —— 故「取任务序号」改名「算任务序号」；事件一律称「记录」。
+#   变量不用「状态 / 字典 / 映射」作标识符（L-041）：折叠状态一律称「局面」。
+#   函数定义一律 `段落 X 接收 参数:`（L-040）；布尔链不配行内否则（L-043），改顺序 如果；
+#   循环 break 写 跳出（L-039）、continue 写 继续；断言降级 no-op（L-037），
+#   判据一律走测试侧 断言相等 / 检查抛错。
+#   薄封装名不与被调名子串重叠：折叠团队(调 套用记录)、套用记录(调 并入成员/并入任务/
+#     并入消息/标送达)，均无重叠。
+#   `写` 只吃「字面量串或已设的字符串变量」——`写 f(x)` 会把函数对象传给底层 write（L-055），
+#     故本模块与测试一律以 写 "字面量" 输出，诊断信息走 抛出 新建 错误。
+#
+# 依赖：字符串处理（截取/字符转ASCII）、内置核心转换（转字符串/转整数）、JSON（序列化JSON）
+
+从 字符串处理 导入 截取, 字符转ASCII
+从 内置核心转换 导入 转字符串, 转整数
+从 JSON 导入 序列化JSON
+
+# =====================================================================
+# 常量
+# =====================================================================
+# Number.MAX_SAFE_INTEGER = 9007199254740991（等长数字串可直接字典序比较，避开大整数运算）
+设 安全上限串 为 "9007199254740991"
+设 安全上限 为 9007199254740991
+
+# =====================================================================
+# 一、基础判定
+# =====================================================================
+
+段落 判非负整数 接收 值:
+  如果 (是整数(值) == 假): 返回 假
+  如果 值 < 0: 返回 假
+  返回 真
+
+段落 判正整数 接收 值:
+  如果 (是整数(值) == 假): 返回 假
+  如果 值 < 1: 返回 假
+  返回 真
+
+段落 判非空串 接收 值:
+  如果 (是字符串(值) == 假): 返回 假
+  如果 字符串长度(值) == 0: 返回 假
+  返回 真
+
+# ^task-(\d+)$ 形状判定（不判安全整数范围）
+段落 判数值形状 接收 标识:
+  如果 (是字符串(标识) == 假): 返回 假
+  如果 字符串长度(标识) < 6: 返回 假
+  如果 截取(标识, 0, 5) != "task-": 返回 假
+  设 尾 为 截取(标识, 5, 字符串长度(标识))
+  设 序 为 0
+  当 序 < 字符串长度(尾):
+    设 码 为 字符转ASCII(尾[序])
+    如果 码 < 48: 返回 假
+    如果 码 > 57: 返回 假
+    设 序 为 序 + 1
+  返回 真
+
+# 已满足 ^task-(\d+)$ 形状者，其数字后缀是否为安全整数
+段落 判安全序号 接收 标识:
+  设 尾 为 截取(标识, 5, 字符串长度(标识))
+  如果 字符串长度(尾) > 16: 返回 假
+  如果 字符串长度(尾) < 16: 返回 真
+  如果 尾 > 安全上限串: 返回 假
+  返回 真
+
+# 取数值后缀（调用方须先过 判数值形状 + 判安全序号）
+段落 算任务序号 接收 标识:
+  返回 转整数(截取(标识, 5, 字符串长度(标识)))
+
+# =====================================================================
+# 二、键集严格校验（对齐 zod .strict()）
+#   目标 的键必须全部落在 必填 ∪ 可选 内；必填键必须齐备
+# =====================================================================
+段落 校验键集 接收 目标, 必填, 可选:
+  遍历 键 之 字典键列表(目标):
+    如果 (列表包含(必填, 键) == 假):
+      如果 (列表包含(可选, 键) == 假):
+        抛出 新建 错误("persisted Agent Teams payload is invalid: unexpected key " + 转字符串(键))
+  遍历 键 之 必填:
+    如果 (字典包含键(目标, 键) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: missing key " + 转字符串(键))
+  返回 真
+
+# =====================================================================
+# 三、内容块校验（对齐 contentBlockSchema）
+#   核心五类按声明字段严格校验；未知/插件类型 loose 保留（merge-extensible）
+# =====================================================================
+段落 校验内容块 接收 块:
+  如果 (是字典(块) == 假):
+    抛出 新建 错误("persisted Agent Teams payload is invalid: content block is not an object")
+  如果 (字典包含键(块, "type") == 假):
+    抛出 新建 错误("persisted Agent Teams payload is invalid: content block lacks type")
+  设 种类 为 块["type"]
+  如果 (是字符串(种类) == 假):
+    抛出 新建 错误("persisted Agent Teams payload is invalid: content block type is not a string")
+  如果 字符串长度(种类) == 0:
+    抛出 新建 错误("persisted Agent Teams payload is invalid: content block type is empty")
+  如果 种类 == "text" 或 种类 == "reasoning":
+    设 占位 为 校验键集(块, ["type", "text"], [])
+    如果 (是字符串(块["text"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: text block text is not a string")
+    返回 真
+  如果 种类 == "image":
+    设 占位 为 校验键集(块, ["type", "attachment"], [])
+    设 附件 为 块["attachment"]
+    如果 (是字典(附件) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image attachment is not an object")
+    设 占位 为 校验键集(附件, ["attachmentId", "mediaType", "bytes", "width", "height"], ["name"])
+    如果 (判非空串(附件["attachmentId"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image attachmentId")
+    设 媒体表 为 ["image/png", "image/jpeg", "image/webp", "image/gif"]
+    如果 (列表包含(媒体表, 附件["mediaType"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image mediaType")
+    如果 (判非负整数(附件["bytes"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image bytes")
+    如果 (判正整数(附件["width"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image width")
+    如果 (判正整数(附件["height"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: image height")
+    返回 真
+  如果 种类 == "tool-call":
+    设 占位 为 校验键集(块, ["type", "id", "name", "arguments"], [])
+    如果 (判非空串(块["id"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: tool-call id")
+    如果 (是字符串(块["name"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: tool-call name")
+    如果 (是字符串(块["arguments"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: tool-call arguments")
+    返回 真
+  如果 种类 == "tool-result":
+    设 占位 为 校验键集(块, ["type", "toolCallId", "content"], ["isError"])
+    如果 (判非空串(块["toolCallId"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: tool-result toolCallId")
+    如果 (是列表(块["content"]) == 假):
+      抛出 新建 错误("persisted Agent Teams payload is invalid: tool-result content")
+    遍历 子块 之 块["content"]:
+      设 占位 为 校验内容块(子块)
+    返回 真
+  # 未知/插件类型：loose，仅要求 type 为非空字符串（核心类型已在上面分支收口）
+  返回 真
+
+# =====================================================================
+# 四、持久载荷严格校验（对齐 parsePersisted / parseCurrentTeamEvent）
+# =====================================================================
+
+# 选择器层（teamEventSelectorSchema：version 非负整数 + teamId 非空串，loose）
+段落 校验选择器 接收 种类, 数据:
+  如果 (是字典(数据) == 假):
+    抛出 新建 错误("persisted Agent Teams " + 种类 + " payload is invalid")
+  如果 (字典包含键(数据, "version") == 假):
+    抛出 新建 错误("persisted Agent Teams " + 种类 + " payload is invalid")
+  如果 (判非负整数(数据["version"]) == 假):
+    抛出 新建 错误("persisted Agent Teams " + 种类 + " payload is invalid")
+  如果 (判非空串(数据["teamId"]) == 假):
+    抛出 新建 错误("persisted Agent Teams " + 种类 + " payload is invalid")
+  返回 真
+
+段落 校验成员载荷 接收 数据:
+  设 占位 为 校验键集(数据, ["version", "teamId", "member"], [])
+  设 成员 为 数据["member"]
+  如果 (是字典(成员) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  设 占位 为 校验键集(成员, ["id", "name", "description", "provider", "context", "phase"], ["error"])
+  如果 (判非空串(成员["id"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (是字符串(成员["name"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (是字符串(成员["description"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (是字符串(成员["provider"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (列表包含(["fresh", "fork"], 成员["context"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (列表包含(["provisioning", "active", "failed"], 成员["phase"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  如果 (字典包含键(成员, "error") == 真):
+    如果 (是字符串(成员["error"]) == 假):
+      抛出 新建 错误("persisted Agent Teams team/member payload is invalid")
+  返回 真
+
+# 任务标识校验：非空串；若为 ^task-\d+$ 形状则后缀须为安全整数
+段落 校验任务标识 接收 标识:
+  如果 (判非空串(标识) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (判数值形状(标识) == 真):
+    如果 (判安全序号(标识) == 假):
+      抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  返回 真
+
+段落 校验任务载荷 接收 数据:
+  设 占位 为 校验键集(数据, ["version", "teamId", "task"], [])
+  设 任务 为 数据["task"]
+  如果 (是字典(任务) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  设 必填 为 ["id", "revision", "subject", "description", "status", "blockedBy", "writeScopes"]
+  设 占位 为 校验键集(任务, 必填, ["ownerId"])
+  设 占位 为 校验任务标识(任务["id"])
+  如果 (判正整数(任务["revision"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (是字符串(任务["subject"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (是字符串(任务["description"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (列表包含(["pending", "in_progress", "completed", "deleted"], 任务["status"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (字典包含键(任务, "ownerId") == 真):
+    如果 (判非空串(任务["ownerId"]) == 假):
+      抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  如果 (是列表(任务["blockedBy"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  遍历 阻塞标识 之 任务["blockedBy"]:
+    设 占位 为 校验任务标识(阻塞标识)
+  如果 (是列表(任务["writeScopes"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  遍历 范围 之 任务["writeScopes"]:
+    如果 (是字符串(范围) == 假):
+      抛出 新建 错误("persisted Agent Teams team/task payload is invalid")
+  返回 真
+
+段落 校验排队载荷 接收 数据:
+  设 占位 为 校验键集(数据, ["version", "teamId", "message"], [])
+  设 消息 为 数据["message"]
+  如果 (是字典(消息) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  设 必填 为 ["id", "senderId", "senderName", "targetId", "delivery", "content"]
+  设 占位 为 校验键集(消息, 必填, [])
+  如果 (判非空串(消息["id"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  如果 (判非空串(消息["senderId"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  如果 (是字符串(消息["senderName"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  如果 (判非空串(消息["targetId"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  如果 (列表包含(["quiet", "wakeup"], 消息["delivery"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  如果 (是列表(消息["content"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
+  遍历 块 之 消息["content"]:
+    设 占位 为 校验内容块(块)
+  返回 真
+
+段落 校验送达载荷 接收 数据:
+  设 占位 为 校验键集(数据, ["version", "teamId", "messageId", "targetId"], [])
+  如果 (判非空串(数据["messageId"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/delivered payload is invalid")
+  如果 (判非空串(数据["targetId"]) == 假):
+    抛出 新建 错误("persisted Agent Teams team/message/delivered payload is invalid")
+  返回 真
+
+# 全量载荷校验（原版 parseCurrentTeamEvent 的 schema.parse 语义）
+段落 校验载荷 接收 种类, 数据:
+  设 占位 为 校验选择器(种类, 数据)
+  如果 种类 == "team/member":
+    设 占位 为 校验成员载荷(数据)
+    返回 真
+  如果 种类 == "team/task":
+    设 占位 为 校验任务载荷(数据)
+    返回 真
+  如果 种类 == "team/message/queued":
+    设 占位 为 校验排队载荷(数据)
+    返回 真
+  设 占位 为 校验送达载荷(数据)
+  返回 真
+
+# =====================================================================
+# 五、依赖图校验（对齐 task-graph.ts 的 assertTaskGraphCandidate）
+#   四类违规：自引用 -> cycle、重复 -> duplicate、缺失/已删 -> missing、环 -> cycle
+# =====================================================================
+段落 深访 接收 任务表, 标记表, 标识:
+  如果 (字典包含键(标记表, 标识) == 真):
+    如果 标记表[标识] == 1:
+      抛出 新建 错误("task dependency cycle includes \"" + 标识 + "\"")
+    返回 真
+  如果 (字典包含键(任务表, 标识) == 假): 返回 真
+  设 任务 为 任务表[标识]
+  如果 任务["status"] == "deleted": 返回 真
+  标记表[标识] 为 1
+  遍历 阻塞标识 之 任务["blockedBy"]:
+    设 占位 为 深访(任务表, 标记表, 阻塞标识)
+  标记表[标识] 为 2
+  返回 真
+
+段落 校验任务接线 接收 当前表, 候选:
+  设 任务表 为 {}
+  遍历 标识 之 字典键列表(当前表):
+    任务表[标识] 为 当前表[标识]
+  任务表[候选["id"]] 为 候选
+  遍历 标识 之 字典键列表(任务表):
+    设 任务 为 任务表[标识]
+    如果 任务["status"] != "deleted":
+      设 已见 为 {}
+      遍历 阻塞标识 之 任务["blockedBy"]:
+        如果 阻塞标识 == 任务["id"]:
+          抛出 新建 错误("team task \"" + 任务["id"] + "\" cannot block itself")
+        如果 (字典包含键(已见, 阻塞标识) == 真):
+          抛出 新建 错误("team task \"" + 任务["id"] + "\" repeats blocker \"" + 阻塞标识 + "\"")
+        如果 (字典包含键(任务表, 阻塞标识) == 假):
+          抛出 新建 错误("blocker task \"" + 阻塞标识 + "\" for \"" + 任务["id"] + "\" is missing or deleted")
+        设 阻塞任务 为 任务表[阻塞标识]
+        如果 阻塞任务["status"] == "deleted":
+          抛出 新建 错误("blocker task \"" + 阻塞标识 + "\" for \"" + 任务["id"] + "\" is missing or deleted")
+        已见[阻塞标识] 为 真
+  设 标记表 为 {}
+  遍历 起始 之 字典键列表(任务表):
+    设 占位 为 深访(任务表, 标记表, 起始)
+  返回 真
+
+# =====================================================================
+# 六、折叠状态（TeamFoldState 的字典投影）
+#   局面["id"]          根会话标识（TeamId）
+#   局面["成员表"]       id -> 成员快照
+#   局面["名字索引"]     name -> id（成员名不可重复占用）
+#   局面["任务表"]       id -> 任务快照
+#   局面["消息表"]       id -> 消息快照
+#   局面["已送达"]       messageId -> 真
+#   局面["下一任务号"]   nextTaskNumber
+# =====================================================================
+段落 空折叠状态 接收 根标识:
+  设 局面 为 {}
+  局面["id"] 为 根标识
+  局面["成员表"] 为 {}
+  局面["名字索引"] 为 {}
+  局面["任务表"] 为 {}
+  局面["消息表"] 为 {}
+  局面["已送达"] 为 {}
+  局面["下一任务号"] 为 1
+  返回 局面
+
+段落 是否团队记录 接收 记录:
+  如果 (是字典(记录) == 假): 返回 假
+  如果 (字典包含键(记录, "type") == 假): 返回 假
+  设 种类 为 记录["type"]
+  如果 种类 == "team/member": 返回 真
+  如果 种类 == "team/task": 返回 真
+  如果 种类 == "team/message/queued": 返回 真
+  如果 种类 == "team/message/delivered": 返回 真
+  返回 假
+
+# ---------- 四条折叠分支 ----------
+
+段落 并入成员 接收 局面, 成员:
+  设 成员表 为 局面["成员表"]
+  设 名字索引 为 局面["名字索引"]
+  设 旧 为 空
+  如果 (字典包含键(成员表, 成员["id"]) == 真):
+    设 旧 为 成员表[成员["id"]]
+  设 已占 为 空
+  如果 (字典包含键(名字索引, 成员["name"]) == 真):
+    设 已占 为 名字索引[成员["name"]]
+  如果 已占 != 空:
+    如果 已占 != 成员["id"]:
+      抛出 新建 错误("teammate name \"" + 成员["name"] + "\" is reused by another member")
+  如果 旧 == 空:
+    如果 成员["phase"] != "provisioning":
+      抛出 新建 错误("teammate \"" + 成员["name"] + "\" must begin provisioning")
+    名字索引[成员["name"]] 为 成员["id"]
+  如果 旧 != 空:
+    如果 旧["name"] != 成员["name"]:
+      抛出 新建 错误("teammate \"" + 成员["id"] + "\" changed immutable identity fields")
+    如果 旧["provider"] != 成员["provider"]:
+      抛出 新建 错误("teammate \"" + 成员["id"] + "\" changed immutable identity fields")
+    如果 旧["context"] != 成员["context"]:
+      抛出 新建 错误("teammate \"" + 成员["id"] + "\" changed immutable identity fields")
+    如果 旧["phase"] != "provisioning":
+      抛出 新建 错误("teammate \"" + 成员["name"] + "\" has an invalid " + 旧["phase"] + " -> " + 成员["phase"] + " transition")
+    如果 成员["phase"] == "provisioning":
+      抛出 新建 错误("teammate \"" + 成员["name"] + "\" has an invalid " + 旧["phase"] + " -> " + 成员["phase"] + " transition")
+  成员表[成员["id"]] 为 成员
+  返回 真
+
+段落 并入任务 接收 局面, 任务:
+  设 任务表 为 局面["任务表"]
+  设 标识 为 任务["id"]
+  设 旧 为 空
+  如果 (字典包含键(任务表, 标识) == 真):
+    设 旧 为 任务表[标识]
+  如果 旧 == 空:
+    如果 任务["revision"] != 1:
+      抛出 新建 错误("team task \"" + 标识 + "\" must begin at revision 1")
+  如果 旧 != 空:
+    如果 任务["revision"] != 旧["revision"] + 1:
+      抛出 新建 错误("team task \"" + 标识 + "\" revision is not contiguous")
+  设 占位 为 校验任务接线(任务表, 任务)
+  设 候选 为 0
+  如果 (判数值形状(标识) == 真):
+    设 号 为 算任务序号(标识)
+    如果 号 == 安全上限:
+      设 候选 为 号
+    否则:
+      设 候选 为 号 + 1
+    如果 候选 > 局面["下一任务号"]:
+      局面["下一任务号"] 为 候选
+  任务表[标识] 为 任务
+  返回 真
+
+段落 并入消息 接收 局面, 消息:
+  设 消息表 为 局面["消息表"]
+  如果 (字典包含键(消息表, 消息["id"]) == 真):
+    抛出 新建 错误("team message \"" + 消息["id"] + "\" was queued twice")
+  消息表[消息["id"]] 为 消息
+  返回 真
+
+段落 标送达 接收 局面, 消息标识, 目标标识:
+  设 消息表 为 局面["消息表"]
+  设 已送达 为 局面["已送达"]
+  如果 (字典包含键(消息表, 消息标识) == 假):
+    抛出 新建 错误("team message \"" + 消息标识 + "\" was delivered before queueing")
+  设 已排队 为 消息表[消息标识]
+  如果 已排队["targetId"] != 目标标识:
+    抛出 新建 错误("team message \"" + 消息标识 + "\" target changed")
+  如果 (字典包含键(已送达, 消息标识) == 真):
+    抛出 新建 错误("team message \"" + 消息标识 + "\" was delivered twice")
+  已送达[消息标识] 为 真
+  返回 真
+
+# ---------- applyTeamEvent / foldTeam ----------
+
+# 套用一条记录；非团队记录 / 非本团队记录 -> 返回 假（静默忽略）
+段落 套用记录 接收 局面, 记录:
+  如果 (是否团队记录(记录) == 假): 返回 假
+  设 种类 为 记录["type"]
+  设 数据 为 记录["data"]
+  设 占位 为 校验选择器(种类, 数据)
+  如果 数据["version"] != 1:
+    如果 数据["teamId"] != 局面["id"]: 返回 假
+    抛出 新建 错误("unsupported Agent Teams event version " + 转字符串(数据["version"]))
+  设 占位 为 校验载荷(种类, 数据)
+  如果 数据["teamId"] != 局面["id"]: 返回 假
+  如果 种类 == "team/member":
+    设 占位 为 并入成员(局面, 数据["member"])
+    返回 真
+  如果 种类 == "team/task":
+    设 占位 为 并入任务(局面, 数据["task"])
+    返回 真
+  如果 种类 == "team/message/queued":
+    设 占位 为 并入消息(局面, 数据["message"])
+    返回 真
+  设 占位 为 标送达(局面, 数据["messageId"], 数据["targetId"])
+  返回 真
+
+段落 折叠团队 接收 根标识, 记录列表:
+  设 局面 为 空折叠状态(根标识)
+  遍历 记录 之 记录列表:
+    设 占位 为 套用记录(局面, 记录)
+  返回 局面
+
+# =====================================================================
+# 七、投影助手（供测试与宿主只读消费）
+# =====================================================================
+
+# 待领邮件：已排队 且 未送达（fold.spec.ts 的 pending 助手）
+段落 待领消息 接收 局面:
+  设 结果 为 []
+  遍历 标识 之 字典键列表(局面["消息表"]):
+    如果 (字典包含键(局面["已送达"], 标识) == 假):
+      列表追加(结果, 局面["消息表"][标识])
+  返回 结果
+
+段落 是否空折叠 接收 局面:
+  如果 列表长度(字典键列表(局面["成员表"])) != 0: 返回 假
+  如果 列表长度(字典键列表(局面["任务表"])) != 0: 返回 假
+  如果 列表长度(字典键列表(局面["消息表"])) != 0: 返回 假
+  如果 列表长度(字典键列表(局面["已送达"])) != 0: 返回 假
+  返回 真
+
+# =====================================================================
+# 八、session-message.ts：待领信匣 + 已入列
+# =====================================================================
+
+# splice 语义：在 起点 处删掉 删除数 项，并插入 插入清单
+段落 剪接 接收 原清单, 起点, 删除数, 插入清单:
+  设 结果 为 []
+  设 序 为 0
+  当 序 < 起点:
+    如果 序 < 列表长度(原清单):
+      列表追加(结果, 原清单[序])
+    设 序 为 序 + 1
+  遍历 项 之 插入清单:
+    列表追加(结果, 项)
+  设 序 为 起点 + 删除数
+  当 序 < 列表长度(原清单):
+    列表追加(结果, 原清单[序])
+    设 序 为 序 + 1
+  返回 结果
+
+# pendingInboxMessages：遍历 agent/inbox/spliced，按 target 分桶剪接后
+#   先 next-turn 后 next-step 拼接成待领队列
+段落 待领信匣 接收 记录列表:
+  设 信匣 为 {}
+  信匣["next-turn"] 为 []
+  信匣["next-step"] 为 []
+  遍历 记录 之 记录列表:
+    如果 (是字典(记录) == 假): 继续
+    如果 (字典包含键(记录, "type") == 假): 继续
+    如果 记录["type"] != "agent/inbox/spliced": 继续
+    设 数据 为 记录["data"]
+    如果 (是字典(数据) == 假): 继续
+    设 目标 为 数据["target"]
+    如果 (字典包含键(信匣, 目标) == 假): 继续
+    设 起点 为 数据["start"]
+    设 删除数 为 0
+    如果 (字典包含键(数据, "removedCount") == 真):
+      设 删除数 为 数据["removedCount"]
+    设 插入 为 []
+    如果 (字典包含键(数据, "inserted") == 真):
+      设 插入 为 数据["inserted"]
+    信匣[目标] 为 剪接(信匣[目标], 起点, 删除数, 插入)
+  设 结果 为 []
+  遍历 项 之 信匣["next-turn"]:
+    列表追加(结果, 项)
+  遍历 项 之 信匣["next-step"]:
+    列表追加(结果, 项)
+  返回 结果
+
+# messageAccepted：历史 user/message 命中 或 待领信匣命中
+段落 已入列 接收 记录列表, 判定:
+  遍历 记录 之 记录列表:
+    如果 (是字典(记录) == 假): 继续
+    如果 (字典包含键(记录, "type") == 假): 继续
+    如果 记录["type"] != "user/message": 继续
+    如果 (判定(记录["data"]) == 真): 返回 真
+  遍历 消息 之 待领信匣(记录列表):
+    如果 (判定(消息) == 真): 返回 真
+  返回 假
+
+# =====================================================================
+导出 空折叠状态
+导出 是否团队记录
+导出 套用记录
+导出 折叠团队
+导出 待领消息
+导出 是否空折叠
+导出 校验任务接线
+导出 深访
+导出 校验载荷
+导出 校验内容块
+导出 判数值形状
+导出 判安全序号
+导出 算任务序号
+导出 待领信匣
+导出 已入列
+导出 剪接

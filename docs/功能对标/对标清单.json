@@ -1229,6 +1229,29 @@
       "L-046(变量名 出 单独作标识符返回 None，状态 改用 旧态/新态)",
       "L-007(铁律4：成员下标赋值走 取临时对象→改→回写 己.X)"
     ]
+  },
+  {
+    "编号": 67,
+    "功能": "团队事件折叠状态机 + 消息接受判定（fold：TeamFoldState/emptyTeamFoldState/isTeamEvent/applyTeamEvent/foldTeam；session-message：messageAccepted/pendingInboxMessages）",
+    "原版包": "packages/experimental/agent-team/src/{fold.ts, session-message.ts}",
+    "光明模块": "src/团队折叠.light",
+    "状态": "done",
+    "证据": [
+      "src/团队折叠.light",
+      "examples/test_团队折叠.light"
+    ],
+    "本轮目标": "done：事件溯源最纯内核，纯内存状态转换，本卡自包含不复用其他 .light。fold.ts 面：空折叠状态(根标识) 造七字段字典投影（id/成员表/名字索引/任务表/消息表/已送达/下一任务号）；是否团队记录 判定四类 team/* 记录；套用记录 逐条折叠——先过选择器（version 非负整数 + teamId 非空串），version≠1 时「非本团队则静默忽略、本团队则抛 unsupported version」，再过当前版本严格载荷校验（键集 strict + 字段类型，含内容块五类核心变体严校验与未知插件变体 loose 保留），最后按 teamId 过滤；四条分支：并入成员（名字被他人占用/首条须 provisioning/不可变身份字段 name·provider·context 变更/生命周期非法流转 均抛）、并入任务（首条须 revision 1、后续须 +1 连续、依赖图四类违规 自引用·重复·缺失·已删·环 均抛、^task-(\\d+)$ 编号推进 nextTaskNumber 且后缀须为安全整数否则载荷非法、非数值标识不改编号）、并入消息（重复排队抛）、标送达（未排队先送达/目标变更/重复送达 均抛）。session-message.ts 面：待领信匣 按 agent/inbox/spliced 的 target∈{next-turn,next-step} 分桶 splice（removedCount 缺省为 0、未知 target 忽略），结果 next-turn 桶在前；已入列(记录列表, 判定) = 历史 user/message 命中 或 待领信匣命中，判定 为入参谓词函数（光明支持具名段落作实参调用）。test_团队折叠.light 共 110 条判据（85 断言相等 + 25 检查抛错），优先覆盖 fold.spec.ts 全部用例。",
+    "反跑判据": "test_团队折叠.light：五条反跑锚点已实测 RED——①成员归属改反（成员表按 name 存）→红（teammate must begin provisioning）；②revision 不递增（连续校验改 < 旧修订）→红（期望抛错但未抛: 修订跳号应抛）；③inbox 剪枝错误（剪接 忽略 removedCount）→红（断言失败[删除一条后剩 2 条]：实际=3 期望=2）；④依赖图循环检测关闭→红（期望抛错但未抛: 依赖成环应抛）；⑤缺失阻塞真正放行→红（期望抛错但未抛: 阻塞任务缺失应抛）。另有显式锚点用例 反跑_成员归属（成员表只含 子、不含 旁人、不按 name 索引）/反跑_修订递增（1→2→3 且末次状态生效）/反跑_信匣剪枝（删 2 插 1 后为 [D, C]）。",
+    "语言缺陷": [
+      "L-036(缺失键 [] 抛 键错误，可选字段访问须 字典包含键 守卫；是字典/是列表 置于 或/且 链须加括号)",
+      "L-037(断言降级 no-op，判据一律 断言相等/检查抛错)",
+      "L-040(函数定义一律 段落 X 接收 参数:)",
+      "L-041(状态/字典/映射 不作变量名，折叠状态一律称「局/局面」)",
+      "L-043(布尔链不配行内 否则，改顺序 如果)",
+      "L-044(含 文本 的函数名会被拆名，本期避开 文本 词根)",
+      "L-045(写 只吃字面量串或已设字符串变量；本期以 写 \"字面量\" 输出，诊断走 抛出 新建 错误)",
+      "L-055(新)：写 f(x) 会把函数对象传给底层 write（报 write() argument must be str, not function，实参被丢弃），L-045 的包⑦修复仅覆盖 `写 \"x\" + 变量` 拼接形态，不覆盖裸函数调用形态；绕法：先 设 X 为 f(x) 再 写 X，且 X 须为字符串（写 整数 报 not int）；最小复现已固化为 examples/test_L055.light（绿）"
+    ]
   }
 ]
 }
