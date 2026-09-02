@@ -1191,6 +1191,23 @@
     ]
   },
   {
+    "编号": 65,
+    "功能": "团队依赖图核心（types：TeamId/TeamTaskId/TeamTaskSnapshot/TeamWaitResult + 事件形状；error：TeamError/errorMessage 归一；validation：requiredText/writeScope；task-graph：assertTaskGraphCandidate 四类违规校验）",
+    "原版包": "packages/experimental/agent-team/src/{types,error,validation,task-graph}.ts",
+    "光明模块": "src/团队依赖图.light",
+    "状态": "done",
+    "证据": [
+      "src/团队依赖图.light",
+      "examples/test_团队依赖图.light"
+    ],
+    "本轮目标": "done：四层逐条对齐源码——类型层用字典/结构等价表达 TeamId/TeamTaskSnapshot/TeamWaitResult 及 team/member、team/task、team/message/queued、team/message/delivered 四类事件形状；错误层以函数返回字典建模 TeamError(名+消息+code) 与 TeamTaskGraphError(名+消息+violation)，判定团队错误 归一（字典→消息、字符串→原值、else→序列化JSON）；校验层 必需文本（手写 trim 去空白→非空→超长抛错）、写范围（\\\\→/、去前导 ./、循环去尾部 /、手写 split 分段、盘符检测 [a-z]:、段违规 空/./..）；依赖图层 校验任务接线 合并表→Phase1 逐非删除任务检查 blockedBy（自我→cycle、重复→duplicate、缺失/已删→missing）→Phase2 三色 DFS 检环。纯逻辑剥离 Cordis/Agent/AbortSignal/setTimeout。命名避让危险词根，状态→进度/标记表。test_团队依赖图.light 共 85 处断言。",
+    "反跑判据": "test_团队依赖图.light：把 空文本抛错 期望 真 改 假 即红（空文本被放行）；把 双点段抛错 期望 真 改 假 即红（.. 被放行）；把 自我依赖抛错 期望 真 改 假 即红（自我依赖被放行）；把 缺失前置/重复阻塞/双任务环/三任务环 任一检查抛错改为不抛即红。",
+    "语言缺陷": [
+      "L-041(状态 不作变量名，用 进度/标记表)",
+      "L-044(文本 作变量名遮蔽内置 str()，改用 已处理 避开)"
+    ]
+  },
+  {
     "编号": 66,
     "功能": "团队任务看板状态机（task-board：创建/查询/列举/刷新/完成/删除 + 依赖图校验）",
     "原版包": "packages/experimental/agent-team/src/task-board.ts",

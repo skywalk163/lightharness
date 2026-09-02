@@ -1,0 +1,255 @@
+# 团队依赖图.light —— 团队依赖图核心纯逻辑（对齐原版 agent-team/src/{types,error,validation,task-graph}.ts）
+#
+# 复刻范围：
+#   1) 类型层 types.ts：TeamId/TeamTaskId/TeamTaskSnapshot/TeamWaitResult、事件形状 team/member、team/task、
+#      team/message/queued、team/message/delivered 等，用光明字典/结构等价表达
+#   2) 错误层 error.ts：TeamError（携带 code）、errorMessage 归一
+#   3) 校验层 validation.ts：requiredText（去空白/非空/超长抛错）、writeScope（路径规范化与违规拒绝）
+#   4) 依赖图层 task-graph.ts：assertTaskGraphCandidate 四类违规校验（缺失/重复/自我/环）
+#
+# 纯逻辑剥离：Cordis ctx / @deepseek-ai/dsh-session / @deepseek-ai/dsh-llm / Agent / AbortSignal / setTimeout
+#   一律抽象为入参能力函数或字典投影，不实例化宿主服务，不落盘、不发网络、不起子进程。
+#
+# 命名规范 v1：任务→任务、快照→快照、违规→违规、环→环、接线→接线
+#   函数：校验任务接线、必需文本、写范围、判定团队错误、构造团队标识、构造任务标识、构造消息标识
+#   成员名不碰危险词根。
+
+从 字符串处理 导入 截取, 字符转ASCII
+
+# ===========================================================
+# 一、类型层（对齐 types.ts）
+# 用光明字典/结构等价表达 TypeScript 接口与品牌化类型
+# ===========================================================
+
+# 构造团队标识：品牌化字符串（TeamId）
+段落 构造团队标识 接收 标识:
+  返回 标识
+
+# 构造任务标识：品牌化字符串（TeamTaskId）
+段落 构造任务标识 接收 标识:
+  返回 标识
+
+# 构造消息标识：品牌化字符串（TeamMessageId）
+段落 构造消息标识 接收 标识:
+  返回 标识
+
+# 构造任务快照：完整持久化值
+# 字段对齐原版 TeamTaskSnapshot：id/revision/subject/description/status/ownerId/blockedBy/writeScopes
+段落 构造任务快照 接收 标识, 版本号, 主题, 描述, 进度, 拥有者标识, 阻塞清单, 写范围清单:
+  设 快照 为 {}
+  快照["id"] 为 标识
+  快照["revision"] 为 版本号
+  快照["subject"] 为 主题
+  快照["description"] 为 描述
+  快照["status"] 为 进度
+  如果 拥有者标识 != 空:
+    快照["ownerId"] 为 拥有者标识
+  快照["blockedBy"] 为 阻塞清单
+  快照["writeScopes"] 为 写范围清单
+  返回 快照
+
+# 构造等待结果（TeamWaitResult）
+段落 构造等待结果 接收 已超时:
+  返回 {"timedOut": 已超时}
+
+# 构造成员快照（TeamMemberSnapshot）
+段落 构造成员快照 接收 标识, 名字, 描述, 提供方, 上下文, 阶段, 错误文本:
+  设 快照 为 {}
+  快照["id"] 为 标识
+  快照["name"] 为 名字
+  快照["description"] 为 描述
+  快照["provider"] 为 提供方
+  快照["context"] 为 上下文
+  快照["phase"] 为 阶段
+  如果 错误文本 != 空:
+    快照["error"] 为 错误文本
+  返回 快照
+
+# 构造成员通知（team/member 事件形状）
+段落 构造成员通知 接收 团队标识, 成员快照:
+  返回 {"version": 1, "teamId": 团队标识, "member": 成员快照}
+
+# 构造任务通知（team/task 事件形状）
+段落 构造任务通知 接收 团队标识, 任务快照:
+  返回 {"version": 1, "teamId": 团队标识, "task": 任务快照}
+
+# 构造排队通知（team/message/queued 事件形状）
+段落 构造排队通知 接收 团队标识, 消息快照:
+  返回 {"version": 1, "teamId": 团队标识, "message": 消息快照}
+
+# 构造送达通知（team/message/delivered 事件形状）
+段落 构造送达通知 接收 团队标识, 消息标识, 目标标识:
+  返回 {"version": 1, "teamId": 团队标识, "messageId": 消息标识, "targetId": 目标标识}
+
+# ===========================================================
+# 二、错误层（对齐 error.ts）
+# TeamError extends HarnessError(message, code, options)
+# errorMessage(error) 归一：Error->message、string->原值、else->inspect compact
+# 以字典建模（名 标记 + 消息 + code），不实例化宿主错误继承链
+# ===========================================================
+
+# 构造团队错误（等价 new TeamError(message, code)）
+段落 构造团队错误 接收 消息, 代码:
+  返回 {"名": "TeamError", "消息": 消息, "code": 代码}
+
+# 构造接线错误（等价 new TeamTaskGraphError(message, violation)）
+段落 构造接线错误 接收 消息, 违规:
+  返回 {"名": "TeamTaskGraphError", "消息": 消息, "violation": 违规}
+
+# 归一错误消息（对齐 errorMessage）
+# Error->message、string->原值、else->inspect compact（以序列化JSON 近似）
+段落 判定团队错误 接收 错误值:
+  如果 (是字典(错误值) == 真):
+    如果 (字典包含键(错误值, "消息") == 真):
+      返回 错误值["消息"]
+  如果 (是字符串(错误值) == 真):
+    返回 错误值
+  返回 序列化JSON(错误值)
+
+# ===========================================================
+# 三、校验层（对齐 validation.ts）
+# requiredText(value, field, maxLength)：trim -> 非空 -> 不超长 -> 返回 trimmed
+# writeScope(value)：\->/、去前导 ./、去尾部 /、拒绝根路径/盘符/空段/./..
+# ===========================================================
+
+# 去首尾空白（等价 String.prototype.trim）
+段落 去空白 接收 文本:
+  设 起点 为 0
+  设 终点 为 字符串长度(文本)
+  当 起点 < 终点:
+    设 码 为 字符转ASCII(文本[起点])
+    如果 码 == 32 或 码 == 9 或 码 == 10 或 码 == 13:
+      设 起点 为 起点 + 1
+    否则:
+      跳出
+  当 终点 > 起点:
+    设 码 为 字符转ASCII(文本[终点 - 1])
+    如果 码 == 32 或 码 == 9 或 码 == 10 或 码 == 13:
+      设 终点 为 终点 - 1
+    否则:
+      跳出
+  如果 起点 >= 终点:
+    返回 ""
+  返回 截取(文本, 起点, 终点)
+
+# 必需文本校验（对齐 requiredText）
+段落 必需文本 接收 值, 字段, 上限:
+  设 已处理 为 去空白(值)
+  如果 字符串长度(已处理) == 0:
+    抛出 新建 错误(字段 + " must be non-empty")
+  如果 字符串长度(已处理) > 上限:
+    抛出 新建 错误(字段 + " exceeds " + 文本(上限) + " characters")
+  返回 已处理
+
+# 写范围校验（对齐 writeScope）
+段落 写范围 接收 原始值:
+  # Step 1: \ -> /
+  设 归一化 为 替换字符串(原始值, "\\", "/")
+  # Step 2: 去前导 ./
+  如果 字符串长度(归一化) >= 2:
+    如果 截取(归一化, 0, 2) == "./":
+      归一化 为 截取(归一化, 2, 字符串长度(归一化))
+  # Step 3: 去尾部 /
+  当 字符串长度(归一化) > 0:
+    如果 结尾(归一化, "/"):
+      归一化 为 截取(归一化, 0, 字符串长度(归一化) - 1)
+    否则:
+      跳出
+  # Step 4: 分割为段表
+  设 段表 为 []
+  设 当前 为 ""
+  设 i 为 0
+  当 i < 字符串长度(归一化):
+    设 字符 为 归一化[i]
+    如果 字符 == "/":
+      列表追加(段表, 当前)
+      设 当前 为 ""
+    否则:
+      设 当前 为 当前 + 字符
+    设 i 为 i + 1
+  列表追加(段表, 当前)
+  # Step 5: 违规判定
+  设 违规 为 假
+  如果 字符串长度(归一化) == 0:
+    设 违规 为 真
+  如果 字符串长度(归一化) > 0:
+    如果 归一化[0] == "/":
+      设 违规 为 真
+  # 盘符检测：[a-z]: (不区分大小写)
+  如果 字符串长度(归一化) >= 2:
+    设 首码 为 字符转ASCII(归一化[0])
+    设 是大写 为 (首码 >= 65 且 首码 <= 90)
+    设 是小写 为 (首码 >= 97 且 首码 <= 122)
+    如果 (是大写 或 是小写):
+      如果 归一化[1] == ":":
+        设 违规 为 真
+  # 段违规检测
+  遍历 段 之 段表:
+    如果 字符串长度(段) == 0:
+      设 违规 为 真
+    如果 段 == ".":
+      设 违规 为 真
+    如果 段 == "..":
+      设 违规 为 真
+  如果 违规:
+    抛出 新建 错误("invalid workspace-relative write scope " + 序列化JSON(原始值))
+  返回 归一化
+
+# ===========================================================
+# 四、依赖图层（对齐 task-graph.ts）
+# TeamTaskGraphViolation = 'missing' | 'duplicate' | 'cycle'
+# assertTaskGraphCandidate(current, candidate):
+#   1) 合并 current + candidate
+#   2) 逐非删除任务检查 blockedBy：自我依赖->cycle、重复->duplicate、缺失/已删->missing
+#   3) 三色 DFS 环检测
+# ===========================================================
+
+# 深度访问（三色 DFS 环检测辅助）
+# 标记表：无键=未访问、1=访问中（灰）、2=已访问（黑）
+段落 深度访问 接收 任务表, 标记表, 标识:
+  如果 (字典包含键(标记表, 标识) == 真):
+    如果 标记表[标识] == 1:
+      抛出 新建 错误("task dependency cycle includes \"" + 标识 + "\"")
+    返回
+  如果 (字典包含键(任务表, 标识) == 假):
+    返回
+  设 任务 为 任务表[标识]
+  如果 任务["status"] == "deleted":
+    返回
+  标记表[标识] 为 1
+  设 阻塞清单 为 任务["blockedBy"]
+  遍历 阻塞标识 之 阻塞清单:
+    深度访问(任务表, 标记表, 阻塞标识)
+  标记表[标识] 为 2
+
+# 校验任务接线（对齐 assertTaskGraphCandidate）
+段落 校验任务接线 接收 当前表, 候选:
+  # 合并任务表
+  设 任务表 为 {}
+  遍历 标识 之 字典键列表(当前表):
+    设 任务表[标识] 为 当前表[标识]
+  任务表[候选["id"]] 为 候选
+  # Phase 1: 逐非删除任务检查 blockedBy
+  遍历 标识 之 字典键列表(任务表):
+    设 任务 为 任务表[标识]
+    如果 任务["status"] != "deleted":
+      设 已见 为 {}
+      设 阻塞清单 为 任务["blockedBy"]
+      遍历 阻塞标识 之 阻塞清单:
+        # 自我依赖 -> cycle
+        如果 阻塞标识 == 任务["id"]:
+          抛出 新建 错误("team task \"" + 任务["id"] + "\" cannot block itself")
+        # 重复 -> duplicate
+        如果 (字典包含键(已见, 阻塞标识) == 真):
+          抛出 新建 错误("team task \"" + 任务["id"] + "\" repeats blocker \"" + 阻塞标识 + "\"")
+        # 缺失/已删 -> missing
+        如果 (字典包含键(任务表, 阻塞标识) == 假):
+          抛出 新建 错误("blocker task \"" + 阻塞标识 + "\" for \"" + 任务["id"] + "\" is missing or deleted")
+        设 阻塞任务 为 任务表[阻塞标识]
+        如果 阻塞任务["status"] == "deleted":
+          抛出 新建 错误("blocker task \"" + 阻塞标识 + "\" for \"" + 任务["id"] + "\" is missing or deleted")
+        已见[阻塞标识] 为 真
+  # Phase 2: 三色 DFS 环检测
+  设 标记表 为 {}
+  遍历 起始标识 之 字典键列表(任务表):
+    深度访问(任务表, 标记表, 起始标识)
