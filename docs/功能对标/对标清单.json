@@ -1046,6 +1046,127 @@
         "L-040(参数用 接收 形式)",
         "L-041(字典/映射/状态 不作变量名)"
       ]
+    },
+    {
+      "编号": 62,
+      "功能": "typert 类型注册纯逻辑（loader：./typert 导出解析与 manifest/schema/service/event/object/invocation 各段校验、requireStrictCodec 严格 codec 判定；registry：typertKey/typertPackageKey/typertEndpoint 三个 key 生成纯函数、DescriptorStore 本地/远程 invocation 注册/去重/撤回/查询）",
+      "原版包": "packages/typert/loader/src/index.ts（L61-142 + L264-276）+ packages/typert/registry/src/(index.ts L42-69 + service.ts L107-180)",
+      "光明模块": "src/类型注册.light",
+      "状态": "done",
+      "证据": [
+        "src/类型注册.light",
+        "examples/test_类型注册.light"
+      ],
+      "本轮目标": "done：复刻清单校验（顶层对象+必含 schema 段，service/event/object/invocation 段出现即校验，缺省段规范化补值）、判定编解码严格（strict===true 且 schema._def.typeName 非空字符串判定 zod v4 驱动）、三个 key 生成函数、描述符存储登记/去重/撤回/查询。剔除真实 IO 与宿主依赖：zod v4 运行时、./typert 模块加载、远程 invocation 派发通道一律以入参字典投影，schema 的 zod 驱动以 _def.typeName 存在性判定。命名避 类型/事件/接收 词根：service→服务段、keyword 生成函数→构造注册键/构造包键/构造端点、codec→编解码、manifest 校验→校验清单、event→时机段、object→对象段、invocation→调用段。",
+      "反跑判据": "test_类型注册.light：把 构造注册键/构造包键/构造端点 任一前缀改反、把 判定编解码严格 的 strict 真↔假/schema 缺↔不缺/_def/typeName 存在↔缺失 任一判定取反、把 校验清单 缺 schema 抛↔不抛/某段非对象抛↔不抛/name 空抛↔不抛/缺省补值改反、把 描述符存储 登记重复抛↔不抛/去重保留↔覆盖（本地>远程）/撤回未登记抛↔不抛/查询命中↔空/条目数 任一期望改反即红。",
+      "语言缺陷": [
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-040(参数用 接收 形式)",
+        "L-041(字典/映射/状态 不作变量名)",
+        "L-050(捕获异常变量名须单字母 ASCII，统一 捕获 错误 e: 后改 捕获 异常 e:)",
+        "L-051(多行字典/列表字面量破坏缩进，一律单行)",
+        "L-053(己 为 self 保留名不能作普通变量名，天干用 辛)"
+      ]
+    },
+    {
+      "编号": 58,
+      "功能": "工作区管理纯逻辑（workspace：路径唯一性规范 trailing slash/.. 归一化、核心字段与不变量 id/path/title/createdAt/updatedAt/sessionIds、缓存一致性 invariant、session 归属校验、attach/move/detach/status 状态迁移）",
+      "原版包": "packages/workspace/workspace/src/(types.ts+paths.ts+invariant.ts+entity.ts)",
+      "光明模块": "src/工作区.light",
+      "状态": "done",
+      "证据": [
+        "src/工作区.light",
+        "examples/test_工作区.light"
+      ],
+      "本轮目标": "done：复刻路径唯一性、字段不变量、缓存一致性 invariant、session 归属校验与接入/迁移/脱离/状态迁移。剔除 Cordis Service/事件发射/真实 IO（fs.realpath/stat）；路径归一化以规范化入参投影。工作区 不作变量名（用 区），attach/move/detach 用 接入/迁移/脱离 绕 类型 词根。",
+      "反跑判据": "test_工作区.light：把 规范化路径 归一端、字段不变量违例判定、缓存一致性 invariant、session 归属校验、卷一状态迁移任一 断言相等/断言真 期望改反或 检查抛错 改不抛即红（共 73 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-038(不用 截取到末尾)",
+        "L-039(循环中断用 跳出)",
+        "L-041(工作区 不作变量名，用 区)",
+        "L-049/L-050(捕获用 捕获 异常 e)",
+        "L-051(字面量单行)"
+      ]
+    },
+    {
+      "编号": 59,
+      "功能": "存储域模型纯逻辑（storage-domain：Config 类型与默认 backend/per-domain route 校验、DomainFacility.open 判定 already-open/解析 backend route/要求 kv facet/加载并校验记录、parseRecord 校验转换 invalid-record 错误）",
+      "原版包": "packages/storage/storage-domain/src/index.ts",
+      "光明模块": "src/存储域.light",
+      "状态": "done",
+      "证据": [
+        "src/存储域.light",
+        "examples/test_存储域.light"
+      ],
+      "本轮目标": "done：复刻域配置校验、backend 路由解析、already-open 判定、record schema 校验与错误转换。剔除真实 backend 打开；backend 抽象成入参能力（kv 标志位 + 读取全部() 返回快照）。域错误把 code 追加进消息「… [code]」既保留 code 又保留 message 子串便于断言。存储 已用于既有模块，本模块独立叫 存储域；Config 校验用 校验贮配。",
+      "反跑判据": "test_存储域.light：把 校验贮配 各非法路由、域打开 already-open/重复开放、解析域记录 错误转换、backend 路由选定任一 断言相等/断言真 期望改反或 检查抛错 改不抛即红（共 45 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-040(参数用 接收 形式)",
+        "L-041(字典/映射/状态 不作变量名)",
+        "L-049/L-050(捕获用 捕获 异常 e)"
+      ]
+    },
+    {
+      "编号": 60,
+      "功能": "文件系统路径规则纯逻辑（fs-sandbox：containment 大小写前缀 + stat 祖先身份回退、checkedTarget 每调用策略判定；fs-observation-policy：观测策略状态机 present/absent/intent；fs-local：resolveLocalTarget 路径解析、writeText/editText 校验与原子写；tool-fs-search 排序、tool-str-replace-editor 替换唯一性）",
+      "原版包": "packages/fs/fs-sandbox/src/(containment.ts+index.ts) + fs-observation-policy/src/index.ts + fs-local/src/(fsio.ts+index.ts) + tool-fs-search/src + tool-str-replace-editor/src",
+      "光明模块": "src/路径规则.light",
+      "状态": "done",
+      "证据": [
+        "src/路径规则.light",
+        "examples/test_路径规则.light"
+      ],
+      "本轮目标": "done：复刻 containment 分量级前缀 + inode 身份回退、策略判定、观测状态机、路径解析、编辑校验与原子写、搜索排序、替换唯一性。剔除真实 IO；查身份/解析路径/查类别 以入参函数投影。命名避开 文件/工具 词根：操作用 档、tool 用 辅件、containment 用 判定在界内、搜索排序用 整理命中次序。",
+      "反跑判据": "test_路径规则.light：把 判定在界内 大小写别名/根内/在界外 分支、观测策略 intent 推导、解析本地目标 祖先重建、判定写文本 版本守卫、判定唯一性/替换文本 任一改反即红（共 80 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-038(不用 截取到末尾)",
+        "L-039(循环中断用 跳出)",
+        "L-040(参数用 接收 形式)"
+      ]
+    },
+    {
+      "编号": 61,
+      "功能": "安全策略纯逻辑（credentials：秘钥名校验与 redact 脱敏白/黑名单；identity：匿名用户 ID 生成/校验；sandbox-policy 每调用策略谓词、sandbox-windows-acl Windows ACL 规则解析；spill-policy 溢出目录命名/大小阈值/清理顺序）",
+      "原版包": "packages/credentials/credentials+credentials-local/src + identity/anonymous-user-id/src + sandbox/sandbox-policy+windows-acl/src + spill/spill-policy/src",
+      "光明模块": "src/安全策略.light",
+      "状态": "done",
+      "证据": [
+        "src/安全策略.light",
+        "examples/test_安全策略.light"
+      ],
+      "本轮目标": "done：复刻凭证名校验与脱敏、匿名 ID 生成/校验、策略谓词、ACL 规则、溢出目录/阈值/清理顺序。剔除加密/子进程/文件系统 IO；IO 抽象成入参函数。命名：秘钥→凭证/令牌、redact→脱敏、policy→策略、spill→溢出、ACL→访问界限。本卡只做策略层，与既有 溢出.light 底物不重叠。",
+      "反跑判据": "test_安全策略.light：把 判定敏感名/脱敏 白黑名单、匿名 ID 生成/校验、策略谓词、ACL 规则解析、溢出阈值/清理顺序 任一 断言相等/断言真 期望改反或 检查抛错 改不抛即红（共 74 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-038(不用 截取到末尾)",
+        "L-039(循环中断用 跳出)",
+        "L-049/L-050(捕获用 捕获 异常 e)",
+        "L-051(字面量单行)",
+        "L-052({标识符} 分段拼接)"
+      ]
+    },
+    {
+      "编号": 62,
+      "功能": "typert 类型注册纯逻辑（typert loader：./typert 导出解析、TYPERT manifest/schema/service/event/object/invocation 校验、requireStrictCodec strict+zod v4 校验；typert registry：构造注册键/包键/端点 key 纯函数、DescriptorStore 本地/远程注册/去重/撤回/查询）",
+      "原版包": "packages/typert/loader/src/index.ts + packages/typert/registry/src/(index.ts+service.ts)",
+      "光明模块": "src/类型注册.light",
+      "状态": "done",
+      "证据": [
+        "src/类型注册.light",
+        "examples/test_类型注册.light"
+      ],
+      "本轮目标": "done：复刻 manifest 校验、strict codec 校验、三 key 生成、描述符注册/去重/撤回/查询。剔除真实 IO 与宿主依赖——zod v4 运行时、./typert 模块加载、远程 invocation 派发以入参字典投影；zod v4 以 schema._def.typeName 存在性判定。命名避 类型/事件/接收 词根：service→服务段、key 函数用 构造注册键/构造包键/构造端点、codec→编解码。原版英文键作字符串字面量保留。",
+      "反跑判据": "test_类型注册.light：把 构造注册键/包键/端点 前缀、判定编解码严格、校验清单 各段判错、描述符注册去重/撤回/查询 任一改反或 检查抛错 改不抛即红（共 68 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-040(参数用 接收 形式)",
+        "L-041(字典/映射/状态 不作变量名)"
+      ]
     }
   ]
 }
