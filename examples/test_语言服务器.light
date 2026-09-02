@@ -1,0 +1,276 @@
+# test_语言服务器.light —— 模块63 语言服务器 对齐判据
+# 运行：python 运行.py examples/test_语言服务器.light
+#
+# 反跑判据（把任一期望值改反，测试必须红）：
+#   - 扩展名提取：把 src/Foo.TS→.ts、foo.d.ts→.ts、Main.CS→.cs、Makefile/点文件→空 任一改反必红
+#   - 规范化/合法判定：把 TS→.ts、.ts 合法、'.tar.gz' 非法、无点非法 任一取反必红
+#   - 注册校验：把 空标识/无扩展/非法扩展/空语言/重复扩展 抛↔不抛、重复标识/跨方冲突 抛↔不抛、
+#     原子性（部分冲突后 .py 未预留↔已预留）、释放后 id 可复用↔冲突 任一取反必红
+#   - 路由：把 无提供方查询抛↔不抛、languageId 补值改反、释放后查询抛↔不抛 任一取反必红
+#   - 解析定位：把 一基→零基（line3→2、char5→4）、未知操作抛↔不抛、空路径抛↔不抛、
+#     零/非整坐标抛↔不抛 任一取反必红
+#   - 格式化坐标：把 'a.ts:1:1\na.ts:5:3'、'3 more locations omitted (limit 2)'、单数省略、
+#     截断长度 80 任一改反必红
+#   - 格式化悬停：把 'No hover information.'、短悬停原样、截断长度 60、小上限 10 任一改反必红
+#   - 资源标识转换：把 相对 'src/a.ts'、绝对 '/home/u/other/lib/b.ts'、'.'、'..generated/a.ts'、
+#     窗世界 'src/a.ts'/'D:/lib/a.ts'、远程 'a.ts'/'src/A.ts'/'//other/share/b.ts'/'D:/lib/a.ts'/
+#     '/a.ts'/'a.ts'、非 file 原样、非法/失配/编码分隔符/空字符 原样 任一改反必红
+
+从 语言服务器 导入 提取最终扩展名, 规范化扩展名, 判定扩展名合法, 判定操作合法, 解析定位, 格式化坐标, 格式化悬停, 渲染资源标识, 造语言服务器
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 信息 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 信息)
+
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  尝试:
+    运算()
+  捕获 错误 为 e:
+    设 抛了 为 真
+  如果 抛了 == 假:
+    抛出 新建 错误("应抛未抛: " + 标签)
+
+# ---------- 构造入参 ----------
+设 坐标结果 为 { "kind": "locations", "locations": [], "resolvedWorkspaceUri": "file:///ws" }
+设 悬停结果 为 { "kind": "hover", "hover": { "contents": "x" } }
+
+段落 造请求 接收 路径, 操作:
+  返回 { "operation": 操作, "filePath": 路径, "position": { "line": 0, "character": 0 }, "workspaceRoot": "/ws" }
+
+段落 造提供方 接收 标识, 映照, 记录表, 结果:
+  段落 查询函数 接收 请求:
+    设 语 为 取可选(请求, "languageId")
+    如果 语 == 空:
+      设 语 为 "?"
+    列表追加(记录表, 请求["filePath"] + ":" + 语)
+    返回 结果
+  返回 { "id": 标识, "extensionToLanguage": 映照, "查询": 查询函数 }
+
+段落 造坐标 接收 资源标识, 行, 字符位:
+  返回 { "uri": 资源标识, "range": { "start": { "line": 行, "character": 字符位 }, "end": { "line": 行, "character": 字符位 + 1 } } }
+
+段落 造多坐标 接收 数量:
+  设 表 为 []
+  设 i 为 0
+  当 i < 数量:
+    列表追加(表, 造坐标("file:///home/u/proj/a.ts", i, 0))
+    设 i 为 i + 1
+  返回 表
+
+段落 重复字符 接收 字符, 次数:
+  设 果 为 ""
+  设 i 为 0
+  当 i < 次数:
+    设 果 为 果 + 字符
+    设 i 为 i + 1
+  返回 果
+
+段落 造巨坐标 接收 前缀, 次数:
+  设 巨串 为 ""
+  设 i 为 0
+  当 i < 次数:
+    设 巨串 为 巨串 + "x"
+    设 i 为 i + 1
+  返回 [造坐标(前缀 + 巨串, 0, 0)]
+
+段落 新行:
+  返回 chr(10)
+
+# ---------- 解析定位：抛错用例 ----------
+段落 解析抛未知操作:
+  解析定位({ "operation": "rename", "file_path": "a.ts", "line": 1, "character": 1 })
+
+段落 解析抛空路径:
+  解析定位({ "operation": "hover", "file_path": "   ", "line": 1, "character": 1 })
+
+段落 解析抛零行:
+  解析定位({ "operation": "hover", "file_path": "a.ts", "line": 0, "character": 1 })
+
+段落 解析抛零列:
+  解析定位({ "operation": "hover", "file_path": "a.ts", "line": 1, "character": 0 })
+
+段落 解析抛非整行:
+  解析定位({ "operation": "hover", "file_path": "a.ts", "line": 1.5, "character": 1 })
+
+# ---------- 提供方注册：抛错用例（模块级 服务器） ----------
+设 服务器 为 造语言服务器()
+
+段落 注册空标识:
+  服务器.注册提供方({ "id": "  ", "extensionToLanguage": { ".ts": "typescript" } })
+
+段落 注册无扩展:
+  服务器.注册提供方({ "id": "ts", "extensionToLanguage": {} })
+
+段落 注册非法扩展:
+  服务器.注册提供方({ "id": "ts", "extensionToLanguage": { ".tar.gz": "archive" } })
+
+段落 注册空语言:
+  服务器.注册提供方({ "id": "ts", "extensionToLanguage": { ".ts": "  " } })
+
+段落 注册重复扩展:
+  服务器.注册提供方({ "id": "ts", "extensionToLanguage": { ".ts": "typescript", "TS": "ts2" } })
+
+段落 注册重复标识:
+  服务器.注册提供方({ "id": "ts", "extensionToLanguage": { ".tsx": "typescriptreact" } })
+
+段落 注册冲突扩展:
+  服务器.注册提供方({ "id": "other", "extensionToLanguage": { ".ts": "other-lang" } })
+
+段落 注册部分冲突:
+  服务器.注册提供方({ "id": "py-ts", "extensionToLanguage": { ".py": "python", ".ts": "x" } })
+
+段落 查询py:
+  服务器.查询(造请求("a.py", "goToDefinition"))
+
+段落 查询甲:
+  服务器.查询(造请求("a.ts", "goToDefinition"))
+
+段落 主:
+  # ============ 1) 扩展名提取与规范化 ============
+  断言相等(提取最终扩展名("src/Foo.TS"), ".ts", "大写转小写")
+  断言相等(提取最终扩展名("a/b/foo.d.ts"), ".ts", "复合扩展取末段")
+  断言相等(提取最终扩展名("C:\\proj\\Main.CS"), ".cs", "窗路径末扩展")
+  断言相等(提取最终扩展名("Makefile"), "", "无扩展为空")
+  断言相等(提取最终扩展名(".bashrc"), "", "点文件为空")
+  断言相等(提取最终扩展名("dir.d/file"), "", "目录带点无扩展")
+  断言相等(规范化扩展名("TS"), ".ts", "规范化补点")
+  断言相等(规范化扩展名(".ts"), ".ts", "规范化保点")
+  断言真(判定扩展名合法(".ts") == 真, "合法扩展")
+  断言真(判定扩展名合法(".tar.gz") == 假, "复合扩展非法")
+  断言真(判定扩展名合法("ts") == 假, "无点非法")
+  断言真(判定扩展名合法("..") == 假, "双点非法")
+
+  # ============ 2) 参数校验与坐标转换（解析定位） ============
+  断言真(判定操作合法("goToDefinition") == 真, "合法操作")
+  断言真(判定操作合法("rename") == 假, "非法操作")
+  设 四操作 为 ["goToDefinition", "findReferences", "goToImplementation", "hover"]
+  遍历 操作 之 四操作:
+    设 解析 为 解析定位({ "operation": 操作, "file_path": "a.ts", "line": 3, "character": 5 })
+    断言相等(解析["operation"], 操作, "操作保留")
+    断言相等(解析["filePath"], "a.ts", "路径保留")
+    断言相等(解析["position"]["line"], 2, "一基行转零基")
+    断言相等(解析["position"]["character"], 4, "一基列转零基")
+  检查抛错("未知操作应抛", 解析抛未知操作)
+  检查抛错("空路径应抛", 解析抛空路径)
+  检查抛错("零行应抛", 解析抛零行)
+  检查抛错("零列应抛", 解析抛零列)
+  检查抛错("非整行应抛", 解析抛非整行)
+
+  # ============ 3) 提供方注册校验 / 冲突 / 路由（服务器） ============
+  # 空服务器抛错路径
+  检查抛错("空标识应抛", 注册空标识)
+  检查抛错("无扩展应抛", 注册无扩展)
+  检查抛错("非法扩展应抛", 注册非法扩展)
+  检查抛错("空语言应抛", 注册空语言)
+  检查抛错("重复扩展应抛", 注册重复扩展)
+  检查抛错("无提供方查询应抛", 查询py)
+  # 正常注册 → 路由 → 释放
+  设 记录甲 为 []
+  设 提供方甲 为 造提供方("ts", { ".ts": "typescript" }, 记录甲, 坐标结果)
+  设 释放甲 为 服务器.注册提供方(提供方甲)
+  设 结果甲 为 服务器.查询(造请求("a.ts", "goToDefinition"))
+  断言相等(结果甲["kind"], "locations", "路由到 ts 返回坐标结果")
+  断言相等(记录甲[0], "a.ts:typescript", "查询补 languageId")
+  # 冲突检查
+  检查抛错("重复标识应抛", 注册重复标识)
+  检查抛错("跨方扩展冲突应抛", 注册冲突扩展)
+  检查抛错("部分冲突应抛", 注册部分冲突)
+  检查抛错("部分冲突后 py 未预留应抛", 查询py)
+  # 释放
+  释放甲()
+  检查抛错("释放后查询应抛", 查询甲)
+  # id 释放后可复用
+  设 释放甲2 为 服务器.注册提供方(提供方甲)
+  释放甲2()
+
+  # ============ 4) 扩展名键规范化 + 跨提供方路由顺序无关（服务器2/服务器3） ============
+  设 服务器2 为 造语言服务器()
+  设 记录乙 为 []
+  设 提供方乙 为 造提供方("ts2", { "TS": "typescript" }, 记录乙, 坐标结果)
+  设 释放乙 为 服务器2.注册提供方(提供方乙)
+  设 结果乙 为 服务器2.查询(造请求("a.ts", "goToDefinition"))
+  断言相等(记录乙[0], "a.ts:typescript", "TS 键规范化后路由")
+  释放乙()
+
+  设 服务器3 为 造语言服务器()
+  设 记录丙 为 []
+  设 提供方丙 为 造提供方("ts3", { ".ts": "typescript" }, 记录丙, 悬停结果)
+  设 提供方丁 为 造提供方("py3", { ".py": "python" }, 记录丙, 坐标结果)
+  设 释放丙 为 服务器3.注册提供方(提供方丙)
+  设 释放丁 为 服务器3.注册提供方(提供方丁)
+  设 结果丙 为 服务器3.查询(造请求("a.py", "goToDefinition"))
+  断言相等(结果丙["kind"], "locations", "py 路由坐标结果")
+  设 结果丁 为 服务器3.查询(造请求("a.ts", "hover"))
+  断言相等(结果丁["kind"], "hover", "ts 路由悬停结果")
+  断言相等(记录丙[0], "a.py:python", "py 补 languageId")
+  断言相等(记录丙[1], "a.ts:typescript", "ts 补 languageId")
+  释放丙()
+  释放丁()
+
+  # ============ 5) 资源标识转换（渲染资源标识） ============
+  设 工作区 为 "file:///home/u/proj"
+  断言相等(渲染资源标识("file:///home/u/proj/src/a.ts", 工作区), "src/a.ts", "工作区内相对化")
+  断言相等(渲染资源标识("file:///home/u/other/lib/b.ts", 工作区), "/home/u/other/lib/b.ts", "工作区外绝对路径")
+  断言相等(渲染资源标识(工作区, 工作区), ".", "工作区根为点")
+  断言相等(渲染资源标识("file:///home/u/proj/..generated/a.ts", 工作区), "..generated/a.ts", "点开头段仍相对")
+  # Windows 执行世界
+  断言相等(渲染资源标识("file:///C:/WORKSPACE/src/a.ts", "file:///c:/workspace"), "src/a.ts", "窗世界相对化")
+  断言相等(渲染资源标识("file:///D:/lib/b.ts", "file:///C:/workspace"), "D:/lib/b.ts", "跨盘绝对")
+  # 远程主机
+  断言相等(渲染资源标识("file://server/share/workspace/a.ts", "file://server/share/workspace"), "a.ts", "远程主机相对")
+  断言相等(渲染资源标识("file://SERVER/share/workspace/src/A.ts", "file://server/Share/Workspace"), "src/A.ts", "远程主机大小写不敏感前缀")
+  断言相等(渲染资源标识("file://other/share/b.ts", "file://server/share/workspace"), "//other/share/b.ts", "跨主机 UNC")
+  断言相等(渲染资源标识("file:///D:/lib/a.ts", "file://server/share/workspace"), "D:/lib/a.ts", "远程窗混合盘")
+  断言相等(渲染资源标识("file:///a.ts", "file://server/"), "/a.ts", "远程根")
+  断言相等(渲染资源标识("file:///a.ts", "file:///"), "a.ts", "posix 根")
+  # 反斜杠为普通 POSIX 字符
+  断言相等(渲染资源标识("file:///home/u/proj/dir%5Cname/a.ts", 工作区), "dir\\name/a.ts", "反斜杠原样保留")
+  # 非法 / 失配 原样
+  断言相等(渲染资源标识("file://[", 工作区), "file://[", "非法 URL 原样")
+  断言相等(渲染资源标识("file:///a.ts", "https://example.com/workspace"), "file:///a.ts", "非 file 工作区原样")
+  断言相等(渲染资源标识("file:///a.ts", "file:///bad%ZZ"), "file:///a.ts", "坏转义工作区原样")
+  断言相等(渲染资源标识("file:///C:/workspace/bad%5Cpath", "file:///C:/workspace"), "file:///C:/workspace/bad%5Cpath", "窗编码分隔符原样")
+  断言相等(渲染资源标识("file:///short", "file:///short/deeper"), "/short", "父级越界绝对")
+  断言相等(渲染资源标识("file:///", "file:///C:/workspace"), "/", "根跨世界")
+  # 非 file 原样
+  断言相等(渲染资源标识("untitled:Untitled-1", 工作区), "untitled:Untitled-1", "非 file 原样1")
+  断言相等(渲染资源标识("jdt://contents/Foo.class", 工作区), "jdt://contents/Foo.class", "非 file 原样2")
+  # 编码分隔符 / 空字符 原样
+  断言相等(渲染资源标识("file:///bad%2Fpath", 工作区), "file:///bad%2Fpath", "编码斜杠原样")
+  断言相等(渲染资源标识("file:///bad%00path", 工作区), "file:///bad%00path", "空字符原样")
+
+  # ============ 6) 结果格式化（格式化坐标） ============
+  断言相等(格式化坐标([], 工作区, 100, 16000), "No results.", "空坐标集输出")
+  设 组坐标 为 [造坐标("file:///home/u/proj/a.ts", 0, 0), 造坐标("file:///home/u/proj/a.ts", 4, 2)]
+  断言相等(格式化坐标(组坐标, 工作区, 100, 16000), "a.ts:1:1\na.ts:5:3", "分组一基渲染")
+  设 组坐标2 为 [造坐标("file:///home/u/proj/a.ts", 0, 0), 造坐标("file:///home/u/proj/b.ts", 1, 0)]
+  断言相等(格式化坐标(组坐标2, 工作区, 100, 16000), "a.ts:1:1\nb.ts:2:1", "多文件分组")
+  设 多 为 造多坐标(5)
+  设 截1 为 格式化坐标(多, 工作区, 2, 16000)
+  断言相等(截1, "a.ts:1:1\na.ts:2:1\n… 3 more locations omitted (limit 2).", "省略标记复数")
+  设 截2 为 格式化坐标([造坐标("file:///home/u/proj/a.ts", 0, 0), 造坐标("file:///home/u/proj/a.ts", 1, 0)], 工作区, 1, 16000)
+  断言相等(截2, "a.ts:1:1\n… 1 more location omitted (limit 1).", "省略标记单数")
+  设 截3 为 格式化坐标(造巨坐标("custom:", 200), 工作区, 1, 80)
+  断言相等(字符串长度(截3), 80, "整段截断到上限")
+  断言真(字符串包含(截3, "locations truncated"), "截断含标记")
+
+  # ============ 7) 结果格式化（格式化悬停） ============
+  断言相等(格式化悬停(空, 16000), "No hover information.", "空悬停输出")
+  设 新行1 为 新行()
+  设 短悬停 为 { "contents": "```ts" + 新行1 + "x: number" + 新行1 + "```" }
+  断言相等(格式化悬停(短悬停, 16000), "```ts" + 新行1 + "x: number" + 新行1 + "```", "短悬停原样")
+  设 长悬停 为 { "contents": 重复字符("a", 100) }
+  设 截4 为 格式化悬停(长悬停, 60)
+  断言相等(字符串长度(截4), 60, "悬停截断到上限")
+  断言真(字符串包含(截4, "hover truncated (limit 60 characters)."), "悬停截断标记")
+  设 截5 为 格式化悬停(长悬停, 10)
+  断言相等(字符串长度(截5), 10, "上限小于标记时按上限")
+
+  打印("--- 语言服务器（模块63）测试通过 ---")
+
+主()

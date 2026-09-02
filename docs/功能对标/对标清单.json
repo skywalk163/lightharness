@@ -1048,27 +1048,6 @@
       ]
     },
     {
-      "编号": 62,
-      "功能": "typert 类型注册纯逻辑（loader：./typert 导出解析与 manifest/schema/service/event/object/invocation 各段校验、requireStrictCodec 严格 codec 判定；registry：typertKey/typertPackageKey/typertEndpoint 三个 key 生成纯函数、DescriptorStore 本地/远程 invocation 注册/去重/撤回/查询）",
-      "原版包": "packages/typert/loader/src/index.ts（L61-142 + L264-276）+ packages/typert/registry/src/(index.ts L42-69 + service.ts L107-180)",
-      "光明模块": "src/类型注册.light",
-      "状态": "done",
-      "证据": [
-        "src/类型注册.light",
-        "examples/test_类型注册.light"
-      ],
-      "本轮目标": "done：复刻清单校验（顶层对象+必含 schema 段，service/event/object/invocation 段出现即校验，缺省段规范化补值）、判定编解码严格（strict===true 且 schema._def.typeName 非空字符串判定 zod v4 驱动）、三个 key 生成函数、描述符存储登记/去重/撤回/查询。剔除真实 IO 与宿主依赖：zod v4 运行时、./typert 模块加载、远程 invocation 派发通道一律以入参字典投影，schema 的 zod 驱动以 _def.typeName 存在性判定。命名避 类型/事件/接收 词根：service→服务段、keyword 生成函数→构造注册键/构造包键/构造端点、codec→编解码、manifest 校验→校验清单、event→时机段、object→对象段、invocation→调用段。",
-      "反跑判据": "test_类型注册.light：把 构造注册键/构造包键/构造端点 任一前缀改反、把 判定编解码严格 的 strict 真↔假/schema 缺↔不缺/_def/typeName 存在↔缺失 任一判定取反、把 校验清单 缺 schema 抛↔不抛/某段非对象抛↔不抛/name 空抛↔不抛/缺省补值改反、把 描述符存储 登记重复抛↔不抛/去重保留↔覆盖（本地>远程）/撤回未登记抛↔不抛/查询命中↔空/条目数 任一期望改反即红。",
-      "语言缺陷": [
-        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
-        "L-040(参数用 接收 形式)",
-        "L-041(字典/映射/状态 不作变量名)",
-        "L-050(捕获异常变量名须单字母 ASCII，统一 捕获 错误 e: 后改 捕获 异常 e:)",
-        "L-051(多行字典/列表字面量破坏缩进，一律单行)",
-        "L-053(己 为 self 保留名不能作普通变量名，天干用 辛)"
-      ]
-    },
-    {
       "编号": 58,
       "功能": "工作区管理纯逻辑（workspace：路径唯一性规范 trailing slash/.. 归一化、核心字段与不变量 id/path/title/createdAt/updatedAt/sessionIds、缓存一致性 invariant、session 归属校验、attach/move/detach/status 状态迁移）",
       "原版包": "packages/workspace/workspace/src/(types.ts+paths.ts+invariant.ts+entity.ts)",
@@ -1164,6 +1143,49 @@
       "语言缺陷": [
         "L-036(缺键用 取可选 守卫)",
         "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-040(参数用 接收 形式)",
+        "L-041(字典/映射/状态 不作变量名)"
+      ]
+    },
+    {
+      "编号": 63,
+      "功能": "lsp 语言服务器纯逻辑（lsp/src/index.ts finalExtension/registerProvider/query + tool-lsp/src/render.ts parseLspArgs/formatLocations/formatHover/renderUri）",
+      "原版包": "packages/lsp/lsp/src/index.ts + packages/lsp/tool-lsp/src/render.ts",
+      "光明模块": "src/语言服务器.light",
+      "状态": "done",
+      "证据": [
+        "src/语言服务器.light",
+        "examples/test_语言服务器.light"
+      ],
+      "本轮目标": "done：扩展名提取/规范化、提供方注册校验与扩展名冲突检查（all-or-nothing + 同步释放）、路由选择补 languageId、参数校验与一基→零基坐标转换、坐标/悬停结果格式化（分组/省略/截断）、资源标识转换（URL 解析/fileURLToPath/win32.relative/posix.relative 字符串等价复刻，探针与 Node 原生对拍 FAIL_COUNT=0）。剔除真实 IO——URL 解析、路径换算、查询派发全部以字符串/入参投影，无网络/子进程/文件 IO。命名避 工具/类型/匹配 词根：provider→提供方、location→坐标、URI→资源标识、hover→悬停、operation→操作、extension→扩展名；原版英文键作字符串字面量保留。",
+      "反跑判据": "test_语言服务器.light：把 扩展名提取/规范化、注册校验抛↔不抛、冲突/原子性、路由 languageId 补值、一基↔零基、格式化坐标分组/省略/截断、格式化悬停、资源标识相对/绝对/UNC/原样 任一改反即红（共 60+ 处断言，其中 检查抛错 用例 12 处）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-040(参数用 接收 形式)",
+        "L-041(字典/映射/状态 不作变量名)",
+        "L-050(捕获变量单字 e)",
+        "L-053(天干 己 为 self 保留名)",
+        "L-054(嵌套字面量实参内 \\n 破坏后续块缩进，绕法 chr(10) 拼接)"
+      ]
+    },
+    {
+      "编号": 64,
+      "功能": "推理与工具纯逻辑（llm-retry：回应退避指数+抖动；llm-deepseek：求解器选项求解 reasoning effort/说理模式 + 内容校验转换 文段拼平/拒图像/校验图像角色；session-stats：会话统计投影 输出令牌/计时/pending/轮次步进；atomic-write：原子覆写 临时档+rename+失败清理 + 写锁争用判定 + writer lock 协议 指数退避；output-retention：ItemRetainer 预算/push/截断/收统计 + 不完整 UTF-8 尾随裁剪）",
+      "原版包": "packages/llm/llm-retry/src/index.ts + llm-deepseek/src/serialize.ts + session/session-stats/src/projection.ts + util/atomic-write/src/index.ts + util/output-retention/src/index.ts",
+      "光明模块": "src/推理工具.light",
+      "状态": "done",
+      "证据": [
+        "src/推理工具.light",
+        "examples/test_推理工具.light"
+      ],
+      "本轮目标": "done：复刻 retry 退避、LLM 选项求解/内容校验、统计投影、原子覆写+锁协议、输出保留+UTF-8 尾随裁剪。剔除真实 IO/网络/子进程/文件系统；后端能力以入参抽象（临时档创建、readdir、rename 以入参函数投影）。命名：model option→求解器选项、thinking→说理、text block→文本块、atomic-write→原子覆写（临时档）、lock contention→写锁争用、output retention→保留（保留尾部/头部），内部标识符避开 类型/工具/排序/模型 词根。",
+      "反跑判据": "test_推理工具.light：把 回应退避 延迟/抖动、求解器选项 各分支、内容校验 拒图像/文段拼平/角色校验、统计投影 令牌/计时/pending/轮次、原子覆写 临时档清理/失败回退/锁争用判定、保留 预算溢出截断/不完整 UTF-8 尾随裁剪 任一改反或 检查抛错 改不抛即红（共 83 处断言）。",
+      "语言缺陷": [
+        "L-036(缺键用 取可选 守卫)",
+        "L-037(断言 no-op，判据用 断言相等/断言真/检查抛错)",
+        "L-038(不用 截取到末尾)",
+        "L-039(循环中断用 跳出)",
         "L-040(参数用 接收 形式)",
         "L-041(字典/映射/状态 不作变量名)"
       ]
