@@ -58,14 +58,17 @@ jobs:
             echo "[CI][错误] 无法克隆 LIGHT_MERGE_REPO=$REPO"
             exit 1
           }
-          # 防御性校验：克隆的 light-merge 必须含 L-013/L-021 修复（预期 commit 5610f44a）。
+          # 防御性校验：克隆的 light-merge 必须含已知关键修复（预期 commit 61652092）。
           # 背景：CI 曾因 gitea skywalk/light 的 main 分支滞后（修复尚未 push 到 gitea）而克隆到
-          # 过期编译器，导致整门禁误导式全红（典型症状：L-021 报「属性 是保留关键字」）。
-          # 此处确保克隆源含修复，否则回退 canonical gitea main（其默认即含修复）。
+          # 过期编译器，导致整门禁误导式全红。2026-09-03 实战：lightharness 的 ffd933f
+          # （新增 test_L049/L058 回归）先于 light-merge 的 L-049/L-058 编译器修复推到 gitea，
+          # 触发 CI 时克隆到的是修复前的 light-merge，两个用例假红；编译器修复补推后问题才消失。
+          # 此处把 EXPECT 钉到含 L-049/L-058（及 L-013/L-021 等）修复的 commit，确保克隆源含修复，
+          # 否则回退 canonical gitea main（其默认即含修复）。
           # 注：lightharness 仓库当前并未设置 LIGHT_MERGE_REPO 变量，CI 走的就是下方内建 canonical 默认地址。
-          EXPECT=5610f44a2b7d6970a9a185bccba578e13b9a7657
+          EXPECT=61652092e27ebe8c14674bd8312d0d96100eb5b2
           if ! git -C ../light-merge cat-file -e ${EXPECT}^{commit} 2>/dev/null; then
-            echo "[CI][警告] 克隆的 light-merge 不含 L-013/L-021 修复（缺 commit ${EXPECT}），可能 gitea main 滞后，回退 canonical gitea main"
+            echo "[CI][警告] 克隆的 light-merge 不含 L-049/L-058 等关键修复（缺 commit ${EXPECT}），可能 gitea main 滞后，回退 canonical gitea main"
             echo "[CI][提示] 如需固定特定 light-merge 源，可在仓库 Settings→Variables 设置 LIGHT_MERGE_REPO；留空则使用内建 canonical main（含修复）"
             rm -rf ../light-merge
             git clone --depth 1 http://192.168.1.5:3000/skywalk/light.git ../light-merge
