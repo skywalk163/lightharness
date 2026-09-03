@@ -11,22 +11,13 @@
 - **工作目录**：`G:\dswork\duan-light-merge\lightharness`（本工程）
 - **复刻口径**：功能等价 1:1 —— 每个模块建一张功能对标卡（原版功能 → 光明实现 → 对齐度 done/partial/none + 证据 + 反跑判据）
 
-## 范围（第一版：P0 全 + P1 部分）
+## 范围与进度
 
-| 层 | 模块 | 原版包 | 状态 |
-|----|------|--------|------|
-| **P0 核心运行时** | session 会话（append-only 事件日志 + JSONL 持久化） | `core/session` + `session/session-persistence-jsonl` | 待实现 |
-| | llm 流式客户端（deepseek 适配器） | `llm/llm` + `llm/llm-deepseek` | 待实现 |
-| | agent-loop 多轮循环（turn/step 流程） | `core/agent` + `core/agent-loop` | 待实现 |
-| | tools 工具系统（注册/校验/执行） | `core/tools` | 待实现 |
-| | context 上下文压缩（compaction，v2 自动触发） | `compaction/compaction` | 已实现 |
-| | hooks 事件/插件机制 | `core/hooks` + `hook-protocol` | 待实现 |
-| | cli 命令行入口 | `apps/cli` | 待实现 |
-| | subprocess / terminal / shell 进程执行 | `sandbox` `subprocess` `terminal` `shell` | done（终端含 PTY 真 tty） |
-| | sandbox 沙箱边界 | `sandbox` | 待实现 |
-| | fs / storage 文件与存储 | `fs` `storage` | 待实现 |
+复刻范围覆盖 deepseek-harness 全部可提取纯逻辑的模块，以**功能对标卡**为唯一粒度。不再使用 P0/P1/P2 分层——早期规划表已随模块逐一落地而失效，当前进度以 `docs/功能对标/对标清单.json` 为准。截至目前：
 
-P2 生态层：**mcp 客户端(v2)**（#16）、**用户审批 interaction**（#17）、**子智能体 subagent**（#18）、**遥测 telemetry**（#19：轮次/步骤/工具调用/token+延迟统计，代理循环接入）、**代码运行时 code-runtime**（#20：subprocess 执行代码，可包装为工具）、**e2b 云沙箱**（#21：接口层+本地模拟模式）已落地；Web UI 押后。P0/P1 #9 压缩已升级 v3（自动触发+溢出恢复）。
+- **功能对标卡 #1–#70 共 70 张**，全部 `done`。
+- 已落地区域包括：core/session/llm/agent-loop/tools/compaction/hooks、运行层（subprocess/terminal/shell/sandbox）、生态（mcp/审批/subagent/遥测/代码运行时/e2b）、管理（工作区/存储域/路径规则/安全策略/类型注册）、扩展（语言服务器/推理工具）、多智能体团队（agent-team：依赖图/看板/折叠/花名册/服务/日志）。
+- Web UI / Cordis 插件宿主耦合层 纯逻辑价值低，不再扩展。
 
 ## 目录结构
 
@@ -70,10 +61,11 @@ python 运行.py src/总入口.light           # CLI 入口
 
 见 `docs/功能对标/对标清单.json`。当前进度以文件内状态为准。
 
-- 功能对标卡 **#1–#64 共 64 张**。
-- 外发任务 A–N（对标 #51–#64）14 个纯逻辑核心已全部 `done` 合并并推送：网页搜索 / 超时策略 / 任务系统 / 压缩配套 / 远端总线 / 钩子协议 / e2b配套 / 工作区 / 存储域 / 路径规则 / 安全策略 / 类型注册 / 语言服务器 / 推理工具。
-- 回归门禁 `python -m pytest tests/`：171 passed 全绿。
-- 批次交付报告：`_任务A-N_对标51-64_交付报告.md`。
+- 功能对标卡 **#1–#70 共 70 张**，全部 `done`。
+- 外发任务 A–N（对标 #51–#64）14 个纯逻辑核心已合并推送。
+- 外发任务 O–S 及并行修复 R2/补强 S2（对标 #65–#70，agent-team 多智能体团队纯逻辑）已合并推送；其中 #69 已同步 deepseek-harness v0.1.2 升级新增的视图/变更结果/部署上限/远端路由纯逻辑。
+- 回归门禁 `python -m pytest tests/`：178 passed 全绿。
+- 批次交付报告：`_任务A-N_对标51-64_交付报告.md`、`_任务O-S_对标65-70_交付报告.md`。
 
 ## 回归门禁
 
