@@ -146,6 +146,14 @@
     设 名字 为 ""
   返回 ["type": "tool-call", "id": 标识, "name": 名字, "arguments": 块["文本"]]
 
+# ---- 消息块字段安全取值（任务C）----
+# 消息块可能来自外部/持久化，缺键或值为空(None) 时直读会 KeyError / str+None。
+# 本段兜底为空串：正常块字段原样返回、非字符串值透传，不改变既有语义。
+段落 取块串 接收 块, 键:
+  如果 块.包含(键) 且 块[键] != 空:
+    返回 块[键]
+  返回 ""
+
 # ---- 把 harness 消息映射为 deepseek 网络消息 ----
 # harness: {role:user/assistant, content:[块], source}
 # wire:    {role:system/user/assistant/tool, content, tool_calls?, reasoning_content?}
@@ -157,7 +165,7 @@
     否则如果 消息["role"] == "user":
       设 工具块 为 空
       遍历 块 之 消息["content"]:
-        如果 块["type"] == "tool-result":
+        如果 块.包含("type") 且 块["type"] == "tool-result":
           设 工具块 为 块
       如果 工具块 != 空:
         结果.追加(["role": "tool", "tool_call_id": 工具块["toolCallId"], "content": 块文本拼接(工具块["content"])])
@@ -168,13 +176,14 @@
       设 文本 为 ""
       设 推理 为 ""
       设 调用表 为 []
+      # 仅 text/reasoning/tool-call 三类块参与组网；其它/未知类型（含缺 type 键）静默跳过——与既有语义一致
       遍历 块 之 消息["content"]:
-        如果 块["type"] == "text":
-          设 文本 为 文本 + 块["text"]
-        否则如果 块["type"] == "reasoning":
-          设 推理 为 推理 + 块["text"]
-        否则如果 块["type"] == "tool-call":
-          调用表.追加(["id": 块["id"], "type": "function", "function": ["name": 块["name"], "arguments": 块["arguments"]]])
+        如果 块.包含("type") 且 块["type"] == "text":
+          设 文本 为 文本 + 取块串(块, "text")
+        否则如果 块.包含("type") 且 块["type"] == "reasoning":
+          设 推理 为 推理 + 取块串(块, "text")
+        否则如果 块.包含("type") 且 块["type"] == "tool-call":
+          调用表.追加(["id": 取块串(块, "id"), "type": "function", "function": ["name": 取块串(块, "name"), "arguments": 取块串(块, "arguments")]])
       网络["content"] 为 文本
       如果 推理 != "":
         网络["reasoning_content"] 为 推理
@@ -185,12 +194,12 @@
       结果.追加(["role": "user", "content": 块文本拼接(消息["content"])])
   返回 结果
 
-# 块表拼成纯文本（跳过推理/工具）
+# 块表拼成纯文本（只拼 text 块；reasoning/tool-call/其它/缺 type 键 均跳过）
 段落 块文本拼接 接收 块表:
   设 结果 为 ""
   遍历 块 之 块表:
-    如果 块["type"] == "text":
-      设 结果 为 结果 + 块["text"]
+    如果 块.包含("type") 且 块["type"] == "text":
+      设 结果 为 结果 + 取块串(块, "text")
   返回 结果
 
 # v2：带重试的执行——执行函数失败时自动重试，返回 {成功, 结果/错误, 重试次数}
