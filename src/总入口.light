@@ -1,7 +1,7 @@
 # 总入口.light —— lightharness CLI 入口（对齐原版 apps/cli headless runner）
 #
 # 用法（环境变量传参，避免与 light run 的 argv 冲突）：
-#   $env:HARNESS_MSG="你好"; $env:DEEPSEEK_API_KEY="sk-..."; python 运行.py src/总入口.light
+#   $env:HARNESS_MSG="你好"; $env:DEEPSEEK_API_KEY="sk-..."; python 运行.py examples/运行CLI.light
 #
 # 环境变量：
 #   HARNESS_MSG         用户消息（或 HARNESS_PROMPT_FILE 指向提示文件）
@@ -177,7 +177,7 @@
   如果 密钥 == 空 或 密钥 == "":
     打印 "错误: 未提供 API 密钥"
     打印 "请设环境变量 DEEPSEEK_API_KEY 或 HARNESS_API_KEY"
-    打印 "示例: 设 HARNESS_MSG 为消息 + DEEPSEEK_API_KEY 为密钥 + python 运行.py src/总入口.light"
+    打印 "示例: 设 HARNESS_MSG 为消息 + DEEPSEEK_API_KEY 为密钥 + python 运行.py examples/运行CLI.light"
     返回
   设 根 为 环境变量("HARNESS_ROOT", "sessions")
   设 会话标识 为 环境变量("HARNESS_SESSION", "cli_" + 转字符串(时间戳()))
@@ -206,7 +206,7 @@
     交互循环(客户端对象, 注册表, 会话对象, 根)
   否则:
     如果 用户文本 == 空:
-      打印 "用法: 设 HARNESS_MSG 为用户消息 + DEEPSEEK_API_KEY 为密钥，然后 python 运行.py src/总入口.light（或 HARNESS_REPL=1 进交互）"
+      打印 "用法: 设 HARNESS_MSG 为用户消息 + DEEPSEEK_API_KEY 为密钥，然后 python 运行.py examples/运行CLI.light（或 HARNESS_REPL=1 进交互）"
       返回
     设 保存前序号 为 长度(会话对象.汇集全部事件())
     尝试:

@@ -26,7 +26,7 @@ lightharness/
 ├── 运行.py                 # 运行器：自包含 stdlib + 光明编译器
 ├── stdlib/                 # 自包含标准库（复制自 light-merge，含 .light + .py）
 ├── src/                    # lightharness 光明源码（扁平布局，P0+P1）
-│   ├── 总入口.light        # CLI 入口
+│   ├── 总入口.light        # CLI 模块（可运行包装：examples/运行CLI.light）
 │   ├── 会话/消息/事件       # 会话.light(事件日志)、消息.light、事件.light(事件总线)
 │   ├── 代理/异步代理/中止   # agent-loop：代理.light(同步)+异步代理.light(异步)+中止.light
 │   ├── 客户端.light        # llm 流式客户端（deepseek 适配器）
@@ -46,7 +46,7 @@ lightharness/
 ```bash
 cd G:\dswork\duan-light-merge\lightharness
 python 运行.py examples/冒烟.light        # 自包含 stdlib 冒烟测试
-python 运行.py src/总入口.light           # CLI 入口
+python 运行.py examples/运行CLI.light     # CLI 入口（总入口.light 为模块库，供测试导入）
 ```
 
 ## 语言缺陷反馈流程
