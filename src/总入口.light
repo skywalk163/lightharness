@@ -11,6 +11,8 @@
 #   HARNESS_ENDPOINT    端点（默认 https://api.deepseek.com/chat/completions）
 #   HARNESS_MODEL       模型（默认 deepseek-chat）
 #   DEEPSEEK_API_KEY    API 密钥（必填；也可 HARNESS_API_KEY）
+#   .env                项目根目录 .env 亦可配置密钥/端点/模型（DEEPSEEK_API_KEY / HARNESS_API_KEY /
+#                       OPENAI_API_KEY；HARNESS_ENDPOINT / OPENAI_BASE_URL；HARNESS_MODEL / OPENAI_MODEL）
 #   HARNESS_ROOT        持久化根目录（默认 sessions）
 #   HARNESS_SESSION     会话标识（默认 cli_<时间戳>）
 #
@@ -24,6 +26,8 @@
 从 消息 导入 造文本块
 从 持久化 导入 写出会话, 读入会话, 初始化日志, 追加事件行, 日志路径
 导入 外部命令
+从 内置核心字符串 导入 开头, 结尾, 截取, 截取到末尾, 去除空白, 查找子串
+从 字符串工具轻量 导入 分割字符串
 
 # ---- bash 工具：执行外部命令 ----
 段落 执行bash 接收 参数:
@@ -152,6 +156,30 @@
         打印 "[请求失败] " + 转字符串(错误)
         打印 "请检查网络连接和 API 密钥后重试"
 
+# ---- 从项目根目录 .env 读取配置值（找不到文件或键则返回 空）----
+段落 读取环境文件值 接收 目标键:
+  设 环境文件 为 当前目录() + "\\.env"
+  如果 文件存在(环境文件) == 假:
+    返回 空
+  设 内容 为 读取文件(环境文件)
+  遍历 行 之 分割字符串(内容, "\n"):
+    设 行 为 去除空白(行)
+    如果 行 == "":
+      跳过
+    如果 开头(行, "#"):
+      跳过
+    设 等号 为 查找子串(行, "=")
+    如果 等号 == -1:
+      跳过
+    设 键 为 去除空白(截取(行, 0, 等号))
+    如果 键 != 目标键:
+      跳过
+    设 值 为 去除空白(截取到末尾(行, 等号 + 1))
+    如果 开头(值, "\"") 且 结尾(值, "\""):
+      设 值 为 截取(值, 1, 长度(值) - 1)
+    返回 值
+  返回 空
+
 # ---- 主流程 ----
 段落 主:
   设 用户文本 为 环境变量("HARNESS_MSG", 空)
@@ -162,8 +190,24 @@
     捕获 异常 错误:
       打印 "错误: 无法读取提示文件 " + 提示文件 + " (" + 转字符串(错误) + ")"
       返回
-  设 端点 为 环境变量("HARNESS_ENDPOINT", "https://api.deepseek.com/chat/completions")
-  设 模型 为 环境变量("HARNESS_MODEL", "deepseek-chat")
+  # 端点：环境变量 → 项目根 .env（HARNESS_ENDPOINT / OPENAI_BASE_URL）→ 内置默认
+  设 端点 为 环境变量("HARNESS_ENDPOINT", 空)
+  如果 端点 == 空 或 端点 == "":
+    设 端点 为 读取环境文件值("HARNESS_ENDPOINT")
+  如果 端点 == 空 或 端点 == "":
+    设 端点 为 读取环境文件值("OPENAI_BASE_URL")
+    如果 端点 != 空 且 端点 != "" 且 查找子串(端点, "chat/completions") == -1:
+      设 端点 为 端点 + "/chat/completions"
+  如果 端点 == 空 或 端点 == "":
+    设 端点 为 "https://api.deepseek.com/chat/completions"
+  # 模型：环境变量 → 项目根 .env（HARNESS_MODEL / OPENAI_MODEL）→ 内置默认
+  设 模型 为 环境变量("HARNESS_MODEL", 空)
+  如果 模型 == 空 或 模型 == "":
+    设 模型 为 读取环境文件值("HARNESS_MODEL")
+  如果 模型 == 空 或 模型 == "":
+    设 模型 为 读取环境文件值("OPENAI_MODEL")
+  如果 模型 == 空 或 模型 == "":
+    设 模型 为 "deepseek-chat"
   # 会话列表模式（不需要 API key）
   设 列表模式 为 环境变量("HARNESS_LIST", "0")
   如果 列表模式 == "1":
@@ -171,12 +215,19 @@
     打印 "--- 已有会话列表（根: " + 根 + "） ---"
     列出会话(根)
     返回
+  # 密钥：环境变量 → 项目根 .env（DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY）
   设 密钥 为 环境变量("HARNESS_API_KEY", 空)
   如果 密钥 == 空:
     设 密钥 为 环境变量("DEEPSEEK_API_KEY", 空)
   如果 密钥 == 空 或 密钥 == "":
+    设 密钥 为 读取环境文件值("DEEPSEEK_API_KEY")
+  如果 密钥 == 空 或 密钥 == "":
+    设 密钥 为 读取环境文件值("HARNESS_API_KEY")
+  如果 密钥 == 空 或 密钥 == "":
+    设 密钥 为 读取环境文件值("OPENAI_API_KEY")
+  如果 密钥 == 空 或 密钥 == "":
     打印 "错误: 未提供 API 密钥"
-    打印 "请设环境变量 DEEPSEEK_API_KEY 或 HARNESS_API_KEY"
+    打印 "请在项目根目录 .env 中配置 DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY，或设环境变量"
     打印 "示例: 设 HARNESS_MSG 为消息 + DEEPSEEK_API_KEY 为密钥 + python 运行.py examples/运行CLI.light"
     返回
   设 根 为 环境变量("HARNESS_ROOT", "sessions")

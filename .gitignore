@@ -8,3 +8,5 @@ __pycache__/
 tmp_persist/
 sessions/
 tmp_*
+
+.env
