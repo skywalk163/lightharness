@@ -1,0 +1,277 @@
+# test_交互命令.light —— 对标 #73：interaction 纯逻辑复刻
+# 原版：packages/interaction/{commands,user-questions,permission-presets}/src
+# 复刻边界：权限预设表与回退默认改为入参；Cordis/session 宿主绑定不在此。
+#
+# 反跑判据（改反必须红，详见 _task73_report.md 实测）：
+#   ① 解析命令 末尾返回被改 空 → "/help" 误判非命令即红
+#   ② 推导预设 首个命中 改返回 custom → 匹配态误判 custom 即红
+#   ③ 有效权限预设 逆序扫描 改从 0 起 → 返回首个而非末个即红
+#   ④ 校验提问请求 空问题闸 被删 → 空请求误判过关即红
+#   ⑤ 校验命令生命周期 重复 run 闸 被删 → 重复 run 误判合法即红
+#
+# 语言坑规避（经实测确认，见 _task73_report.md）：
+#   - 断言一律 断言相等（L-037 no-op）；
+#   - 字典键带引号（L-063）；列表/字典字面量一律单行（L-051）；
+#   - 嵌套字面量内不写 \n（L-054）；错误对象捕获后 转字符串 取消息；
+#   - 变量禁用保留字单字；主程() 显式调用；
+#   - 【关键】Light 解析器对「调用结果 / 含嵌套集合的字面量」直接作实参存在上下文相关 bug，
+#     故所有调用结果、含嵌套集合的字面量一律先 设 成变量再当实参（本文件统一如此）。
+
+从 交互命令 导入 命令标识, 命令名字符, 命令名合规, 解析命令, 安全渲染抛出, 是记录, 还原用户问题错误, 校验提问请求, 有效权限预设, 应用旋钮事件, 折叠旋钮, 推导预设, 预设选项, 选择权限, 解析预设, 校验权限预设事件, 校验命令生命周期
+从 内置核心转换 导入 转字符串
+从 内置核心字符串 导入 字符串包含
+
+# 测试用权限预设表（对齐原版两张预设：workspace-write / danger-full-access）
+设 预设表 为 {"workspace-write":{"sandbox":"workspace-write", "approval":"ask"}, "danger-full-access":{"sandbox":"danger-full-access", "approval":"never"}}
+
+# =====================================================================
+# 断言框架
+# =====================================================================
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 (实际 != 期望):
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+# 失败回调：有效用例必须绝不触发（一旦触发即抛，使回归变红）
+段落 失败记 接收 消息:
+  抛出 新建 错误("UNEXPECTED_INVARIANT_FAIL: " + 消息)
+
+# 失败回调：无效用例期望触发并把消息上抛，供 检查抛文 捕获
+段落 失败抛 接收 消息:
+  抛出 新建 错误(消息)
+
+段落 检查抛文 接收 标签, 子串, 运算:
+  设 抛了 为 假
+  设 文 为 ""
+  尝试: 运算()
+  捕获 异常 为 e:
+    设 抛了 为 真
+    设 文 为 转字符串(e)
+  如果 (抛了 == 假):
+    抛出 新建 错误("期望抛错但未抛: " + 标签)
+  如果 (字符串包含(文, 子串) == 假):
+    抛出 新建 错误("抛出文案不符[" + 标签 + "]：实际=" + 文 + " 期望含=" + 子串)
+
+# =====================================================================
+# 一、commands
+# =====================================================================
+段落 用例_命令标识:
+  断言相等(命令标识("cmd-1"), "cmd-1", "标识_恒等")
+
+段落 用例_命令名合规:
+  断言相等(命令名合规("go"), 真, "名_合法")
+  断言相等(命令名合规("go-now_1"), 真, "名_含符号")
+  断言相等(命令名合规("Go"), 假, "名_首大写非法")
+  断言相等(命令名合规("-x"), 假, "名_连字符开头非法")
+  断言相等(命令名合规(""), 假, "名_空非法")
+  断言相等(命令名合规("a b"), 假, "名_含空格非法")
+
+段落 用例_解析命令:
+  断言相等(解析命令("/help"), {"name":"help", "rawInput":""}, "解析_无参")
+  断言相等(解析命令("/summarize  the readme.md"), {"name":"summarize", "rawInput":"  the readme.md"}, "解析_带余")
+  断言相等(解析命令("not a command"), 空, "解析_非命令")
+  断言相等(解析命令("/Bad x"), 空, "解析_大写名")
+  断言相等(解析命令("/foo/bar"), 空, "解析_名后非空白")
+
+段落 用例_安全渲染抛出:
+  断言相等(安全渲染抛出("boom"), "boom", "渲染_串")
+  断言相等(安全渲染抛出(42), "42", "渲染_数")
+
+# =====================================================================
+# 二、user-questions
+# =====================================================================
+段落 用例_是记录:
+  断言相等(是记录({"a":1}), 真, "记录_字典")
+  断言相等(是记录([]), 假, "记录_列表")
+  断言相等(是记录(空), 假, "记录_空")
+  断言相等(是记录("x"), 假, "记录_串")
+
+段落 用例_还原用户问题错误:
+  设 还原入 为 {"name":"UserQuestionError", "message":"x", "code":"ASK_ABORTED"}
+  断言相等(还原用户问题错误(还原入), {"name":"UserQuestionError", "message":"x", "code":"ASK_ABORTED"}, "还原_重hydrate")
+  断言相等(还原用户问题错误("plain"), "plain", "还原_透传")
+
+段落 用例_校验提问请求:
+  设 合法 为 {"questions":[{"question":"?", "intent":{"kind":"plan-review", "approve":"Approve"}, "options":[{"label":"Approve"}], "detail":"# plan"}]}
+  校验提问请求(合法)
+  设 请求2 为 {"questions":[{"question":"?", "intent":{"kind":"p", "approve":"Y"}, "options":[{"label":"Y"}], "detail":"# x"}]}
+  设 校验结果2 为 校验提问请求(请求2)
+  断言相等(校验结果2, 空, "提问_合法返回空")
+
+段落 抛_空 ():
+  校验提问请求({})
+
+段落 抛_意图无选项 ():
+  设 请求 为 {"questions":[{"question":"?", "intent":{"kind":"p", "approve":"X"}, "options":[{"label":"Y"}]}]}
+  校验提问请求(请求)
+
+段落 抛_意图缺detail ():
+  设 请求 为 {"questions":[{"question":"?", "intent":{"kind":"p", "approve":"Approve"}, "options":[{"label":"Approve"}]}]}
+  校验提问请求(请求)
+
+段落 用例_校验提问请求抛:
+  检查抛文("提问_空", "EMPTY_QUESTIONS", 抛_空)
+  检查抛文("提问_意图无选项", "BAD_INTENT", 抛_意图无选项)
+  检查抛文("提问_意图缺detail", "BAD_INTENT", 抛_意图缺detail)
+
+# =====================================================================
+# 三、permission-presets
+# =====================================================================
+段落 用例_有效权限预设:
+  设 表1 为 [{"type":"sandbox/mode"}, {"type":"permission/preset", "data":{"preset":"workspace-write"}}]
+  断言相等(有效权限预设(表1), "workspace-write", "有效_末个")
+  断言相等(有效权限预设([{"type":"sandbox/mode"}]), 空, "有效_无")
+
+段落 用例_应用旋钮事件:
+  设 态0 为 {"preset":空, "sandbox":空, "approval":空}
+  设 事沙 为 {"type":"sandbox/mode", "data":{"mode":"read-only"}}
+  设 旋钮沙结果 为 应用旋钮事件(态0, 事沙)
+  断言相等(旋钮沙结果, {"preset":空, "sandbox":"read-only", "approval":空}, "旋钮_sandbox")
+  断言相等(应用旋钮事件({"preset":"w", "sandbox":"a", "approval":"b"}, {"type":"x"}), {"preset":"w", "sandbox":"a", "approval":"b"}, "旋钮_无操作原样")
+
+段落 用例_折叠旋钮:
+  设 日志 为 [{"type":"permission/preset", "data":{"preset":"w"}}, {"type":"sandbox/mode", "data":{"mode":"ro"}}, {"type":"approval/policy", "data":{"policy":"ask"}}]
+  断言相等(折叠旋钮(日志), {"preset":"w", "sandbox":"ro", "approval":"ask"}, "折叠_三旋钮")
+
+段落 用例_推导预设:
+  设 态无匹配 为 {"preset":空, "sandbox":"read-only", "approval":"ask"}
+  设 推导无匹配 为 推导预设(态无匹配, "workspace-write", "ask", 预设表)
+  断言相等(推导无匹配, "custom", "推导_无匹配")
+  设 态首命中 为 {"preset":空, "sandbox":"workspace-write", "approval":"ask"}
+  设 推导首命中 为 推导预设(态首命中, "workspace-write", "ask", 预设表)
+  断言相等(推导首命中, "workspace-write", "推导_首命中")
+  设 态保留 为 {"preset":"workspace-write", "sandbox":"workspace-write", "approval":"ask"}
+  设 推导保留 为 推导预设(态保留, "workspace-write", "ask", 预设表)
+  断言相等(推导保留, "workspace-write", "推导_保留先前")
+
+段落 用例_预设选项:
+  设 选项表内 为 预设选项("workspace-write", 预设表)
+  断言相等(选项表内, {"value":"workspace-write", "name":"workspace-write"}, "选项_表内")
+  设 选项custom 为 预设选项("custom", 预设表)
+  断言相等(选项custom, {"value":"custom", "name":"Custom", "description":"Current sandbox and approval settings do not match a preset."}, "选项_custom")
+  设 选项obj 为 预设选项("workspace-write", 预设表)
+  断言相等(选项obj["value"], "workspace-write", "选项_value字段")
+
+段落 抛_选项未知 ():
+  预设选项("nope", 预设表)
+
+段落 用例_预设选项抛:
+  检查抛文("选项_未知", "unknown preset", 抛_选项未知)
+
+段落 用例_选择权限:
+  设 选 为 选择权限({"preset":空, "sandbox":"workspace-write", "approval":"ask"}, 预设表, "workspace-write", "ask")
+  断言相等(选["currentValue"], "workspace-write", "选择_当前")
+  设 选项数 为 列表长度(选["options"])
+  断言相等(选项数, 2, "选择_两选项")
+  设 选2 为 选择权限({"preset":空, "sandbox":"read-only", "approval":"ask"}, 预设表, "workspace-write", "ask")
+  断言相等(选2["currentValue"], "custom", "选择_custom当前")
+  设 选项数2 为 列表长度(选2["options"])
+  断言相等(选项数2, 3, "选择_custom追加")
+
+段落 用例_解析预设:
+  设 解析结果 为 解析预设("workspace-write", 预设表)
+  断言相等(解析结果, {"sandbox":"workspace-write", "approval":"ask"}, "解析_规格")
+
+段落 抛_解析未知 ():
+  解析预设("nope", 预设表)
+
+段落 用例_解析预设抛:
+  检查抛文("解析_未知", "unknown preset", 抛_解析未知)
+
+段落 用例_校验权限预设事件:
+  设 事件1 为 {"type":"permission/preset", "data":{"preset":"workspace-write"}}
+  校验权限预设事件(["workspace-write", "danger-full-access"], 事件1, 失败记)
+  设 事件无关 为 {"type":"sandbox/mode"}
+  设 校验无关 为 校验权限预设事件(["workspace-write"], 事件无关, 失败记)
+  断言相等(校验无关, 空, "校验事件_无关类型忽略")
+
+段落 抛_校验未知preset ():
+  设 事件2 为 {"type":"permission/preset", "data":{"preset":"bogus"}}
+  校验权限预设事件(["workspace-write"], 事件2, 失败抛)
+
+段落 用例_校验权限预设事件抛:
+  检查抛文("校验事件_未知预设", "unknown preset", 抛_校验未知preset)
+
+# =====================================================================
+# 四、invariant —— 命令生命周期
+# =====================================================================
+段落 用例_校验命令生命周期:
+  设 合法序列 为 [{"type":"command/run", "seq":1, "data":{"commandId":"c1"}}, {"type":"sandbox/mode", "seq":2, "data":{"mode":"ro"}}, {"type":"command/done", "seq":3, "data":{"commandId":"c1", "sourceEventSeq":1}}]
+  校验命令生命周期(合法序列, 失败记)
+  设 生命结果 为 校验命令生命周期(合法序列, 失败记)
+  断言相等(生命结果, 空, "生命_合法占位")
+
+段落 抛_重复run ():
+  设 序列 为 [{"type":"command/run", "seq":1, "data":{"commandId":"c1"}}, {"type":"command/run", "seq":2, "data":{"commandId":"c1"}}]
+  校验命令生命周期(序列, 失败抛)
+
+段落 抛_无run ():
+  设 序列 为 [{"type":"command/done", "seq":1, "data":{"commandId":"c1"}}]
+  校验命令生命周期(序列, 失败抛)
+
+段落 抛_坏序号 ():
+  设 序列 为 [{"type":"command/run", "seq":1, "data":{"commandId":"c1"}}, {"type":"command/done", "seq":5, "data":{"commandId":"c1", "sourceEventSeq":99}}]
+  校验命令生命周期(序列, 失败抛)
+
+段落 用例_校验命令生命周期抛:
+  检查抛文("生命_重复", "repeats commandId", 抛_重复run)
+  检查抛文("生命_无run", "without prior command/run", 抛_无run)
+  检查抛文("生命_坏序号", "sourceEventSeq invalid", 抛_坏序号)
+
+# =====================================================================
+# 五、反跑判据（源正确时恒成立；源被改反则变红，详见报告）
+# =====================================================================
+段落 反跑_解析命令:
+  设 结果 为 解析命令("/help")
+  如果 (结果 == 空):
+    抛出 新建 错误("反跑_解析命令: /help 应解析出 name=help")
+  断言相等(结果["name"], "help", "反跑_解析命令name")
+
+段落 反跑_推导预设:
+  设 态反 为 {"preset":空, "sandbox":"workspace-write", "approval":"ask"}
+  设 推导反 为 推导预设(态反, "workspace-write", "ask", 预设表)
+  断言相等(推导反, "workspace-write", "反跑_推导_首命中")
+
+段落 反跑_有效权限预设:
+  设 序列ab 为 [{"type":"permission/preset", "data":{"preset":"a"}}, {"type":"permission/preset", "data":{"preset":"b"}}]
+  断言相等(有效权限预设(序列ab), "b", "反跑_有效_末个")
+
+段落 反跑_校验提问请求:
+  检查抛文("反跑_提问_空", "EMPTY_QUESTIONS", 抛_空)
+
+段落 反跑_校验命令生命周期:
+  检查抛文("反跑_生命_重复", "repeats commandId", 抛_重复run)
+
+# =====================================================================
+# 主程
+# =====================================================================
+段落 主程():
+  写 "DEBUG-START"
+  用例_命令标识()
+  用例_命令名合规()
+  用例_解析命令()
+  用例_安全渲染抛出()
+  用例_是记录()
+  用例_还原用户问题错误()
+  用例_校验提问请求()
+  用例_校验提问请求抛()
+  用例_有效权限预设()
+  用例_应用旋钮事件()
+  用例_折叠旋钮()
+  用例_推导预设()
+  用例_预设选项()
+  用例_预设选项抛()
+  用例_选择权限()
+  用例_解析预设()
+  用例_解析预设抛()
+  用例_校验权限预设事件()
+  用例_校验权限预设事件抛()
+  用例_校验命令生命周期()
+  用例_校验命令生命周期抛()
+  反跑_解析命令()
+  反跑_推导预设()
+  反跑_有效权限预设()
+  反跑_校验提问请求()
+  反跑_校验命令生命周期()
+  写 "--- 测试交互命令 通过 ---"
+
+主程()

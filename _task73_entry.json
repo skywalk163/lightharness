@@ -1,0 +1,22 @@
+{
+  "编号": 73,
+  "功能": "interaction 纯逻辑（commands 命令解析与品牌 / user-questions 类型守卫与请求校验 / permission-presets 旋钮状态机 + 预设匹配过滤 + 事件流不变式）",
+  "原版包": "packages/interaction/{commands,user-questions,permission-presets}/src/{index,invariant,types,brand}.ts",
+  "光明模块": "src/交互命令.light",
+  "状态": "done",
+  "证据": [
+    "src/交互命令.light",
+    "examples/test_交互命令.light"
+  ],
+  "本轮目标": "done：1:1 复刻 packages/interaction 三个纯逻辑子模块，宿主绑定全部投影剥离。\n\n【原版函数 → 光明段落 对照表】\ncommands/src/brand.ts（命令品牌，编译期消歧、运行期恒等投射）\n  commandId / sourceId / deliveryId 品牌      → 命令标识(标识)（名义品牌，运行期恒等返回）\ncommands/src/index.ts（parseCommand + renderThrown）\n  parseCommand(line)                          → 解析命令(行)（/^[a-z][a-z0-9_-]*$/u 等价手写：逐字符 命令名字符 判定，名字后须空白 chr(9/10/13)/空格，否则返回 空）\n  commandNameChar(c, isFirst)                 → 命令名字符(字符, 是否首)（[a-z] 首字符 / [a-z0-9_-] 续字符）\n  COMMAND_NAME 正则校验                        → 命令名合规(名)（封装 命令名字符 的逐字符扫描）\n  renderThrown(thrown)                        → 安全渲染抛出(值)（尝试 转字符串 捕获异常给占位串）\nuser-questions/src/index.ts（类型守卫 + 请求校验）\n  isRecord(x)                                 → 是记录(值)（非 空/非列表/是字典）\n  restoreUserQuestionError(reason)           → 还原用户问题错误(原因)（命中 {name,message,code}=UserQuestionError 则重 hydrate，否则原样透传）\n  validateAskUserQuestionRequest(req)         → 校验提问请求(请求)（抽取块：缺 questions 键/空表 → EMPTY_QUESTIONS；intent.approve 须命中某 option.label 且带 intent 须带 detail → BAD_INTENT）\npermission-presets/src/index.ts（旋钮状态机 + 预设匹配）\n  effectivePermissionPreset(events)           → 有效权限预设(事件表)（逆序扫描首个 permission/preset 事件取 preset）\n  applyKnobEvent(state, event)                → 应用旋钮事件(状态, 事件)（preset/sandbox/approval 三旋钮纯状态转移）\n  foldKnobs(events)                           → 折叠旋钮(事件表)（从空旋钮态冷折叠整段事件日志）\n  derivePreset(ctx, sandboxDefault, approvalDefault) → 推导预设(状态, 沙箱默认, 审批默认, 预设表)（有效旋钮 + 预设表匹配；保留先前选择，否则首个命中，否则 custom——宿主 this.presets/this.ctx 投影为入参）\n  optionOf(presetName)                        → 预设选项(名, 预设表)（表内项 → PresetOption；custom → 保留选项含说明文案）\n  selectFor(ctx, sandboxDefault, approvalDefault) → 选择权限(状态, 预设表, 沙箱默认, 审批默认)（所有表项选项 + 当前推导值；仅当 current==custom 追加 custom 选项）\n  resolve(presetName)                         → 解析预设(名, 预设表)（名称 → 规格，未知则抛 unknown preset）\ncommands/invariant.ts + permission-presets/invariant.ts（事件流不变式）\n  validateEvent(command event)                → 校验命令生命周期(事件表, 失败)（run↔done 配对 + sourceEventSeq 不变式：重复 run / 无前置 run / sourceEventSeq 指向 command 事件 / 越界 均回调 失败）\n  validateEvent(permission/preset event)     → 校验权限预设事件(已知名表, 事件, 失败)（permission/preset 事件必须命名已知预设，否则回调 失败；非相关类型忽略返回 空）\n\n复刻边界：Cordis ctx / octokit / session.append / 运行时 setter / tool-ask-user / user-approval 一律未复刻或投影剥离；权限预设表 Record<string,PresetSpec> 与两个回退默认（沙箱默认 / 审批默认）改为**入参**传入，使 derivePreset / optionOf / selectFor / resolve 成为纯函数。",
+  "反跑判据": "test_交互命令.light：5 组反跑突变实测全 RED（rc=1），每组均从绿色原文重做单点破坏、立即还原，末尾复绿（rc=0）。见 _task73_antirun.py（绿色原文驻留内存、零 /tmp）。\n①解析命令 末尾返回改 空：把 `返回 {\"name\":名, \"rawInput\":余}` 换 `返回 空` → 解析命令(\"/help\") 返回 空、反跑_解析命令 的 `结果==空` 分支抛错即红（用例_解析命令 的 \"解析_无参\" 亦红）；\n②推导预设 首个命中改返回 custom：把循环内 `返回 名` 换 `返回 自定义预设` → 匹配态误判 custom、反跑_推导预设 断言失败即红（用例_推导预设 的 \"推导_首命中\" 亦红）；\n③有效权限预设 逆序改从 0：把 `设 i 为 长 - 1` 换 `设 i 为 0` → 返回首个而非末个、反跑_有效_末个 期望 \"b\" 得 \"a\" 即红（用例_有效权限预设 的 \"有效_末个\" 亦红）；\n④校验提问请求 空问题闸删：删两道 EMPTY_QUESTIONS 闸（缺 questions 键闸 + 空表闸，改为 `如果 (假): 抛出`）→ 空请求 `{}` 不再抛、反跑_校验提问请求 的 检查抛文 判「期望抛错但未抛」即红（抛_空 用例亦红）；\n⑤校验命令生命周期 重复 run 闸删：把 `如果 (列表包含(已见运行, id) == 真): 失败(...)` 换 `如果 (假): 失败(...)` → 重复 run 误判合法、反跑_校验命令生命周期 判「期望抛错但未抛」即红（抛_重复run 用例亦红）。",
+  "语言缺陷": [
+    "L-036",
+    "L-037",
+    "L-046",
+    "L-051",
+    "L-054",
+    "L-063",
+    "L-066"
+  ]
+}

@@ -1,0 +1,229 @@
+# 交互命令.light —— 对标 #73：interaction 纯逻辑复刻（commands / user-questions / permission-presets）
+# 原版：packages/interaction/{commands,user-questions,permission-presets}/src/{index,invariant,types,brand}.ts
+#   （tool-ask-user / user-approval 不在白名单；index.ts 装配层 / invariant.ts Cordis 宿主绑定 未复刻）
+#
+# 复刻边界：Cordis ctx / octokit / session.append / 运行时 setter 一律投影剥离；
+#   权限预设表 Record<string,PresetSpec> 与两个回退默认（沙箱默认 / 审批默认）改为**入参**传入，
+#   使 derivePreset / optionOf / selectFor / resolve 成为纯函数（对齐原版 this.presets/this.ctx 的等价物）。
+#
+# 语言坑规避：函数一律块形式；列表/字典字面量单行；字典键带引号；嵌套字面量内不写 \n（用 chr(10)）；
+#   错误对象不当字典、捕获后 转字符串 取消息；变量禁用保留字单字（出/父/定义/…），本文件用 状态/事件/名/表 等。
+
+从 内置核心转换 导入 转字符串
+从 内置核心字符串 导入 截取, 截取到末尾
+从 字符串工具轻量 导入 字符串长度
+从 内置核心判型 导入 是整数, 是字典, 是列表
+从 内置核心列表 导入 列表包含, 列表追加, 列表获取, 列表长度
+从 内置核心字典 导入 字典包含键, 字典键列表, 字典设置
+
+# 常量（对齐原版 CUSTOM_PRESET）
+设 自定义预设 为 "custom"
+
+# =====================================================================
+# 一、commands —— 命令解析与品牌（对齐 commands/src/{brand,index}.ts）
+# =====================================================================
+# 命令标识：名义品牌（编译期消歧，运行期恒等投射）
+段落 命令标识 接收 id:
+  返回 id
+
+# 命令名单字符类：[a-z]（首字符）| [a-z0-9_-]（续字符）
+段落 命令名字符 接收 字符, 是否首:
+  如果 (是否首 == 真):
+    如果 (字符 >= "a" 且 字符 <= "z"): 返回 真
+    返回 假
+  如果 (字符 >= "a" 且 字符 <= "z"): 返回 真
+  如果 (字符 >= "0" 且 字符 <= "9"): 返回 真
+  如果 (字符 == "_"): 返回 真
+  如果 (字符 == "-"): 返回 真
+  返回 假
+
+# 命令名整体合规（对齐 COMMAND_NAME = /^[a-z][a-z0-9_-]*$/u）
+段落 命令名合规 接收 名:
+  设 长 为 字符串长度(名)
+  如果 (长 < 1): 返回 假
+  设 i 为 0
+  当 (i < 长):
+    如果 (命令名字符(名[i], i == 0) == 假): 返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 解析命令（对齐 parseCommand：/^\\/([a-z][a-z0-9_-]*)(?=$|[\\t\\n\\r ])/u）
+#   非 / 开头、首字符非 [a-z]、名字后紧跟非空白字符 → 空（undefined）
+段落 解析命令 接收 行:
+  设 长 为 字符串长度(行)
+  如果 (长 < 1 或 行[0] != "/"): 返回 空
+  设 j 为 1
+  当 (j < 长):
+    如果 (命令名字符(行[j], j == 1) == 假): 跳出
+    设 j 为 j + 1
+  如果 (j == 1): 返回 空
+  如果 (j < 长):
+    设 尾 为 行[j]
+    如果 (尾 != " " 且 尾 != chr(9) 且 尾 != chr(10) 且 尾 != chr(13)): 返回 空
+  设 名 为 截取(行, 1, j)
+  设 余 为 截取到末尾(行, j)
+  返回 {"name":名, "rawInput":余}
+
+# 安全渲染抛出（对齐 renderThrown：任意抛出值安全字符串化，不可渲染则给占位串）
+段落 安全渲染抛出 接收 值:
+  尝试:
+    返回 转字符串(值)
+  捕获 异常 为 e:
+    返回 "<unrenderable thrown value>"
+
+# =====================================================================
+# 二、user-questions —— 类型守卫与请求校验（对齐 user-questions/src/index.ts）
+# =====================================================================
+# 是记录：非 空、非列表、是字典
+段落 是记录 接收 值:
+  如果 (值 == 空): 返回 假
+  如果 (是列表(值) == 真): 返回 假
+  返回 是字典(值)
+
+# 还原用户问题错误（对齐 restoreUserQuestionError：跨线重hydrate；非目标形状则原样透传）
+段落 还原用户问题错误 接收 原因:
+  如果 (是记录(原因) == 真 且 字典包含键(原因, "name") == 真 且 原因["name"] == "UserQuestionError" 且 字典包含键(原因, "message") == 真 且 字典包含键(原因, "code") == 真):
+    返回 {"name":"UserQuestionError", "message":原因["message"], "code":原因["code"]}
+  返回 原因
+
+# 校验提问请求（对齐 validateAskUserQuestionRequest 抽取块：EMPTY_QUESTIONS + BAD_INTENT）
+#   intent.approve 必须命中某个 option.label；带 intent 的 question 必须带 detail
+段落 校验提问请求 接收 请求:
+  如果 (字典包含键(请求, "questions") == 假): 抛出 新建 错误("EMPTY_QUESTIONS")
+  设 问题表 为 请求["questions"]
+  如果 (是列表(问题表) == 假 或 列表长度(问题表) == 0): 抛出 新建 错误("EMPTY_QUESTIONS")
+  遍历 问题 之 问题表:
+    如果 (字典包含键(问题, "intent") == 真):
+      设 意图 为 问题["intent"]
+      如果 (字典包含键(意图, "approve") == 假): 抛出 新建 错误("BAD_INTENT: missing approve")
+      设 标签 为 意图["approve"]
+      设 选项 为 []
+      如果 (字典包含键(问题, "options") == 真): 设 选项 为 问题["options"]
+      设 命中 为 假
+      遍历 选项项 之 选项:
+        如果 (字典包含键(选项项, "label") == 真 且 选项项["label"] == 标签): 设 命中 为 真
+      如果 (命中 == 假): 抛出 新建 错误("BAD_INTENT: approve names no option")
+      如果 (字典包含键(问题, "detail") == 假): 抛出 新建 错误("BAD_INTENT: intent needs detail")
+
+# =====================================================================
+# 三、permission-presets —— 旋钮状态机 + 预设匹配/过滤（对齐 permission-presets/src/index.ts）
+# =====================================================================
+# 有效权限预设（对齐 effectivePermissionPreset：逆序扫描首个 permission/preset）
+段落 有效权限预设 接收 事件表:
+  设 长 为 列表长度(事件表)
+  设 i 为 长 - 1
+  当 (i >= 0):
+    设 事件 为 列表获取(事件表, i)
+    如果 (字典包含键(事件, "type") == 真 且 事件["type"] == "permission/preset"):
+      设 数据 为 事件["data"]
+      返回 数据["preset"]
+    设 i 为 i - 1
+  返回 空
+
+# 应用旋钮事件（对齐 applyKnobEvent：preset/sandbox/approval 三旋钮的纯状态转移）
+段落 应用旋钮事件 接收 状态, 事件:
+  如果 (字典包含键(事件, "type") == 假): 返回 状态
+  设 型 为 事件["type"]
+  如果 (型 == "permission/preset"):
+    设 数据 为 事件["data"]
+    返回 {"preset":数据["preset"], "sandbox":状态["sandbox"], "approval":状态["approval"]}
+  如果 (型 == "sandbox/mode"):
+    设 数据 为 事件["data"]
+    返回 {"preset":状态["preset"], "sandbox":数据["mode"], "approval":状态["approval"]}
+  如果 (型 == "approval/policy"):
+    设 数据 为 事件["data"]
+    返回 {"preset":状态["preset"], "sandbox":状态["sandbox"], "approval":数据["policy"]}
+  返回 状态
+
+# 折叠旋钮（对齐 foldKnobs：从空旋钮态冷折叠整段事件日志）
+段落 折叠旋钮 接收 事件表:
+  设 状态 为 {"preset":空, "sandbox":空, "approval":空}
+  遍历 事件 之 事件表:
+    设 状态 为 应用旋钮事件(状态, 事件)
+  返回 状态
+
+# 推导预设（对齐 derive：有效旋钮 + 预设表匹配；保留先前选择，否则首个命中，否则 custom）
+段落 推导预设 接收 状态, 沙箱默认, 审批默认, 预设表:
+  设 沙箱 为 状态["sandbox"]
+  如果 (沙箱 == 空): 设 沙箱 为 沙箱默认
+  设 审批 为 状态["approval"]
+  如果 (审批 == 空): 设 审批 为 审批默认
+  如果 (状态["preset"] != 空):
+    设 旧名 为 状态["preset"]
+    如果 (字典包含键(预设表, 旧名) == 真):
+      设 旧规格 为 预设表[旧名]
+      如果 (旧规格["sandbox"] == 沙箱 且 旧规格["approval"] == 审批): 返回 旧名
+  遍历 名 之 字典键列表(预设表):
+    设 规格 为 预设表[名]
+    如果 (规格["sandbox"] == 沙箱 且 规格["approval"] == 审批): 返回 名
+  返回 自定义预设
+
+# 预设选项（对齐 optionOf：表内项 → PresetOption；custom → 保留选项）
+段落 预设选项 接收 名, 预设表:
+  如果 (名 == 自定义预设):
+    返回 {"value":自定义预设, "name":"Custom", "description":"Current sandbox and approval settings do not match a preset."}
+  如果 (字典包含键(预设表, 名) == 假): 抛出 新建 错误("unknown preset \"" + 名 + "\"")
+  设 规格 为 预设表[名]
+  设 标签 为 名
+  如果 (字典包含键(规格, "name") == 真): 设 标签 为 规格["name"]
+  设 选项 为 {"value":名, "name":标签}
+  如果 (字典包含键(规格, "description") == 真): 字典设置(选项, "description", 规格["description"])
+  返回 选项
+
+# 选择权限（对齐 selectFor：所有表项选项 + 当前推导值；仅当 current==custom 追加 custom 选项）
+段落 选择权限 接收 状态, 预设表, 沙箱默认, 审批默认:
+  设 当前 为 推导预设(状态, 沙箱默认, 审批默认, 预设表)
+  设 选项表 为 []
+  遍历 名 之 字典键列表(预设表):
+    列表追加(选项表, 预设选项(名, 预设表))
+  如果 (当前 == 自定义预设):
+    列表追加(选项表, 预设选项(自定义预设, 预设表))
+  返回 {"options":选项表, "currentValue":当前}
+
+# 解析预设（对齐 resolve：名称 → 规格，未知则抛）
+段落 解析预设 接收 名, 预设表:
+  如果 (字典包含键(预设表, 名) == 假): 抛出 新建 错误("unknown preset \"" + 名 + "\"")
+  返回 预设表[名]
+
+# =====================================================================
+# 四、invariant —— 事件流不变式（对齐 commands/invariant.ts + permission-presets/invariant.ts）
+# =====================================================================
+# 校验权限预设事件（对齐 validateEvent：permission/preset 事件必须命名已知预设，否则回调 fail）
+段落 校验权限预设事件 接收 已知名表, 事件, 失败:
+  如果 (字典包含键(事件, "type") == 假): 返回 空
+  如果 (事件["type"] != "permission/preset"): 返回 空
+  设 数据 为 事件["data"]
+  设 名 为 数据["preset"]
+  如果 (列表包含(已知名表, 名) == 假):
+    失败("permission preset names unknown preset \"" + 名 + "\"")
+  返回 空
+
+# 校验命令生命周期（对齐 commands/invariant.ts validateEvent：run↔done 配对 + sourceEventSeq 不变式）
+#   规则：run 不得重复 commandId；done 必须有前置 run；带 sourceEventSeq 必须 0≤seq<event.seq
+#   且指向的事件不得是 command/run 或 command/done
+段落 校验命令生命周期 接收 事件表, 失败:
+  设 已见运行 为 []
+  设 i 为 0
+  当 (i < 列表长度(事件表)):
+    设 事件 为 列表获取(事件表, i)
+    如果 (字典包含键(事件, "type") == 真 且 事件["type"] == "command/run"):
+      设 数据 为 事件["data"]
+      设 id 为 数据["commandId"]
+      如果 (列表包含(已见运行, id) == 真): 失败("command/run repeats commandId " + id)
+      列表追加(已见运行, id)
+    否则如果 (字典包含键(事件, "type") == 真 且 事件["type"] == "command/done"):
+      设 数据 为 事件["data"]
+      设 id 为 数据["commandId"]
+      如果 (列表包含(已见运行, id) == 假): 失败("command/done without prior command/run for " + id)
+      如果 (字典包含键(数据, "sourceEventSeq") == 真):
+        设 序 为 数据["sourceEventSeq"]
+        如果 (是整数(序) == 假 或 序 < 0 或 序 >= 事件["seq"]):
+          失败("command/done sourceEventSeq invalid for " + id)
+        否则:
+          设 源 为 列表获取(事件表, 序)
+          如果 (源["type"] == "command/run" 或 源["type"] == "command/done"):
+            失败("command/done sourceEventSeq points to command event for " + id)
+    设 i 为 i + 1
+  返回 空
+
+导出 命令标识, 命令名字符, 命令名合规, 解析命令, 安全渲染抛出, 是记录, 还原用户问题错误, 校验提问请求, 有效权限预设, 应用旋钮事件, 折叠旋钮, 推导预设, 预设选项, 选择权限, 解析预设, 校验权限预设事件, 校验命令生命周期

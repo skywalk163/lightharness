@@ -1,0 +1,803 @@
+# webhook会话.light —— 对标 #71：webhook 会话构建纯逻辑复刻
+#
+# 原版对象（packages/webhook/webhook/src/）：
+#   - index.ts     (178 行) WebhookRuntime：规则注册表 / 派发 / 快照冻结 / 错误链日志
+#   - session.ts   (181 行) createWebhookSession：请求解析、预检、挂载、配置、改名、注入提示
+#   - types.ts     ( 84 行) VerifiedWebhookDelivery / WebhookSessionRequest / WebhookRule 形状
+#   - invariant.ts ( 48 行) 关系不变式：webhook 消息准入时 cwd 与 Workspace 的归属校验
+#   - brand.ts     ( 39 行) WebhookRuleId / WebhookSourceId / WebhookDeliveryId 品牌构造
+#
+# ── 宿主绑定剥离表（原版宿主设施 → 本模块投影）────────────────────────────
+#   @deepseek-ai/cordis Context/Service/effect   → 普通字典「上下文」（能力函数集合）+ 模块级全局状态
+#   ctx.logger.warn / logger.debug               → 上下文["日志警告"] / 上下文["日志调试"]（入参能力函数）
+#   ctx.permissionPresets.resolve / set          → 上下文["权限预设解析"] / 上下文["权限预设设置"]
+#   ctx.agentPresets.resolve/standingKeyFor/mount→ 上下文["代理预设解析"] / ["代理预设常驻键"] / ["代理预设挂载"]
+#   ctx.workspaceRegistry.create / list          → 上下文["工作区创建"]（返回 {"path","挂载会话","摘除会话"}）
+#                                                  / 不变式校验的 工作区表 入参（普通列表）
+#   ctx.agents.create                            → 上下文["会话创建"](选项)，选项含 "setup" 回调
+#   ctx.sessionTitle.rename                      → 上下文["会话标题改名"]
+#   ctx.agentDefaultModel.currentSelection       → 上下文["默认模型"]()
+#   agentCtx.on('agent/request', listener)       → 上下文["监听"](代理上下文, 事件名, 监听器)
+#   SessionId(`webhook-${randomUUID()}`)         → "webhook-" + 上下文["唯一标识"]()
+#   AbortController / AbortSignal                → 普通字典 {"已中止": 真假, "原因": 串} + 检查未中止()
+#   Promise / await / async                      → 光明同步模型：await 点折叠为顺序调用，语义等价
+#   node:path isAbsolute                         → 是绝对路径()（POSIX 根 + Windows 盘符双形态）
+#   node:crypto randomUUID                       → 上下文["唯一标识"]()
+#   Object.freeze / deepFreeze                   → 深复刻（detach，断共享引用）+ 根级 "冻结" 标记键
+#   snapshotJsonValue（dsh-session）             → 可无损JSON()（栈式迭代，深度上限 32，环即假）
+#   boundContextSummary（dsh-llm）               → 绑定上下文摘要()（120 字上限 + 省略号）
+#   errorChain（dsh-llm）                        → 错误链()（cause 链 ": " 连接，重复片段去重）
+#   createUserMessage（dsh-llm）                 → 造用户消息()（role='user' + id 注入）
+#   Cordis internal/dispatch / session/event     → 内部派发检查(事件名, 会话, 事件, 工作区表)
+#   octokit / github webhook handler             → 不可复用，整体剥离（本模块不含任何 github 专有逻辑）
+#
+# ── 光明降级点（口径明确，勿当 bug）─────────────────────────────────────
+#   1. undefined 与 null 在光明同为 空。原版 `model === undefined`（走默认）与
+#      `model === null`（报 "model must be an object"）由「键是否存在」区分：
+#      用 字典包含键(记录,"model") 判定，命中且值为 空 → 视作 null → 抛错。
+#      测试 session.spec 的 `model: null` 用例因此仍然报 [WEBHOOK_MODEL_NOT_OBJECT]。
+#   2. Object.freeze 无对应物：deepFreeze 投影为「深复刻 + 根级 "冻结" 标记」，
+#      递归冻结降级为「无共享引用的深复刻」。是冻结() 只认带标记的根字典。
+#   3. 错误对象在光明不是字典（探针实测 是字典(错误对象) == 假），故 错误链() 以
+#      「字典形错误（含 message/cause 键）」为主路径，非字典值回退 转字符串。
+#   4. 无闭包：setup 回调与 agent/request 监听器用「具名段落 + 全局装配槽」传递上下文。
+
+从 内置核心转换 导入 转字符串
+从 内置核心字符串 导入 开头, 去除空白, 截取
+从 内置核心判型 导入 是整数, 是浮点, 是字符串, 是字典, 是列表, 是空
+从 内置核心列表 导入 列表追加, 列表包含, 列表弹出
+从 内置核心字典 导入 字典包含键, 字典键列表
+
+# 原版 packages/llm/llm/src/message.ts:112 —— notice 摘要字数上限
+设 上下文摘要上限 为 120
+
+# ── 模块级全局状态（绕过「类方法体内不可调函数值」，一律顶层段落 + 全局）──
+设 运行时上下文 为 空
+设 运行时状态 为 空
+设 装配槽 为 {}
+
+# =====================================================================
+# 一、brand.ts —— 不透明标识品牌构造（运行时为恒等投射，编译期品牌被擦除）
+# =====================================================================
+段落 规则标识 接收 值:
+  返回 值
+
+段落 来源标识 接收 值:
+  返回 值
+
+段落 投递标识 接收 值:
+  返回 值
+
+# =====================================================================
+# 二、通用判定助手（对应 Number.isSafeInteger / node:path.isAbsolute /
+#     typeof x === 'function' / snapshotJsonValue / deepFreeze）
+# =====================================================================
+段落 是安全整数 接收 值:
+  如果 (是整数(值) == 假):
+    返回 假
+  如果 (值 > 9007199254740991):
+    返回 假
+  如果 (值 < -9007199254740991):
+    返回 假
+  返回 真
+
+段落 是盘符 接收 字:
+  如果 (字符串长度(字) != 1):
+    返回 假
+  如果 (字 == "A"):
+    返回 真
+  如果 (字 == "B"):
+    返回 真
+  如果 (字 == "C"):
+    返回 真
+  如果 (字 == "D"):
+    返回 真
+  如果 (字 == "E"):
+    返回 真
+  如果 (字 == "F"):
+    返回 真
+  如果 (字 == "G"):
+    返回 真
+  如果 (字 == "H"):
+    返回 真
+  如果 (字 == "I"):
+    返回 真
+  如果 (字 == "J"):
+    返回 真
+  如果 (字 == "K"):
+    返回 真
+  如果 (字 == "L"):
+    返回 真
+  如果 (字 == "M"):
+    返回 真
+  如果 (字 == "N"):
+    返回 真
+  如果 (字 == "O"):
+    返回 真
+  如果 (字 == "P"):
+    返回 真
+  如果 (字 == "Q"):
+    返回 真
+  如果 (字 == "R"):
+    返回 真
+  如果 (字 == "S"):
+    返回 真
+  如果 (字 == "T"):
+    返回 真
+  如果 (字 == "U"):
+    返回 真
+  如果 (字 == "V"):
+    返回 真
+  如果 (字 == "W"):
+    返回 真
+  如果 (字 == "X"):
+    返回 真
+  如果 (字 == "Y"):
+    返回 真
+  如果 (字 == "Z"):
+    返回 真
+  如果 (字 == "a"):
+    返回 真
+  如果 (字 == "b"):
+    返回 真
+  如果 (字 == "c"):
+    返回 真
+  如果 (字 == "d"):
+    返回 真
+  如果 (字 == "e"):
+    返回 真
+  如果 (字 == "f"):
+    返回 真
+  如果 (字 == "g"):
+    返回 真
+  如果 (字 == "h"):
+    返回 真
+  如果 (字 == "i"):
+    返回 真
+  如果 (字 == "j"):
+    返回 真
+  如果 (字 == "k"):
+    返回 真
+  如果 (字 == "l"):
+    返回 真
+  如果 (字 == "m"):
+    返回 真
+  如果 (字 == "n"):
+    返回 真
+  如果 (字 == "o"):
+    返回 真
+  如果 (字 == "p"):
+    返回 真
+  如果 (字 == "q"):
+    返回 真
+  如果 (字 == "r"):
+    返回 真
+  如果 (字 == "s"):
+    返回 真
+  如果 (字 == "t"):
+    返回 真
+  如果 (字 == "u"):
+    返回 真
+  如果 (字 == "v"):
+    返回 真
+  如果 (字 == "w"):
+    返回 真
+  如果 (字 == "x"):
+    返回 真
+  如果 (字 == "y"):
+    返回 真
+  如果 (字 == "z"):
+    返回 真
+  返回 假
+
+# 对应 node:path 的 isAbsolute：POSIX 根 "/" 或 Windows 盘符 "X:\" / "X:/"
+段落 是绝对路径 接收 路径:
+  如果 (是字符串(路径) == 假):
+    返回 假
+  如果 (路径 == ""):
+    返回 假
+  如果 (开头(路径, "/") == 真):
+    返回 真
+  如果 (字符串长度(路径) < 3):
+    返回 假
+  设 首字 为 截取(路径, 0, 1)
+  设 次字 为 截取(路径, 1, 2)
+  如果 (是盘符(首字) == 假):
+    返回 假
+  如果 (次字 != ":"):
+    返回 假
+  返回 真
+
+# 对应 typeof value === 'function'：光明无 callable 内建，用「非全部基本型」反推
+段落 是可调用 接收 值:
+  如果 (值 == 空):
+    返回 假
+  如果 (值 == 真):
+    返回 假
+  如果 (值 == 假):
+    返回 假
+  如果 (是字典(值) == 真):
+    返回 假
+  如果 (是列表(值) == 真):
+    返回 假
+  如果 (是字符串(值) == 真):
+    返回 假
+  如果 (是整数(值) == 真):
+    返回 假
+  如果 (是浮点(值) == 真):
+    返回 假
+  返回 真
+
+# 对应 snapshotJsonValue(v) !== undefined（packages/core/session/src/json.ts:177）
+# 栈式迭代，避免光明递归深度风险；深度 > 32 或出现环一律判「非无损」。
+# 口径：空（undefined/null 同体）判非无损 —— 原版唯一样例 {invalid: undefined} 亦为拒绝。
+段落 可无损JSON 接收 根:
+  设 任务 为 []
+  列表追加(任务, {"值": 根, "层": 0})
+  设 步 为 0
+  当 (长度(任务) > 0 且 步 < 4000):
+    设 步 为 步 + 1
+    设 当前 为 列表弹出(任务, 长度(任务) - 1)
+    设 值 为 当前["值"]
+    设 层 为 当前["层"]
+    如果 (层 > 32):
+      返回 假
+    如果 (值 == 空):
+      返回 假
+    如果 (是字符串(值) == 真):
+      继续
+    如果 (是整数(值) == 真):
+      继续
+    如果 (值 == 真):
+      继续
+    如果 (值 == 假):
+      继续
+    如果 (是列表(值) == 真):
+      遍历 元 之 值:
+        列表追加(任务, {"值": 元, "层": 层 + 1})
+      继续
+    如果 (是字典(值) == 真):
+      遍历 键 之 字典键列表(值):
+        列表追加(任务, {"值": 值[键], "层": 层 + 1})
+      继续
+    返回 假
+  返回 真
+
+# 对应 deepFreeze 的「detach」一半：断开与入参的全部共享引用（递归，深度上限 32）
+段落 深复刻 接收 值, 层:
+  如果 (层 > 32):
+    返回 空
+  如果 (是列表(值) == 真):
+    设 复本 为 []
+    遍历 元 之 值:
+      列表追加(复本, 深复刻(元, 层 + 1))
+    返回 复本
+  如果 (是字典(值) == 真):
+    设 复本 为 {}
+    遍历 键 之 字典键列表(值):
+      设 复本[键] 为 深复刻(值[键], 层 + 1)
+    返回 复本
+  返回 值
+
+# 对应 deepFreeze(snapshot)：深复刻 + 根级 "冻结" 标记键
+段落 深冻结 接收 值:
+  设 复本 为 深复刻(值, 0)
+  如果 (是字典(复本) == 真):
+    设 复本["冻结"] 为 真
+  返回 复本
+
+# 对应 Object.isFrozen(snapshot)：只认带标记的根字典（递归冻结降级点，见文件头）
+段落 是冻结 接收 值:
+  如果 (是字典(值) == 假):
+    返回 假
+  如果 (字典包含键(值, "冻结") == 假):
+    返回 假
+  返回 值["冻结"] == 真
+
+# =====================================================================
+# 三、dsh-llm 助手（boundContextSummary / errorChain / createUserMessage）
+# =====================================================================
+# packages/llm/llm/src/message.ts:120
+段落 绑定上下文摘要 接收 摘要:
+  如果 (字符串长度(摘要) <= 上下文摘要上限):
+    返回 摘要
+  返回 截取(摘要, 0, 上下文摘要上限 - 1) + "…"
+
+# packages/llm/llm/src/error.ts:114 —— 取单个错误的可读文本（空 message 回退 name）
+段落 取错误文本 接收 值:
+  如果 (是字典(值) == 真):
+    如果 (字典包含键(值, "message") == 真):
+      如果 (值["message"] != ""):
+        返回 转字符串(值["message"])
+    如果 (字典包含键(值, "name") == 真):
+      返回 转字符串(值["name"])
+  返回 转字符串(值)
+
+# packages/llm/llm/src/error.ts:114 —— cause 链 ": " 连接；与上游逐字重复的片段跳过
+段落 错误链 接收 值:
+  设 片段 为 []
+  设 当前 为 值
+  设 深 为 0
+  当 (当前 != 空 且 深 < 32):
+    设 深 为 深 + 1
+    设 文本 为 取错误文本(当前)
+    如果 (列表包含(片段, 文本) == 假):
+      列表追加(片段, 文本)
+    如果 (是字典(当前) == 真):
+      如果 (字典包含键(当前, "cause") == 真):
+        设 当前 为 当前["cause"]
+      否则:
+        设 当前 为 空
+    否则:
+      设 当前 为 空
+  返回 连接字符串(片段, ": ")
+
+# packages/llm/llm/src/message.ts:193 —— role='user' + 调用方给的身份
+段落 造用户消息 接收 内容表, 来源, 编号:
+  设 消息 为 {}
+  设 消息["id"] 为 编号
+  设 消息["role"] 为 "user"
+  设 消息["content"] 为 内容表
+  设 消息["source"] 为 来源
+  返回 消息
+
+# types.ts:71-84 —— webhook MessageSource 形状（form 恒为 'notice'）
+段落 造投递来源 接收 投递, 规则号:
+  设 来 为 {}
+  设 来["kind"] 为 "webhook"
+  设 来["provider"] 为 投递["kind"]
+  设 来["source"] 为 投递["source"]
+  设 来["deliveryId"] 为 投递["deliveryId"]
+  设 来["ruleId"] 为 规则号
+  设 来["form"] 为 "notice"
+  设 来["summary"] 为 绑定上下文摘要(投递["kind"] + " webhook handled by " + 规则号)
+  返回 来
+
+# =====================================================================
+# 四、AbortSignal 投影：{"已中止": 真假, "原因": 串} → throwIfAborted()
+# =====================================================================
+段落 检查未中止 接收 信号:
+  如果 (信号["已中止"] == 真):
+    设 因 为 "webhook rule was disposed"
+    如果 (字典包含键(信号, "原因") == 真):
+      如果 (信号["原因"] != 空):
+        设 因 为 转字符串(信号["原因"])
+    抛出 新建 错误(因 + " [WEBHOOK_ABORTED]")
+
+段落 中止信号 接收 原因:
+  返回 {"已中止": 真, "原因": 原因}
+
+段落 存活信号:
+  返回 {"已中止": 假, "原因": 空}
+
+# =====================================================================
+# 五、session.ts —— 请求解析
+# =====================================================================
+# session.ts:33 requiredString
+段落 必填字符串 接收 记录, 字段:
+  设 值 为 空
+  如果 (字典包含键(记录, 字段) == 真):
+    设 值 为 记录[字段]
+  如果 (是字符串(值) == 假):
+    抛出 新建 错误("webhook Session request " + 字段 + " must be a non-empty string [WEBHOOK_FIELD_NOT_STRING]")
+  如果 (去除空白(值) == ""):
+    抛出 新建 错误("webhook Session request " + 字段 + " must be a non-empty string [WEBHOOK_FIELD_EMPTY]")
+  返回 值
+
+# session.ts:42 resolveRequest
+段落 解析请求 接收 上下文, 输入:
+  如果 (是字典(输入) == 假):
+    抛出 新建 错误("webhook rule result must be null or a Session request object [WEBHOOK_REQUEST_NOT_OBJECT]")
+  设 工作区路径 为 必填字符串(输入, "workspacePath")
+  如果 (是绝对路径(工作区路径) == 假):
+    抛出 新建 错误("webhook Session request workspacePath must be absolute, got " + 序列化JSON(工作区路径) + " [WEBHOOK_PATH_NOT_ABSOLUTE]")
+  设 标题 为 必填字符串(输入, "title")
+  设 提示 为 必填字符串(输入, "prompt")
+  设 代理预设 为 必填字符串(输入, "agentPreset")
+  设 权限预设 为 必填字符串(输入, "permissionPreset")
+
+  设 有模型键 为 字典包含键(输入, "model")
+  设 模型 为 空
+  如果 (有模型键 == 真):
+    设 模型 为 输入["model"]
+  如果 (有模型键 == 真):
+    如果 (是字典(模型) == 假):
+      抛出 新建 错误("webhook Session request model must be an object [WEBHOOK_MODEL_NOT_OBJECT]")
+    如果 (是列表(模型) == 真):
+      抛出 新建 错误("webhook Session request model must be an object [WEBHOOK_MODEL_NOT_OBJECT]")
+
+  设 代理选项 为 {}
+  设 模型选择 为 {}
+  如果 (有模型键 == 假):
+    设 选中 为 上下文["默认模型"]()
+    设 代理选项["provider"] 为 选中["provider"]
+    设 代理选项["model"] 为 选中["model"]
+    设 模型选择["provider"] 为 选中["provider"]
+    设 模型选择["model"] 为 选中["model"]
+    如果 (字典包含键(选中, "reasoningEffort") == 真):
+      设 模型选择["reasoningEffort"] 为 选中["reasoningEffort"]
+  否则:
+    设 供应方 为 必填字符串(模型, "provider")
+    设 模型号 为 必填字符串(模型, "model")
+    设 令牌上限 为 空
+    如果 (字典包含键(模型, "maxTokens") == 真):
+      设 令牌上限 为 模型["maxTokens"]
+    设 有上限 为 真
+    如果 (令牌上限 == 空):
+      设 有上限 为 假
+    如果 (有上限 == 真):
+      如果 (是安全整数(令牌上限) == 假):
+        抛出 新建 错误("webhook Session request model.maxTokens must be a positive safe integer [WEBHOOK_MAX_TOKENS_NOT_SAFE]")
+      如果 (令牌上限 <= 0):
+        抛出 新建 错误("webhook Session request model.maxTokens must be a positive safe integer [WEBHOOK_MAX_TOKENS_NOT_POSITIVE]")
+    设 代理选项["provider"] 为 供应方
+    设 代理选项["model"] 为 模型号
+    如果 (有上限 == 真):
+      设 代理选项["maxTokens"] 为 令牌上限
+    设 模型选择["provider"] 为 供应方
+    设 模型选择["model"] 为 模型号
+
+  设 已解析 为 {}
+  设 已解析["workspacePath"] 为 工作区路径
+  设 已解析["title"] 为 标题
+  设 已解析["prompt"] 为 提示
+  设 已解析["agentPreset"] 为 代理预设
+  设 已解析["permissionPreset"] 为 权限预设
+  设 已解析["modelSelection"] 为 模型选择
+  设 已解析["agentOptions"] 为 代理选项
+  返回 已解析
+
+# =====================================================================
+# 六、session.ts —— 初始模型选择监听器（installInitialModelSelection，session.ts:91）
+# =====================================================================
+# agentCtx.on('agent/request', listener) 的 listener 真身；无闭包故走 装配槽。
+段落 初始模型监听 接收 载荷, 下一步:
+  全局 装配槽
+  设 已解析 为 装配槽["已解析"]
+  设 选择 为 已解析["modelSelection"]
+  设 代理上下文 为 装配槽["代理上下文"]
+  设 结果 为 下一步()
+  设 代理 为 代理上下文["agent"]
+  如果 (代理 == 空):
+    抛出 新建 错误("webhook Session setup has no scoped Agent [WEBHOOK_NO_AGENT]")
+  设 会话 为 代理["session"]
+  如果 (会话["requestHeader"]() != 空):
+    返回 结果
+  如果 (结果["provider"] != 选择["provider"]):
+    返回 结果
+  如果 (结果["model"] != 选择["model"]):
+    返回 结果
+  设 重配 为 {}
+  遍历 键 之 字典键列表(结果):
+    如果 (键 != "reasoningEffort"):
+      设 重配[键] 为 结果[键]
+  如果 (字典包含键(选择, "reasoningEffort") == 真):
+    设 重配["reasoningEffort"] 为 选择["reasoningEffort"]
+  返回 重配
+
+# agents.create 的 setup 回调：挂载代理预设 + 注册初始模型选择监听器
+段落 装配置 接收 代理上下文:
+  全局 装配槽
+  设 装配槽["代理上下文"] 为 代理上下文
+  设 上下文 为 装配槽["上下文"]
+  设 预设 为 装配槽["预设"]
+  上下文["代理预设挂载"](代理上下文, 预设["id"])
+  如果 (字典包含键(上下文, "监听") == 真):
+    上下文["监听"](代理上下文, "agent/request", 初始模型监听)
+  返回 空
+
+# =====================================================================
+# 七、session.ts —— 回滚与失败上报
+# =====================================================================
+# session.ts:86 reportRollbackFailure
+段落 报告回滚失败 接收 上下文, 主题, 错误:
+  上下文["日志警告"]("webhook: " + 主题 + " rollback failed: " + 错误链(错误))
+
+# 内层 try/catch 拆为具名段落（光明嵌套 尝试 块虽可用，拆开更稳）
+段落 回滚摘除 接收 上下文, 工作区, 会话号:
+  尝试:
+    工作区["摘除会话"](会话号)
+  捕获 异常 为 e:
+    报告回滚失败(上下文, "Workspace detach for Session \"" + 会话号 + "\"", e)
+
+段落 回滚销毁 接收 上下文, 句柄, 会话号:
+  尝试:
+    句柄["dispose"]()
+  捕获 异常 为 e:
+    报告回滚失败(上下文, "Agent disposal for Session \"" + 会话号 + "\"", e)
+
+# =====================================================================
+# 八、session.ts:119 createWebhookSession
+# =====================================================================
+段落 创建Webhook会话 接收 上下文, 投递, 规则号, 请求, 信号:
+  全局 装配槽
+  设 已解析 为 解析请求(上下文, 请求)
+  上下文["权限预设解析"](已解析["permissionPreset"])
+  设 预设 为 上下文["代理预设解析"](已解析["agentPreset"])
+  上下文["代理预设常驻键"](预设["id"])
+  检查未中止(信号)
+  设 工作区 为 上下文["工作区创建"](已解析["workspacePath"])
+  检查未中止(信号)
+  设 会话标识 为 转字符串(上下文["唯一标识"]())
+  设 会话号 为 "webhook-" + 会话标识
+
+  设 装配槽["上下文"] 为 上下文
+  设 装配槽["已解析"] 为 已解析
+  设 装配槽["预设"] 为 预设
+  设 元信息 为 {}
+  设 元信息["cwd"] 为 工作区["path"]
+  设 元信息["agentPreset"] 为 预设["id"]
+  设 选项 为 {}
+  设 选项["sessionId"] 为 会话号
+  设 选项["signal"] 为 信号
+  设 选项["meta"] 为 元信息
+  设 选项["agentOptions"] 为 已解析["agentOptions"]
+  设 选项["setup"] 为 装配置
+  设 句柄 为 上下文["会话创建"](选项)
+
+  设 已挂载 为 假
+  尝试:
+    检查未中止(信号)
+    工作区["挂载会话"](会话号)
+    设 已挂载 为 真
+    检查未中止(信号)
+    设 代理 为 句柄["agent"]
+    设 会话 为 代理["session"]
+    上下文["权限预设设置"](会话, 已解析["permissionPreset"])
+    上下文["会话标题改名"](会话, 已解析["title"])
+    设 来源 为 造投递来源(投递, 规则号)
+    设 内容 为 [{"type": "text", "text": 已解析["prompt"]}]
+    设 消息编号 为 转字符串(上下文["唯一标识"]())
+    设 消息 为 造用户消息(内容, 来源, 消息编号)
+    代理["followup"](消息)
+  捕获 异常 为 e:
+    如果 (已挂载 == 真):
+      回滚摘除(上下文, 工作区, 会话号)
+    回滚销毁(上下文, 句柄, 会话号)
+    抛出 e
+  返回 会话号
+
+# =====================================================================
+# 九、index.ts:39 snapshotDelivery
+# =====================================================================
+段落 快照投递 接收 投递:
+  如果 (是字典(投递) == 假):
+    抛出 新建 错误("webhook delivery must be an object [WEBHOOK_DELIVERY_NOT_OBJECT]")
+  设 种类 为 空
+  如果 (字典包含键(投递, "kind") == 真):
+    设 种类 为 投递["kind"]
+  如果 (是字符串(种类) == 假):
+    抛出 新建 错误("webhook delivery kind must be a non-empty string [WEBHOOK_DELIVERY_KIND_NOT_STRING]")
+  如果 (去除空白(种类) == ""):
+    抛出 新建 错误("webhook delivery kind must be a non-empty string [WEBHOOK_DELIVERY_KIND_EMPTY]")
+  设 来源 为 空
+  如果 (字典包含键(投递, "source") == 真):
+    设 来源 为 投递["source"]
+  如果 (是字符串(来源) == 假):
+    抛出 新建 错误("webhook delivery source must be a non-empty string [WEBHOOK_DELIVERY_SOURCE_NOT_STRING]")
+  如果 (去除空白(来源) == ""):
+    抛出 新建 错误("webhook delivery source must be a non-empty string [WEBHOOK_DELIVERY_SOURCE_EMPTY]")
+  设 编号 为 空
+  如果 (字典包含键(投递, "deliveryId") == 真):
+    设 编号 为 投递["deliveryId"]
+  如果 (是字符串(编号) == 假):
+    抛出 新建 错误("webhook delivery id must be a non-empty string [WEBHOOK_DELIVERY_ID_NOT_STRING]")
+  如果 (去除空白(编号) == ""):
+    抛出 新建 错误("webhook delivery id must be a non-empty string [WEBHOOK_DELIVERY_ID_EMPTY]")
+  设 收到于 为 空
+  如果 (字典包含键(投递, "receivedAt") == 真):
+    设 收到于 为 投递["receivedAt"]
+  如果 (是安全整数(收到于) == 假):
+    抛出 新建 错误("webhook delivery receivedAt must be a non-negative safe integer [WEBHOOK_DELIVERY_RECEIVED_AT_NOT_SAFE]")
+  如果 (收到于 < 0):
+    抛出 新建 错误("webhook delivery receivedAt must be a non-negative safe integer [WEBHOOK_DELIVERY_RECEIVED_AT_NEGATIVE]")
+  如果 (可无损JSON(投递) == 假):
+    抛出 新建 错误("webhook delivery must be lossless JSON [WEBHOOK_DELIVERY_NOT_JSON]")
+  返回 深冻结(投递)
+
+# =====================================================================
+# 十、index.ts —— WebhookRuntime 纯逻辑（注册 / 派发 / 调用 / 回收）
+# =====================================================================
+段落 造运行时 接收 上下文:
+  全局 运行时上下文, 运行时状态
+  设 运行时上下文 为 上下文
+  设 运行时状态 为 {}
+  设 运行时状态["规则表"] 为 {}
+  设 运行时状态["规则序"] 为 []
+  设 运行时状态["关闭中"] 为 假
+  返回 运行时状态
+
+段落 取规则号表:
+  全局 运行时状态
+  设 新表 为 []
+  遍历 号 之 运行时状态["规则序"]:
+    如果 (字典包含键(运行时状态["规则表"], 号) == 真):
+      列表追加(新表, 号)
+  返回 新表
+
+段落 取登记 接收 规则号:
+  全局 运行时状态
+  如果 (字典包含键(运行时状态["规则表"], 规则号) == 假):
+    返回 空
+  返回 运行时状态["规则表"][规则号]
+
+段落 是运行时关闭:
+  全局 运行时状态
+  返回 运行时状态["关闭中"]
+
+# index.ts:89 register —— 校验 + 去重 + 登记；返回规则号（回收 用它作句柄）
+段落 注册 接收 规则:
+  全局 运行时状态
+  如果 (运行时状态["关闭中"] == 真):
+    抛出 新建 错误("webhook runtime is closing [WEBHOOK_RUNTIME_CLOSING]")
+  设 号 为 空
+  如果 (字典包含键(规则, "id") == 真):
+    设 号 为 规则["id"]
+  如果 (是字符串(号) == 假):
+    抛出 新建 错误("webhook rule id must be a non-empty string [WEBHOOK_RULE_ID_NOT_STRING]")
+  如果 (去除空白(号) == ""):
+    抛出 新建 错误("webhook rule id must be a non-empty string [WEBHOOK_RULE_ID_EMPTY]")
+  设 种类 为 空
+  如果 (字典包含键(规则, "kind") == 真):
+    设 种类 为 规则["kind"]
+  如果 (是字符串(种类) == 假):
+    抛出 新建 错误("webhook rule \"" + 转字符串(号) + "\" kind must be a non-empty string [WEBHOOK_RULE_KIND_NOT_STRING]")
+  如果 (去除空白(种类) == ""):
+    抛出 新建 错误("webhook rule \"" + 转字符串(号) + "\" kind must be a non-empty string [WEBHOOK_RULE_KIND_EMPTY]")
+  设 运行 为 空
+  如果 (字典包含键(规则, "run") == 真):
+    设 运行 为 规则["run"]
+  如果 (是可调用(运行) == 假):
+    抛出 新建 错误("webhook rule \"" + 转字符串(号) + "\" requires run() [WEBHOOK_RULE_RUN_MISSING]")
+  如果 (字典包含键(运行时状态["规则表"], 号) == 真):
+    抛出 新建 错误("webhook rule \"" + 号 + "\" is already registered [WEBHOOK_RULE_DUPLICATE]")
+  设 登记 为 {"规则": 规则, "信号": 存活信号(), "活动": 0, "关闭中": 假}
+  设 运行时状态["规则表"][号] 为 登记
+  列表追加(运行时状态["规则序"], 号)
+  返回 号
+
+# index.ts:151 —— 调用诊断标签
+段落 造调用标签 接收 投递, 规则号:
+  返回 "webhook: provider=" + 序列化JSON(投递["kind"]) + " source=" + 序列化JSON(投递["source"]) + " delivery=" + 序列化JSON(投递["deliveryId"]) + " rule=" + 序列化JSON(规则号)
+
+# index.ts:136 startInvocation —— 一次受控调用：中止检查 → run → 建会话 → 错误链日志
+段落 发起调用 接收 登记, 投递:
+  全局 运行时上下文
+  设 规则 为 登记["规则"]
+  设 信号 为 登记["信号"]
+  尝试:
+    检查未中止(信号)
+    设 请求 为 规则["run"](投递, 信号)
+    检查未中止(信号)
+    如果 (请求 != 空):
+      创建Webhook会话(运行时上下文, 投递, 规则["id"], 请求, 信号)
+  捕获 异常 为 e:
+    设 前缀 为 造调用标签(投递, 规则["id"])
+    如果 (信号["已中止"] == 真):
+      运行时上下文["日志调试"](前缀 + " stopped after disposal: " + 错误链(e))
+    否则:
+      运行时上下文["日志警告"](前缀 + " failed: " + 错误链(e))
+  返回 空
+
+# index.ts:126 dispatch —— 关闭闸 → 快照 → 逐个匹配种类（跳过回收中的登记）
+段落 派发 接收 投递:
+  全局 运行时状态
+  如果 (运行时状态["关闭中"] == 真):
+    抛出 新建 错误("webhook runtime is closing [WEBHOOK_RUNTIME_CLOSING]")
+  设 快照 为 快照投递(投递)
+  遍历 号 之 运行时状态["规则序"]:
+    如果 (字典包含键(运行时状态["规则表"], 号) == 真):
+      设 登记 为 运行时状态["规则表"][号]
+      如果 (登记["关闭中"] == 假):
+        设 规则 为 登记["规则"]
+        如果 (规则["kind"] == 快照["kind"]):
+          发起调用(登记, 快照)
+  返回 空
+
+# index.ts:165 disposeRegistration —— 隐藏 → 中止 → 排空（幂等）
+段落 回收 接收 规则号:
+  全局 运行时状态
+  如果 (字典包含键(运行时状态["规则表"], 规则号) == 假):
+    返回 假
+  设 登记 为 运行时状态["规则表"][规则号]
+  如果 (登记["关闭中"] == 真):
+    返回 假
+  设 登记["关闭中"] 为 真
+  设 信号 为 登记["信号"]
+  设 信号["已中止"] 为 真
+  如果 (信号["原因"] == 空):
+    设 信号["原因"] 为 "webhook rule \"" + 规则号 + "\" was disposed"
+  字典删除(运行时状态["规则表"], 规则号)
+  返回 真
+
+# index.ts:75 —— 运行时生命周期收尾：置关闭态并回收全部登记
+段落 关闭运行时:
+  全局 运行时状态
+  设 运行时状态["关闭中"] 为 真
+  遍历 号 之 运行时状态["规则序"]:
+    如果 (字典包含键(运行时状态["规则表"], 号) == 真):
+      回收(号)
+  返回 空
+
+# =====================================================================
+# 十一、invariant.ts —— webhook 消息准入关系不变式
+# =====================================================================
+# invariant.ts:18 installWebhookMessages 的判定体：返回 "" 表示通过，否则为失败说明。
+段落 校验Webhook准入 接收 会话, 事件, 工作区表:
+  如果 (事件["type"] != "agent/inbox/spliced"):
+    返回 ""
+  设 命中 为 []
+  遍历 消息 之 事件["data"]["inserted"]:
+    设 来 为 消息["source"]
+    如果 (来["kind"] == "webhook"):
+      列表追加(命中, 消息)
+  如果 (长度(命中) == 0):
+    返回 ""
+  设 会话号 为 会话["id"]
+  设 头 为 会话["header"]
+  设 路径 为 空
+  如果 (字典包含键(头, "cwd") == 真):
+    设 路径 为 头["cwd"]
+  如果 (路径 == 空):
+    返回 "webhook Session \"" + 会话号 + "\" has no cwd [WEBHOOK_INVARIANT_NO_CWD]"
+  设 归属 为 []
+  遍历 区 之 工作区表:
+    如果 (列表包含(区["sessionIds"], 会话号) == 真):
+      列表追加(归属, 区)
+  如果 (长度(归属) != 1):
+    返回 "webhook Session \"" + 会话号 + "\" belongs to " + 转字符串(长度(归属)) + " Workspaces at prompt admission [WEBHOOK_INVARIANT_OWNER_COUNT]"
+  设 首区 为 归属[0]
+  如果 (首区["path"] != 路径):
+    返回 "webhook Session \"" + 会话号 + "\" cwd " + 序列化JSON(路径) + " differs from its Workspace path [WEBHOOK_INVARIANT_PATH_MISMATCH]"
+  返回 ""
+
+# invariant.ts:22 —— 'internal/dispatch' 入口：先滤事件名，再交给准入校验
+段落 内部派发检查 接收 事件名, 会话, 事件, 工作区表:
+  如果 (事件名 != "session/event"):
+    返回 ""
+  返回 校验Webhook准入(会话, 事件, 工作区表)
+
+# =====================================================================
+# 导出
+# =====================================================================
+导出 上下文摘要上限
+导出 规则标识
+导出 来源标识
+导出 投递标识
+导出 是安全整数
+导出 是盘符
+导出 是绝对路径
+导出 是可调用
+导出 可无损JSON
+导出 深复刻
+导出 深冻结
+导出 是冻结
+导出 绑定上下文摘要
+导出 取错误文本
+导出 错误链
+导出 造用户消息
+导出 造投递来源
+导出 检查未中止
+导出 中止信号
+导出 存活信号
+导出 必填字符串
+导出 解析请求
+导出 初始模型监听
+导出 装配置
+导出 报告回滚失败
+导出 回滚摘除
+导出 回滚销毁
+导出 创建Webhook会话
+导出 快照投递
+导出 造运行时
+导出 取规则号表
+导出 取登记
+导出 是运行时关闭
+导出 注册
+导出 造调用标签
+导出 发起调用
+导出 派发
+导出 回收
+导出 关闭运行时
+导出 校验Webhook准入
+导出 内部派发检查
