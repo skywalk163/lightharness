@@ -87,14 +87,14 @@
     如果 载荷.包含("choices"):
       遍历 选择 之 载荷["choices"]:
         设 增量 为 选择["delta"]
-        如果 增量.包含("reasoning_content") 且 增量["reasoning_content"] != "":
+        如果 增量.包含("reasoning_content") 且 增量["reasoning_content"] != 空 且 增量["reasoning_content"] != "":
           如果 推理块 == 空:
             设 推理块 为 打开块("reasoning", 块序, 顺序块表)
             块序 = 块序 + 1
             输出块.追加(造块开始(推理块["索引"], "reasoning"))
           推理块["文本"] 为 推理块["文本"] + 增量["reasoning_content"]
           输出块.追加(造推理增量(推理块["索引"], 增量["reasoning_content"]))
-        如果 增量.包含("content") 且 增量["content"] != "":
+        如果 增量.包含("content") 且 增量["content"] != 空 且 增量["content"] != "":
           如果 文本块 == 空:
             设 文本块 为 打开块("text", 块序, 顺序块表)
             块序 = 块序 + 1
@@ -116,7 +116,7 @@
             如果 调用.包含("function") 且 调用["function"].包含("name"):
               工具块["名字"] 为 调用["function"]["name"]
             设 片段 为 ""
-            如果 调用.包含("function") 且 调用["function"].包含("arguments"):
+            如果 调用.包含("function") 且 调用["function"].包含("arguments") 且 调用["function"]["arguments"] != 空:
               设 片段 为 调用["function"]["arguments"]
             工具块["文本"] 为 工具块["文本"] + 片段
             输出块.追加(造工具调用增量(工具块["索引"], 工具块["标识"], 工具块["名字"], 片段))
