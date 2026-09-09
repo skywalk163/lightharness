@@ -1,0 +1,308 @@
+/* lightharness WebUI — 样式（零外部依赖，深色主题）
+ * 主题：GitHub 风格暗色；品牌色绿/蓝，避免大面积靛蓝/紫色系
+ */
+
+:root {
+  --bg: #0d1117;          /* 页面背景 */
+  --bg-panel: #161b22;    /* 顶栏/输入区背景 */
+  --bg-bubble: #21262d;   /* 助手气泡背景 */
+  --bg-hover: #30363d;    /* 悬停底色 */
+  --border: #30363d;      /* 边框 */
+  --text: #e6edf3;        /* 主文字 */
+  --text-muted: #8b949e;  /* 次要文字 */
+  --text-dim: #6e7681;    /* 弱化文字 */
+  --green: #3fb950;       /* 已连接 / 主行动色 */
+  --green-strong: #238636;
+  --blue: #1f6feb;        /* 用户气泡 */
+  --yellow: #d29922;      /* 未认证 */
+  --red: #f85149;         /* 服务不可达 / 错误 */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Microsoft YaHei", "PingFang SC", sans-serif;
+  --font-mono: Consolas, "Cascadia Code", "Fira Code", "JetBrains Mono",
+               "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ---------- 顶栏 ---------- */
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.brand h1::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  vertical-align: 2px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 连接状态胶囊 */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-bubble);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.status.ok    { color: var(--green);  border-color: rgba(63,185,80,.35); }
+.status.warn  { color: var(--yellow); border-color: rgba(210,153,34,.35); }
+.status.down  { color: var(--red);    border-color: rgba(248,81,73,.35); }
+.status.check { color: var(--text-dim); }
+
+/* ---------- 消息区 ---------- */
+#messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  max-width: 78%;
+  padding: 9px 13px;
+  border-radius: var(--radius);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: var(--blue);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--bg-bubble);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+
+/* 正在输出时显示光标 */
+.msg.assistant.streaming::after {
+  content: "▍";
+  color: var(--text-muted);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* 代码块：等宽 <pre>，不完整 markdown */
+.msg pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 6px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.msg pre:first-child { margin-top: 0; }
+.msg pre:last-child  { margin-bottom: 0; }
+
+/* 系统提示 / 错误行（居中弱化，错误红色） */
+.sys {
+  align-self: center;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(48,54,61,.25);
+  border: 1px dashed var(--border);
+  padding: 4px 12px;
+  border-radius: 999px;
+  max-width: 90%;
+}
+
+.sys.error {
+  color: var(--red);
+  border-color: rgba(248,81,73,.4);
+  background: rgba(248,81,73,.08);
+  border-radius: 8px;
+}
+
+/* ---------- 输入区 ---------- */
+#composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 160px;
+  resize: none;
+  padding: 9px 12px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+}
+
+#input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(63,185,80,.15);
+}
+
+#input::placeholder { color: var(--text-dim); }
+
+.btn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-bubble);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.btn:hover:not(:disabled) { background: var(--bg-hover); }
+
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.btn-send {
+  background: var(--green-strong);
+  border-color: var(--green-strong);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-send:hover:not(:disabled) { background: #2ea043; }
+
+.btn-stop {
+  color: var(--red);
+  border-color: rgba(248,81,73,.45);
+}
+
+.btn-stop:hover:not(:disabled) { background: rgba(248,81,73,.1); }
+
+/* ---------- 窄屏适配（<640px） ---------- */
+@media (max-width: 640px) {
+  body { font-size: 14px; }
+
+  #topbar {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .brand { flex-direction: column; gap: 2px; }
+  .brand h1 { font-size: 16px; }
+  .subtitle { font-size: 11px; max-width: 60vw; }
+
+  #messages { padding: 10px; gap: 8px; }
+
+  .msg { max-width: 92%; }
+
+  #composer {
+    padding: 8px 10px 10px;
+    gap: 6px;
+  }
+
+  .btn { padding: 8px 12px; }
+
+  #send-btn, #stop-btn { font-size: 13px; }
+}
+
+/* 移动端触控：去掉按钮点按高亮 */
+@media (hover: none) {
+  .btn { -webkit-tap-highlight-color: transparent; }
+}
