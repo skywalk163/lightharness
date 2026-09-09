@@ -20,6 +20,13 @@
   var stopBtn = document.getElementById("stop-btn");
   var subtitleEl = document.getElementById("subtitle");
   var statusEl = document.getElementById("status");
+  var configPanel = document.getElementById("config-panel");
+  var settingsBtn = document.getElementById("settings-btn");
+  var cfgApiKey = document.getElementById("cfg-api-key");
+  var cfgBaseUrl = document.getElementById("cfg-base-url");
+  var cfgModel = document.getElementById("cfg-model");
+  var cfgSaveBtn = document.getElementById("cfg-save-btn");
+  var cfgError = document.getElementById("cfg-error");
 
   // ---------- 状态 ----------
   var params = new URLSearchParams(location.search);
@@ -293,6 +300,85 @@
       .catch(function () { setStatus("down"); });
   }
 
+  // ---------- 大模型配置 ----------
+  var currentConfig = null;
+
+  function showConfigPanel() {
+    // 已配置时回填（api_key 不回填，留空提示重新输入即覆盖）
+    if (currentConfig && currentConfig.configured) {
+      cfgBaseUrl.value = currentConfig.endpoint || "https://api.deepseek.com";
+      cfgModel.value = currentConfig.model || "deepseek-chat";
+      cfgApiKey.placeholder = "（已保存，留空则不修改）";
+    } else {
+      cfgBaseUrl.value = "https://api.deepseek.com";
+      cfgModel.value = "deepseek-chat";
+      cfgApiKey.placeholder = "sk-xxxxxxxxxxxxxxxx";
+    }
+    cfgError.hidden = true;
+    cfgError.textContent = "";
+    configPanel.hidden = false;
+  }
+
+  function hideConfigPanel() {
+    configPanel.hidden = true;
+  }
+
+  function checkConfig() {
+    var headers = {};
+    if (token) headers["X-Auth-Token"] = token;
+    fetch("/api/config", { method: "GET", headers: headers })
+      .then(function (resp) { return resp.json(); })
+      .then(function (cfg) {
+        currentConfig = cfg;
+        // 未配置（mock 模式或无密钥）→ 自动弹出配置引导
+        if (!cfg.configured) {
+          showConfigPanel();
+        }
+      })
+      .catch(function () { /* 配置接口不可用时不阻塞聊天 */ });
+  }
+
+  function saveConfig() {
+    var apiKey = cfgApiKey.value.trim();
+    var baseUrl = cfgBaseUrl.value.trim() || "https://api.deepseek.com";
+    var model = cfgModel.value.trim() || "deepseek-chat";
+    // 未配置时 api_key 必填；已配置时留空表示不修改（但当前实现是覆盖式写 .env，所以仍需填）
+    if (!apiKey) {
+      cfgError.textContent = "API Key 不能为空";
+      cfgError.hidden = false;
+      return;
+    }
+    cfgSaveBtn.disabled = true;
+    cfgSaveBtn.textContent = "保存中…";
+    cfgError.hidden = true;
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["X-Auth-Token"] = token;
+    fetch("/api/config", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ api_key: apiKey, base_url: baseUrl, model: model })
+    })
+      .then(function (resp) { return resp.json().then(function (d) { return { ok: resp.ok, data: d }; }); })
+      .then(function (r) {
+        if (r.ok && r.data.ok) {
+          currentConfig = r.data.config;
+          hideConfigPanel();
+          addSystem("大模型配置已保存并热更新，当前模型：" + (currentConfig.model || model));
+          setStatus("ok");
+        } else {
+          throw new Error(r.data.error ? r.data.error.message : "保存失败");
+        }
+      })
+      .catch(function (e) {
+        cfgError.textContent = "保存失败：" + (e.message || "网络错误");
+        cfgError.hidden = false;
+      })
+      .finally(function () {
+        cfgSaveBtn.disabled = false;
+        cfgSaveBtn.textContent = "保存并连接";
+      });
+  }
+
   // ---------- 事件绑定 ----------
   inputEl.addEventListener("input", autoResize);
   inputEl.addEventListener("keydown", function (e) {
@@ -303,8 +389,14 @@
   });
   sendBtn.addEventListener("click", sendMessage);
   stopBtn.addEventListener("click", stopStreaming);
+  settingsBtn.addEventListener("click", function () {
+    if (configPanel.hidden) showConfigPanel();
+    else hideConfigPanel();
+  });
+  cfgSaveBtn.addEventListener("click", saveConfig);
 
-  // 初始提示 + 状态探测
+  // 初始提示 + 状态探测 + 配置检测
   addSystem("输入内容后发送，agent 会逐字流式回复。");
   checkStatus();
+  checkConfig();
 })();

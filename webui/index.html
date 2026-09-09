@@ -16,10 +16,36 @@
       <span class="subtitle" id="subtitle" title="">服务：…</span>
     </div>
     <span class="status check" id="status">连接检测中…</span>
+    <button id="settings-btn" class="btn btn-ghost" title="大模型配置">⚙ 设置</button>
   </header>
 
   <!-- 中部：消息列表 -->
   <main id="messages" aria-live="polite"></main>
+
+  <!-- 配置引导面板（未配置大模型时显示；也可通过设置按钮打开） -->
+  <div id="config-panel" class="config-overlay" hidden>
+    <div class="config-card">
+      <h2>配置大模型</h2>
+      <p class="config-desc">首次使用需要配置大模型连接信息。配置保存在本地 <code>.env</code> 文件中，也可以手工编辑该文件。</p>
+      <div class="config-field">
+        <label for="cfg-api-key">API Key</label>
+        <input type="password" id="cfg-api-key" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <div class="config-field">
+        <label for="cfg-base-url">Base URL</label>
+        <input type="text" id="cfg-base-url" value="https://api.deepseek.com" placeholder="https://api.deepseek.com">
+      </div>
+      <div class="config-field">
+        <label for="cfg-model">模型名</label>
+        <input type="text" id="cfg-model" value="deepseek-chat" placeholder="deepseek-chat">
+      </div>
+      <div class="config-actions">
+        <button id="cfg-save-btn" class="btn btn-send">保存并连接</button>
+        <span id="cfg-error" class="config-error" hidden></span>
+      </div>
+      <p class="config-hint">保存后立即热更新，无需重启服务。</p>
+    </div>
+  </div>
 
   <!-- 底部：输入区 + 按钮 -->
   <footer id="composer">

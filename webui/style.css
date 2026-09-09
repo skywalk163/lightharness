@@ -306,3 +306,117 @@ body {
 @media (hover: none) {
   .btn { -webkit-tap-highlight-color: transparent; }
 }
+
+/* ---------- 设置按钮（顶栏） ---------- */
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* ---------- 配置引导面板 ---------- */
+.config-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.config-overlay[hidden] { display: none; }
+
+.config-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.config-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.config-desc {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.config-desc code {
+  background: var(--bg-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.config-field {
+  margin-bottom: 14px;
+}
+
+.config-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.config-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.config-field input:focus {
+  outline: none;
+  border-color: var(--green-strong);
+}
+
+.config-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.config-error {
+  color: var(--red);
+  font-size: 13px;
+}
+
+.config-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--green);
+}
+
+/* 窄屏配置面板 */
+@media (max-width: 640px) {
+  .config-card {
+    padding: 20px;
+    border-radius: 10px;
+  }
+  .config-card h2 { font-size: 18px; }
+}
