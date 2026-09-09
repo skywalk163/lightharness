@@ -27,6 +27,7 @@
   var cfgModel = document.getElementById("cfg-model");
   var cfgSaveBtn = document.getElementById("cfg-save-btn");
   var cfgError = document.getElementById("cfg-error");
+  var statsEl = document.getElementById("stats");   // E5：顶栏统计展示
 
   // ---------- 状态 ----------
   var params = new URLSearchParams(location.search);
@@ -64,6 +65,35 @@
     var s = STATUS_TEXT[key] || STATUS_TEXT.check;
     statusEl.className = "status " + s[1];
     statusEl.textContent = s[0];
+  }
+
+  // ---------- E5：统计展示 ----------
+  function formatCost(n) {
+    if (!isFinite(n)) n = 0;
+    return "$" + n.toFixed(5);
+  }
+
+  function renderStats(s) {
+    if (!statsEl) return;
+    if (!s || typeof s !== "object") return;
+    var inT = s["本轮输入"] || 0;
+    var outT = s["本轮输出"] || 0;
+    var total = s["累计总"] || 0;
+    var cost = s["花费"] || 0;
+    var pct = s["上下文使用率"] || 0;
+    var pctInt = Math.round(pct);
+    statsEl.textContent =
+      "in " + inT + " out " + outT +
+      " | 累计 " + total + " | 花费 " + formatCost(cost) +
+      " | 使用率 " + pctInt + "%";
+    // 使用率变色
+    statsEl.classList.remove("warn", "danger");
+    if (pct > 95) statsEl.classList.add("danger");
+    else if (pct > 80) statsEl.classList.add("warn");
+  }
+
+  function showCompactionNotice() {
+    addSystem("已触发上下文压缩，旧消息可能被省略。");
   }
 
   // ---------- 渲染 ----------
@@ -164,6 +194,16 @@
         try {
           var json = JSON.parse(payload);
           if (json && json.session_id) sessionId = json.session_id; // 会话延续
+          // E5：统计事件（无 choices，含 种类=统计）
+          if (json && json.种类 === "统计") {
+            renderStats(json);
+            continue;
+          }
+          // E5：压缩事件（服务端可选推送）
+          if (json && json.种类 === "压缩") {
+            showCompactionNotice();
+            continue;
+          }
           var choice = json && json.choices && json.choices[0];
           var delta = choice && choice.delta;
           if (delta && typeof delta.content === "string" && delta.content) {

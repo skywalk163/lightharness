@@ -420,3 +420,36 @@ body {
   }
   .config-card h2 { font-size: 18px; }
 }
+/* ===== E5：顶栏统计展示 ===== */
+.stats {
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted, #8b949e);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.stats.warn {
+  color: #d29922;
+  background: rgba(210, 153, 34, 0.12);
+}
+
+.stats.danger {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.15);
+  animation: stats-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes stats-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
+}
+
+@media (max-width: 640px) {
+  .stats { display: none; }
+}
