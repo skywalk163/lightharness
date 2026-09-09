@@ -169,3 +169,12 @@ lightharness/
 `python -m pytest tests/` 跑全量 examples 用例（含缺陷复现套件），任一带退出码断言失败即红；反跑判据见 `docs/功能对标/反跑判据.md`。
 
 `python 运行.py examples/test_终端PTY.light` 单独验证终端 PTY（真 tty，需 Win10 1809+）。
+
+### O0 测试（光明编译器 C 后端）
+
+lightharness 的部分测试用例依赖光明编译器的 O0（优化级别 0）C 后端，需本地具备 LLVM/clang 工具链（含 `stdio.h` 等 C 头文件）。
+
+- **检查环境**：命令行执行 `clang --version` 或 `zig version`，有输出即已具备。
+- **本地未安装时**：O0 相关用例会跳过或失败，不影响 Python 层全量回归（`python -m pytest tests/`）。
+- **CI 默认执行**：gitea CI（192.168.1.5）已预装 LLVM 工具链，O0 测试在 CI 上全量执行。
+- **如需本地安装**：推荐 `zig`（单文件、自带 libc 头文件、无系统级安装依赖），或 `clang`/`LLVM`。
