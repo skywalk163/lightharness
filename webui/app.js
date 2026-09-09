@@ -188,16 +188,7 @@
     var text = inputEl.value.trim();
     if (!text || streaming) return;
 
-    // 组装消息体：去掉尾部尚未写入内容的空助手条目
-    var msgs = history.slice();
-    for (var i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role === "assistant" && msgs[i].content === "") msgs.pop();
-      else break;
-    }
-    var body = { model: "deepseek-chat", messages: msgs, stream: true };
-    if (sessionId) body.session_id = sessionId;       // 会话延续
-
-    // 追加本轮 UI 与历史
+    // 追加本轮 UI 与历史（必须在组装消息体之前，否则 msgs 缺本轮用户消息）
     turnStartIndex = history.length;
     history.push({ role: "user", content: text });
     currentAssistantIndex = history.push({ role: "assistant", content: "" }) - 1;
@@ -206,6 +197,15 @@
     inputEl.value = "";
     autoResize();
     setStreaming(true);
+
+    // 组装消息体：去掉尾部尚未写入内容的空助手条目
+    var msgs = history.slice();
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === "assistant" && msgs[i].content === "") msgs.pop();
+      else break;
+    }
+    var body = { model: "deepseek-chat", messages: msgs, stream: true };
+    if (sessionId) body.session_id = sessionId;       // 会话延续
 
     var headers = { "Content-Type": "application/json" };
     if (token) headers["X-Auth-Token"] = token;
