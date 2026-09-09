@@ -83,6 +83,12 @@ def _collect():
 
 CASES = _collect()
 
+# 常驻服务用例：程序本身不退出（死循环服务），门禁注入「寿命」环境变量，
+# 让其到时走正常停机路径退出 rc=0（而非靠 300s 超时杀进程假红）。
+RESIDENT_CASES = {
+    '运行Web服务器.light': {'HARNESS_WEB_LIFETIME': '3'},
+}
+
 
 def _run(f):
     """在「独立的系统临时目录」里运行单个用例。
@@ -106,10 +112,12 @@ def _run(f):
         os.makedirs(_ex, exist_ok=True)
         for _py in glob.glob(os.path.join(EXAMPLES, '*.py')):
             shutil.copy2(_py, _ex)
+        _env = dict(os.environ)
+        _env.update(RESIDENT_CASES.get(os.path.basename(f), {}))
         p = subprocess.run(
             ['python', RUNNER, f],
             capture_output=True, text=True, encoding='utf-8', errors='replace',
-            timeout=300, cwd=workdir,
+            timeout=300, cwd=workdir, env=_env,
         )
         return p.returncode, (p.stdout or '') + (p.stderr or '')
     finally:
