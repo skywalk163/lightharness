@@ -9,19 +9,105 @@
 </head>
 <body>
 
-  <!-- 顶部：标题 + 服务地址 + 连接状态 -->
-  <header id="topbar">
-    <div class="brand">
-      <h1>lightharness</h1>
-      <span class="subtitle" id="subtitle" title="">服务：…</span>
-    </div>
-    <span class="status check" id="status">连接检测中…</span>
-    <span class="stats" id="stats" title="E5：本轮/累计 token 与花费"></span>
-    <button id="settings-btn" class="btn btn-ghost" title="大模型配置">⚙ 设置</button>
-  </header>
+  <!-- E3：三栏骨架 —— 左侧会话栏 240px ｜ 中栏（顶栏/消息/输入） ｜ 右侧工具面板（可折叠） -->
+  <div class="app-shell" id="app-shell">
 
-  <!-- 中部：消息列表 -->
-  <main id="messages" aria-live="polite"></main>
+    <!-- 移动端侧边栏遮罩 -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <!-- E3：左侧会话侧边栏 -->
+    <aside id="sidebar" class="sidebar" aria-label="会话列表">
+      <div class="sidebar-header">
+        <span class="sidebar-logo" aria-hidden="true">L</span>
+        <span class="sidebar-title">会话</span>
+        <button id="new-session-btn" class="btn btn-new-session" title="新建会话">＋ 新会话</button>
+      </div>
+      <div id="session-list" class="session-list"></div>
+      <div class="sidebar-footer">双击会话可重命名</div>
+    </aside>
+
+    <!-- 中栏：顶栏 + 消息列表 + 输入区 -->
+    <div class="main-col">
+
+      <!-- 顶部：标题 + 服务地址 + 连接状态 -->
+      <header id="topbar">
+        <button id="sidebar-toggle" class="btn btn-ghost sidebar-toggle" title="会话列表">☰</button>
+        <div class="brand">
+          <h1>lightharness</h1>
+          <span class="subtitle" id="subtitle" title="">服务：…</span>
+        </div>
+        <span class="session-title-chip" id="session-title" hidden title="点击重命名会话"></span>
+        <span class="model-badge" id="model-badge" hidden></span>
+        <span class="status check" id="status">连接检测中…</span>
+        <span class="stats" id="stats" title="E5：本轮/累计 token 与花费"></span>
+        <select id="perm-preset" class="perm-select" title="E4：权限预设">
+          <option value="">权限：…</option>
+          <option value="全放行">全放行</option>
+          <option value="按类别">按类别</option>
+          <option value="全拒绝">全拒绝</option>
+          <option value="自定义">自定义</option>
+        </select>
+        <button id="approvals-btn" class="btn btn-ghost approvals-toggle" title="E4：审批队列">🛡 审批 <span id="approvals-count" class="badge" hidden>0</span></button>
+        <button id="settings-btn" class="btn btn-ghost" title="大模型配置">⚙ 设置</button>
+        <button id="rp-toggle" class="btn btn-ghost rp-toggle" title="工具调用面板">▤ 工具</button>
+      </header>
+
+      <!-- 中部：消息列表 -->
+      <main id="messages" aria-live="polite"></main>
+
+      <!-- 底部：输入区 + 按钮 -->
+      <footer id="composer">
+        <div class="composer-row">
+          <button id="attach-btn" class="btn btn-ghost attach-btn" title="附件（即将支持）" disabled>📎</button>
+          <textarea id="input" rows="1"
+            placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+          <button id="stop-btn" class="btn btn-stop" disabled>停止</button>
+          <button id="send-btn" class="btn btn-send">发送</button>
+        </div>
+        <div class="composer-foot">
+          <span class="shortcut-hint">Enter 发送 · Shift+Enter 换行</span>
+          <span class="input-count" id="input-count"></span>
+        </div>
+      </footer>
+
+    </div>
+
+    <!-- E3：右侧工具面板（可折叠）：工具调用时间线 + 统计 -->
+    <aside id="right-panel" class="right-panel" hidden>
+      <div class="rp-header">
+        <h3>工具调用</h3>
+        <button id="rp-close" class="btn btn-ghost rp-close" title="收起面板">✕</button>
+      </div>
+      <div class="rp-scroll">
+        <section class="rp-section">
+          <h4>时间线</h4>
+          <div id="tool-timeline" class="tool-timeline">
+            <div class="rp-empty">本轮暂无工具调用</div>
+          </div>
+        </section>
+        <section class="rp-section">
+          <h4>统计</h4>
+          <div id="rp-stats" class="rp-stats">
+            <div class="rp-empty">暂无统计</div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- E4：右侧审批队列面板（浮层，可折叠） -->
+  <aside id="approvals-panel" class="approvals-panel" hidden>
+    <div class="approvals-header">
+      <h3>审批队列</h3>
+      <button id="approvals-close" class="btn btn-ghost approvals-close" title="关闭">✕</button>
+    </div>
+    <div id="approvals-list" class="approvals-list"></div>
+    <div class="approvals-footer">
+      <button id="approvals-refresh" class="btn btn-ghost">刷新</button>
+      <span id="approvals-status" class="approvals-status"></span>
+    </div>
+  </aside>
 
   <!-- 配置引导面板（未配置大模型时显示；也可通过设置按钮打开） -->
   <div id="config-panel" class="config-overlay" hidden>
@@ -48,14 +134,10 @@
     </div>
   </div>
 
-  <!-- 底部：输入区 + 按钮 -->
-  <footer id="composer">
-    <textarea id="input" rows="1"
-      placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
-    <button id="stop-btn" class="btn btn-stop" disabled>停止</button>
-    <button id="send-btn" class="btn btn-send">发送</button>
-  </footer>
-
+  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 主应用 -->
+  <script src="tool-card.js"></script>
+  <script src="messages.js"></script>
+  <script src="sidebar.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
