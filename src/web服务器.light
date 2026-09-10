@@ -684,6 +684,9 @@
       设 白名单放行 为 真
     如果 方法 == "GET" 且 路径.查找("/api/permissions") != 0:
       设 白名单放行 为 真
+    # 配置 API 公开（首次启动无 token 时需保存大模型配置，热更新不重启）
+    如果 方法 == "POST" 且 路径 == "/api/config":
+      设 白名单放行 为 真
     如果 白名单放行 == 假 且 令牌 == "":
       设 响应 为 ["状态": 401, "头": ["Content-Type": "application/json; charset=utf-8"], "体": 序列化JSON(["error": ["message": "未认证", "type": "unauthorized"]])]
       返回 加跨域(响应)
