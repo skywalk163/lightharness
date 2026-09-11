@@ -9,7 +9,7 @@
 #   HARNESS_RESUME      会话标识：续写已有会话（对齐原版 --resume）
 #   HARNESS_REPL        设 1 进入多轮交互模式（对齐原版 TUI 会话）
 #   HARNESS_ENDPOINT    端点（默认 https://api.deepseek.com/chat/completions）
-#   HARNESS_MODEL       模型（默认 deepseek-chat）
+#   HARNESS_MODEL       模型（默认 = 取默认模型()，0.1.5 为 deepseek-flash / V41 Flash）
 #   DEEPSEEK_API_KEY    API 密钥（必填；也可 HARNESS_API_KEY）
 #   .env                项目根目录 .env 亦可配置密钥/端点/模型（DEEPSEEK_API_KEY / HARNESS_API_KEY /
 #                       OPENAI_API_KEY；HARNESS_ENDPOINT / OPENAI_BASE_URL；HARNESS_MODEL / OPENAI_MODEL）
@@ -19,7 +19,7 @@
 # 可测试导出：组装注册表 / 跑一轮 / 取最终文本（供 mock 客户端测试）
 # ⚠️ 光明命名规范 v1：成员名/局部名避开关键字与运算符词根。
 
-从 客户端 导入 客户端
+从 客户端 导入 客户端, 取默认模型
 从 代理 导入 代理循环
 从 会话 导入 新建会话
 从 工具 导入 工具注册表, 造工具定义, 造工具结果
@@ -195,6 +195,19 @@
     返回 值
   返回 空
 
+# ---- 模型解析链（注入式，供测试；主() 用真实环境/文件取值调用）----
+# 优先级：环境变量 HARNESS_MODEL → .env HARNESS_MODEL → .env OPENAI_MODEL →
+# 内置默认 取默认模型()（0.1.5：DeepSeek V41 Flash，提交 bc5fd3b8dc）。
+# 用户显式配置永远优先于内置默认。
+段落 解析模型 接收 环境取值, 文件甲取值, 文件乙取值:
+  如果 环境取值 不等于 空 且 环境取值 != "":
+    返回 环境取值
+  如果 文件甲取值 不等于 空 且 文件甲取值 != "":
+    返回 文件甲取值
+  如果 文件乙取值 不等于 空 且 文件乙取值 != "":
+    返回 文件乙取值
+  返回 取默认模型()
+
 # ---- 主流程 ----
 段落 主:
   设 用户文本 为 环境变量("HARNESS_MSG", 空)
@@ -215,14 +228,8 @@
       设 端点 为 端点 + "/chat/completions"
   如果 端点 == 空 或 端点 == "":
     设 端点 为 "https://api.deepseek.com/chat/completions"
-  # 模型：环境变量 → 项目根 .env（HARNESS_MODEL / OPENAI_MODEL）→ 内置默认
-  设 模型 为 环境变量("HARNESS_MODEL", 空)
-  如果 模型 == 空 或 模型 == "":
-    设 模型 为 读取环境文件值("HARNESS_MODEL")
-  如果 模型 == 空 或 模型 == "":
-    设 模型 为 读取环境文件值("OPENAI_MODEL")
-  如果 模型 == 空 或 模型 == "":
-    设 模型 为 "deepseek-chat"
+  # 模型：环境变量 → 项目根 .env（HARNESS_MODEL / OPENAI_MODEL）→ 内置默认 取默认模型()
+  设 模型 为 解析模型(环境变量("HARNESS_MODEL", 空), 读取环境文件值("HARNESS_MODEL"), 读取环境文件值("OPENAI_MODEL"))
   # 会话列表模式（不需要 API key）
   设 列表模式 为 环境变量("HARNESS_LIST", "0")
   如果 列表模式 == "1":
