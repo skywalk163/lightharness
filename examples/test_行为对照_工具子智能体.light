@@ -1,0 +1,306 @@
+# test_行为对照_工具子智能体.light —— 第8轮任务4 行为级对照验证（core/tools + subagent + agent-presets）
+#
+# 每节 = 一个上游 spec 场景，节头注释标注对标 spec 文件名。src 全部只读；
+# 行为与上游断言不符处 → 断言光明实际行为并登记差异清单（报告 §5），不改 src。
+#
+# 运行：python 运行.py examples/test_行为对照_工具子智能体.light
+
+从 工具 导入 工具注册表, 造工具定义, 校验参数
+从 子智能体 导入 子智能体, 目录投影, 重建父属目录, 追加分块, 分块展平, 校验分块, 校验目录数据, 目录视图, 子智能体收件箱
+从 预设 导入 提取显示元数据, 造显示元数据记录, 扫描根排序
+从 会话 导入 新建会话
+从 代理 导入 代理循环
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败[" + 标签 + "]")
+
+段落 断言抛 接收 操作, 标签:
+  设 抛了 为 假
+  尝试:
+    操作()
+  捕获 错误 为 e:
+    设 抛了 为 真
+  如果 抛了 == 假:
+    抛出 新建 错误("断言抛失败[" + 标签 + "]：未抛错")
+
+段落 含原因 接收 错误表, 原因:
+  遍历 项 之 错误表:
+    如果 项["原因"] == 原因:
+      返回 真
+  返回 假
+
+# ============================================================
+# 节1：参数 JSON Schema 校验（对标 core/tools/tests/tools.spec.ts
+#      「flags a missing required key / type-checks primitives /
+#      allows extra keys / checks enum membership / recurses into
+#      nested objects / validates arrays of objects element-wise /
+#      does not apply defaults (validation only)」）
+# ============================================================
+段落 节1工具参数校验:
+  设 模式 为 ["type": "object", "properties": ["名字": ["type": "string"], "数量": ["type": "integer"]], "required": ["名字"]]
+  断言相等(校验参数(模式, ["名字": "a", "数量": 1]), [], "合法参数零违规")
+  设 缺必填 为 校验参数(模式, ["数量": 1])
+  断言真(含原因(缺必填, "missing"), "缺必填触发 missing")
+  设 型错 为 校验参数(模式, ["名字": 1, "数量": 1])
+  断言真(含原因(型错, "type"), "类型不符触发 type")
+  # 额外键默认放行（上游：allows extra keys, no additionalProperties:false）
+  断言相等(校验参数(模式, ["名字": "a", "额外": 真]), [], "额外键默认放行")
+  # closed 对象拒绝额外键
+  设 封闭 为 ["type": "object", "properties": ["名字": ["type": "string"]], "additionalProperties": 假]
+  设 多键 为 校验参数(封闭, ["名字": "a", "额外": 真])
+  断言真(含原因(多键, "additionalProperties"), "closed 对象额外键触发")
+  # enum 命中/未命中
+  设 枚举 为 ["type": "string", "enum": ["a", "b"]]
+  断言相等(校验参数(枚举, "a"), [], "enum 命中")
+  断言真(含原因(校验参数(枚举, "c"), "enum"), "enum 未命中")
+  # const 不等
+  设 常量 为 ["type": "string", "const": "x"]
+  断言真(含原因(校验参数(常量, "y"), "const"), "const 不等触发")
+  # 嵌套对象：缺子必填
+  设 嵌套 为 ["type": "object", "properties": ["子": ["type": "object", "properties": ["行": ["type": "integer"]], "required": ["行"]]], "required": ["子"]]
+  断言真(含原因(校验参数(嵌套, ["子": {}]), "missing"), "嵌套缺子必填")
+  # 数组逐项：元素类型错
+  设 数组 为 ["type": "array", "items": ["type": "integer"]]
+  断言相等(校验参数(数组, [1, 2]), [], "数组元素合法")
+  断言真(含原因(校验参数(数组, [1, "x"]), "type"), "数组元素类型错触发")
+  # 默认值不应用（validation only：缺省可选键不报错，不注入默认）
+  设 默认 为 ["type": "object", "properties": ["阈值": ["type": "integer", "default": 5]]]
+  断言相等(校验参数(默认, {}), [], "默认值仅声明不校验")
+  写 "节1 通过: tools.spec.ts 参数校验"
+
+# ============================================================
+# 节2：描述表不泄漏宿主回调（对标 tools.spec.ts「schemas() drops
+#      host callbacks / excludes timeoutMs —— must never reach the model」）
+# ============================================================
+段落 节2描述表不泄漏:
+  段落 准备函数 接收 参数:
+    返回 参数
+  段落 收尾函数 接收 结果, 参数:
+    返回 空
+  段落 执行函数 接收 参数:
+    返回 [["type": "text", "text": "ok"]]
+  设 定义 为 造工具定义("安全工具", "描述", ["type": "object", "properties": []], 执行函数, "parallel", 准备函数, 收尾函数)
+  设 注册表 为 新建 工具注册表()
+  注册表.注册(定义)
+  设 描述 为 注册表.描述表()
+  断言真(描述[0].包含("name"), "描述含 name")
+  断言真(描述[0].包含("description"), "描述含 description")
+  断言真(描述[0].包含("parameters"), "描述含 parameters")
+  断言真(描述[0].包含("execute") == 假, "execute 不泄漏给模型")
+  断言真(描述[0].包含("prepare") == 假, "prepare 不泄漏给模型")
+  断言真(描述[0].包含("finalize") == 假, "finalize 不泄漏给模型")
+  断言真(描述[0].包含("mode") == 假, "mode 不泄漏给模型")
+  写 "节2 通过: tools.spec.ts 描述表净化"
+
+# ============================================================
+# 节3：执行错误收敛（对标 tools.spec.ts「a tool throwing a
+#      HarnessError surfaces its name and code / a non-HarnessError
+#      throw retains only its message / a schema-invalid call surfaces
+#      the structured error on the result」）
+# ============================================================
+段落 节3执行错误收敛:
+  段落 抛错执行 接收 参数:
+    抛出 "自定义失败原因"
+  设 注册表 为 新建 工具注册表()
+  注册表.注册(造工具定义("boom", "抛错", ["type": "object", "properties": []], 抛错执行))
+  设 结果 为 注册表.执行("boom", "{}")
+  断言相等(结果["isError"], 真, "抛错工具 isError")
+  断言相等(结果["error"]["代码"], "TOOL_EXECUTION_FAILED", "稳定代码")
+  断言相等(结果["error"]["消息"], "自定义失败原因", "非 HarnessError 保留消息原文")
+  写 "节3 通过: tools.spec.ts 执行错误收敛"
+
+# ============================================================
+# 节4：最后非空消息（对标 subagent/tests/assistant-output.spec.ts
+#      「selects the last non-empty message past a later empty
+#      usage-only message / prefers a non-empty message over text
+#      streamed before and after it」——光明取最后回答只认
+#      assistant/message 文本块，语义等价投影）
+# ============================================================
+段落 节4最后非空消息:
+  段落 哑客户端 接收 网络消息, 选项, 工具表:
+    返回 []
+  设 智能体 为 新建 子智能体(哑客户端, 新建 工具注册表(), [], "sub1")
+  设 会话 为 智能体.取会话()
+  会话.记录事件("assistant/message", ["消息": ["content": [["type": "text", "text": "step one"]]]])
+  会话.记录事件("assistant/message", ["消息": ["content": [["type": "text", "text": "step two"]]]])
+  会话.记录事件("assistant/message", ["消息": ["content": []]])
+  断言相等(智能体.取最后回答(), "step two", "越过末尾空消息取最后非空")
+  写 "节4 通过: assistant-output.spec.ts 最后非空消息"
+
+# ============================================================
+# 节5：边界差异登记（对标 assistant-output.spec.ts「treats textless
+#      assistant content as a non-empty message / returns undefined when
+#      the child produced neither messages nor text」）——光明取最后回答
+#      返回空串、跳过 reasoning-only 消息 → 差异清单登记，此处断言光明实际行为
+# ============================================================
+段落 节5边界差异:
+  段落 哑客户端2 接收 网络消息, 选项, 工具表:
+    返回 []
+  设 智能体 为 新建 子智能体(哑客户端2, 新建 工具注册表(), [], "sub2")
+  设 会话 为 智能体.取会话()
+  会话.记录事件("assistant/message", ["消息": ["content": [["type": "reasoning", "text": "思考过程"]]]])
+  断言相等(智能体.取最后回答(), "", "光明：reasoning-only 消息不产出文本（上游视为非空 → 差异）")
+  写 "节5 通过: assistant-output.spec.ts 边界差异（登记）"
+
+# ============================================================
+# 节6：目录分块翻转保序（对标 catalog.spec.ts「preserves event order
+#      across chunk rollover and checkpoint restoration」——64 上限翻转）
+# ============================================================
+段落 节6分块翻转:
+  设 头块 为 空
+  设 i 为 0
+  当 i < 65:
+    设 头块 为 追加分块(头块, "child-" + 转字符串(i))
+    设 i 为 i + 1
+  校验分块(头块)
+  设 展平 为 分块展平(头块)
+  断言相等(长度(展平), 65, "65 项保序")
+  断言相等(展平[0], "child-0", "首项")
+  断言相等(展平[64], "child-64", "末项")
+  # 空头块合法；容量越界拒绝
+  校验分块(空)
+  设 坏块 为 ["值表": [1, 2, 3], "前块": ["值表": ["x"]]]
+  设 越界 为 假
+  尝试:
+    校验分块(["值表": [1, 2, 3], "前块": ["值表": []]])
+  捕获 错误 为 e1:
+    设 越界 为 真
+  断言真(越界, "空值表块被拒")
+  写 "节6 通过: catalog.spec.ts 分块翻转保序"
+
+# ============================================================
+# 节7：目录标签变体与非法事实（对标 catalog.spec.ts「materializes
+#      every label variant in event order / refuses to restore a
+#      catalog containing an invalid fact」）
+# ============================================================
+段落 节7目录标签变体:
+  设 投影 为 新建 目录投影(0)
+  投影.应用事件(["类型": "subagent/catalog", "序号": 0, "数据": ["版本": 0, "子标识": "child-b", "子创建时间": 1, "模式": "one-shot"]])
+  投影.应用事件(["类型": "subagent/catalog", "序号": 1, "数据": ["版本": 0, "子标识": "child-a", "子创建时间": 1, "模式": "one-shot", "标签": "once"]])
+  投影.应用事件(["类型": "subagent/catalog", "序号": 2, "数据": ["版本": 0, "子标识": "child-d", "子创建时间": 3, "模式": "continuable", "标签": "later"]])
+  设 行表 为 投影.条目()
+  断言相等(长度(行表), 3, "三行")
+  断言相等(行表[0]["标识"], "child-b", "事件序首行")
+  断言相等(行表[0]["模式"], "one-shot", "one-shot 模式")
+  断言相等(行表[0].包含("标签"), 假, "one-shot 无标签不产出标签键")
+  断言相等(行表[1]["标签"], "once", "one-shot 带标签")
+  断言相等(行表[2]["标签"], "later", "continuable 带标签")
+  # 非法事实：版本非 0 / continuable 无标签 / 负创建时间
+  段落 抛1 接收:
+    校验目录数据(["版本": 9, "子标识": "x", "子创建时间": 0, "模式": "one-shot"])
+  段落 抛2 接收:
+    校验目录数据(["版本": 0, "子标识": "x", "子创建时间": 0, "模式": "continuable"])
+  段落 抛3 接收:
+    校验目录数据(["版本": 0, "子标识": "x", "子创建时间": -1, "模式": "one-shot"])
+  断言抛(抛1, "版本 9 拒绝")
+  断言抛(抛2, "continuable 无标签拒绝")
+  断言抛(抛3, "负创建时间拒绝")
+  写 "节7 通过: catalog.spec.ts 标签变体与非法事实"
+
+# ============================================================
+# 节8：无关与继承事件忽略（对标 catalog.spec.ts「ignores unrelated
+#      and inherited events without changing state」）
+# ============================================================
+段落 节8无关事件忽略:
+  设 事实A 为 ["版本": 0, "子标识": "a", "子创建时间": 1, "模式": "one-shot"]
+  设 事实B 为 ["版本": 0, "子标识": "b", "子创建时间": 2, "模式": "one-shot"]
+  设 投影 为 重建父属目录([["类型": "turn/start", "序号": 0, "数据": ["轮次": 1]], ["类型": "subagent/catalog", "序号": 1, "数据": 事实A], ["类型": "subagent/catalog", "序号": 2, "数据": 事实B]], 2)
+  设 行表 为 投影.条目()
+  断言相等(长度(行表), 1, "只保留继承序号之后的自有事实")
+  断言相等(行表[0]["标识"], "b", "忽略继承事实与无关事件")
+  写 "节8 通过: catalog.spec.ts 无关事件忽略"
+
+# ============================================================
+# 节9：目录视图活动（对标 subagent/tests/control.spec.ts catalogView
+#      「reports a live child as running while keeping settled siblings
+#      complete」的纯逻辑面——光明目录视图以运行标识表驱动活动）
+# ============================================================
+段落 节9目录视图:
+  设 条目表 为 [["标识": "a", "创建时间": 1, "模式": "one-shot"], ["标识": "b", "创建时间": 2, "模式": "continuable", "标签": "L"]]
+  设 视图 为 目录视图(条目表, ["b"], 真)
+  断言相等(视图["父可用"], 真, "父可用透传")
+  断言相等(视图["条目表"][0]["活动"], "inactive", "未运行行 inactive")
+  断言相等(视图["条目表"][1]["活动"], "running", "运行中行 running")
+  设 视图2 为 目录视图(条目表, [], 假)
+  断言相等(视图2["父可用"], 假, "父不可用透传")
+  写 "节9 通过: control.spec.ts 目录视图活动"
+
+# ============================================================
+# 节10：显示元数据纯逻辑（对标 preset/agent-presets/tests/metadata.spec.ts
+#       「ignores fields that are not text / ignores blank text / trims
+#       surrounding whitespace / ignores an order that is not a finite
+#       number / cannot carry identity or trust」——光明提取显示元数据
+#       以字典为输入，语义等价）
+# ============================================================
+段落 节10显示元数据:
+  设 完整 为 提取显示元数据(["name": "标准模式", "description": "完整的编码 agent。"])
+  断言相等(完整["name"], "标准模式", "读取 name")
+  断言相等(完整["description"], "完整的编码 agent。", "读取 description")
+  # 非文本字段忽略
+  断言相等(提取显示元数据(["name": 42, "description": ["嵌套": 真]]).包含("name"), 假, "非文本 name 忽略")
+  # 空白忽略 + trim
+  断言相等(提取显示元数据(["name": "   "]).包含("name"), 假, "空白 name 忽略")
+  断言相等(提取显示元数据(["name": "  极简模式  "])["name"], "极简模式", "trim")
+  # order：整数取，非整数忽略
+  断言相等(提取显示元数据(["name": "标准模式", "order": 1])["order"], 1, "整数 order 读取")
+  断言相等(提取显示元数据(["order": "first"]).包含("order"), 假, "非数值 order 忽略")
+  # id/trust 不承载
+  设 无身份 为 提取显示元数据(["name": "mine", "id": "standard", "trust": "system"])
+  断言相等(无身份["name"], "mine", "name 保留")
+  断言相等(无身份.包含("id"), 假, "id 不承载")
+  断言相等(无身份.包含("trust"), 假, "trust 不承载")
+  # 空 → 造记录 空
+  断言相等(造显示元数据记录([]), 空, "空元数据无记录")
+  断言相等(造显示元数据记录(["name": "x"])["name"], "x", "非空元数据有记录")
+  写 "节10 通过: metadata.spec.ts 显示元数据"
+
+# ============================================================
+# 节11：扫描排序（对标 preset/agent-presets/tests/discovery.spec.ts
+#       「puts declared order first, then everything else by id / breaks
+#       a tie between equal declared orders by id」——光明应前/扫描根排序）
+# ============================================================
+段落 节11扫描排序:
+  设 列表 为 [["id": "zulu", "order": 1], ["id": "alpha", "order": 2], ["id": "bravo"], ["id": "yankee"]]
+  设 排序后 为 扫描根排序(列表)
+  断言相等(排序后[0]["id"], "zulu", "声明序 order1 最前")
+  断言相等(排序后[1]["id"], "alpha", "声明序 order2 其次")
+  断言相等(排序后[2]["id"], "bravo", "未声明按 id")
+  断言相等(排序后[3]["id"], "yankee", "未声明按 id 末尾")
+  设 平局 为 扫描根排序([["id": "yankee", "order": 1], ["id": "alpha", "order": 1]])
+  断言相等(平局[0]["id"], "alpha", "同序按 id 在前")
+  断言相等(平局[1]["id"], "yankee", "同序按 id 在后")
+  写 "节11 通过: discovery.spec.ts 扫描排序"
+
+# ============================================================
+# 节12：user 元数据不翻译（对标 display.spec.ts「keeps user-authored
+#      metadata untranslated」——光明无 presetDisplayText shipped 字典
+#      解析，元数据经提取原样保留；shipped 字典键差异登记差异清单）
+# ============================================================
+段落 节12user元数据不翻译:
+  设 用户元 为 提取显示元数据(["name": "我的模式", "description": "自述"])
+  断言相等(用户元["name"], "我的模式", "user name 原样")
+  断言相等(用户元["description"], "自述", "user description 原样")
+  写 "节12 通过: display.spec.ts user 元数据不翻译"
+
+段落 主:
+  设 哑 为 0
+  节1工具参数校验()
+  节2描述表不泄漏()
+  节3执行错误收敛()
+  节4最后非空消息()
+  节5边界差异()
+  节6分块翻转()
+  节7目录标签变体()
+  节8无关事件忽略()
+  节9目录视图()
+  节10显示元数据()
+  节11扫描排序()
+  节12user元数据不翻译()
+  打印 "test_行为对照_工具子智能体 PASS"
+
+主()
