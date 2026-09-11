@@ -53,6 +53,51 @@
   设 清单 为 整理直达清单()
   返回 列表含(清单, 通知名)
 
+# ---- 0.1.5 转发通知白名单（对齐 remote-events.ts L1-29 API_REMOTE_FORWARDED_EVENTS） ----
+# 19 条 { 事件名 → 模式 }，模式 ∈ "emit" | "waterfall"；字典键一律带引号（L-063）。
+# emit：广播式转发；waterfall：请求-响应瀑布（顶层 Agent 身份 + JSON 请求字段投影）。
+# 注：光明模块级「设 X 为 [多行字典]」字面量解析失败（候选语言缺陷 L-080），
+#     故用函数返回式（取转发白名单）——函数返回上下文的多行字典可正确解析。
+段落 取转发白名单 接收:
+  # 逐条对齐 upstream API_REMOTE_FORWARDED_EVENTS（19 条）
+  返回 [
+    "agent-preset/selected": "emit",
+    "approval/request": "waterfall",
+    "api-session/activity": "emit",
+    "api-session/added": "emit",
+    "api-session/error": "emit",
+    "api-session/removed": "emit",
+    "api-session/status": "emit",
+    "commands/change": "emit",
+    "credentials/reference-updated": "emit",
+    "goal/activation-changed": "emit",
+    "cordis/request-run": "emit",
+    "cordis/request-run-resolved": "emit",
+    "cordis/dynamic-package": "emit",
+    "cordis/dynamic-retract": "emit",
+    "cordis/inspect-query": "emit",
+    "cordis/inspect-query-resolved": "emit",
+    "llm/adapters-updated": "emit",
+    "settings/document-updated": "emit",
+    "user-questions/request": "waterfall"
+  ]
+
+设 转发白名单 为 取转发白名单()
+
+# 名单命中判定（事件名是否可转发）
+段落 事件可否转发 接收 事件名:
+  返回 字典包含键(转发白名单, 事件名)
+
+# 返回转发模式：emit / waterfall / 空（未命中返回 空）
+段落 转发模式 接收 事件名:
+  如果 字典包含键(转发白名单, 事件名):
+    返回 转发白名单[事件名]
+  返回 空
+
+# waterfall 模式判定（供上层投影选择）
+段落 名单转义模式 接收 事件名:
+  返回 转发模式(事件名) == "waterfall"
+
 # ============================================================
 # 二、子代理归属判定（对齐 agent-lookup.ts L62-85）
 # ============================================================

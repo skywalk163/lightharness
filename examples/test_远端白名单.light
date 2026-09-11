@@ -1,0 +1,102 @@
+# test_远端白名单.light —— 0.1.5 转发通知白名单（19 条含模式）覆盖测试
+# 对标编号 55：远端 API 总线纯逻辑（remote-events.ts L1-29 API_REMOTE_FORWARDED_EVENTS）
+# 覆盖：转发白名单 19 条全量 / 命中与未命中 / 模式判定 / waterfall 转义判定 / 长度
+# 反跑判据：见文件末尾「反跑判据」段
+
+从 远端总线 导入 转发白名单, 事件可否转发, 转发模式, 名单转义模式
+
+# ============================================================
+# 断言辅助
+# ============================================================
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 "断言失败: " + 标签
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+# ============================================================
+# 19 条白名单逐条期望（事件名 → 模式），与 upstream remote-events.ts 严格一致
+# ============================================================
+
+段落 期望表:
+  返回 [
+    ["agent-preset/selected", "emit"],
+    ["approval/request", "waterfall"],
+    ["api-session/activity", "emit"],
+    ["api-session/added", "emit"],
+    ["api-session/error", "emit"],
+    ["api-session/removed", "emit"],
+    ["api-session/status", "emit"],
+    ["commands/change", "emit"],
+    ["credentials/reference-updated", "emit"],
+    ["goal/activation-changed", "emit"],
+    ["cordis/request-run", "emit"],
+    ["cordis/request-run-resolved", "emit"],
+    ["cordis/dynamic-package", "emit"],
+    ["cordis/dynamic-retract", "emit"],
+    ["cordis/inspect-query", "emit"],
+    ["cordis/inspect-query-resolved", "emit"],
+    ["llm/adapters-updated", "emit"],
+    ["settings/document-updated", "emit"],
+    ["user-questions/request", "waterfall"],
+  ]
+
+# ============================================================
+# 测试 1：白名单长度 == 19
+# ============================================================
+
+段落 测白名单长度:
+  断言相等(列表长度(字典键列表(转发白名单)), 19, "白名单有19条")
+# 反跑判据：
+#   把期望 19 改为 18 → 断言相等必红
+
+# ============================================================
+# 测试 2：19 条全量断言（每条事件名 → 期望模式，逐条列出）
+# ============================================================
+
+段落 测全量断言:
+  设 表 为 期望表()
+  遍历 项 之 表:
+    设 事件名 为 项[0]
+    设 期望模式 为 项[1]
+    断言真(事件可否转发(事件名), "命中: " + 事件名)
+    断言相等(转发模式(事件名), 期望模式, "模式: " + 事件名)
+# 反跑判据：
+#   把 转发白名单 中 "approval/request" 的模式从 "waterfall" 改为 "emit"
+#   → 该条 转发模式 断言必红
+#   把 转发白名单 中删除 "llm/adapters-updated" 一条
+#   → 该条 事件可否转发 断言必红
+
+# ============================================================
+# 测试 3：命中/未命中判定
+# ============================================================
+
+段落 测命中未命中:
+  # waterfall 命中
+  断言真(事件可否转发("approval/request"), "approval/request 可转发")
+  断言相等(转发模式("approval/request"), "waterfall", "approval/request 为waterfall")
+  断言真(名单转义模式("approval/request"), "approval/request 转义为waterfall")
+  # emit 命中
+  断言真(事件可否转发("llm/adapters-updated"), "llm/adapters-updated 可转发")
+  断言相等(转发模式("llm/adapters-updated"), "emit", "llm/adapters-updated 为emit")
+  断言相等(名单转义模式("llm/adapters-updated"), 假, "llm/adapters-updated 非waterfall")
+  # 第二条 waterfall
+  断言相等(转发模式("user-questions/request"), "waterfall", "user-questions/request 为waterfall")
+  # 未命中
+  断言相等(事件可否转发("nonsense/event"), 假, "nonsense/event 不可转发")
+  断言相等(转发模式("nonsense/event"), 空, "nonsense/event 模式为空")
+  断言相等(名单转义模式("nonsense/event"), 假, "nonsense/event 非waterfall")
+# 反跑判据：
+#   把 转发模式("approval/request") 的期望 "waterfall" 改为 "emit" → 断言相等必红
+#   把 事件可否转发("nonsense/event") 的期望 假 改为 真 → 断言相等必红
+
+# ============================================================
+# 主入口
+# ============================================================
+
+测白名单长度()
+测全量断言()
+测命中未命中()
