@@ -1,0 +1,37 @@
+# test_模型目录.light —— 路 5 任务 1：模型目录对齐 0.1.5
+# （V41 Flash 默认 / V4 系列保留 / V4 Flash Vision Exp 恢复）
+# 反跑判据：下列每条 断言等于 都把期望硬编码，实现被改反（如默认模型改回旧值）即红。
+从 客户端 导入 取默认模型, 取模型目录, 按ID取模型
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 主:
+  # ---- 默认模型必须是 DeepSeek V41 Flash（提交 bc5fd3b8dc）----
+  断言等于(取默认模型(), "deepseek-flash", "默认模型=deepseek-flash(V41 Flash)")
+
+  # ---- 目录共 4 个条目 ----
+  设 目录 为 取模型目录()
+  断言等于(长度(目录), 4, "目录条目数=4")
+
+  # ---- V4 系列必须保留（提交 441385fe38）----
+  断言等于(按ID取模型("deepseek-v4-flash") != 空, 真, "V4-Flash 保留")
+  断言等于(按ID取模型("deepseek-v4-pro") != 空, 真, "V4-Pro 保留")
+
+  # ---- V4 Flash Vision Exp 必须恢复（提交 0729dbec66）----
+  设 视觉 为 按ID取模型("deepseek-v4-flash-vision-exp")
+  断言等于(视觉 != 空, 真, "V4-Flash-Vision-Exp 恢复")
+  断言等于(视觉["inputModalities"] == ["text", "image"], 真, "视觉模型含 image 模态")
+
+  # ---- 默认模型带 in-history 系统提示更新（surface 节点 0 语义）----
+  设 默认 为 按ID取模型(取默认模型())
+  断言等于(默认["systemPromptUpdate"], "in-history", "默认模型 in-history")
+
+  # ---- 反跑判据：把默认模型期望改反即红（实现若改回旧默认，本条失败）----
+  断言等于(取默认模型() != "deepseek-v4-flash", 真, "反跑：默认不应是 V4-Flash")
+  断言等于(按ID取模型("deepseek-v4-flash") != 空, 真, "反跑：V4-Flash 条目不可缺失")
+
+  打印 "--- 模型目录测试通过 ---"
+
+主()

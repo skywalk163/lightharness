@@ -10,7 +10,7 @@
 #   客户端(端点, 密钥, 模型).对话响应(消息表, 选项表, 工具表) → chunk 列表
 #
 # ⚠️ 光明命名规范 v1：成员名避开关键字/运算符词根（取/生成/导出/模型/模式/事件/部分/原因/类型/全部/工具/模）。
-从 流 导入 造块开始, 造文本增量, 造推理增量, 造工具调用增量, 造块结束, 造用量块, 造结束, 造停止原因, 造错误原因, 造失败
+从 流 导入 造块开始, 造文本增量, 造推理增量, 造工具调用增量, 造块结束, 造用量块, 造结束, 造停止原因, 造错误原因, 造失败, 造用量
 从 SSE 导入 SSE解析器
 从 HTTP 导入 HTTPPost
 从 线程 导入 线程
@@ -39,12 +39,11 @@
   设 推理 为 空
   如果 用量.包含("completion_tokens_details") 且 用量["completion_tokens_details"].包含("reasoning_tokens"):
     设 推理 为 用量["completion_tokens_details"]["reasoning_tokens"]
-  设 结果 为 ["输入": 用量["prompt_tokens"] - 缓存读, "输出": 用量["completion_tokens"]]
-  如果 缓存读 > 0:
-    结果["缓存读"] 为 缓存读
-  如果 推理 != 空:
-    结果["推理"] 为 推理
-  返回 结果
+  设 输入 为 用量["prompt_tokens"] - 缓存读
+  设 输出 为 用量["completion_tokens"]
+  如果 缓存读 == 0:
+    设 缓存读 为 空
+  返回 造用量(输入, 输出, 缓存读, 推理)
 
 # ---- 用 SSE 解析器把响应体切成载荷列表 ----
 # 响应体 已是解码文本（字节→文本由传输层/调用方完成），直接喂给分帧器。
@@ -295,3 +294,32 @@
     返回 ["种类": "完成", "块表": 块表]
   捕获 异常 e:
     返回 ["种类": "错误", "错误码": "网络错误", "错误": e]
+
+# ---- 0.1.5 模型目录（对齐上游 llm-deepseek DEFAULT_MODELS）----
+# Chat Completions 默认模型 → DeepSeek V41 Flash；V4 系列（Flash / Pro）保留；
+# V4 Flash Vision Exp 目录条目恢复（提交 0729dbec66）。deepseek-flash 带
+# systemPromptUpdate: "in-history"，对应 0.1.5「系统提示 = surface 节点 0」语义。
+# 纯数据目录 + 选型函数；消费方（总入口 / Web 服务）应调用 取默认模型() 获取默认路由。
+设 默认上下文窗口 为 1000000
+
+设 默认模型目录 为 [
+  ["id": "deepseek-flash", "name": "DeepSeek-V41-Flash", "contextWindow": 默认上下文窗口, "inputModalities": ["text", "image"], "systemPromptUpdate": "in-history"],
+  ["id": "deepseek-v4-flash", "name": "DeepSeek-V4-Flash", "描述": "Fast, efficient, and economical; suited to focused, routine, or parallel tasks.", "contextWindow": 默认上下文窗口],
+  ["id": "deepseek-v4-pro", "name": "DeepSeek-V4-Pro", "描述": "Stronger agentic coding, knowledge, and difficult reasoning; suited to complex or quality-critical tasks at higher cost.", "contextWindow": 默认上下文窗口],
+  ["id": "deepseek-v4-flash-vision-exp", "name": "DeepSeek-V4-Flash-Vision-Exp", "contextWindow": 默认上下文窗口, "inputModalities": ["text", "image"]],
+]
+
+# Chat Completions 默认模型（0.1.5 提交 bc5fd3b8dc：default Chat Completions to DeepSeek V41 Flash）
+段落 取默认模型:
+  返回 "deepseek-flash"
+
+# 完整模型目录（供发现/选择器使用）
+段落 取模型目录:
+  返回 默认模型目录
+
+# 按模型 id 取目录条目；未命中返回 空
+段落 按ID取模型 接收 模型ID:
+  遍历 模型 之 默认模型目录:
+    如果 模型["id"] == 模型ID:
+      返回 模型
+  返回 空

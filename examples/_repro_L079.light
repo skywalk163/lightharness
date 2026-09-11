@@ -1,0 +1,30 @@
+# PTC = Persistent Token Cache：in-history 系统提示更新模式下缓存
+设 PTC段序 为 800
+设 PTC段名 为 "prompt-token-cache"
+
+段落 组合模型体验 接收 模型:
+  设 更新 为 空
+  如果 (模型.包含("systemPromptUpdate") == 真): 设 更新 为 模型["systemPromptUpdate"]
+  设 缓存保证 为 ""
+  如果 (更新 == "in-history"):
+    设 缓存保证 为 "persistent token cache：模型按 messages 中最新 system 消息读取完整有效系统提示，变更可随缓存历史下发而不必重写消息 0"
+  返回 ["id": 模型["id"], "name": 模型["name"], "systemPromptUpdate": 更新, "cacheGuarantee": 缓存保证]
+
+段落 渲染PTC段 接收 体验:
+  如果 (体验["systemPromptUpdate"] != "in-history"): 返回 ""
+  设 文本 为 "模型体验（" + 体验["name"] + "）"
+  设 文本 为 文本 + PTC段名 + "（段序 " + 转字符串(PTC段序) + "）：" + 体验["cacheGuarantee"]
+  返回 文本
+
+段落 排序工具 接收 工具表, 顺序, 已知名:
+  设 休息 为 []
+  遍历 t 之 工具表:
+    如果 (字典包含键(已知名, t["name"]) == 假): 列表追加(休息, t)
+  设 结果 为 []
+  遍历 名 之 顺序:
+    如果 (名 == "<unlisted-tools>"):
+      遍历 r 之 休息: 列表追加(结果, r)
+    否则:
+  遍历 t 之 工具表:
+    如果 (t["name"] == 名): 列表追加(结果, t)
+  返回 结果

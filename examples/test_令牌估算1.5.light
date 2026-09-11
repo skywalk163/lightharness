@@ -1,0 +1,78 @@
+# test_令牌估算1.5.light —— 路 5 任务 3/4：token-meter 深化 + 提示表示 PTC 词汇
+# 反跑判据：每条 断言等于 硬编码期望；实现被改反即红。
+从 令牌估算 导入 估算上下文分解, 聚合单次用量, 估算系统消息, 估算消息, 估算工具令牌
+从 提示模板 导入 组合模型体验, 渲染PTC段
+从 客户端 导入 按ID取模型
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 主:
+  # ---- 上下文分解：system / tools / message 三类 token 拆分 ----
+  设 头部 为 ["tools": [["name": "a"], ["name": "bb"]]]
+  设 系统消息 为 ["role": "system", "content": [["type": "text", "text": "你是助手"]]]
+  设 用户消息 为 ["role": "user", "content": [["type": "text", "text": "你好世界"]]]
+  设 消息表 为 [系统消息, 用户消息]
+  设 分解 为 估算上下文分解(头部, 消息表)
+
+  # 与独立估算逐类相等（不改内部分类口径即红）
+  断言等于(分解["systemTokens"], 估算系统消息(系统消息), "systemTokens 等于独立估算")
+  断言等于(分解["toolsTokens"], 估算工具令牌(头部), "toolsTokens 等于独立估算")
+  断言等于(分解["messageTokens"], 估算消息(用户消息), "messageTokens 等于独立估算")
+  # 三类之和守恒
+  断言等于(分解["systemTokens"] + 分解["toolsTokens"] + 分解["messageTokens"],
+           估算系统消息(系统消息) + 估算工具令牌(头部) + 估算消息(用户消息), "三类之和守恒")
+
+  # ---- 只计最后存活的 system 消息（surface 顺序语义）----
+  设 旧系统 为 ["role": "system", "content": [["type": "text", "text": "旧"]]]
+  设 新系统 为 ["role": "system", "content": [["type": "text", "text": "新提示明显更长一些用于区分不同系统消息的计数"]]]
+  设 消息表2 为 [旧系统, 用户消息, 新系统]
+  设 分解2 为 估算上下文分解(头部, 消息表2)
+  断言等于(分解2["systemTokens"], 估算系统消息(新系统), "只计最后存活 system 消息")
+  断言等于(分解2["systemTokens"] != 估算系统消息(旧系统), 真, "反跑：不应计旧 system")
+  断言等于(分解2["messageTokens"], 估算消息(用户消息), "非 system 消息才计入 messageTokens")
+  断言等于(分解2["systemTokens"] != 0, 真, "反跑：systemTokens 不应为 0")
+
+  # ---- 单次用量聚合（多 attempt 汇总）----
+  设 用量表 为 [
+    ["输入": 100, "输出": 20, "总计": 120, "缓存读": 40, "缓存写": 5, "推理": 8],
+    ["输入": 60, "输出": 10, "总计": 70, "缓存读": 20, "缓存写": 3, "推理": 4],
+  ]
+  设 聚合 为 聚合单次用量(用量表)
+  断言等于(聚合["uncachedInputTokens"], 160, "未缓存输入求和=160")
+  断言等于(聚合["outputTokens"], 30, "输出求和=30")
+  断言等于(聚合["totalTokens"], 190, "总计=190")
+  断言等于(聚合["cacheReadTokens"], 60, "缓存读求和=60")
+  断言等于(聚合["cacheWriteTokens"], 8, "缓存写求和=8")
+  断言等于(聚合["reasoningTokens"], 12, "推理求和=12")
+
+  # ---- 部分 attempt 缺桶 → 该桶缺失（对齐上游 every 守卫）----
+  设 用量表2 为 [
+    ["输入": 100, "输出": 20, "缓存读": 40],
+    ["输入": 60, "输出": 10],
+  ]
+  设 聚合2 为 聚合单次用量(用量表2)
+  断言等于(聚合2["uncachedInputTokens"], 160, "缺桶：输入仍求和")
+  断言等于(聚合2.包含("cacheReadTokens"), 假, "缺桶：缓存读不应出现")
+  断言等于(聚合2.包含("totalTokens"), 假, "缺桶：总计不应出现")
+  断言等于(聚合["uncachedInputTokens"] > 0, 真, "反跑：聚合输入不应为 0")
+
+  # ---- 提示表示：模型体验 PTC 字段（缓存保证并入 model-experience）----
+  设 体验 为 组合模型体验(按ID取模型("deepseek-flash"))
+  断言等于(体验.包含("cacheGuarantee"), 真, "模型体验含 cacheGuarantee 字段")
+  断言等于(体验["cacheGuarantee"] != "", 真, "V41 Flash 含缓存保证")
+  断言等于(体验["systemPromptUpdate"], "in-history", "V41 Flash in-history")
+  断言等于(渲染PTC段(体验) != "", 真, "PTC 段文本非空")
+
+  # ---- 非 in-history 模型：无缓存保证、PTC 段空 ----
+  设 体验2 为 组合模型体验(按ID取模型("deepseek-v4-flash"))
+  断言等于(体验2["cacheGuarantee"], "", "V4-Flash 无缓存保证")
+  断言等于(渲染PTC段(体验2), "", "V4-Flash PTC 段为空")
+
+  # ---- 反跑判据：PTC 字段缺失即红（实现若漏 cacheGuarantee 字段，本条失败）----
+  断言等于(体验.包含("cacheGuarantee"), 真, "反跑：缺 PTC 字段必须红")
+
+  打印 "--- 令牌估算1.5 / 提示表示 测试通过 ---"
+
+主()

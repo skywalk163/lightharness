@@ -1,4 +1,28 @@
 从 JSON 导入 序列化JSON
+
+# ---- 0.1.5 提示表示：PTC 词汇 + 缓存保证并入 model-experience 字段 ----
+# 对应上游 0.1.5 提交 71b0d83822（V3 PTC 词汇并入 system-prompt 表示）、
+# 73865675a4（combine cache guarantees in model-experience field）。
+# PTC = Persistent Token Cache：in-history 系统提示更新模式下，系统提示可被持久化缓存，
+# 变更随缓存历史下发，不必重写消息 0。
+设 PTC段序 为 800
+设 PTC段名 为 "prompt-token-cache"
+
+# 组合模型体验：把缓存保证与 system-prompt 更新语义并入单一 model-experience 字段。
+段落 组合模型体验 接收 模型:
+  设 更新 为 空
+  如果 (模型.包含("systemPromptUpdate") == 真): 设 更新 为 模型["systemPromptUpdate"]
+  设 缓存保证 为 ""
+  如果 (更新 == "in-history"):
+    设 缓存保证 为 "persistent token cache：模型按 messages 中最新 system 消息读取完整有效系统提示，变更可随缓存历史下发而不必重写消息 0"
+  返回 ["id": 模型["id"], "name": 模型["name"], "systemPromptUpdate": 更新, "cacheGuarantee": 缓存保证]
+
+# 渲染 PTC 段（system-prompt 表示层 PTC 词汇文本；非 in-history 模型返回空串）
+段落 渲染PTC段 接收 体验:
+  如果 (体验["systemPromptUpdate"] != "in-history"): 返回 ""
+  设 文本 为 "模型体验（" + 体验["name"] + "）"
+  设 文本 为 文本 + "\n- " + PTC段名 + "（段序 " + 转字符串(PTC段序) + "）：" + 体验["cacheGuarantee"]
+  返回 文本
 段落 是小写字母 接收 c:
   返回 (c >= "a") 且 (c <= "z")
 段落 是数字字符 接收 c:
