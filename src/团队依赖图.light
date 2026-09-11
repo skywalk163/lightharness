@@ -65,21 +65,21 @@
     快照["error"] 为 错误文本
   返回 快照
 
-# 构造成员通知（team/member 事件形状）
+# 构造成员通知（team/member 事件形状，version 2 对齐上游 types.ts SessionEventMap）
 段落 构造成员通知 接收 团队标识, 成员快照:
-  返回 {"version": 1, "teamId": 团队标识, "member": 成员快照}
+  返回 {"version": 2, "teamId": 团队标识, "member": 成员快照}
 
-# 构造任务通知（team/task 事件形状）
+# 构造任务通知（team/task 事件形状，version 2 对齐上游 types.ts SessionEventMap + task-board.ts）
 段落 构造任务通知 接收 团队标识, 任务快照:
-  返回 {"version": 1, "teamId": 团队标识, "task": 任务快照}
+  返回 {"version": 2, "teamId": 团队标识, "task": 任务快照}
 
-# 构造排队通知（team/message/queued 事件形状）
+# 构造排队通知（team/message/queued 事件形状，version 2 对齐上游 types.ts SessionEventMap）
 段落 构造排队通知 接收 团队标识, 消息快照:
-  返回 {"version": 1, "teamId": 团队标识, "message": 消息快照}
+  返回 {"version": 2, "teamId": 团队标识, "message": 消息快照}
 
-# 构造送达通知（team/message/delivered 事件形状）
+# 构造送达通知（team/message/delivered 事件形状，version 2 对齐上游 types.ts SessionEventMap）
 段落 构造送达通知 接收 团队标识, 消息标识, 目标标识:
-  返回 {"version": 1, "teamId": 团队标识, "messageId": 消息标识, "targetId": 目标标识}
+  返回 {"version": 2, "teamId": 团队标识, "messageId": 消息标识, "targetId": 目标标识}
 
 # ===========================================================
 # 二、错误层（对齐 error.ts）

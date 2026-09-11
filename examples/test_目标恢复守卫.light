@@ -1,0 +1,80 @@
+# test_目标恢复守卫.light —— 任务3 对齐判据：tool-goal resume-paused 守卫
+# 对标原版 packages/goal/tool-goal/src/index.ts update_goal action='resume'：
+#   if (action === 'resume' && current?.id === ref.id && current.revision === ref.revision
+#       && current.phase === 'paused')
+#     throw GOAL_TOOL_RESUME_PAUSED('the model cannot resume a paused goal; the user must resume it')
+# 反跑判据：守卫「paused 拒绝」改「放行」→ 红；引用不匹配放行改拒绝 → 红。
+# 运行：python 运行.py examples/test_目标恢复守卫.light
+
+从 目标折叠 导入 判定模型可恢复
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败(应为真)：" + 信息)
+
+段落 断言抛错 接收 信息, 期望文案:
+  如果 字符串包含(信息, 期望文案) == 假:
+    抛出 新建 错误("断言失败(错误文案不含期望)：" + 信息 + " | 期望含：" + 期望文案)
+
+段落 快照 接收 编号, 阶段, 修订:
+  返回 {"id": 编号, "objective": "obj", "phase": 阶段, "maxGoalRounds": 3, "revision": 修订}
+
+段落 引用 接收 编号, 修订:
+  返回 {"id": 编号, "revision": 修订}
+
+段落 主:
+  # ===== A. paused + 引用命中 → 拒绝（GOAL_TOOL_RESUME_PAUSED）=====
+  设 暂停目标 为 快照("g1", "paused", 1)
+  设 同引用 为 引用("g1", 1)
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    判定模型可恢复(暂停目标, 同引用)
+  捕获 错误:
+    设 抛了 为 真
+    设 消息 为 文本(错误)
+  断言真(抛了, "paused + 引用命中 → 拒绝")  # 反跑：改放行 → 红
+  断言抛错(消息, "the model cannot resume a paused goal")
+
+  # ===== B. active + 引用命中 → 放行 =====
+  设 活跃目标 为 快照("g1", "active", 1)
+  断言相等(判定模型可恢复(活跃目标, 同引用), 真, "active 放行")
+
+  # ===== C. blocked + 引用命中 → 放行 =====
+  设 阻塞目标 为 快照("g1", "blocked", 1)
+  断言相等(判定模型可恢复(阻塞目标, 同引用), 真, "blocked 放行")
+
+  # ===== D. complete + 引用命中 → 放行（complete 由恢复激活判定另行拒绝）=====
+  设 完结目标 为 快照("g1", "complete", 1)
+  断言相等(判定模型可恢复(完结目标, 同引用), 真, "complete 放行（守卫不拦，由下游拒绝）")
+
+  # ===== E. paused + 引用不匹配 → 放行（交下游处理）=====
+  设 异编号引用 为 引用("g2", 1)
+  断言相等(判定模型可恢复(暂停目标, 异编号引用), 真, "paused 但 id 不匹配 → 放行")  # 反跑：改拒绝 → 红
+  设 异修订引用 为 引用("g1", 2)
+  断言相等(判定模型可恢复(暂停目标, 异修订引用), 真, "paused 但 revision 不匹配 → 放行")  # 反跑：改拒绝 → 红
+
+  # ===== F. 多轮修订场景：paused rev=2 + 引用命中 rev=2 → 拒绝 =====
+  设 暂停目标2 为 快照("g1", "paused", 2)
+  设 同引用2 为 引用("g1", 2)
+  设 抛了2 为 假
+  设 消息2 为 ""
+  尝试:
+    判定模型可恢复(暂停目标2, 同引用2)
+  捕获 错误:
+    设 抛了2 为 真
+    设 消息2 为 文本(错误)
+  断言真(抛了2, "paused rev=2 + 引用命中 rev=2 → 拒绝")
+  断言抛错(消息2, "the model cannot resume a paused goal")
+
+  # ===== G. paused rev=2 + 旧引用 rev=1 → 放行（引用已过期）=====
+  设 旧引用 为 引用("g1", 1)
+  断言相等(判定模型可恢复(暂停目标2, 旧引用), 真, "paused rev=2 + 旧引用 rev=1 → 放行")
+
+  打印 "--- 目标恢复守卫测试通过 ---"
+
+主()
