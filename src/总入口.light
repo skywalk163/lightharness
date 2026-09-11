@@ -16,6 +16,20 @@
 #   HARNESS_ROOT        持久化根目录（默认 sessions）
 #   HARNESS_SESSION     会话标识（默认 cli_<时间戳>）
 #
+# 命令面（第 7 轮任务1；对齐 apps/cli/src/args.ts L1-25 + dump-config.ts）：
+#   上游哲学：launcher 只解析自己拥有的 flags（profile / --patch / config dumps），
+#   其后所有参数原样转交 booted 树内插件解析；DshInvocation 三态 = profile 引导 /
+#   dump-config（打印组合配置树、不 boot、不 eval !!js）/ plugin（pnpm 转发）。
+#   光明现实映射：光明无 Cordis profile/patch 层系统、无 argv 子命令（本入口用环境变量
+#   传参避免与 light run 的 argv 冲突）→ 不做 profile/plugin/argv 解析，把「命令面」
+#   等价映射为「环境变量子命令 + 配置来源标注」，profile/patch/plugin 层继续登记宿主面：
+#   HARNESS_CMD         子命令（缺省 run）：run / dump-config / version / help
+#     run          现有 headless 行为不变（执行运行）
+#     dump-config  打印当前生效配置，每项标注「来源」（环境变量 / .env / 内置默认），不 boot 不跑 agent
+#     version      打印版本号
+#     help         打印用法表
+#     其它       打印「未知命令 + help 提示」并以非零退出码结束（抛出）
+#
 # 可测试导出：组装注册表 / 跑一轮 / 取最终文本（供 mock 客户端测试）
 # ⚠️ 光明命名规范 v1：成员名/局部名避开关键字与运算符词根。
 
@@ -26,9 +40,12 @@
 从 消息 导入 造文本块
 从 持久化 导入 写出会话, 读入会话, 初始化日志, 追加事件行, 日志路径
 导入 外部命令
+从 令牌计量 导入 单价表, 取单价
+从 压缩E5 导入 压缩配置
+从 内置核心字典 导入 字典键列表
 从 内置核心字符串 导入 开头, 结尾, 截取, 截取到末尾, 去除空白, 查找子串
 从 内置核心判型 导入 是字典
-从 字符串工具轻量 导入 分割字符串
+从 字符串工具轻量 导入 分割字符串, 连接字符串
 
 # ---- bash 工具：执行外部命令 ----
 段落 执行bash 接收 参数:
@@ -208,8 +225,8 @@
     返回 文件乙取值
   返回 取默认模型()
 
-# ---- 主流程 ----
-段落 主:
+# ---- run 子命令本体（原 headless 主流程；第 7 轮命令面调度后重命名为 执行运行）----
+段落 执行运行:
   设 用户文本 为 环境变量("HARNESS_MSG", 空)
   设 提示文件 为 环境变量("HARNESS_PROMPT_FILE", 空)
   如果 用户文本 == 空 且 提示文件 != 空 且 提示文件 != "":
@@ -290,3 +307,124 @@
     捕获 异常 错误:
       打印 "[请求失败] " + 转字符串(错误)
       打印 "请检查网络连接和 API 密钥后重试"
+
+# ============================================================
+# 命令面调度（第 7 轮任务1；对齐 apps/cli/src/args.ts + dump-config.ts）
+# ============================================================
+# 上游对齐点：
+#   args.ts L1-25 —— launcher 只解析自己拥有的 flags（profile / --patch / config dumps），
+#     其后所有参数原样转交 booted 树内插件解析；DshInvocation 三态 = profile 引导 /
+#     dump-config（打印组合配置树、不 boot、不 eval !!js）/ plugin（pnpm 转发）。
+#   dump-config.ts runDumpConfig —— 按 layer 打印组合配置，注释命名每个来源文件。
+# 光明现实映射（重要）：光明无 Cordis profile/patch 层系统、无 argv 子命令（本入口用
+#   环境变量传参避免与 light run 的 argv 冲突）→ 不做 profile/plugin/argv 解析，把
+#   「命令面」等价映射为「环境变量子命令 + 配置来源标注」：HARNESS_CMD 选子命令（缺省 run），
+#   dump-config 逐项标注「来源」（环境变量 / .env / 内置默认），对齐「命名每个来源」哲学。
+#   profile / patch / plugin 层与 argv 子命令解析属宿主面，未映射，维持对标登记。
+# ============================================================
+
+# 版本号（对齐 docs/功能对标/对标清单.json「版本」0.1.5-rc.2；-lh 标识 lightharness 复刻分支）
+设 版本号 为 "0.1.5-lh"
+
+# 子命令缺省值（对齐 args.ts 的默认 profile 引导）
+设 缺省子命令 为 "run"
+
+# ---- 模型解析链的「来源」标注（顺序复用 解析模型：环境变量 → .env HARNESS_MODEL
+#      → .env OPENAI_MODEL → 内置默认 取默认模型()）----
+段落 取模型来源 接收 环境取值, 文件甲取值, 文件乙取值:
+  如果 环境取值 != 空 且 环境取值 != "":
+    返回 "环境变量 HARNESS_MODEL"
+  如果 文件甲取值 != 空 且 文件甲取值 != "":
+    返回 ".env HARNESS_MODEL"
+  如果 文件乙取值 != 空 且 文件乙取值 != "":
+    返回 ".env OPENAI_MODEL"
+  返回 "内置默认 取默认模型()"
+
+# ---- 压缩配置的「来源」标注（压缩E5.压缩配置 构造时读同名环境变量，缺省走类属性）----
+段落 取环境变量来源 接收 目标键, 缺省文案:
+  设 值 为 环境变量(目标键, 空)
+  如果 值 != 空 且 值 != "":
+    返回 "环境变量 " + 目标键
+  返回 缺省文案
+
+# ---- dump-config：当前生效配置 + 逐项来源标注（不 boot、不跑 agent）----
+段落 取配置文本:
+  设 行表 为 []
+  行表.追加("=== 当前生效配置（版本 " + 版本号 + "） ===")
+  行表.追加("子命令: " + 环境变量("HARNESS_CMD", 缺省子命令) + "（来源: 环境变量 HARNESS_CMD，缺省 " + 缺省子命令 + "）")
+  行表.追加("命令根: " + 当前目录() + "（来源: 运行时 当前目录()）")
+  设 环境取值 为 环境变量("HARNESS_MODEL", 空)
+  设 文件甲取值 为 读取环境文件值("HARNESS_MODEL")
+  设 文件乙取值 为 读取环境文件值("OPENAI_MODEL")
+  行表.追加("模型: " + 解析模型(环境取值, 文件甲取值, 文件乙取值) + "（来源: " + 取模型来源(环境取值, 文件甲取值, 文件乙取值) + "）")
+  行表.追加("模型单价表（美元 / 1M tokens，输入 / 输出；来源: 内置默认 令牌计量.单价表）")
+  遍历 模型键 之 字典键列表(单价表):
+    设 价 为 单价表[模型键]
+    行表.追加("  " + 模型键 + "  输入 " + 转字符串(价[0]) + "  输出 " + 转字符串(价[1]))
+  设 缺省价 为 取单价("未知模型")
+  行表.追加("  未知模型  输入 " + 转字符串(缺省价[0]) + "  输出 " + 转字符串(缺省价[1]) + "（来源: 内置默认 令牌计量.缺省单价表）")
+  行表.追加("压缩配置（来源: 环境变量优先，缺省 内置默认 压缩E5.压缩配置）")
+  设 压缩表 为 新建 压缩配置().状态()
+  行表.追加("  阈值token: " + 转字符串(压缩表["阈值token"]) + "（来源: " + 取环境变量来源("HARNESS_COMPACTION_THRESHOLD", "内置默认 8000") + "）")
+  行表.追加("  保留轮数: " + 转字符串(压缩表["保留轮数"]) + "（来源: " + 取环境变量来源("HARNESS_COMPACTION_KEEP_ROUNDS", "内置默认 6") + "）")
+  行表.追加("  上下文窗口: " + 转字符串(压缩表["上下文窗口"]) + "（来源: " + 取环境变量来源("HARNESS_MODEL_CONTEXT_WINDOW", "内置默认 32768") + "）")
+  行表.追加("会话根: " + 环境变量("HARNESS_ROOT", "sessions") + "（来源: 环境变量 HARNESS_ROOT，缺省 sessions）")
+  行表.追加("未列字段: 端点与密钥不打印（HARNESS_ENDPOINT / DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY）")
+  行表.追加("未映射宿主面: profile / patch / plugin 层与 argv 子命令解析（Cordis 层系统），维持对标登记")
+  返回 连接字符串(行表, "\n")
+
+# ---- help：命令用法表（含现有参数表）----
+段落 取用法文本:
+  设 行表 为 []
+  行表.追加("=== lightharness CLI 用法（版本 " + 版本号 + "） ===")
+  行表.追加("子命令: 设 HARNESS_CMD 为 子命令（缺省 " + 缺省子命令 + "）")
+  行表.追加("  run          headless 运行（执行运行：HARNESS_MSG / HARNESS_PROMPT_FILE / HARNESS_RESUME / HARNESS_REPL=1）")
+  行表.追加("  dump-config  打印当前生效配置并逐项标注「来源」（不 boot、不跑 agent）")
+  行表.追加("  version      打印版本号")
+  行表.追加("  help         打印本用法表")
+  行表.追加("未知命令: 打印「未知命令 + help 提示」并以非零退出码结束")
+  行表.追加("")
+  行表.追加("参数（环境变量；对齐 args.ts「launcher 只解析自己的 flags」）:")
+  行表.追加("  HARNESS_CMD=run|dump-config|version|help（缺省 run）")
+  行表.追加("  HARNESS_MSG / HARNESS_PROMPT_FILE  用户消息与提示文件")
+  行表.追加("  HARNESS_RESUME / HARNESS_SESSION / HARNESS_ROOT  续写会话与持久化根（缺省 sessions）")
+  行表.追加("  HARNESS_REPL=1 / HARNESS_LIST=1  交互模式与会话列表")
+  行表.追加("  HARNESS_ENDPOINT  端点（缺省 https://api.deepseek.com/chat/completions）")
+  行表.追加("  HARNESS_MODEL  模型（缺省 取默认模型()，0.1.5 为 deepseek-flash）")
+  行表.追加("  DEEPSEEK_API_KEY 或 HARNESS_API_KEY  密钥必填，亦可写入项目根 .env")
+  行表.追加("  HARNESS_COMPACTION_THRESHOLD / HARNESS_COMPACTION_KEEP_ROUNDS / HARNESS_MODEL_CONTEXT_WINDOW")
+  行表.追加("")
+  行表.追加("示例: 设 HARNESS_CMD 为 dump-config，然后 python 运行.py examples/运行CLI.light")
+  行表.追加("未映射宿主面: profile / patch / plugin 层与 argv 子命令解析，维持对标登记")
+  返回 连接字符串(行表, "\n")
+
+# ---- 子命令分派表（等价上游 DshInvocation 三态）；未知命令返回 假 ----
+段落 调度命令 接收 命令:
+  如果 命令 == "run":
+    执行运行()
+    返回 真
+  否则如果 命令 == "dump-config":
+    打印 取配置文本()
+    返回 真
+  否则如果 命令 == "version":
+    打印 版本号
+    返回 真
+  否则如果 命令 == "help":
+    打印 取用法文本()
+    返回 真
+  否则:
+    打印 "未知命令: " + 命令
+    打印 "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）"
+    返回 假
+
+# ---- 入口（原 headless 主流程迁为 执行运行；本入口只做子命令分派）----
+# 命令值 入参供测试注入（缺省读环境变量 HARNESS_CMD，缺省子命令 run）。
+# 未知命令时抛出，使进程以非零退出码结束。
+段落 主 接收 命令值=空:
+  设 命令 为 环境变量("HARNESS_CMD", 缺省子命令)
+  如果 命令值 != 空 且 命令值 != "":
+    设 命令 为 命令值
+  如果 命令 == 空 或 命令 == "":
+    设 命令 为 缺省子命令
+  如果 调度命令(命令) == 假:
+    抛出 "未知命令: " + 命令 + "（设 HARNESS_CMD 为 help 查看命令列表）"
