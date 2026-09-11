@@ -1,0 +1,273 @@
+# test_行为对照_LLM.light —— 第8轮 任务3：LLM 消息/请求行为对照
+# 行为级对照验证（src 全程只读，本文件只做对照断言，不改实现）。
+#
+# 对标上游（G:\github\deepseek-harness @ a305303422，0.1.5-rc.2）：
+#   packages/llm/llm/tests/message.spec.ts            → 节 A 消息构造
+#   packages/llm/llm/tests/call-config.spec.ts        → 节 C 请求体映射（字段级相等思想）
+#   packages/llm/llm/src/assembler.ts                 → 节 B 流式块组装
+#   packages/llm/llm-deepseek/tests/translate.spec.ts → 节 B 流式 SSE 翻译
+#   packages/llm/llm-deepseek/tests/adapter.spec.ts   → 节 D 模型目录（DEFAULT_MODELS）
+#   packages/llm/llm-deepseek/tests/request-pricing.spec.ts → 节 E 单价映射思想
+#   packages/llm/token-meter/src/*                    → 节 F token 计数分桶
+#
+# 断言约定：断言等于(实际, 期望, 标签) 不一致即抛出 → 运行器非 0 退出（红）。
+# 每节末尾打印节号，便于快速定位；全过打印汇总。
+
+从 消息 导入 造用户消息, 造用户消息带来源, 造助手消息, 造工具结果消息, 造系统消息, 造文本块
+从 客户端 导入 翻译流, 客户端, 取默认模型, 取模型目录, 按ID取模型, 翻译完成原因
+从 令牌计量 导入 取单价
+从 令牌估算 导入 估算上下文分解, 聚合单次用量, 估算系统消息, 估算消息, 估算工具令牌
+
+# ---- 断言与辅助 ----
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败[" + 标签 + "]: 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 取所有块 接收 块表, 类型:
+  设 结果 为 []
+  遍历 块 之 块表:
+    如果 块["type"] == 类型:
+      结果.追加(块)
+  返回 结果
+
+段落 列表含 接收 表, 值:
+  遍历 项 之 表:
+    如果 项 == 值:
+      返回 真
+  返回 假
+
+段落 主:
+  # ============================================================
+  # 节 A —— 消息构造（对标 message.spec.ts）
+  # 上游 message.spec.ts 断言 role/source/content 形状 + 深冻结 detached。
+  # 光明为值语义语言、按引用组装，不做 deepFreeze；形状逐字段对齐，detached 差异见报告 §5。
+  # ============================================================
+  # A1 造用户消息：role=user、id 非空、source.kind=user、content 形状
+  设 输入内容 为 [造文本块("original")]
+  设 用户 为 造用户消息(输入内容)
+  断言等于(用户["role"], "user", "A1 user role")
+  断言等于(长度(用户["id"]) > 0, 真, "A1 user id 非空")
+  断言等于(用户["source"]["kind"], "user", "A1 user source.kind")
+  断言等于(用户["content"], 输入内容, "A1 user content 形状")
+
+  # A2 造用户消息带来源：自定义 source 透传
+  设 来源 为 ["kind": "plugin", "plugin": "test"]
+  设 用户2 为 造用户消息带来源([造文本块("x")], 来源)
+  断言等于(用户2["source"], 来源, "A2 user 自定义 source 透传")
+
+  # A3 造助手消息：role=assistant、source.kind=model、provider/model 透传
+  设 助手 为 造助手消息([造文本块("answer")], "test-provider", "test-model")
+  断言等于(助手["role"], "assistant", "A3 assistant role")
+  断言等于(助手["source"]["kind"], "model", "A3 assistant source.kind")
+  断言等于(助手["source"]["provider"], "test-provider", "A3 provider 透传")
+  断言等于(助手["source"]["model"], "test-model", "A3 model 透传")
+
+  # A4 造工具结果消息：role=user、source.kind=tool、content[0] 为 tool-result
+  设 结果 为 造工具结果消息("call-1", [造文本块("result")], 假)
+  断言等于(结果["role"], "user", "A4 tool-result role")
+  断言等于(结果["source"]["kind"], "tool", "A4 tool-result source.kind")
+  断言等于(结果["source"]["callId"], "call-1", "A4 callId 透传")
+  断言等于(结果["content"][0]["type"], "tool-result", "A4 块类型 tool-result")
+  断言等于(结果["content"][0]["toolCallId"], "call-1", "A4 块 toolCallId")
+  断言等于(结果["content"][0]["isError"], 假, "A4 isError=false")
+
+  # A5 造系统消息：空文本 → content=[]；非空 → 单 text 块；source.kind=plugin
+  设 系统空 为 造系统消息("", "system-prompt")
+  断言等于(系统空["role"], "system", "A5 system role")
+  断言等于(系统空["content"], [], "A5 空文本 content=[]")
+  断言等于(系统空["source"]["kind"], "plugin", "A5 system source.kind")
+  断言等于(系统空["source"]["plugin"], "system-prompt", "A5 plugin 透传")
+  设 系统满 为 造系统消息("你是助手", "system-prompt")
+  断言等于(系统满["content"], [["type": "text", "text": "你是助手"]], "A5 非空 content 单 text 块")
+
+  打印 "节A 消息构造 通过"
+
+  # ============================================================
+  # 节 B —— 流式 SSE 翻译 + 块组装（对标 translate.spec.ts + assembler.spec.ts）
+  # 用 mock 载荷表（已分帧的 JSON 字符串）喂 翻译流，不真实联网。
+  # ============================================================
+  # B1 文本流式 + finish/usage 延迟到 [DONE]（对齐 translate.spec.ts "defers finish to DONE"）
+  设 体B1 为 [
+    "{\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}",
+    "{\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}",
+    "{\"choices\":[{\"delta\":{\"content\":\"\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":2}}",
+    "[DONE]"
+  ]
+  设 块B1 为 翻译流(体B1)
+  设 结束块B1 为 取所有块(块B1, "block-end")
+  断言等于(结束块B1[0]["block"]["type"], "text", "B1 block-end 类型 text")
+  断言等于(结束块B1[0]["block"]["text"], "Hello", "B1 文本拼接=Hello")
+  # usage 出现在 block-end 之后（延迟到 DONE）
+  设 用量idx 为 -1
+  设 结束idx 为 -1
+  设 i 为 0
+  当 i < 长度(块B1):
+    如果 块B1[i]["type"] == "usage": 设 用量idx 为 i
+    如果 块B1[i]["type"] == "block-end": 设 结束idx 为 i
+    设 i 为 i + 1
+  断言等于(用量idx > 结束idx, 真, "B1 usage 在 block-end 之后（延迟到 DONE）")
+  断言等于(块B1[用量idx]["usage"]["输入"], 5, "B1 输入=5（无缓存命中不减）")
+  断言等于(块B1[用量idx]["usage"]["输出"], 2, "B1 输出=2")
+  # 差异：上游 usage 含 totalTokens(=输入+输出)，光明 造用量 不计算 totalTokens（见报告 §5）
+  断言等于(块B1[用量idx]["usage"].包含("totalTokens"), 假, "B1 差异: 光明无 totalTokens 桶")
+  断言等于(块B1[长度(块B1)-1]["type"], "finish", "B1 末块为 finish")
+  断言等于(块B1[长度(块B1)-1]["reason"]["种类"], "stop", "B1 finish=stop")
+
+  # B2 reasoning 先、text 后（独立块，对齐 translate.spec.ts "streams reasoning then text"）
+  设 体B2 为 [
+    "{\"choices\":[{\"delta\":{\"content\":null,\"reasoning_content\":\"think\"}}]}",
+    "{\"choices\":[{\"delta\":{\"content\":null,\"reasoning_content\":\"ing\"}}]}",
+    "{\"choices\":[{\"delta\":{\"content\":\"answer\",\"reasoning_content\":null}}]}",
+    "{\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}",
+    "[DONE]"
+  ]
+  设 块B2 为 翻译流(体B2)
+  设 结束B2 为 取所有块(块B2, "block-end")
+  断言等于(结束B2[0]["block"]["type"], "reasoning", "B2 首块结束=reasoning")
+  断言等于(结束B2[0]["block"]["text"], "thinking", "B2 reasoning 拼接=thinking")
+  断言等于(结束B2[1]["block"]["type"], "text", "B2 次块结束=text")
+  断言等于(结束B2[1]["block"]["text"], "answer", "B2 text=answer")
+
+  # B3 工具调用按 index 重组（对齐 translate.spec.ts "reassembles a tool call from fragmented deltas"）
+  设 体B3 为 [
+    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_00_x\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]}}]}",
+    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"city\\\"\"}}]}}]}",
+    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\": \\\"Paris\\\"}\"}}]}}]}",
+    "{\"choices\":[{\"delta\":{\"content\":\"\"},\"finish_reason\":\"tool_calls\"}],\"usage\":{\"prompt_tokens\":28,\"completion_tokens\":6}}",
+    "[DONE]"
+  ]
+  设 块B3 为 翻译流(体B3)
+  设 结束B3 为 取所有块(块B3, "block-end")
+  断言等于(结束B3[0]["block"]["type"], "tool-call", "B3 块类型 tool-call")
+  断言等于(结束B3[0]["block"]["id"], "call_00_x", "B3 id 透传")
+  断言等于(结束B3[0]["block"]["name"], "get_weather", "B3 name 透传")
+  断言等于(结束B3[0]["block"]["arguments"], "{\"city\": \"Paris\"}", "B3 参数分片重组={\"city\": \"Paris\"}")
+  断言等于(块B3[长度(块B3)-1]["reason"]["种类"], "tool-calls", "B3 finish=tool-calls")
+
+  # B4 并行工具调用按 wire index 区分（对齐 translate.spec.ts "disambiguates parallel tool calls"）
+  设 体B4 为 [
+    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"a\",\"function\":{\"name\":\"one\",\"arguments\":\"{}\"}},{\"index\":1,\"id\":\"b\",\"function\":{\"name\":\"two\",\"arguments\":\"\"}}]}}]}",
+    "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":1,\"function\":{\"arguments\":\"{}\"}}]}}]}",
+    "{\"choices\":[{\"delta\":{},\"finish_reason\":\"tool_calls\"}]}",
+    "[DONE]"
+  ]
+  设 块B4 为 翻译流(体B4)
+  设 结束B4 为 取所有块(块B4, "block-end")
+  断言等于(结束B4[0]["block"]["id"], "a", "B4 并行[0].id=a")
+  断言等于(结束B4[0]["block"]["name"], "one", "B4 并行[0].name=one")
+  断言等于(结束B4[0]["block"]["arguments"], "{}", "B4 并行[0].arguments={}")
+  断言等于(结束B4[1]["block"]["id"], "b", "B4 并行[1].id=b")
+  断言等于(结束B4[1]["block"]["name"], "two", "B4 并行[1].name=two")
+  断言等于(结束B4[1]["block"]["arguments"], "{}", "B4 并行[1].arguments={}")
+
+  # B5 空响应 → EMPTY_RESPONSE 错误结束（对齐 translate.spec.ts EMPTY_RESPONSE_CODE）
+  设 体B5 为 [
+    "{\"choices\":[{\"delta\":{\"content\":\"\"}}]}",
+    "{\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}",
+    "[DONE]"
+  ]
+  设 块B5 为 翻译流(体B5)
+  断言等于(块B5[长度(块B5)-1]["type"], "finish", "B5 末块 finish")
+  断言等于(块B5[长度(块B5)-1]["reason"]["种类"], "error", "B5 空响应=error")
+  断言等于(块B5[长度(块B5)-1]["reason"]["失败"]["代码"], "EMPTY_RESPONSE", "B5 错误码 EMPTY_RESPONSE")
+
+  # B6 完成原因映射（对齐 客户端.翻译完成原因 / assembler finish kinds）
+  断言等于(翻译完成原因("stop"), ["种类": "stop"], "B6 stop→stop")
+  断言等于(翻译完成原因("tool_calls"), ["种类": "tool-calls"], "B6 tool_calls→tool-calls")
+  断言等于(翻译完成原因("length"), ["种类": "max-tokens"], "B6 length→max-tokens")
+  设 异因 为 翻译完成原因("weird")
+  断言等于(异因["种类"], "error", "B6 未知→error")
+  断言等于(异因["失败"]["代码"], "WEIRD", "B6 未知错误码=大写")
+
+  # B7 length → max-tokens 经 翻译流（流式侧 reason 映射）
+  设 体B7 为 [
+    "{\"choices\":[{\"delta\":{\"content\":\"x\"}}]}",
+    "{\"choices\":[{\"delta\":{},\"finish_reason\":\"length\"}]}",
+    "[DONE]"
+  ]
+  设 块B7 为 翻译流(体B7)
+  断言等于(块B7[长度(块B7)-1]["reason"]["种类"], "max-tokens", "B7 length→max-tokens")
+
+  打印 "节B 流式翻译 通过"
+
+  # ============================================================
+  # 节 C —— 请求体映射（对标 call-config.spec.ts 字段级相等思想 + 客户端.组装请求）
+  # 反跑判据 A 落点：请求体 model 字段断言改反 → 红。
+  # ============================================================
+  设 客户 为 新建 客户端("https://api.deepseek.com", "sk-x", "deepseek-flash")
+  设 消息表C 为 [["role": "user", "content": [["type": "text", "text": "hi"]]]]
+  设 工具表C 为 [["type": "function", "function": ["name": "f"]]]
+  设 请求C 为 客户.组装请求(消息表C, ["temperature": 0.5, "maxTokens": 256], 工具表C)
+  断言等于(请求C["model"], "deepseek-flash", "C 请求体 model 字段")
+  断言等于(请求C["stream"], 真, "C 流式开关 stream=true")
+  断言等于(请求C["messages"], 消息表C, "C messages 透传")
+  断言等于(请求C.包含("tools"), 真, "C 有工具时带 tools")
+  断言等于(请求C["tools"], 工具表C, "C tools 透传")
+  断言等于(请求C["temperature"], 0.5, "C 温度透传")
+  断言等于(请求C["max_tokens"], 256, "C max_tokens 透传")
+  # 无工具/无选项：省略 tools / temperature / max_tokens
+  设 请求C2 为 客户.组装请求(消息表C, [], [])
+  断言等于(请求C2.包含("tools"), 假, "C 无工具时不带 tools")
+  断言等于(请求C2.包含("temperature"), 假, "C 无选项时不带 temperature")
+  断言等于(请求C2.包含("max_tokens"), 假, "C 无选项时不带 max_tokens")
+
+  打印 "节C 请求体映射 通过"
+
+  # ============================================================
+  # 节 D —— 模型目录（对标 adapter.spec.ts DEFAULT_MODELS / 客户端.取模型目录）
+  # ============================================================
+  断言等于(取默认模型(), "deepseek-flash", "D 默认模型=deepseek-flash")
+  设 目录 为 取模型目录()
+  断言等于(长度(目录), 4, "D 目录条目=4（V41 Flash + V4 Flash/Pro + V4 Flash Vision Exp）")
+  设 闪 为 按ID取模型("deepseek-flash")
+  断言等于(闪["name"], "DeepSeek-V41-Flash", "D V41 Flash name")
+  断言等于(闪["contextWindow"], 1000000, "D 上下文窗口=1e6")
+  断言等于(列表含(闪["inputModalities"], "image"), 真, "D V41 Flash 含 image 模态")
+  断言等于(闪["systemPromptUpdate"], "in-history", "D V41 Flash in-history")
+  设 闪V4 为 按ID取模型("deepseek-v4-flash")
+  断言等于(闪V4["name"], "DeepSeek-V4-Flash", "D V4-Flash name")
+  断言等于(闪V4.包含("systemPromptUpdate"), 假, "D V4-Flash 无 systemPromptUpdate")
+  断言等于(按ID取模型("not-exist") == 空, 真, "D 未命中返回空")
+
+  打印 "节D 模型目录 通过"
+
+  # ============================================================
+  # 节 E —— 单价查找（对标 request-pricing.spec.ts 单价映射思想 / 令牌计量.取单价）
+  # 光明无图片令牌定价（image-tokens.spec.ts 未移植），仅对标模型单价表。
+  # ============================================================
+  断言等于(取单价("deepseek-flash"), [0.27, 1.10], "E deepseek-flash 单价=0.27/1.10")
+  断言等于(取单价("gpt-4o"), [2.50, 10.00], "E gpt-4o 单价=2.50/10.00")
+  断言等于(取单价("some-unknown-model"), [1.00, 2.00], "E 未知模型回落缺省 1.00/2.00")
+  断言等于(取单价(""), [1.00, 2.00], "E 空串回落缺省")
+
+  打印 "节E 单价查找 通过"
+
+  # ============================================================
+  # 节 F —— token 计数分桶（对标 token-meter breakdown-projection / turn-usage）
+  # 反跑判据 B 落点：聚合单次用量 某分桶断言改反 → 红。
+  # ============================================================
+  设 头部F 为 ["tools": [["name": "a"], ["name": "bb"]]]
+  设 系统F 为 ["role": "system", "content": [["type": "text", "text": "你是助手"]]]
+  设 用户F 为 ["role": "user", "content": [["type": "text", "text": "你好世界"]]]
+  设 分解F 为 估算上下文分解(头部F, [系统F, 用户F])
+  断言等于(分解F["systemTokens"], 估算系统消息(系统F), "F systemTokens=独立估算")
+  断言等于(分解F["toolsTokens"], 估算工具令牌(头部F), "F toolsTokens=独立估算")
+  断言等于(分解F["messageTokens"], 估算消息(用户F), "F messageTokens=独立估算")
+  # 单次用量聚合（多 attempt 汇总，对齐上游 every(isCount) 守卫）
+  设 用量表F 为 [
+    ["输入": 100, "输出": 20, "总计": 120, "缓存读": 40, "缓存写": 5, "推理": 8],
+    ["输入": 60, "输出": 10, "总计": 70, "缓存读": 20, "缓存写": 3, "推理": 4],
+  ]
+  设 聚合F 为 聚合单次用量(用量表F)
+  断言等于(聚合F["uncachedInputTokens"], 160, "F 未缓存输入=160")
+  断言等于(聚合F["outputTokens"], 30, "F 输出=30")
+  断言等于(聚合F["totalTokens"], 190, "F 总计=190")
+  断言等于(聚合F["cacheReadTokens"], 60, "F 缓存读=60")
+  断言等于(聚合F["cacheWriteTokens"], 8, "F 缓存写=8")
+  断言等于(聚合F["reasoningTokens"], 12, "F 推理=12")
+
+  打印 "节F token 计数分桶 通过"
+
+  打印 "--- 行为对照 LLM（第8轮 任务3）测试通过 ---"
+
+主()
