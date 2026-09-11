@@ -599,3 +599,56 @@
     如果 来源["插件"] == "compact":
       返回 真
   返回 假
+# ============================================================
+# 六、summarizer：压缩指令 + 检查点框架（compaction-basic/src/summarizer.ts）
+# ============================================================
+# 复刻纯逻辑：COMPACTION_INSTRUCTION（结构化检查点指令文本）、
+#   CHECKPOINT_PREAMBLE（落盘检查点前导）、frameSummary（框架包裹）、
+#   summaryText（拒绝图片块、只留 text）。LLM 调用胶水剔除。
+
+# 原版 SUMMARY_OPEN_TAG / SUMMARY_CLOSE_TAG
+设 压缩开启标签 为 "<compacted-summary>"
+设 压缩闭合标签 为 "</compacted-summary>"
+
+# 原版 CHECKPOINT_PREAMBLE：替换用户消息的框架前导
+设 检查点前导 为 "This is an automatically generated checkpoint condensing an earlier span of the conversation to free up context. Treat the captured context as established background and build on it without restating it. Continue the task directly from the messages that follow, without acknowledging this checkpoint."
+
+# 造压缩指令（原版 COMPACTION_INSTRUCTION）：最终用户消息式指令文本。
+# 按原版逐节拼装（8 节 + 规则），保留精确的节标题与占位说明。
+段落 造压缩指令:
+  设 文本 为 "You are now acting as a compaction engine for this AI coding assistant. Condense the conversation ABOVE into a structured checkpoint that lets another model resume the work with no loss of essential context.\n"
+  设 文本 为 文本 + "\nOutput EXACTLY the Markdown structure below: keep every section, in order. Use terse bullets, not prose paragraphs. Write \"(none)\" for an empty section — never drop a section.\n"
+  设 文本 为 文本 + "\n## Primary Request and Intent\n- [the user's original and evolving goals; quote verbatim where the exact wording matters]\n"
+  设 文本 为 文本 + "\n## Key Technical Concepts\n- [technologies, frameworks, patterns, and conventions in play]\n"
+  设 文本 为 文本 + "\n## Files and Code\n- [exact path: why it matters, key changes or snippets]\n"
+  设 文本 为 文本 + "\n## Errors and Fixes\n- [error: how it was resolved, plus any related user feedback]\n"
+  设 文本 为 文本 + "\n## Pending Jobs\n- [explicitly requested work not yet completed]\n"
+  设 文本 为 文本 + "\n## Current Work\n- [precisely what was in progress at this checkpoint]\n"
+  设 文本 为 文本 + "\n## Next Step\n- [the single next action, directly in line with the most recent request, or \"(none)\"]\n"
+  设 文本 为 文本 + "\n## Critical Context\n- [decisions and their rationale, constraints, user preferences, open questions, data needed to continue]\n"
+  设 文本 为 文本 + "\nRules:\n- Write concise English engineering prose. Preserve exact file paths, commands, error strings, identifiers, numeric values, function signatures, and syntax fragments.\n"
+  设 文本 为 文本 + "- Capture user feedback and explicit instructions faithfully, especially corrections.\n"
+  设 文本 为 文本 + "- Do NOT mention this summarization request or that the context was compacted.\n"
+  设 文本 为 文本 + "- Output only the checkpoint text: do not call any tool or take any other action.\n"
+  设 文本 为 文本 + "- If the conversation already contains a " + 压缩开启标签 + " block, it is a PRIOR checkpoint. Do not copy it forward verbatim: preserve still-true facts, drop stale ones, and merge newer information into a single consolidated summary under the same structure."
+  返回 文本
+
+# 包摘要框架（原版 frameSummary）：
+# 返回 [text(前导 + 开标签), ...摘要块, text(闭标签)]
+段落 包摘要框架 接收 摘要块表:
+  设 结果 为 []
+  结果.追加({ "类型": "text", "文本": 检查点前导 + "\n\n" + 压缩开启标签 })
+  遍历 块 之 摘要块表:
+    结果.追加(块)
+  结果.追加({ "类型": "text", "文本": 压缩闭合标签 })
+  返回 结果
+
+# 检查摘要文本（原版 summaryText）：含图片块抛错；只保留 text 块
+段落 检查摘要文本 接收 块表:
+  设 文本表 为 []
+  遍历 块 之 块表:
+    如果 块["类型"] == "image":
+      抛出 新建 错误("compaction summary cannot contain image output")
+    如果 块["类型"] == "text":
+      文本表.追加(块)
+  返回 文本表

@@ -680,3 +680,46 @@
 #   根因推测：光明 parser 在编译长函数时，首句若非 设/打印，
 #           可能导致内部行号映射偏移，后段生成的 Python 代码中变量赋值被跳过。
 #   影响范围：仅影响 段落 主（入口函数）；子函数不受影响（已验证各子函数独立调用均正常）。
+# ======================================================================
+# web 指导（scoped tools，对齐 9d6c964985 / #3853 tool-guidance-restrictions）
+#
+# 原版 tool-web（fetch.ts/search.ts）的 guidance 段落：每段检查
+#   ctx.tools.get(name, scope)，仅在其工具对该 agent 可见时渲染。
+# 纯逻辑复刻：本模块持有 web 侧两个工具的指导文本与「按可见性渲染」判定；
+#   可见性判定函数由调用方注入（如 工具.判定工具可见 包一层）。
+# 工具名约定：search（网页搜索）/ fetch（网页抓取）。
+# ======================================================================
+
+# 搜索工具指导文本（对齐原版 search guidance 语义：多定向查询/当前信息）
+设 Web搜索指导 为 "Use the search tool to find up-to-date information from the web. Use it for current events, lookups, or any question whose answer may have changed since the model knowledge cutoff. Prefer multiple targeted queries over one broad query."
+
+# 抓取工具指导文本（对齐原版 fetch guidance 语义：取全文/截断）
+设 Web抓取指导 为 "Use the fetch tool to retrieve the full content of a specific URL, for example when a search snippet is insufficient. Fetch renders the page content into text and truncates at a size limit."
+
+# 按可见性渲染 web 指导段：返回可见工具的指导段表（保持 search 在前）
+# 判定可见 为函数入参（接收 工具名 → 布尔），纯逻辑投影
+段落 渲染Web指导 接收 判定可见:
+  设 结果 为 []
+  如果 判定可见("search"):
+    结果.追加(["工具名": "search", "文本": Web搜索指导])
+  如果 判定可见("fetch"):
+    结果.追加(["工具名": "fetch", "文本": Web抓取指导])
+  返回 结果
+
+# 单工具可见性快捷判定：允许表/禁止表 → 该工具是否在 web 指导中可见
+段落 判定Web工具可见 接收 允许表, 禁止表, 名字:
+  如果 列表长度(允许表) > 0:
+    遍历 允许项 之 允许表:
+      如果 允许项 == 名字:
+        返回 真
+    返回 假
+  遍历 禁止项 之 禁止表:
+    如果 禁止项 == 名字:
+      返回 假
+  返回 真
+
+# 以作用域为入参渲染 web 指导（允许表/禁止表 → 指导段表）
+段落 渲染作用域Web指导 接收 允许表, 禁止表:
+  段落 判定注入 接收 名:
+    返回 判定Web工具可见(允许表, 禁止表, 名)
+  返回 渲染Web指导(判定注入)
