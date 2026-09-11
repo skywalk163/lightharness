@@ -455,9 +455,15 @@
   全局 装配槽
   设 已解析 为 装配槽["已解析"]
   设 选择 为 已解析["modelSelection"]
-  设 代理上下文 为 装配槽["代理上下文"]
   设 结果 为 下一步()
-  设 代理 为 代理上下文["agent"]
+  # 同步上游 session.ts 0.1.5 简化（installInitialModelSelection）：agent 取事件载荷
+  # （对齐 `{ agent }` 解构）；直调场景载荷可为 空，回退 装配槽 代理上下文（保持既有契约）
+  设 代理 为 空
+  如果 载荷 != 空:
+    设 代理 为 载荷["agent"]
+  如果 (代理 == 空):
+    设 代理上下文 为 装配槽["代理上下文"]
+    设 代理 为 代理上下文["agent"]
   如果 (代理 == 空):
     抛出 新建 错误("webhook Session setup has no scoped Agent [WEBHOOK_NO_AGENT]")
   设 会话 为 代理["session"]
