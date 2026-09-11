@@ -246,7 +246,8 @@
   设 消息 为 数据["message"]
   如果 (是字典(消息) == 假):
     抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
-  设 必填 为 ["id", "senderId", "senderName", "targetId", "delivery", "content"]
+  # 对齐 agent-team 1.5：delivery 调度字段已删除，队列即 durable inbox
+  设 必填 为 ["id", "senderId", "senderName", "targetId", "content"]
   设 占位 为 校验键集(消息, 必填, [])
   如果 (判非空串(消息["id"]) == 假):
     抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
@@ -255,8 +256,6 @@
   如果 (是字符串(消息["senderName"]) == 假):
     抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
   如果 (判非空串(消息["targetId"]) == 假):
-    抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
-  如果 (列表包含(["quiet", "wakeup"], 消息["delivery"]) == 假):
     抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
   如果 (是列表(消息["content"]) == 假):
     抛出 新建 错误("persisted Agent Teams team/message/queued payload is invalid")
@@ -446,7 +445,7 @@
   设 种类 为 记录["type"]
   设 数据 为 记录["data"]
   设 占位 为 校验选择器(种类, 数据)
-  如果 数据["version"] != 1:
+  如果 数据["version"] != 2:
     如果 数据["teamId"] != 局面["id"]: 返回 假
     抛出 新建 错误("unsupported Agent Teams event version " + 转字符串(数据["version"]))
   设 占位 为 校验载荷(种类, 数据)

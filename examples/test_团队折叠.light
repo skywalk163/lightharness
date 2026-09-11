@@ -88,23 +88,22 @@
   消["senderId"] 为 根
   消["senderName"] 为 "lead"
   消["targetId"] 为 子
-  消["delivery"] 为 "quiet"
   消["content"] 为 [{"type": "text", "text": "hello"}]
   遍历 键 之 字典键列表(覆盖):
     消[键] 为 覆盖[键]
   返回 消
 
 段落 造成员记录 接收 队伍, 覆盖, 序号:
-  返回 造记录("team/member", {"version": 1, "teamId": 队伍, "member": 造成员(覆盖)}, 序号)
+  返回 造记录("team/member", {"version": 2, "teamId": 队伍, "member": 造成员(覆盖)}, 序号)
 
 段落 造任务记录 接收 队伍, 覆盖, 序号:
-  返回 造记录("team/task", {"version": 1, "teamId": 队伍, "task": 造任务(覆盖)}, 序号)
+  返回 造记录("team/task", {"version": 2, "teamId": 队伍, "task": 造任务(覆盖)}, 序号)
 
 段落 造排队记录 接收 队伍, 覆盖, 序号:
-  返回 造记录("team/message/queued", {"version": 1, "teamId": 队伍, "message": 造消息(覆盖)}, 序号)
+  返回 造记录("team/message/queued", {"version": 2, "teamId": 队伍, "message": 造消息(覆盖)}, 序号)
 
 段落 造送达记录 接收 队伍, 消息标识, 目标标识, 序号:
-  返回 造记录("team/message/delivered", {"version": 1, "teamId": 队伍, "messageId": 消息标识, "targetId": 目标标识}, 序号)
+  返回 造记录("team/message/delivered", {"version": 2, "teamId": 队伍, "messageId": 消息标识, "targetId": 目标标识}, 序号)
 
 # agent/inbox/spliced 记录（session-message.ts）
 段落 造剪接记录 接收 目标, 起点, 删除数, 插入清单, 序号:
@@ -360,28 +359,28 @@
 段落 段_成员名非串:
   设 坏 为 造成员({})
   坏["name"] 为 42
-  设 占位 为 折叠团队(根, [造记录("team/member", {"version": 1, "teamId": 队, "member": 坏}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/member", {"version": 2, "teamId": 队, "member": 坏}, 0)])
 
 段落 段_阻塞非串:
   设 坏 为 造任务({})
   坏["blockedBy"] 为 [42]
-  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 1, "teamId": 队, "task": 坏}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 2, "teamId": 队, "task": 坏}, 0)])
 
 段落 段_内容文本非串:
   设 坏 为 造消息({})
   坏["content"] 为 [{"type": "text", "text": 42}]
-  设 占位 为 折叠团队(根, [造记录("team/message/queued", {"version": 1, "teamId": 队, "message": 坏}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/message/queued", {"version": 2, "teamId": 队, "message": 坏}, 0)])
 
 段落 段_送达目标非串:
-  设 占位 为 折叠团队(根, [造记录("team/message/delivered", {"version": 1, "teamId": 队, "messageId": "message-1", "targetId": 42}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/message/delivered", {"version": 2, "teamId": 队, "messageId": "message-1", "targetId": 42}, 0)])
 
 段落 段_成员多余键:
   设 坏 为 造成员({})
   坏["unexpected"] 为 真
-  设 占位 为 折叠团队(根, [造记录("team/member", {"version": 1, "teamId": 队, "member": 坏}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/member", {"version": 2, "teamId": 队, "member": 坏}, 0)])
 
 段落 段_队伍标识非串:
-  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 1, "teamId": 42, "task": 造任务({})}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 2, "teamId": 42, "task": 造任务({})}, 0)])
 
 段落 用例载荷违规:
   检查抛错("成员名非字符串应抛", 段_成员名非串)
@@ -416,26 +415,26 @@
   检查抛错("核心块字段类型错应抛", 段_核心块字段错)
 
 # =====================================================================
-# 10. 版本门与继承记录（不解码版本即忽略 / 当前版本仍须校验）
+# 10. 版本门与继承记录（1.5：事件版本 2；version 3 不支持即忽略 / 当前版本仍须校验）
 # =====================================================================
 段落 用例版本门:
   设 局 为 空折叠状态(根)
   设 抛了 为 假
   尝试:
-    设 占位 为 套用记录(局, 造记录("team/task", {"version": 2, "teamId": 队, "task": 造任务({})}, 0))
+    设 占位 为 套用记录(局, 造记录("team/task", {"version": 3, "teamId": 队, "task": 造任务({})}, 0))
   捕获 错误:
     设 抛了 为 真
-  断言相等(抛了, 真, "同团队不支持版本应抛")
+  断言相等(抛了, 真, "同团队不支持版本（v3）应抛")
   断言相等(是否空折叠(局), 真, "抛错后状态未变")
-  设 局2 为 折叠团队(根, [造记录("team/task", {"version": 2, "teamId": 旁支, "task": 造任务({})}, 0)])
-  断言相等(是否空折叠(局2), 真, "不支持版本的继承记录被忽略")
+  设 局2 为 折叠团队(根, [造记录("team/task", {"version": 3, "teamId": 旁支, "task": 造任务({})}, 0)])
+  断言相等(是否空折叠(局2), 真, "不支持版本（v3）的继承记录被忽略")
   断言相等(套用记录(局, 造记录("turn/start", {}, 0)), 假, "非团队记录静默忽略")
   断言相等(套用记录(局, 造成员记录(旁支, {}, 0)), 假, "他团队成员记录静默忽略")
 
 段落 段_继承记录仍校验:
   设 坏 为 造任务({})
   坏["subject"] 为 42
-  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 1, "teamId": 旁支, "task": 坏}, 0)])
+  设 占位 为 折叠团队(根, [造记录("team/task", {"version": 2, "teamId": 旁支, "task": 坏}, 0)])
 
 段落 用例继承校验:
   检查抛错("继承的当前版本记录仍须校验应抛", 段_继承记录仍校验)
