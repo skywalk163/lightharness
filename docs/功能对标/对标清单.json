@@ -9,7 +9,7 @@
     "语言缺陷：光明写不出/写错/绕不过的地方，登记进 docs/功能对标/语言缺陷账.md。",
     "编号 + 功能名 双字段匹配改状态，只认编号会串条目。"
   ],
-  "版本": "0.1.5-rc.2（a305303422，2026-09-10）；覆盖记录至第5轮（2026-09-11）",
+  "版本": "0.1.5-rc.2（a305303422，2026-09-10）；覆盖记录至第7轮（2026-09-11）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -229,11 +229,12 @@
       "功能": "CLI 入口（headless runner）",
       "原版包": "apps/cli + bundle/headless",
       "光明模块": "src/总入口.light + examples/运行CLI.light",
-      "状态": "done(v2 增量持久化+会话列表)；0.1.5登记：CLI 宿主层 6 文件变更未移植(args/bin/dump-config/profile-boot)；0.1.5第5轮任务1：总入口 模型解析链末级 fallback 接线 取默认模型()(deepseek-flash)；其余 CLI 宿主变更(args/bin/dump-config/profile-boot)维持登记不移植",
+      "状态": "done(v2 增量持久化+会话列表)；0.1.5登记：CLI 宿主层 6 文件变更未移植(args/bin/dump-config/profile-boot)；0.1.5第5轮任务1：总入口 模型解析链末级 fallback 接线 取默认模型()(deepseek-flash)；其余 CLI 宿主变更(args/bin/dump-config/profile-boot)维持登记不移植；0.1.5第7轮：CLI 命令面已覆盖——总入口.light 多命令调度 run/dump-config/version/help + 配置来源标注（对齐 args.ts launcher 哲学 + dump-config.ts）；profile/patch/plugin 层与 argv 子命令宿主面维持登记",
       "证据": [
         "src/总入口.light",
         "examples/test_cli深化.light",
-        "examples/test_入口默认模型.light"
+        "examples/test_入口默认模型.light",
+        "examples/test_CLI命令面.light"
       ],
       "本轮目标": "done(v2)：v1 环境变量参数解析/单轮对话/内置bash工具/会话写出/多轮REPL/续写；v2 增量持久化：REPL和单轮模式均改用增量保存(初始化日志+追加事件行，文件不存在自动初始化，从指定序号开始只追加新增事件)；新增 HARNESS_LIST=1 会话列表功能(列出根目录下所有已有会话，不需要API key)；增量保存函数可测试导出",
       "反跑判据": "test_cli深化.light：事件包含或工具名断言改反即红",
@@ -857,10 +858,11 @@
       "功能": "本地 HTTP(S) 抓取提供方 URL 校验与内容类型分类纯逻辑核心（web-fetch-http policy：validateFetchUrl 四判定 + parseCharset + 主类型归类 + 同源比较）",
       "原版包": "packages/web/web-fetch-http/src/policy.ts",
       "光明模块": "src/抓取策略.light",
-      "状态": "done；0.1.5登记：web-fetch-http DNS/IP 加固(宿主网络层)未移植；0.1.5第5轮确认：web-fetch-http DNS/IP 加固维持登记不移植(宿主网络层)",
+      "状态": "done；0.1.5登记：web-fetch-http DNS/IP 加固(宿主网络层)未移植；0.1.5第5轮确认：web-fetch-http DNS/IP 加固维持登记不移植(宿主网络层)；0.1.5第7轮：web-fetch-http isNonPublicIpLiteral 纯逻辑面已覆盖（抓取策略.light 剥IPv6括号/是IP字面量/IP是否公网/主机是否非公网字面量）；DNS 解析/地址固定连接/NAT64 探测宿主面维持登记",
       "证据": [
         "src/抓取策略.light",
-        "examples/test_抓取策略.light"
+        "examples/test_抓取策略.light",
+        "examples/test_IP安全校验.light"
       ],
       "本轮目标": "done：手工切分 scheme://authority[/path] 等价复刻原版 new URL() 四条判定（长度上限/协议白名单/authority 非空/无凭据@）；字符扫描复刻 parseCharset 正则（\\s 近似为 空格/制表/换行/回车）；提供 取MIME/分类内容类型/解析字符集/比较同源/校验抓取地址 纯函数。已剔除 decoderForCharset（纯光明无编码库，登记缺口）。",
       "反跑判据": "test_抓取策略.light：把任一 断言相等 期望值改反即红；把 校验抓取地址 超长/非法协议/含@ 用例期望改反即红；把 检查抛错 用例改为不抛即红。",
@@ -1010,10 +1012,11 @@
       "功能": "远端 API 总线纯逻辑（api/remotes：转发通知白名单 remote-events、子代理归属解析/agent-busy 拒绝形状/会话元数据校验/代理解析器 agent-lookup；api/gateway：参数形状校验/JSON 边界/strict codec 解码/内部失败信封、客户端参数计数/mount token/上下文注入/结果解析）",
       "原版包": "packages/api/remotes/src/(remote-events.ts+agent-lookup.ts) + packages/api/gateway/src/(index.ts+client/index.ts)",
       "光明模块": "src/远端总线.light",
-      "状态": "done；0.1.5登记：api/remotes+gateway 宿主总线 6 文件变更未移植；0.1.5第5轮确认：api/remotes+gateway 宿主总线维持登记不移植",
+      "状态": "done；0.1.5登记：api/remotes+gateway 宿主总线 6 文件变更未移植；0.1.5第5轮确认：api/remotes+gateway 宿主总线维持登记不移植；0.1.5第7轮：api/remotes 转发白名单 19 条已覆盖（远端总线.light 转发白名单/事件可否转发/转发模式，对齐 remote-events.ts）；gateway 总线/网络 IO 宿主面维持登记",
       "证据": [
         "src/远端总线.light",
-        "examples/test_远端总线.light"
+        "examples/test_远端总线.light",
+        "examples/test_远端白名单.light"
       ],
       "本轮目标": "done：复刻转发通知白名单判定、agent/session 归属解析与拒绝形状、会话元数据校验、参数校验与内部失败信封。剔除真实 HTTP/WebSocket/网络 IO、连接 RPC、Cordis 总线：IO 抽象成入参（上下文/持久层/连接器/令牌 均为可注入字典或函数）。事件名一律用 通知/条目，转发判定用 判定可转发/整理直达清单 避开 事件 词根。",
       "反跑判据": "test_远端总线.light：把转发白名单、归属拒绝形状、会话元数据校验、参数计数校验任一 断言相等/断言真 期望值改反即红；把 检查抛错 改成不抛也红。",
@@ -1340,7 +1343,7 @@
       "功能": "webhook 会话构建纯逻辑（会话构造/消息注入/错误链/会话校验）",
       "原版包": "packages/webhook/webhook/src/{index.ts, session.ts, types.ts, invariant.ts, brand.ts}",
       "光明模块": "src/webhook会话.light",
-      "状态": "done；0.1.5登记：webhook session.ts 宿主胶水简化(初始模型选择)，不移植",
+      "状态": "done；0.1.5登记：webhook session.ts 宿主胶水简化(初始模型选择)，不移植；0.1.5第7轮：webhook 初始模型监听已对齐（webhook会话.light 载荷优先 + 装配槽回退）；事件总线/scoped Agent 装配宿主胶水维持登记",
       "证据": [
         "src/webhook会话.light",
         "examples/test_webhook会话.light"
