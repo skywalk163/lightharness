@@ -43,16 +43,16 @@
   断言相等(成员快照["provider"], "deepseek", "成员快照 provider")
   断言相等(字典包含键(成员快照, "error"), 假, "error 可选不设")
   设 成员通知 为 构造成员通知("team1", 成员快照)
-  断言相等(成员通知["version"], 1, "成员通知 version")
+  断言相等(成员通知["version"], 2, "成员通知 version")  # 反跑：改回 1 → 红
   断言相等(成员通知["teamId"], "team1", "成员通知 teamId")
   设 任务通知 为 构造任务通知("team1", 快照)
-  断言相等(任务通知["version"], 1, "任务通知 version")
+  断言相等(任务通知["version"], 2, "任务通知 version")  # 反跑：改回 1 → 红
   断言相等(任务通知["teamId"], "team1", "任务通知 teamId")
   设 排队通知 为 构造排队通知("team1", 快照)
-  断言相等(排队通知["version"], 1, "排队通知 version")
+  断言相等(排队通知["version"], 2, "排队通知 version")  # 反跑：改回 1 → 红
   断言相等(排队通知["teamId"], "team1", "排队通知 teamId")
   设 送达通知 为 构造送达通知("team1", "m1", "m2")
-  断言相等(送达通知["version"], 1, "送达通知 version")
+  断言相等(送达通知["version"], 2, "送达通知 version")  # 反跑：改回 1 → 红
   断言相等(送达通知["messageId"], "m1", "送达通知 messageId")
   断言相等(送达通知["targetId"], "m2", "送达通知 targetId")
 

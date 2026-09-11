@@ -333,6 +333,16 @@
     抛出 新建 错误("goal " + 编号 + " exhausted " + 转字符串(字典获取(目标, "maxGoalRounds")) + " goal rounds; increase maxGoalRounds before resuming")
   返回 真
 
+# 模型侧恢复守卫（对标 tool-goal/index.ts update_goal action='resume'，#GOAL_TOOL_RESUME_PAUSED）：
+#   模型（update_goal 工具调用方）不得恢复暂停目标——只能由用户恢复。
+#   判据：目标 phase == "paused" 且 id/revision 命中引用 → 拒绝（抛错）；
+#   active/blocked 正常放行；引用不匹配放行（交由下游 GoalService.resume 处理）。
+段落 判定模型可恢复 接收 目标, 引用:
+  设 阶段 为 字典获取(目标, "phase")
+  如果 阶段 == "paused" 且 字典获取(目标, "id") == 字典获取(引用, "id") 且 字典获取(目标, "revision") == 字典获取(引用, "revision"):
+    抛出 新建 错误("the model cannot resume a paused goal; the user must resume it")
+  返回 真
+
 # 构造驱动器用的目标视图（对标 GoalService.view：投影 + roundsStarted + 进程内激活）
 段落 造目标视图 接收 折叠, 激活:
   设 当前 为 字典获取(折叠, "goal")
