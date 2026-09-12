@@ -1,0 +1,95 @@
+# test_修复_repair接入.light —— repair 恢复路径端到端验证（持久化读入时自动合成关闭事件）
+# 场景：构造未闭合会话日志（turn/start + assistant/message(tool-call) + tool/call，无 tool/result/turn/end），
+#       写出 JSONL 后读入，验证中断轮闭合器自动合成 tool/result(错误) + turn/end{interrupted}。
+# 运行：cd lightharness && python 运行.py examples/test_修复_repair接入.light
+
+从 持久化 导入 写出会话, 读入会话
+从 会话 导入 新建会话
+从 消息 导入 造用户消息, 造文本块
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 "断言失败: " + 标签
+
+段落 主:
+  # 构造未闭合会话：user/message → turn/start → assistant/message(含 tool-call) → tool/call
+  设 会话对象 为 新建会话("s_repair_e2e", "G:\\work\\proj")
+  会话对象.记录事件("user/message", 造用户消息([造文本块("请执行命令")]))
+
+  # turn/start（数据为空，对齐光明记录轮次开始的空数据形态）
+  会话对象.记录事件("turn/start", 空)
+
+  # assistant/message 含一个 tool-call 块
+  设 调用块 为 {}
+  调用块["type"] 为 "tool-call"
+  调用块["id"] 为 "call_xyz"
+  调用块["name"] 为 "bash"
+  设 内容表 为 []
+  列表追加(内容表, 调用块)
+  设 助手消息 为 {}
+  助手消息["role"] 为 "assistant"
+  助手消息["content"] 为 内容表
+  设 助手数据 为 {}
+  助手数据["消息"] 为 助手消息
+  会话对象.记录事件("assistant/message", 助手数据)
+
+  # tool/call（已启动，callSeq 会被记录）
+  设 调用数据 为 {}
+  调用数据["callId"] 为 "call_xyz"
+  调用数据["name"] 为 "bash"
+  会话对象.记录事件("tool/call", 调用数据)
+
+  # 不记录 tool/result、不记录 turn/end —— 模拟崩溃中断
+
+  设 原始事件数 为 会话对象.事件数()
+  断言等于(原始事件数, 4, "原始4事件(user/turn/assistant/tool-call)")
+
+  # 写出到磁盘
+  设 路径 为 写出会话("tmp_repair_e2e", 会话对象)
+  断言真(文件存在(路径), "文件已写出")
+
+  # 读入——repair 应自动合成关闭事件
+  设 回读 为 读入会话("tmp_repair_e2e", "G:\\work\\proj", "s_repair_e2e")
+  断言等于(回读.标识, "s_repair_e2e", "标识一致")
+
+  # 原始4 + 合成2(tool/result错误 + turn/end interrupted) = 6
+  设 回读事件数 为 回读.事件数()
+  断言等于(回读事件数, 6, "读入后6事件(4原始+2合成)")
+
+  设 事件表 为 回读.汇集全部事件()
+
+  # 倒数第2个事件：合成 tool/result（错误，TOOL_OUTCOME_UNKNOWN 因为有 tool/call）
+  设 合成结果 为 事件表[4]
+  断言等于(合成结果["类型"], "tool/result", "合成事件5=tool/result")
+  断言等于(合成结果["数据"]["成功"], 假, "合成result成功=假")
+  断言等于(合成结果["数据"]["调用"], "call_xyz", "合成result调用=call_xyz")
+  设 错误信息 为 合成结果["数据"]["错误"]
+  断言真(错误信息 != 空, "合成result带错误")
+  断言等于(错误信息["代码"], "TOOL_OUTCOME_UNKNOWN", "错误码=TOOL_OUTCOME_UNKNOWN(已启动)")
+  断言等于(合成结果["序号"], 4, "合成result序号=4(最后真实3+1)")
+
+  # 倒数第1个事件：合成 turn/end {interrupted}
+  设 合成轮结束 为 事件表[5]
+  断言等于(合成轮结束["类型"], "turn/end", "合成事件6=turn/end")
+  断言等于(合成轮结束["数据"]["原因"], "interrupted", "轮结束原因=interrupted")
+  断言等于(合成轮结束["序号"], 5, "合成turn/end序号=5")
+
+  # 下一序号应更新为 6
+  断言等于(回读.下一序号, 6, "下一序号=6")
+
+  # 平衡日志（已闭合）不应合成额外事件
+  设 平衡会话 为 新建会话("s_balanced", "G:\\work\\proj")
+  平衡会话.记录事件("user/message", 造用户消息([造文本块("hi")]))
+  平衡会话.记录轮次开始()
+  平衡会话.记录轮次结束(["种类": "completed"], 空)
+  设 平衡路径 为 写出会话("tmp_balanced", 平衡会话)
+  设 平衡回读 为 读入会话("tmp_balanced", "G:\\work\\proj", "s_balanced")
+  断言等于(平衡回读.事件数(), 3, "平衡日志读入后仍3事件(无合成)")
+
+  打印 "--- repair 恢复路径端到端测试通过 ---"
+
+主()
