@@ -1,0 +1,85 @@
+# test_修复_子智能体预设.light —— 第9轮任务4 修复验证（T4-D1 取最后回答形态 / T4-D4 shipped 预设字典翻译）
+# 对标：上游 subagent/tests/assistant-output.spec.ts（finalAssistantOutput）、
+#       preset/agent-presets/tests/display.spec.ts（presetDisplayText）
+# 修复点：src/子智能体.light 新增 取最后回答块表（内容块表/reasoning 非空/无输出→空），
+#         取最后回答 改为复用块表后拼接文本；src/预设.light 新增 内置预设文案/造显示文本
+#         （shipped 走字典、user 原样、无元数据回退 id）。
+
+从 子智能体 导入 子智能体
+从 工具 导入 工具注册表
+从 预设 导入 造显示文本
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败[" + 标签 + "]")
+
+段落 哑客户端 接收 网络消息, 选项, 工具表:
+  返回 []
+
+# ---- 部分1：T4-D1 取最后回答块表（对标 assistant-output.spec.ts） ----
+段落 测取最后回答块表:
+  设 智能体 为 新建 子智能体(哑客户端, 新建 工具注册表(), [], "sub块表")
+  设 会话 为 智能体.取会话()
+  # 1) 无输出 → 空（上游 undefined；光明用 空 哨兵）
+  断言相等(智能体.取最后回答块表(), 空, "无输出返回 空")
+  断言相等(智能体.取最后回答(), "", "无输出拼接文本为空串")
+  # 2) 越过末尾空消息取最后非空（上游场景1）
+  会话.记录事件("assistant/message", ["消息": ["content": [["type": "text", "text": "step one"]]]])
+  会话.记录事件("assistant/message", ["消息": ["content": [["type": "text", "text": "step two"]]]])
+  会话.记录事件("assistant/message", ["消息": ["content": []]])
+  设 块表 为 智能体.取最后回答块表()
+  断言真(块表 != 空, "有输出非空")
+  断言相等(长度(块表), 1, "一块")
+  断言相等(块表[0]["type"], "text", "text 块")
+  断言相等(块表[0]["text"], "step two", "越过末尾空消息取最后非空")
+  断言相等(智能体.取最后回答(), "step two", "拼接文本便捷方法")
+  # 3) reasoning-only 消息视为非空输出（上游场景3：textless assistant content 非空）
+  设 智能体2 为 新建 子智能体(哑客户端, 新建 工具注册表(), [], "sub推理")
+  设 会话2 为 智能体2.取会话()
+  会话2.记录事件("assistant/message", ["消息": ["content": [["type": "reasoning", "text": "完整推理"]]]])
+  设 块表2 为 智能体2.取最后回答块表()
+  断言真(块表2 != 空, "reasoning-only 视为非空")
+  断言相等(块表2[0]["type"], "reasoning", "返回 reasoning 块")
+  断言相等(块表2[0]["text"], "完整推理", "reasoning 文本保留")
+  断言相等(智能体2.取最后回答(), "", "拼接文本无 text 块为空串")
+  # 4) 混合 text+reasoning：块表完整返回（对齐 finalAssistantOutput 返回 content 原样）
+  设 智能体3 为 新建 子智能体(哑客户端, 新建 工具注册表(), [], "sub混合")
+  设 会话3 为 智能体3.取会话()
+  会话3.记录事件("assistant/message", ["消息": ["content": [["type": "reasoning", "text": "先想"], ["type": "text", "text": "后答"]]]])
+  设 块表3 为 智能体3.取最后回答块表()
+  断言相等(长度(块表3), 2, "两块都保留")
+  断言相等(智能体3.取最后回答(), "后答", "文本拼接只取 text 块")
+  写 "部分1 通过: T4-D1 取最后回答块表"
+
+# ---- 部分2：T4-D4 造显示文本（对标 display.spec.ts） ----
+段落 测造显示文本:
+  # 1) shipped 预设（trust=system + 内置 id）→ 字典文案（上游场景1）
+  设 标准 为 造显示文本(["id": "standard", "trust": "system"])
+  断言相等(标准["name"], "标准模式", "shipped standard 字典名")
+  断言相等(标准["description"], "完整的编码 agent。", "shipped standard 字典描述")
+  设 极简 为 造显示文本(["id": "minimal", "trust": "system"])
+  断言相等(极简["name"], "极简模式", "shipped minimal 字典名")
+  # 2) system 非内置 id → 无字典可解析，回退 id（上游场景3 前例：system id outside shipped set）
+  设 未来 为 造显示文本(["id": "future", "trust": "system"])
+  断言相等(未来["name"], "future", "system 非内置回退 id")
+  # 3) user 预设：name 优先、无 name 回退 id（上游场景2/3）
+  设 我的 为 造显示文本(["id": "mine", "trust": "user", "name": "我的模式", "description": "自述"])
+  断言相等(我的["name"], "我的模式", "user name 优先")
+  断言相等(我的["description"], "自述", "user description 原样")
+  设 裸 为 造显示文本(["id": "bare", "trust": "user"])
+  断言相等(裸["name"], "bare", "user 无 name 回退 id")
+  断言真(裸.包含("description") == 假, "无 description 不产出键")
+  # 4) 非字典输入 → 空（防御）
+  断言相等(造显示文本(空), 空, "非字典返回 空")
+  写 "部分2 通过: T4-D4 造显示文本"
+
+段落 主:
+  测取最后回答块表()
+  测造显示文本()
+  打印 "test_修复_子智能体预设 PASS"
+
+主()
