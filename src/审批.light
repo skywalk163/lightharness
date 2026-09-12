@@ -1,5 +1,16 @@
 # 审批.light —— E4：审批队列 + 请求/处理/等待机制
 #
+# 第12轮任务6 对照收口（上游 packages/interaction/user-approval + tool-ask-user）：
+#   新增（对照差异 D1~D6，详见 _task6_审批对照_交付报告.md）：
+#   - 审批结果词汇四结果：allowed-once / rejected / cancelled / unavailable
+#     （上游 ApprovalOutcome 闭集；光明原有 批准 真/假 二值，保留兼容 + 结果映射）
+#   - 审批策略 ask | never（上游 ApprovalPolicy；never 确定性自动拒绝，不询问）
+#   - never 自动拒绝文案 NEVER_SENTENCE / ask 说明文案 ASK_SENTENCE（逐字对齐上游）
+#   - 开启轮判定 是开轮（上游 hasOpenTurn：倒序扫描事件表，turn/start 未闭合）
+#   - 审批请求需开轮（上游 request() 前置：审计对必须被轮封闭，否则抛错）
+#   - 提问工具形状 造提问调用/规范提问答案（上游 tool-ask-user ask_user_question：
+#     questions[{id,question,header?,options?,multi_select?}] → answers[{id,selected,custom?}]）
+#
 # 契约：
 #   - 审批管理器 持有 待审批 / 已处理 两个字典（审批id → 请求/结果）
 #   - 请求审批(会话id, 轮次, 工具名, 参数) → 生成 approval_时间戳_6位随机串，加入待审批
@@ -22,6 +33,97 @@
 
 # 递增计数器：每次调用递增，避免同微秒内多次调用产生相同 id
 设 审批计数器 为 0
+
+# =====================================================================
+# L-12T6 对照收口：上游 user-approval 词汇与文案（对齐 index.ts:48/60/63/66/68）
+# =====================================================================
+
+# 审批结果闭集（上游 OUTCOMES / ApprovalOutcome）：
+#   allowed-once 一次性放行（唯一授权）；rejected 明确拒绝；
+#   cancelled 请求被撤回；unavailable 无可用应答者（fail-closed）。
+设 结果允许一次 为 "allowed-once"
+设 结果拒绝 为 "rejected"
+设 结果撤回 为 "cancelled"
+设 结果不可用 为 "unavailable"
+
+设 审批结果词汇 为 [结果允许一次, 结果拒绝, 结果撤回, 结果不可用]
+
+# 审批策略闭集（上游 APPROVAL_POLICIES）：ask 委派应答者链；never 不询问一律拒绝。
+设 策略询问 为 "ask"
+设 策略从不 为 "never"
+设 审批策略词汇 为 [策略询问, 策略从不]
+
+# never 策略的模型面文案（上游 NEVER_SENTENCE 逐字对齐）
+设 从不文案 为 "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+# ask 策略的模型面文案（上游 ASK_SENTENCE 逐字对齐）
+设 询问文案 为 "Approval policy: ask. Operations that require approval may ask through the configured answerers; without an available answerer, the request fails closed."
+
+# 开启轮判定（上游 hasOpenTurn，index.ts:77-84）：
+#   倒序扫描事件表，先遇 turn/start → 开轮中；先遇 turn/end → 无开轮。
+#   审计对（approval/asked + approval/decided）必须被轮封闭：
+#   轮是持久日志的提交/回放边界，轮间裸事件重载时与崩溃尾不可区分。
+段落 是开轮 接收 事件表:
+  设 i 为 长度(事件表) - 1
+  当 i >= 0:
+    设 类型 为 事件表[i]["类型"]
+    如果 类型 == "turn/start":
+      返回 真
+    如果 类型 == "turn/end":
+      返回 假
+    设 i 为 i - 1
+  返回 假
+
+# 规范应答者返回值（上游 decide 的 OUTCOMES.includes 归一）：
+#   词汇外/异常的返回一律 fail-closed 为 unavailable。
+段落 规范审批结果 接收 结果:
+  如果 列表包含(审批结果词汇, 结果):
+    返回 结果
+  返回 结果不可用
+
+# 策略文案取值（上游 systemPrompt context：never→NEVER_SENTENCE，ask→ASK_SENTENCE）
+段落 策略文案 接收 策略:
+  如果 策略 == 策略从不:
+    返回 从不文案
+  返回 询问文案
+
+# =====================================================================
+# 提问工具形状（上游 tool-ask-user ask_user_question，index.ts:16-99）
+# =====================================================================
+# description（上游逐字）：模型面提示——可一次发多个问题、每问带稳定 id 回显。
+设 提问工具描述 为 "Ask the user a concise question when you need confirmation, a choice, or missing information before proceeding. Send one or more questions, each with a stable id that will be echoed in the answer."
+
+# 规范提问调用入参：questions[{id,question,header?,options?,multi_select?}] →
+#   上游 userQuestions.ask 形状（multi_select → multiSelect；可选字段缺省不落键）。
+段落 造提问调用 接收 问题表:
+  设 结果 为 []
+  遍历 问题 之 问题表:
+    设 项 为 {}
+    项["id"] 为 问题["id"]
+    项["question"] 为 问题["question"]
+    如果 字典包含键(问题, "header"):
+      项["header"] 为 问题["header"]
+    如果 字典包含键(问题, "options"):
+      项["options"] 为 问题["options"]
+    如果 字典包含键(问题, "multi_select"):
+      项["multiSelect"] 为 问题["multi_select"]
+    列表追加(结果, 项)
+  返回 结果
+
+# 规范提问答案：answers[{id,selected,custom?}] → 工具输出形状
+#   （上游 execute 返回：selected 复制、custom 仅在提供时携带）。
+段落 规范提问答案 接收 答案表:
+  设 结果 为 []
+  遍历 答案 之 答案表:
+    设 项 为 {}
+    项["id"] 为 答案["id"]
+    设 选中 为 []
+    遍历 选项 之 答案["selected"]:
+      列表追加(选中, 选项)
+    项["selected"] 为 选中
+    如果 字典包含键(答案, "custom"):
+      项["custom"] 为 答案["custom"]
+    列表追加(结果, 项)
+  返回 ["answers": 结果]
 
 # 生成审批 id：approval_微秒时间戳_6位十六进制随机
 # 使用微秒 + 全局递增计数器，保证同进程内 id 唯一
@@ -59,6 +161,7 @@
   属性 待审批 等于 空
   属性 已处理 等于 空
   属性 轮询间隔 等于 0.1
+  属性 策略 等于 "ask"
 
   段落 构造:
     设 己.待审批 为 {}
@@ -167,6 +270,59 @@
     设 己.已处理 为 {}
     返回 真
 
+  # =====================================================================
+  # 第12轮任务6 对照收口：会话级审批策略（上游 user-approval ApprovalService）
+  # =====================================================================
+  # 策略存取：光明无持久日志折叠（approval/policy 事件），以实例字段存当前策略，
+  # 缺省 ask（上游 Config default 'ask'）。setApprovalPolicy 的词汇校验在此对齐。
+  段落 构造2 接收 初始策略:
+    设 己.策略 为 策略询问
+    如果 初始策略 != 空:
+      如果 列表包含(审批策略词汇, 初始策略) == 假:
+        抛出 新建 错误('approval policy must be one of "ask" or "never"')
+      设 己.策略 为 初始策略
+    返回 真
+
+  # setApprovalPolicy（上游 index.ts:92-97）：非法值先抛错再改状态
+  段落 设置审批策略 接收 策略:
+    如果 列表包含(审批策略词汇, 策略) == 假:
+      抛出 新建 错误('approval policy must be one of "ask" or "never"')
+    设 己.策略 为 策略
+    返回 真
+
+  # effectivePolicy（上游 index.ts:235-237）
+  段落 取审批策略:
+    返回 己.策略
+
+  # 请求审批带审计（上游 ApprovalService.request）：
+  #   1) 事件表未开轮 → 抛错（审计对必须被轮封闭，上游同文案要点）
+  #   2) 记录 approval/asked 审计（id/工具名/可选 callId/reason）
+  #   3) 策略裁决：never → rejected（在分派前决定，上游 decide 注释语义）
+  #      无应答者（应答者 为 空）→ unavailable（fail-closed，上游 waterfall 兜底）
+  #      有应答者 → 委派；返回词汇外 → 归一 unavailable
+  #   4) 记录 approval/decided 审计（id/outcome），返回闭集结果
+  段落 请求审批审计 接收 事件表, 工具名, 应答者, 调用id, 理由:
+    如果 是开轮(事件表) == 假:
+      抛出 新建 错误("approval.request() outside an open turn: the approval/asked + approval/decided audit pair must be turn-enclosed. Ask from inside the turn that needs the decision.")
+    设 审批id 为 生成审批id()
+    设 询问审计 为 ["类型": "approval/asked", "数据": ["id": 审批id, "工具名": 工具名]]
+    如果 调用id != 空:
+      询问审计["数据"]["callId"] 为 调用id
+    如果 理由 != 空:
+      询问审计["数据"]["reason"] 为 理由
+    设 裁决 为 结果不可用
+    如果 己.策略 == 策略从不:
+      # never 在任何分派前确定性拒绝（上游 decide:266）
+      设 裁决 为 结果拒绝
+    否则:
+      如果 应答者 == 空:
+        设 裁决 为 结果不可用
+      否则:
+        设 原始 为 应答者(工具名, 理由)
+        设 裁决 为 规范审批结果(原始)
+    设 决定审计 为 ["类型": "approval/decided", "数据": ["id": 审批id, "结果": 裁决]]
+    返回 ["审批id": 审批id, "结果": 裁决, "询问审计": 询问审计, "决定审计": 决定审计]
+
 
 # ---- 辅助：字典键列表（光明语 dict 无 .keys() 直接返回列表？）----
 段落 待审批键表 接收 字典:
@@ -216,3 +372,19 @@
 
 导出 审批管理器
 导出 生成审批id
+导出 是开轮
+导出 规范审批结果
+导出 策略文案
+导出 造提问调用
+导出 规范提问答案
+导出 结果允许一次
+导出 结果拒绝
+导出 结果撤回
+导出 结果不可用
+导出 审批结果词汇
+导出 策略询问
+导出 策略从不
+导出 审批策略词汇
+导出 从不文案
+导出 询问文案
+导出 提问工具描述
