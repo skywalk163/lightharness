@@ -7,9 +7,9 @@
 # 只翻译「既有测试未覆盖」的可断言纯逻辑场景；已覆盖域见交付报告对照表。
 #   §1 surface 空投影 / 用户消息上浮            ← surface.spec.ts
 #   §2 节点0 append 连接 / replace 替换 / 遮蔽跳过 ← surface.spec.ts
-#   §3 压缩替换 范围校验缺失（⚠差异）            ← surface.spec.ts
-#   §4 sourceEventSeqs 快照隔离（⚠差异）         ← surface.spec.ts
-#   §5 可选字段省略 + 嵌套头版本（⚠差异：版本键）  ← canonical-envelopes.spec.ts
+#   §3 压缩替换 区间校验（✅第9轮 T2-D1 修复）      ← surface.spec.ts
+#   §4 sourceEventSeqs 快照（✅第9轮 T2-D2 修复）   ← surface.spec.ts
+#   §5 可选字段省略 + 版本还原（✅第9轮 T2-D3 修复） ← canonical-envelopes.spec.ts
 #   §6 非负安全整数准入 / 负零（⚠差异）           ← sequence-types.spec.ts
 #   §7 持久化恢复错误路径                        ← jsonl.spec.ts
 #   §8 迁移不支持版本抛错 + 空日志抛错            ← v2-system-migration / v2-ptc-migration.spec.ts
@@ -90,25 +90,37 @@
 
   # ================= §3 对标 surface.spec.ts「throws when replace start is not found /
   #                end is not found / start is after end」
-  # ⚠️ 差异（已登记交付报告 §5）：上游对无效替换区间抛错；光明 压缩替换 静默无操作。
+  # ✅ 第9轮 T2-D1 已修复：无效区间抛错，文案对齐上游。
   设 会话丙 为 新建会话("bianjie", ".")
   设 占2 为 会话丙.记录事件("user/message", ["role": "user", "content": [["type": "text", "text": "a"]]])
   设 占3 为 会话丙.记录事件("assistant/message", ["消息": ["标识": "m1", "content": [["type": "text", "text": "b"]]]])
-  设 占4 为 会话丙.压缩替换(7, 9, [])
-  核验真("3a 起点不存在不遮蔽", 长度(会话丙.查询事件("", 0, 0)) == 2, "区间外事件保持原样（上游应抛错）")
-  设 占5 为 会话丙.压缩替换(9, 7, [])
-  核验真("3b 起点大于终点不遮蔽", 长度(会话丙.查询事件("", 0, 0)) == 2, "start>end 静默（上游应抛错）")
+  尝试:
+    设 占4 为 会话丙.压缩替换(7, 9, [])
+    核验真("3a 起点不存在抛错", 假, "起点不存在应抛错")
+  捕获 异常 错误:
+    核验含("3a 起点不存在抛错", 转字符串(错误), "surface replace: start seq 7 not found", "上游同文案")
+  尝试:
+    设 占5 为 会话丙.压缩替换(9, 7, [])
+    核验真("3b 起点大于终点抛错", 假, "start>end 应抛错")
+  捕获 异常 错误:
+    核验含("3b 起点大于终点抛错", 转字符串(错误), "start seq 9 is after end seq 7", "上游同文案")
+  尝试:
+    设 占5b 为 会话丙.压缩替换(0, 9, [])
+    核验真("3b2 终点不存在抛错", 假, "终点不存在应抛错")
+  捕获 异常 错误:
+    核验含("3b2 终点不存在抛错", 转字符串(错误), "surface replace: end seq 9 not found", "上游同文案")
   设 占6 为 会话丙.压缩替换(0, 1, [])
   核验真("3c 命中区间才遮蔽", 占3.包含("遮蔽") 且 占2.包含("遮蔽"), "合法区间遮蔽语义仍在")
 
   # ================= §4 对标 surface.spec.ts「sourceEventSeqs is snapshot so caller
   #                mutation does not affect logged event」
-  # ⚠️ 差异（已登记交付报告 §5）：上游做快照拷贝；光明 事件带来源 直接引用同一列表。
+  # ✅ 第9轮 T2-D2 已修复：事件带来源 经 副本() 做快照，调用方改动不透传。
   设 源表 为 [1, 2]
   设 事件甲 为 造事件("tool/result", 5, 0, ["消息": "x"])
   设 占7 为 事件带来源(事件甲, 源表)
   列表追加(源表, 99)
-  核验真("4a 来源序号被调用方改动透传", 长度(事件甲["来源事件序号"]) == 3, "光明实际：引用共享（上游期望仍为2）")
+  核验真("4a 调用方改动不透传", 长度(事件甲["来源事件序号"]) == 2, "上游快照语义：记录后与源表脱钩")
+  核验("4b 快照内容一致", 事件甲["来源事件序号"][1], 2, "拷贝值与源表一致")
 
   # ================= §5 对标 canonical-envelopes.spec.ts「accepts absent optional
   #                fields」「preserves nested headers」
@@ -118,11 +130,10 @@
   核验真("5b 空可选字段省略 agentPreset", 字典包含键(行甲, "agentPreset") == 假, "同上")
   核验真("5c 非种子不落 seedLength", 字典包含键(行甲, "seedLength") == 假, "同上")
   核验("5d 标识保留", 行甲["id"], "hdr1", "嵌套头字段保留")
-  核验真("5e 嵌套版本对象保留", 行甲["version"]["主"] == 3 且 行甲["version"]["次"] == 0, "版本嵌套结构在")
-  # ⚠️ 差异（已登记交付报告 §5）：编码V0头 写中文版本键（主/次），解码V0头 读英文键（major/minor），
-  #    往返后版本退化为 2.0；上游 编码→解码 必须还原 3.0。持久化.行对象 走英文键不受影响。
+  核验真("5e 嵌套版本对象英文键", 行甲["version"]["major"] == 3 且 行甲["version"]["minor"] == 0, "JSON 形状对齐上游 canonical envelope")
+  # ✅ 第9轮 T2-D3 已修复：编码V0头/编码V2头 统一英文键，编码→解码版本还原。
   设 头乙 为 解码V0头(行甲)
-  核验("5f 往返版本（光明实际）", 版本文本(头乙["版本"]), "2.0", "上游期望 3.0：编码/解码版本键名不一致")
+  核验("5f 往返版本还原", 版本文本(头乙["版本"]), "3.0", "对齐上游：编码→解码还原 3.0")
   核验("5g 往返标识", 头乙["标识"], "hdr1", "标识往返一致")
 
   # ================= §6 对标 sequence-types.spec.ts「admits non-negative safe integers」
