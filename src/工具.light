@@ -25,12 +25,14 @@
 
 # ---- 构造工具定义（注册用）----
 # 策略：执行策略（"parallel"/"exclusive"）；准备/收尾 为可选钩子函数（默认 空）。
-段落 造工具定义 接收 名字, 描述, 参数, 执行函数, 策略="parallel", 准备=空, 收尾=空:
+# 默认 "exclusive"（对齐上游 execution-mode.spec：isConcurrencySafe 未声明 → exclusive）。
+段落 造工具定义 接收 名字, 描述, 参数, 执行函数, 策略="exclusive", 准备=空, 收尾=空:
   返回 ["name": 名字, "description": 描述, "parameters": 参数, "execute": 执行函数, "mode": 策略, "prepare": 准备, "finalize": 收尾]
 
 # ---- 构造执行结果 ----
-段落 造工具结果 接收 内容, 是否错误:
-  返回 ["content": 内容, "isError": 是否错误, "concludesTurn": 假, "additionalContexts": []]
+# 结论=假（缺省）；对齐上游 ToolExecutionResult.concludesTurn 传播语义。
+段落 造工具结果 接收 内容, 是否错误, 结论=假:
+  返回 ["content": 内容, "isError": 是否错误, "concludesTurn": 结论, "additionalContexts": []]
 
 # ---- 解析模型参数（空→{}；非法 JSON→原文）----
 段落 解析参数 接收 原文:
@@ -348,11 +350,11 @@
       结果.追加(["name": 定义["name"], "description": 定义["description"], "parameters": 定义["parameters"]])
     返回 结果
 
-  # 指定工具的执行策略（未注册默认 parallel）
+  # 指定工具的执行策略（未注册默认 exclusive，对齐上游 execution-mode.spec）
   段落 执行策略 接收 名字:
     如果 己.登记表.包含(名字):
       返回 己.登记表[名字]["mode"]
-    返回 "parallel"
+    返回 "exclusive"
 
   # 执行统计（每个工具的调用次数/成功次数/失败次数）
   段落 统计:
@@ -404,7 +406,14 @@
     尝试:
       设 执行函数 为 条目["execute"]
       设 值 为 执行函数(参数)
-      设 结果 为 ["content": 值, "isError": 假, "concludesTurn": 假, "additionalContexts": [], "error": 空]
+      # T1-S18 concludesTurn 传播：工具函数可返回结果字典（含 concludesTurn）或内容块表（列表）
+      设 结论标志 为 假
+      设 内容块 为 值
+      如果 type(值) == dict 且 值.包含("concludesTurn"):
+        设 结论标志 为 值["concludesTurn"]
+        如果 值.包含("content"):
+          设 内容块 为 值["content"]
+      设 结果 为 ["content": 内容块, "isError": 假, "concludesTurn": 结论标志, "additionalContexts": [], "error": 空]
     捕获 错误:
       设 结果 为 ["content": [["type": "text", "text": "工具执行失败: " 加上 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": 转字符串(错误), "代码": "TOOL_EXECUTION_FAILED"]]
     # 4) 收尾钩子（execute 后，可读结果/记录；收尾异常不掩盖主结果）
