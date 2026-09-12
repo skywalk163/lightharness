@@ -108,8 +108,9 @@
   断言等于(用量idx > 结束idx, 真, "B1 usage 在 block-end 之后（延迟到 DONE）")
   断言等于(块B1[用量idx]["usage"]["输入"], 5, "B1 输入=5（无缓存命中不减）")
   断言等于(块B1[用量idx]["usage"]["输出"], 2, "B1 输出=2")
-  # 差异：上游 usage 含 totalTokens(=输入+输出)，光明 造用量 不计算 totalTokens（见报告 §5）
-  断言等于(块B1[用量idx]["usage"].包含("totalTokens"), 假, "B1 差异: 光明无 totalTokens 桶")
+  # T3-D1 已修复：上游 usage 含 totalTokens(=prompt_tokens+completion_tokens)，光明 翻译用量 现补 totalTokens 桶
+  断言等于(块B1[用量idx]["usage"].包含("totalTokens"), 真, "B1 修复: 光明含 totalTokens 桶")
+  断言等于(块B1[用量idx]["usage"]["totalTokens"], 7, "B1 修复 totalTokens=5+2=7")
   断言等于(块B1[长度(块B1)-1]["type"], "finish", "B1 末块为 finish")
   断言等于(块B1[长度(块B1)-1]["reason"]["种类"], "stop", "B1 finish=stop")
 

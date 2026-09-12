@@ -41,9 +41,14 @@
     设 推理 为 用量["completion_tokens_details"]["reasoning_tokens"]
   设 输入 为 用量["prompt_tokens"] - 缓存读
   设 输出 为 用量["completion_tokens"]
+  # 对齐上游 mapUsage：totalTokens = prompt_tokens + completion_tokens（原始合计，含缓存命中部分；
+  # 不等于「未缓存输入+输出」，上游语义见 llm-deepseek/src/translate.ts:58-68）
+  设 总计 为 用量["prompt_tokens"] + 用量["completion_tokens"]
   如果 缓存读 == 0:
     设 缓存读 为 空
-  返回 造用量(输入, 输出, 缓存读, 推理)
+  设 结果 为 造用量(输入, 输出, 缓存读, 推理)
+  结果["totalTokens"] 为 总计
+  返回 结果
 
 # ---- 用 SSE 解析器把响应体切成载荷列表 ----
 # 响应体 已是解码文本（字节→文本由传输层/调用方完成），直接喂给分帧器。
