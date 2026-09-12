@@ -6,6 +6,7 @@
   A. 编解码断言字段值改反（5d 标识保留 "hdr1"→"hdrX"）→ 红；恢复 → 绿
   B. 迁移断言改反（8c 链内版本推进 "3.0"→"2.0"）→ 红；恢复 → 绿
   C. 整节删除（§2 节点0 投影五条断言）→ 输出缺失 → 红；恢复 → 绿
+  D. 负零拒绝断言改反（6d 期望 "must be non-negative"→"must be an integer"，任务5 T2-D4）→ 红；恢复 → 绿
 用法：cd lightharness && python _antirun_session_contrast.py
 退出码：全部判据通过 0；任一失败 1。
 """
@@ -25,6 +26,8 @@ B_OLD = '["版本"]) == "3.0"'
 B_NEW = '["版本"]) == "2.0"'
 C_MARK = "================= §2"
 C_END = "================= §3"
+D_OLD = '核验含("6d 负零拒绝", 转字符串(错误), "must be non-negative", "上游同语义")'
+D_NEW = '核验含("6d 负零拒绝", 转字符串(错误), "must be an integer", "上游同语义")'
 
 
 def run():
@@ -86,6 +89,11 @@ def main():
     case("C 整节删除(§2)",
          drop_section,
          lambda rc, out: ("✓ 2b" not in out))
+
+    # ---- D. 负零拒绝断言改反（6d，任务5 T2-D4）----
+    case("D 负零断言改反(6d)",
+         lambda b: b.replace(D_OLD.encode("utf-8"), D_NEW.encode("utf-8"), 1),
+         lambda rc, out: rc != 0)
 
     # ---- 恢复校验：字节级还原 ----
     restored = read_bytes()

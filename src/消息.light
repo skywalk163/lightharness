@@ -58,43 +58,32 @@
 段落 造文件块 接收 附件引用:
   返回 ["type": "file", "attachment": 附件引用]
 
-# ---- 内容块表拷贝（脱钩构造，对齐上游 deep-freeze）----
-# 光明无深拷贝/冻结内置（登记 L-083）。消息构造按引用组装 content 会让调用方后续
-# 改入参污染已构造消息（上游 createXxxMessage 经 deep-freeze 脱钩）。
-# 绕法：每块字典逐键拷贝，构造消息时用副本而非原引用。
-段落 拷贝内容块表 接收 块表:
-  设 副本 为 []
-  遍历 块 之 块表:
-    设 新块 为 {}
-    遍历 键 之 块:
-      新块[键] 为 块[键]
-    列表追加(副本, 新块)
-  返回 副本
+# ---- 消息构造（脱钩：光明 L-083 修复后提供 深拷贝 一等原语，对齐上游 deep-freeze）----
 
 # ---- 消息构造 ----
 
 # 造用户消息（来源 kind=user）
 段落 造用户消息 接收 内容:
-  返回 ["id": 造标识(), "role": "user", "content": 拷贝内容块表(内容), "source": ["kind": "user"]]
+  返回 ["id": 造标识(), "role": "user", "content": 深拷贝(内容), "source": ["kind": "user"]]
 
 # 造用户消息（带自定义来源，供插件/注入上下文用）
 段落 造用户消息带来源 接收 内容, 来源:
-  返回 ["id": 造标识(), "role": "user", "content": 拷贝内容块表(内容), "source": 来源]
+  返回 ["id": 造标识(), "role": "user", "content": 深拷贝(内容), "source": 来源]
 
 # 造助手消息（来源 kind=model，携带 provider/model）
 段落 造助手消息 接收 内容, 提供方, 模型:
-  返回 ["id": 造标识(), "role": "assistant", "content": 拷贝内容块表(内容), "source": ["kind": "model", "provider": 提供方, "model": 模型]]
+  返回 ["id": 造标识(), "role": "assistant", "content": 深拷贝(内容), "source": ["kind": "model", "provider": 提供方, "model": 模型]]
 
 # 造助手消息（带回放状态，供适配器私有元数据）
 段落 造助手消息带回放 接收 内容, 提供方, 模型, 回放状态:
   设 来源 为 ["kind": "model", "provider": 提供方, "model": 模型]
   如果 回放状态 不等于 空:
     来源["replayState"] 为 回放状态
-  返回 ["id": 造标识(), "role": "assistant", "content": 拷贝内容块表(内容), "source": 来源]
+  返回 ["id": 造标识(), "role": "assistant", "content": 深拷贝(内容), "source": 来源]
 
 # 造工具结果消息（role=user，content=[tool-result 块]，来源 kind=tool）
 段落 造工具结果消息 接收 调用标识, 内容, 是否错误:
-  设 块 为 造工具结果块(调用标识, 拷贝内容块表(内容), 是否错误)
+  设 块 为 造工具结果块(调用标识, 深拷贝(内容), 是否错误)
   返回 ["id": 造标识(), "role": "user", "content": [块], "source": ["kind": "tool", "callId": 调用标识]]
 
 # 造系统消息（对齐原版 createSystemMessage(text, plugin)）
@@ -104,7 +93,7 @@
   设 内容 为 []
   如果 文本 != "":
     列表追加(内容, 造文本块(文本))
-  返回 ["id": 造标识(), "role": "system", "content": 拷贝内容块表(内容), "source": ["kind": "plugin", "plugin": 插件]]
+  返回 ["id": 造标识(), "role": "system", "content": 深拷贝(内容), "source": ["kind": "plugin", "plugin": 插件]]
 
 # ---- 判别与工具函数 ----
 

@@ -10,7 +10,7 @@
 #   §3 压缩替换 区间校验（✅第9轮 T2-D1 修复）      ← surface.spec.ts
 #   §4 sourceEventSeqs 快照（✅第9轮 T2-D2 修复）   ← surface.spec.ts
 #   §5 可选字段省略 + 版本还原（✅第9轮 T2-D3 修复） ← canonical-envelopes.spec.ts
-#   §6 非负安全整数准入 / 负零（⚠差异）           ← sequence-types.spec.ts
+#   §6 非负安全整数准入 / 负零（✅任务5 T2-D4 对齐）          ← sequence-types.spec.ts
 #   §7 持久化恢复错误路径                        ← jsonl.spec.ts
 #   §8 迁移不支持版本抛错 + 空日志抛错            ← v2-system-migration / v2-ptc-migration.spec.ts
 #
@@ -149,8 +149,17 @@
     核验真("6c 非整数拒绝", 假, "小数应抛错")
   捕获 异常 错误:
     核验含("6c 非整数拒绝", 转字符串(错误), "must be an integer", "上游同文案")
-  # ⚠️ 差异（已登记交付报告 §5）：上游在恢复边界拒绝负零序号；光明/Python 中 -0 与 0 不可区分，
-  #    JSON "-0" 解析为 0 后被接受。此差异无法在光明内构造断言，仅登记。
+  # ✅ 任务5 T2-D4 已对齐：是负零 原语提供后，恢复边界可显式拒绝负零序号。
+  #    上游 Object.is(value, -0) 对 -0 抛 non-negative safe integer；光明侧
+  #    浮点 -0.0（转浮点("-0.0") 构造）走 是负零 → must be non-negative。
+  #    注：JSON 文本 "-0" 在 Python/光明中解析为整数 0，符号位在解析层丢失
+  #    （JS 数字无 int/float 之分，JSON.parse("-0") 保留 -0）——该形态无法在
+  #    语言层区分，属宿主解析差异；数值域负零（float -0.0）已显式拒绝。
+  尝试:
+    设 占负零 为 安全整数(转浮点("-0.0"), "seq")
+    核验真("6d 负零拒绝", 假, "负零序号应抛错")
+  捕获 异常 错误:
+    核验含("6d 负零拒绝", 转字符串(错误), "must be non-negative", "上游同语义")
 
   # ================= §7 对标 jsonl.spec.ts「first row must be a session header /
   #                missing log / strict vs recoverable bad rows」
