@@ -1507,6 +1507,96 @@
       "本轮目标": "done：#4/#48/#65/#66 四条历史缺口登记全部转为已跟随；反跑 _antirun_msg_attach.py 2/2 PASS(role system大小写错/空串accept改reject红)、_antirun_team_v2.py A/B 两项(送达通知version 2->1红/投影v2记录data.version 2->1红)",
       "反跑判据": "见 #4/#48/#65/#66 各卡",
       "语言缺陷": []
+    },
+    {
+      "编号": 80,
+      "功能": "session-query cold-read 冷读 + tool-session-query 纯逻辑面（#36 剩余缺口收口）",
+      "原版包": "session-query/session-query/src/cold-read.ts + session-query/tool-session-query/src/{input.ts,presentation.ts}",
+      "光明模块": "src/会话冷读.light + src/查询工具.light",
+      "状态": "done；0.1.5第12轮：冷读会话日志（只读句柄+中断轮闭合器合成平衡转写，不写回存储，错误原样上抛）+ 查询工具输入过滤构造/结果呈现纯逻辑面（剔除 service-boundary/workspace-access 宿主胶水）；#36 登记缺口 cold-read 收口",
+      "证据": [
+        "src/会话冷读.light",
+        "src/查询工具.light",
+        "examples/test_会话冷读.light",
+        "examples/test_查询工具.light"
+      ],
+      "本轮目标": "done：冷读（读全量+中断闭合+只读不写回+错误传播）≥8 断言 + 查询工具（过滤构造/ISO 精确解析含亚毫秒 nextafter/呈现）≥8 断言；反跑 _antirun_coldread.py 2/2 PASS",
+      "反跑判据": "A 冷读去掉中断轮闭合器合成→红；B 查询工具时间下界去掉 nextafter→红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 81,
+      "功能": "session-turn-outline 整轮大纲投影 + session-checkpoint-policy 语义持久化检查点",
+      "原版包": "session/session-turn-outline/src/{projection.ts,types.ts} + session/session-checkpoint-policy/src/index.ts",
+      "光明模块": "src/会话轮次大纲.light + src/检查点策略.light",
+      "状态": "done；0.1.5第12轮：轮次大纲折叠（turn/start 锚点/提示预览 50/回答预览 120 限长省略/草稿提交/同轮回落忽略/turns 身份保持）+ 检查点决策面（临流检查点/顶层工具判定/中止未分发规范错误/预步骤策略）；剔除 Cordis 插件壳与 flush 副作用（刷新由宿主接线）",
+      "证据": [
+        "src/会话轮次大纲.light",
+        "src/检查点策略.light",
+        "examples/test_会话轮次大纲.light",
+        "examples/test_检查点策略.light"
+      ],
+      "本轮目标": "done：轮次大纲 13 组断言 + 检查点策略 6 组断言；反跑 _antirun_outline_ckpt.py 3/3 PASS",
+      "反跑判据": "A turn/start 锚点改 user/message→红；B 提示预览上限 50 改 99→红；C 中止规范错误 text 改错→红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 82,
+      "功能": "util/http-proxy 纯代理策略 + util/launch-environment 不可变启动环境快照",
+      "原版包": "util/http-proxy/src/policy.ts + util/launch-environment/src/index.ts",
+      "光明模块": "src/代理策略.light + src/启动环境.light",
+      "状态": "done；0.1.5第12轮：代理策略解析（EnvLookup→ProxyPolicy、环回豁免 LOOPBACK_NO_PROXY、NO_PROXY 主机:端口条目与通配、直连默认 DIRECT_POLICY、proxyForUrl 选中）+ 启动环境快照（进程继承>调用目录 .env>家目录 .env 层级解析与来源记录）；剔除 undici install 与 Cordis 宿主",
+      "证据": [
+        "src/代理策略.light",
+        "src/启动环境.light",
+        "examples/test_代理策略.light",
+        "examples/test_启动环境.light"
+      ],
+      "本轮目标": "done：代理策略 ≥10 断言 + 启动环境 ≥6 断言；反跑 _antirun_proxy_env.py 3/3 PASS",
+      "反跑判据": "A 环回豁免去掉→红；B 启动环境层级优先级反转→红；C proxyForUrl 选中改错→红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 83,
+      "功能": "test-support/llm-replay 纯逻辑面（会话日志→模型调用脚本推导 + 请求插值 + 父子绑定）",
+      "原版包": "test-support/llm-replay/src/index.ts（纯逻辑导出：parseSessionLog/deriveReplayScript/resolveScriptedEntry/materializeSessionTokens）",
+      "光明模块": "src/大模型回放.light",
+      "状态": "done；0.1.5第12轮：日志解析（投影行/dense seq/混合拒绝）+ 脚本推导（compaction 展开/显式 llmStreamCall/纯摘要忽略/抛流判错）+ fromRequest 插值（最后匹配/无捕获/单捕获组）+ 会话令牌（首呼序绑定/未绑定抛错）+ 覆盖文档（chunks/throw/hang/patches）；剔除 LlmAdapter/Cordis/session-format-catalog 宿主接线；与 llm-mock-server 互补",
+      "证据": [
+        "src/大模型回放.light",
+        "examples/test_大模型回放.light"
+      ],
+      "本轮目标": "done：65 断言（任务书要求 ≥10）；反跑 _antirun_replay.py 3/3 PASS",
+      "反跑判据": "A 脚本推导顺序改错→红；B fromRequest 插值去掉→红；C 父子首呼绑定改错→红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 84,
+      "功能": "experimental/code-runtime-python 协议层（fd3 JSON-lines 帧编解码 + 无损校验）",
+      "原版包": "experimental/code-runtime-python/src/protocol.ts",
+      "光明模块": "src/代码运行时协议.light",
+      "状态": "done；0.1.5第12轮：PROTOCOL_FD=3 消息族（Boot/Run/BootAck/Call/Log/Done）帧编解码 + 方向判别（ChildToHost vs Reply Ok/Err）+ WIRE_FRAME_FIELDS 字段名册必填/可选校验 + 无损 JSON 编码（encodeJsonPlain/checkDoneValue 超预算与 non-lossless 拒绝/截断标记/数值无损性）；第11轮遗留「code-runtime-python 协议」收口",
+      "证据": [
+        "src/代码运行时协议.light",
+        "examples/test_代码运行时协议.light"
+      ],
+      "本轮目标": "done：帧往返/名册校验/方向判别/无损数值（含负零）/超预算拒绝/截断标记 ≥12 断言；反跑 _antirun_protocol.py 3/3 PASS",
+      "反跑判据": "A 字段名册必填校验放宽→红；B 无损编码改有损→红；C 截断标记改错→红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 85,
+      "功能": "interaction/user-approval + tool-ask-user 对照收口（#73 未覆盖子包）",
+      "原版包": "interaction/user-approval/src/{index.ts,invariant.ts,types.ts} + interaction/tool-ask-user/src/index.ts",
+      "光明模块": "src/审批.light（对照修复）",
+      "状态": "done；0.1.5第12轮：对照修复 D1~D10 —— 审批结果词汇四结果（allowed-once/rejected/cancelled/unavailable 与光明 批准/拒绝 二值映射）+ 审批策略 ask|never + never 自动拒绝文案 NEVER_SENTENCE/ask 说明 ASK_SENTENCE（逐字对齐）+ hasOpenTurn 开轮判定 + 审批请求需开轮前置 + 提问工具形状（造提问调用 multi_select→multiSelect/规范提问答案 selected 复制）；应答者瀑布/AbortSignal 竞态属宿主面未移植",
+      "证据": [
+        "src/审批.light",
+        "examples/test_审批对照.light"
+      ],
+      "本轮目标": "done：#73 未覆盖子包行为对照收口 D1~D10 全部修复；反跑 _antirun_approval.py 3/3 PASS（CRLF 变异串字节级处理）",
+      "反跑判据": "A never 策略改 ask→红；B 裁决结果集少一种→红；C hasOpenTurn 判定改错→红",
+      "语言缺陷": []
     }
   ]
 }
