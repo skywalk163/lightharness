@@ -1,0 +1,28 @@
+# 加密.light —— 对标原版 packages/util/crypto/src/index.ts
+# 纯逻辑核心：v4 UUID 铸造 + base64 编码；并补一个确定性摘要（哈希确定性测试面）。
+# 上游导出：bytesToBase64 / randomUUID。
+# 差异：
+#   * 上游 bytesToBase64 接收 Uint8Array 并按 0x8000 块喂 btoa；光明侧以字符串为输入，
+#     直接走 stdlib/哈希 的 Base64编码（utf-8），输出 canonical base64 一致。
+#   * 上游 randomUUID 自 crypto.getRandomValues 取 16 字节并打 v4 位；光明复用
+#     stdlib/uuid工具 的 生成UUID4（同为 RFC 4122 v4，d8-b4 位已打）。
+#   * 摘要(文本) 为上游 crypto 未提供、本路为「哈希确定性」测试面补的确定性 SHA-256 hex。
+
+从 哈希 导入 SHA256, Base64编码
+从 uuid工具 导入 生成UUID4
+
+# 字节/文本 → canonical base64（对齐 bytesToBase64）
+段落 字节转Base64 接收 文本:
+  返回 Base64编码(文本)
+
+# 随机 v4 UUID（对齐 randomUUID）
+段落 随机UUID:
+  返回 生成UUID4()
+
+# 确定性摘要：同一输入恒等 64 位十六进制 SHA-256（本路补的测试面）
+段落 摘要 接收 文本:
+  返回 SHA256(文本)
+
+# 随机短 ID（UUID 字符串别名，便于调用面表意）
+段落 随机ID:
+  返回 生成UUID4()

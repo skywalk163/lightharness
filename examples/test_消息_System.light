@@ -1,0 +1,53 @@
+# test_消息_System.light —— 对标 #4 SystemMessage / createSystemMessage（上游 llm/message.ts）
+# 覆盖：空文本 → content=[]（「无系统提示」不投影任何 wire 消息）；
+#       非空文本 → 单个 text 块；role 恒为 system；source 恒为 {kind:plugin, plugin}；
+#       id 新鲜非空且两次不同；与 user/assistant 角色形状区分。
+# 反跑判据：role 串 "system" 改错 / 空文本 content 不空 / source.kind 改值 任一即红。
+# 注意：写 只接受字面量串（L-045）；缺键守卫用 字典包含键（L-036）。
+
+从 JSON 导入 序列化JSON
+从 消息 导入 造系统消息, 造用户消息, 造文本块
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+# ---- 空文本：无系统提示 ----
+段落 用例空文本:
+  设 消息 为 造系统消息("", "core")
+  断言相等(消息["role"], "system", "空文本 role=system")
+  断言相等(长度(消息["content"]), 0, "空文本 → content 空数组")
+  断言相等(消息["source"]["kind"], "plugin", "空文本 source.kind=plugin")
+  断言相等(消息["source"]["plugin"], "core", "空文本 source.plugin 透传")
+
+# ---- 非空文本：单个 text 块 ----
+段落 用例非空文本:
+  设 消息 为 造系统消息("你是助手", "agent-core")
+  断言相等(消息["role"], "system", "非空 role=system")
+  断言相等(长度(消息["content"]), 1, "非空 → 恰好 1 个块")
+  断言相等(消息["content"][0]["type"], "text", "块类型=text")
+  断言相等(消息["content"][0]["text"], "你是助手", "块文本原样")
+  断言相等(消息["source"]["kind"], "plugin", "非空 source.kind=plugin")
+  断言相等(消息["source"]["plugin"], "agent-core", "非空 source.plugin 透传")
+
+# ---- id 新鲜非空且唯一 ----
+段落 用例标识:
+  设 甲 为 造系统消息("x", "p")
+  设 乙 为 造系统消息("x", "p")
+  断言相等(字符串长度(甲["id"]) > 0, 真, "id 非空串")
+  如果 甲["id"] == 乙["id"]:
+    抛出 新建 错误("两次造系统消息 id 不应相同")
+
+# ---- 与用户消息形状区分（system 不是 user）----
+段落 用例角色区分:
+  设 系统 为 造系统消息("s", "p")
+  设 用户 为 造用户消息([造文本块("u")])
+  如果 系统["role"] == 用户["role"]:
+    抛出 新建 错误("system 与 user 角色不应相同")
+  断言相等(用户["source"]["kind"], "user", "用户消息 source.kind=user（对照）")
+  断言相等(系统["source"]["kind"], "plugin", "系统消息 source.kind=plugin（对照）")
+
+用例空文本()
+用例非空文本()
+用例标识()
+用例角色区分()
+写 "--- 消息 System 词表（#4 createSystemMessage）测试通过 ---"

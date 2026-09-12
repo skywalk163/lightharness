@@ -1,0 +1,219 @@
+# test_启动配置.light —— 第 11 轮任务5：boot/app-boot profile 解析 + patch 层组合 + cmdline
+# 运行：python 运行.py examples/test_启动配置.light
+#
+# 对齐上游：
+#   - packages/boot/app-boot/src/profile.ts（853 行）
+#   - packages/boot/cmdline/src/index.ts（239 行）
+#   - apps/cli/src/args.ts（212 行，launcher flags 真正解析处）
+#
+# 覆盖（≥12 断言）：
+#   ① profile 目录解析：合法名 join 到 $DSH_HOME/profiles/<name>；非法名抛错
+#   ② manifest 读写往返：写入后读回，bundles 顺序保留
+#   ③ manifest 校验：非对象 JSON（数组/null/标量）抛错；缺失文件抛错
+#   ④ initProfile 幂等：已有文件不覆盖
+#   ⑤ patch 层组合：按 bundles 顺序叠加，后层覆盖前层 config
+#   ⑥ patch insert：新 entry 按 id 加入
+#   ⑦ 用户 patch 叠加：最后一层覆盖 bundle 层
+#   ⑧ 命令行 flags 解析：--profile / --patch / --from-default-profile
+#   ⑨ 命令行校验：缺 --profile 抛错；--patch 空串抛错；desktop 保留名抛错
+#   ⑩ dump-config 三态与互斥校验
+#   ⑪ inner args：第一个不认识的 token 起原样透传
+#   ⑫ web / plugin 子命令
+
+从 启动配置 导入 解析profile目录, 读取profile清单, 写入profile清单, 初始化profile
+从 启动配置 导入 加载补丁层, 组合条目, 解析启动参数
+从 启动配置 导入 资料夹名, 补丁文件名, 缺省补丁重载, 缺省bundles, 已发布模板
+
+段落 断言等于 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言包含 接收 文本, 片段, 标签:
+  如果 字符串包含(文本, 片段) == 假:
+    抛出 "断言失败: " + 标签 + "（缺少片段 " + 片段 + "）"
+
+# 检查「零参运算」是否抛错；返回错误文案（未抛则抛断言）
+段落 检查抛错 接收 标签, 运算:
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    运算()
+  捕获 异常 错误:
+    设 抛了 为 真
+    设 消息 为 转字符串(错误)
+  如果 抛了 == 假:
+    抛出 "应抛未抛: " + 标签
+  返回 消息
+
+# ---- 包装段落（无参；通过模块级变量 临时profile目录 / 临时缺失目录 传路径）----
+段落 抛空名:
+  解析profile目录("", 测试主目录)
+段落 抛点:
+  解析profile目录(".", 测试主目录)
+段落 抛双点:
+  解析profile目录("..", 测试主目录)
+段落 抛斜杠:
+  解析profile目录("a/b", 测试主目录)
+段落 抛反斜杠:
+  解析profile目录("a\\b", 测试主目录)
+段落 抛保留名:
+  解析profile目录("node_modules", 测试主目录)
+段落 抛数组manifest:
+  读取profile清单("t", 临时profile目录)
+段落 抛缺失manifest:
+  读取profile清单("t", 临时缺失目录)
+段落 抛缺profile:
+  解析启动参数(["--resume", "x"])
+段落 抛空patch:
+  解析启动参数(["--profile", "tui", "--patch", ""])
+段落 抛desktop:
+  解析启动参数(["--profile", "desktop"])
+段落 抛互斥dump:
+  解析启动参数(["--profile", "web", "--dump-config", "--dump-default-config"])
+段落 抛dump默认带patch:
+  解析启动参数(["--profile", "web", "--dump-default-config", "--patch", "x.yml"])
+段落 抛dump带args:
+  解析启动参数(["--profile", "web", "--dump-config", "extra"])
+
+# 模块级测试夹具（主() 内赋值；L-006 自动 nonlocal 允许跨段读写）
+设 测试主目录 为 "/home/u"
+设 临时profile目录 为 ""
+设 临时缺失目录 为 ""
+设 临时根 为 ""
+
+段落 主:
+  设 主目录 为 测试主目录
+
+  # ① profile 目录解析
+  设 目录 为 解析profile目录("tui", 主目录)
+  断言等于(目录, 连接路径(主目录, ".dsh", 资料夹名, "tui"), "① profile 目录 join 到 $DSH_HOME/profiles/<name>")
+
+  # 非法名抛错
+  设 错 为 检查抛错("① 空串 profile 名应抛错", 抛空名)
+  断言包含(错, "invalid profile name", "① 空串抛错文案应含 invalid profile name")
+  检查抛错("① '.' profile 名应抛错", 抛点)
+  检查抛错("① '..' profile 名应抛错", 抛双点)
+  检查抛错("① 含 / profile 名应抛错", 抛斜杠)
+  检查抛错("① 含 \\ profile 名应抛错", 抛反斜杠)
+  检查抛错("① node_modules 保留名应抛错", 抛保留名)
+
+  # ② manifest 读写往返（用临时目录）
+  设 临时根 为 当前目录() + "\\.test_启动配置"
+  如果 目录存在(临时根):
+    删目录树(临时根)
+  创建目录(临时根)
+  设 profile目录 为 连接路径(临时根, "t1")
+  设 临时profile目录 为 profile目录
+  初始化profile(profile目录, ["bundle-a", "bundle-b"], "startup")
+  设 清单 为 读取profile清单("t", profile目录)
+  断言等于(清单["dsh"]["profile"]["bundles"], ["bundle-a", "bundle-b"], "② manifest 读回 bundles 顺序")
+  断言等于(清单["dsh"]["profile"]["patchReload"], "startup", "② manifest 读回 patchReload")
+
+  # 写入后再读
+  设 新清单 为 {"name": "p", "dsh": {"profile": {"bundles": ["x"]}}}
+  写入profile清单(profile目录, 新清单)
+  设 读回 为 读取profile清单("t", profile目录)
+  断言等于(读回["dsh"]["profile"]["bundles"], ["x"], "② 写入后读回 bundles")
+
+  # ③ manifest 校验：非对象抛错
+  写入文件(连接路径(profile目录, "package.json"), "[]")
+  设 错2 为 ""
+  设 抛了2 为 假
+  尝试:
+    读取profile清单("t", profile目录)
+  捕获 异常 错误:
+    设 抛了2 为 真
+    设 错2 为 转字符串(错误)
+  如果 抛了2 == 假:
+    抛出 "③ 数组 manifest 应抛错但未抛"
+  断言包含(错2, "must hold a JSON object", "③ 数组 manifest 抛错文案")
+
+  # 缺失文件抛错
+  设 临时缺失目录 为 连接路径(临时根, "nope")
+  设 错3 为 ""
+  设 抛了3 为 假
+  尝试:
+    读取profile清单("t", 临时缺失目录)
+  捕获 异常 错误:
+    设 抛了3 为 真
+    设 错3 为 转字符串(错误)
+  如果 抛了3 == 假:
+    抛出 "③ 缺失 manifest 应抛错但未抛"
+  断言包含(错3, "failed to read profile manifest", "③ 缺失 manifest 抛错文案")
+
+  # ④ initProfile 幂等：再跑一次不覆盖
+  # ③ 步把 manifest 写成了 []，这里先恢复成合法 manifest 再测幂等
+  初始化profile(profile目录, ["bundle-a", "bundle-b"], "startup")
+  # 再写一次用户自定义清单
+  写入profile清单(profile目录, 新清单)
+  初始化profile(profile目录, ["bundle-a"], "live")
+  设 读回2 为 读取profile清单("t", profile目录)
+  断言等于(读回2["dsh"]["profile"]["bundles"], ["x"], "④ 重跑 initProfile 不覆盖已有 manifest")
+
+  # ⑤ patch 层组合：按 bundles 顺序叠加
+  设 层a 为 [{"id": "entry-1", "config": {"v": 1, "tag": "from-a"}}]
+  设 层b 为 [{"id": "entry-1", "config": {"v": 2}}]
+  设 层c 为 [{"id": "entry-2", "insert": [{"id": "entry-3", "name": "pkg-c"}]}]
+  设 组合结果 为 组合条目([层a, 层b, 层c])
+  断言等于(长(组合结果), 3, "⑤ 组合后应有 3 个 entry")
+  断言等于(组合结果[0]["id"], "entry-1", "⑤ 第一个 entry 仍是 entry-1")
+  断言等于(组合结果[0]["v"], 2, "⑤ 后层覆盖 v=2")
+  断言等于(组合结果[0]["tag"], "from-a", "⑤ 未被覆盖的字段保留 tag=from-a")
+  断言等于(组合结果[1]["id"], "entry-2", "⑤ 第二个 entry 是 entry-2")
+  断言等于(组合结果[2]["id"], "entry-3", "⑤ insert 新增 entry-3")
+  断言等于(组合结果[2]["name"], "pkg-c", "⑤ insert 子 entry 带 name")
+
+  # ⑥ 用户 patch 叠加：最后一层覆盖 bundle 层
+  设 用户层 为 [{"id": "entry-1", "config": {"v": 99, "user": 真}}]
+  设 组合2 为 组合条目([层a, 层b, 用户层])
+  断言等于(组合2[0]["v"], 99, "⑥ 用户 patch 覆盖 v=99")
+  断言等于(组合2[0]["user"], 真, "⑥ 用户 patch 新增 user 字段")
+  断言等于(组合2[0]["tag"], "from-a", "⑥ 用户 patch 不删既有 tag 字段")
+
+  # ⑦ 空 layers → 空结果
+  断言等于(组合条目([]), [], "⑦ 空 layers 返回空列表")
+  断言等于(组合条目([[]]), [], "⑦ 空层列表返回空列表")
+
+  # ⑧ 命令行 flags 解析：--profile tui --patch a.yml --patch b.yml
+  设 调用 为 解析启动参数(["--profile", "tui", "--patch", "a.yml", "--patch", "b.yml"])
+  断言等于(调用["模式"], "profile", "⑧ 默认模式为 profile")
+  断言等于(调用["profile"], "tui", "⑧ --profile 值")
+  断言等于(调用["patches"], ["a.yml", "b.yml"], "⑧ --patch 可重复收集")
+
+  # ⑨ inner args：--profile 之后不认识的 token 原样透传
+  设 调用2 为 解析启动参数(["--profile", "tui", "--resume", "abc", "extra"])
+  断言等于(调用2["args"], ["--resume", "abc", "extra"], "⑨ inner args 原样透传")
+
+  # ⑩ 校验：缺 --profile 抛错
+  设 错4 为 检查抛错("⑩ 缺 --profile 应抛错", 抛缺profile)
+  断言包含(错4, "--profile", "⑩ 缺 --profile 抛错文案")
+
+  检查抛错("⑩ --patch 空串应抛错", 抛空patch)
+
+  设 错5 为 检查抛错("⑩ desktop 保留名应抛错", 抛desktop)
+  断言包含(错5, "Electron", "⑩ desktop 抛错文案含 Electron")
+
+  # ⑪ dump-config 三态
+  设 dump调用 为 解析启动参数(["--profile", "web", "--dump-config"])
+  断言等于(dump调用["模式"], "dump-config", "⑪ --dump-config 走 dump-config 模式")
+  断言等于(dump调用["defaultOnly"], 假, "⑪ --dump-config defaultOnly=假")
+  断言等于(dump调用["profile"], "web", "⑪ dump-config 带 profile")
+
+  设 dump默认 为 解析启动参数(["--profile", "web", "--dump-default-config"])
+  断言等于(dump默认["模式"], "dump-config", "⑪ --dump-default-config 仍走 dump-config 模式")
+  断言等于(dump默认["defaultOnly"], 真, "⑪ --dump-default-config defaultOnly=真")
+
+  检查抛错("⑪ dump 互斥应抛错", 抛互斥dump)
+  检查抛错("⑪ dump-default-config 不能带 --patch", 抛dump默认带patch)
+  检查抛错("⑪ dump 不能带 inner args", 抛dump带args)
+
+  # ⑫ --from-default-profile
+  设 from调用 为 解析启动参数(["--profile", "rescue", "--from-default-profile", "web"])
+  断言等于(from调用["fromDefaultProfile"], "web", "⑫ --from-default-profile 值")
+
+  # 清理临时目录
+  删目录树(临时根)
+
+  打印 "test_启动配置 PASS"
+
+主()

@@ -1,0 +1,167 @@
+# test_mock大模型服务器.light —— 任务6：可脚本化 OpenAI 兼容 mock LLM 服务器测试
+#
+# 运行：python 运行.py examples/test_mock大模型服务器.light   （rc=0 通过）
+# 覆盖：行为队列 FIFO 消费顺序 / 流式 SSE 帧形状 / 错误行为状态码 / 语义空回复 /
+#       随机权重种子确定性 / 耗尽循环末位 / 路由鉴权与坏体守卫 / 真实端口复用 HTTP服务端。
+
+从 mock大模型服务器 导入 新建Mock服务, 启动Mock服务
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 "断言失败: " + 标签 + " 条件为假"
+
+段落 造请求 接收 方法, 路径, 授权, 体:
+  设 头 为 {}
+  如果 授权 != "":
+    设 头["Authorization"] 为 授权
+  返回 ["方法": 方法, "路径": 路径, "头": 头, "体": 体]
+
+# 数 body 里 "data: " 出现次数（SSE 帧数）
+段落 数帧 接收 体:
+  设 计数 为 0
+  设 位置 为 体.查找("data: ")
+  当 位置 >= 0:
+    设 计数 为 计数 + 1
+    设 位置 为 体.查找("data: ", 位置 + 6)
+  返回 计数
+
+段落 主:
+  # ============ 1) 行为队列 FIFO 消费顺序 ============
+  设 s1 为 新建Mock服务(["序列": ["success", "server_error", "empty"]])
+  设 r1 为 s1.分派(造请求("POST", "/v1/chat/completions", "", b'{"model":"x"}'))
+  设 r2 为 s1.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 r3 为 s1.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言相等(r1[0], 200, "队列_第1次_成功状态")
+  断言相等(r2[0], 500, "队列_第2次_服务器错误状态")
+  断言相等(s1.请求记录[0]["行为"], "success", "队列_消费顺序_第1")
+  断言相等(s1.请求记录[1]["行为"], "server_error", "队列_消费顺序_第2")
+  断言相等(s1.请求记录[2]["行为"], "empty", "队列_消费顺序_第3")
+
+  # ============ 2) 流式 SSE 帧形状（success）============
+  设 体 为 r1[2]
+  断言真(体.查找("data: ") == 0, "SSE_以data帧开头")
+  断言真(体.查找("data: [DONE]\n\n") > 0, "SSE_含DONE帧")
+  断言真(体.查找("data: [DONE]\n\n") + 长("data: [DONE]\n\n") == 长(体), "SSE_以DONE帧结尾")
+  断言真(体.查找("\"content\": \"mock res\"") >= 0, "SSE_首片文本")
+  断言相等(s1.请求记录[0]["块数"], 5, "SSE_帧数=3片+终止+DONE")
+  断言相等(数帧(体), 5, "SSE_数帧一致")
+
+  # ============ 3) 错误行为状态码 ============
+  设 s2 为 新建Mock服务(["序列": ["rate_limit", "server_error", "service_unavailable", "auth_error", "invalid_request", "context_overflow", "quota_exceeded"]])
+  设 es1 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es2 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es3 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es4 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es5 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es6 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 es7 为 s2.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言相等(es1[0], 429, "错误_rate_limit_429")
+  断言相等(es2[0], 500, "错误_server_error_500")
+  断言相等(es3[0], 503, "错误_service_unavailable_503")
+  断言相等(es4[0], 401, "错误_auth_error_401")
+  断言相等(es5[0], 400, "错误_invalid_request_400")
+  断言相等(es6[0], 400, "错误_context_overflow_400")
+  断言相等(es7[0], 429, "错误_quota_exceeded_429")
+
+  # 单独再验 rate_limit 的 Retry-After 头
+  设 s2b 为 新建Mock服务(["序列": ["rate_limit"], "重试毫秒": 1500])
+  设 rl2 为 s2b.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言相等(rl2[1].获取("Retry-After", ""), "2", "错误_rate_limit_RetryAfter向上取整")
+
+  # ============ 4) 语义空回复族 ============
+  设 s3 为 新建Mock服务(["序列": ["empty", "empty_body", "stream_eof"]])
+  设 re 为 s3.分派(造请求("POST", "/chat/completions", "", b'{}'))
+  断言真(re[2].查找("\"finish_reason\": \"stop\"") >= 0, "空回复_empty_终止块")
+  断言真(re[2].查找("data: [DONE]\n\n") > 0, "空回复_empty_有DONE")
+  断言相等(s3.请求记录[0]["块数"], 2, "空回复_empty_两块")
+  设 reb 为 s3.分派(造请求("POST", "/chat/completions", "", b'{}'))
+  断言相等(reb[2], "", "空回复_empty_body_空体")
+  断言相等(s3.请求记录[1]["块数"], 0, "空回复_empty_body_零块")
+  设 ref 为 s3.分派(造请求("POST", "/chat/completions", "", b'{}'))
+  断言真(ref[2].查找("[DONE]") < 0, "空回复_stream_eof_无DONE")
+  断言相等(s3.请求记录[2]["块数"], 1, "空回复_stream_eof_一块")
+
+  # ============ 5) 随机权重种子确定性 ============
+  设 二值权重 为 ["success": 1, "server_error": 1]
+  设 ra 为 新建Mock服务(["序列": ["random", "random", "random", "random"], "随机种子": 7, "随机权重": 二值权重])
+  设 rb 为 新建Mock服务(["序列": ["random", "random", "random", "random"], "随机种子": 7, "随机权重": 二值权重])
+  设 rc 为 新建Mock服务(["序列": ["random", "random", "random", "random"], "随机种子": 99, "随机权重": 二值权重])
+  设 表a 为 []
+  设 表b 为 []
+  设 表c 为 []
+  设 i 为 0
+  当 i < 4:
+    ra.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+    rb.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+    rc.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+    设 i 为 i + 1
+  遍历 rec 之 ra.请求记录:
+    表a.追加(rec["行为"])
+  遍历 rec 之 rb.请求记录:
+    表b.追加(rec["行为"])
+  遍历 rec 之 rc.请求记录:
+    表c.追加(rec["行为"])
+  断言相等(表a, 表b, "随机_同种子_同序列")
+  断言真(表a != 表c, "随机_不同种子_不同序列")
+  断言相等(长(表a), 4, "随机_四次都消费")
+  设 首行 为 表a[0]
+  设 首行ok 为 假
+  如果 首行 == "success":
+    设 首行ok 为 真
+  如果 首行 == "server_error":
+    设 首行ok 为 真
+  断言真(首行ok, "随机_只在权重行为内")
+
+  # ============ 6) 耗尽与循环末位 ============
+  设 s4 为 新建Mock服务(["序列": ["success"], "重复末位": 假])
+  设 ea1 为 s4.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 ea2 为 s4.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言相等(ea1[0], 200, "耗尽_首次成功")
+  断言相等(ea2[0], 500, "耗尽_耗尽后_500")
+  断言相等(s4.请求记录[1]["行为"], "脚本耗尽", "耗尽_记录行为")
+  设 s5 为 新建Mock服务(["序列": ["success"], "重复末位": 真])
+  设 eb1 为 s5.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 eb2 为 s5.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言相等(eb1[0], 200, "循环末位_首次")
+  断言相等(eb2[0], 200, "循环末位_再次仍成功")
+  断言相等(s5.请求记录[1]["行为"], "success", "循环末位_复用末位行为")
+
+  # ============ 7) 路由/鉴权/坏体守卫（不消耗脚本）============
+  设 s6 为 新建Mock服务(["序列": ["success"], "API密钥": "tok123"])
+  设 g1 为 s6.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  设 g2 为 s6.分派(造请求("POST", "/v1/chat/completions", "Bearer wrong", b'{}'))
+  设 g3 为 s6.分派(造请求("POST", "/v1/chat/completions", "Bearer tok123", b'{}'))
+  设 g4 为 s6.分派(造请求("GET", "/v1/chat/completions", "Bearer tok123", b'{}'))
+  设 g5 为 s6.分派(造请求("POST", "/v1/other", "Bearer tok123", b'{}'))
+  断言相等(g1[0], 401, "守卫_无鉴权_401")
+  断言相等(g2[0], 401, "守卫_错令牌_401")
+  断言相等(g3[0], 200, "守卫_对令牌_200")
+  断言相等(g4[0], 405, "守卫_非POST_405")
+  断言相等(g5[0], 404, "守卫_路径错_404")
+  设 坏体前 为 长(s6.请求记录)
+  设 bad 为 s6.分派(造请求("POST", "/v1/chat/completions", "Bearer tok123", b'{not-json'))
+  断言相等(bad[0], 400, "守卫_坏JSON_400")
+  断言相等(长(s6.请求记录), 坏体前, "守卫_坏JSON_不消耗脚本")
+
+  # ============ 8) 推理/工具调用形状 + 真实端口复用 ============
+  设 s7 为 新建Mock服务(["序列": ["reasoning_success", "tool_call_success"]])
+  设 rr 为 s7.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言真(rr[2].查找("\"reasoning_content\"") >= 0, "推理_含reasoning_content")
+  断言真(rr[2].查找("data: [DONE]\n\n") > 0, "推理_有DONE")
+  设 rt 为 s7.分派(造请求("POST", "/v1/chat/completions", "", b'{}'))
+  断言真(rt[2].查找("\"tool_calls\"") >= 0, "工具_含tool_calls")
+  断言真(rt[2].查找("mock-call-1") >= 0, "工具_含调用id")
+  断言真(rt[2].查找("data: [DONE]\n\n") > 0, "工具_有DONE")
+
+  # 真实复用 HTTP服务端 绑内核端口
+  设 句柄 为 启动Mock服务(["序列": ["success"], "随机种子": 1], 5.0)
+  断言真(句柄.端口() > 0, "启动_内核端口已分配")
+  句柄.停止()
+
+  打印 "--- mock大模型服务器 全部断言通过 ---"
+
+主()

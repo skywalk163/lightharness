@@ -1,0 +1,327 @@
+# 团队工具.light —— 团队模型面工具纯逻辑（对齐原版 experimental/tool-agent-team/src/index.ts）
+#
+# 复刻范围（纯逻辑剥离 Cordis ctx / Agent / @deepseek-ai/dsh-session）：
+#   1) 工具定义面：9 个团队工具的 name / description / parameters(JSON Schema) / output schema
+#      spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent /
+#      team_task_create / team_task_list / team_task_get / team_task_update。
+#   2) 参数校验与派生纯逻辑：
+#      wait_agent   —— timeout_ms 缺省 30000；合法区间 [10000, 3600000]（safe integer）；
+#                      无活跃伙伴(running/provisioning)时短路返回 noProgress，不唤醒。
+#      team_task_list —— status/owner(unowned)/ready 过滤 + cursor/limit 分页(cursor>=0,
+#                      limit 1..100 默认 50) + nextCursor 计算。
+#   3) 结果呈现：jsonOutput -> [{"type":"text","text": JSON.stringify(value)}]。
+#   4) 执行面 团队工具面：构造时注入「团队能力」字典（spawnTeammate/sendMessage/listMembers/
+#      waitForChange/interrupt/createTask/listTasks/getTask/updateTask/callerId），9 个 execute
+#      薄封装只做参数缺省与纯逻辑分流，真实 IO 一律委托注入能力，不实例化宿主服务。
+#
+# ⚠️ 命名铁律：函数名避危险词根；方法值传递以「先取到变量再调用」绕（L-007）。
+#   「状态」不作变量名；布尔链顺序如果；抛错判据走测试侧。
+
+从 JSON 导入 序列化JSON
+
+# =====================================================================
+# 常量
+# =====================================================================
+设 等待超时缺省 为 30000
+设 等待超时下限 为 10000
+设 等待超期上限 为 3600000
+设 分页上限缺省 为 50
+设 分页最大上限 为 100
+设 安全上限 为 9007199254740991
+设 无进展伙伴提示 为 "No other Team member is running or provisioning. wait_agent cannot make progress or wake inactive teammates. Re-list with list_agents and team_task_list, then use send_message to wake each required inactive teammate before waiting again."
+
+# =====================================================================
+# 基础判定
+# =====================================================================
+段落 判安全整数 接收 值:
+  如果 是整数(值) == 假: 返回 假
+  如果 值 < (0 - 安全上限): 返回 假
+  如果 值 > 安全上限: 返回 假
+  返回 真
+
+# =====================================================================
+# wait_agent 纯逻辑
+# =====================================================================
+
+# 解析等待超时：timeout_ms 缺省 30000
+段落 解析等待超时 接收 参数:
+  如果 字典包含键(参数, "timeout_ms") == 假:
+    返回 等待超时缺省
+  返回 参数["timeout_ms"]
+
+# 判等待超时合法：safe integer 且 [10000, 3600000]（对齐上游短路前置条件）
+段落 判等待超时合法 接收 毫秒:
+  如果 判安全整数(毫秒) == 假: 返回 假
+  如果 毫秒 < 等待超时下限: 返回 假
+  如果 毫秒 > 等待超期上限: 返回 假
+  返回 真
+
+# 活跃等待状态（running / provisioning）
+段落 是否活跃等待状态 接收 状态:
+  如果 状态 == "running": 返回 真
+  如果 状态 == "provisioning": 返回 真
+  返回 假
+
+# 是否存在除调用者外的活跃等待伙伴
+段落 有无活跃等待伙伴 接收 成员表, 调用者标识:
+  遍历 成员 之 成员表:
+    如果 成员["id"] != 调用者标识:
+      如果 是否活跃等待状态(成员["status"]) == 真:
+        返回 真
+  返回 假
+
+# 无进展等待结果（model-only 短路，对齐上游 noProgress 形状）
+段落 无进展等待结果:
+  返回 {"timedOut": 假, "noProgress": {"reason": "no-active-peer", "message": 无进展伙伴提示}}
+
+# =====================================================================
+# team_task_list 纯逻辑（过滤 + 分页）
+# =====================================================================
+
+# 过滤团队任务：status 精确匹配 / owner（unowned 表无 ownerName）/ ready 精确匹配
+段落 过滤团队任务 接收 任务表, 状态, 主人, 就绪:
+  设 结果 为 []
+  遍历 任务 之 任务表:
+    设 保留 为 真
+    如果 状态 != 空:
+      如果 任务["status"] != 状态: 设 保留 为 假
+    如果 主人 != 空:
+      如果 主人 == "unowned":
+        如果 字典包含键(任务, "ownerName") == 真: 设 保留 为 假
+      否则:
+        如果 字典包含键(任务, "ownerName") == 假:
+          设 保留 为 假
+        否则:
+          如果 任务["ownerName"] != 主人: 设 保留 为 假
+    如果 就绪 != 空:
+      如果 任务["ready"] != 就绪: 设 保留 为 假
+    如果 保留:
+      列表追加(结果, 任务)
+  返回 结果
+
+# 判分页：cursor 非负 safe integer；limit 为 1..100 safe integer
+段落 判分页 接收 游标, 上限:
+  如果 判安全整数(游标) == 假:
+    抛出 新建 错误("cursor must be a non-negative safe integer")
+  如果 游标 < 0:
+    抛出 新建 错误("cursor must be a non-negative safe integer")
+  如果 判安全整数(上限) == 假:
+    抛出 新建 错误("limit must be an integer from 1 through 100")
+  如果 上限 < 1:
+    抛出 新建 错误("limit must be an integer from 1 through 100")
+  如果 上限 > 分页最大上限:
+    抛出 新建 错误("limit must be an integer from 1 through 100")
+  返回 真
+
+# 分页切片：[cursor, cursor+limit)；未取尽时附 nextCursor
+段落 分页切片 接收 过滤后, 游标, 上限:
+  设 页 为 []
+  设 i 为 游标
+  当 i < 游标 + 上限:
+    如果 i < 列表长度(过滤后):
+      列表追加(页, 过滤后[i])
+    设 i 为 i + 1
+  设 结果 为 {"tasks": 页}
+  如果 游标 + 上限 < 列表长度(过滤后):
+    结果["nextCursor"] 为 游标 + 上限
+  返回 结果
+
+# =====================================================================
+# 结果呈现（jsonOutput -> 文本块表）
+# =====================================================================
+段落 渲染JSON文本 接收 值:
+  返回 [{"type": "text", "text": 序列化JSON(值)}]
+
+# =====================================================================
+# 工具定义面（9 个团队工具的 parameters JSON Schema；execute 由 团队工具面 提供）
+# =====================================================================
+
+段落 spawn_teammate模式:
+  返回 {"type": "object",
+        "properties": {
+          "name": {"type": "string", "description": "Unique lower-kebab-case teammate name."},
+          "description": {"type": "string", "description": "Short description of the delegated responsibility."},
+          "prompt": {"type": "string", "description": "Complete initial task for the teammate."},
+          "context": {"type": "string", "enum": ["fresh", "fork"], "description": "fresh starts without Lead history; fork inherits completed Lead turns. Defaults to fresh."}
+        },
+        "required": ["name", "description", "prompt"]}
+
+段落 send_message模式:
+  返回 {"type": "object",
+        "properties": {
+          "target": {"type": "string", "description": "Team member name, or lead."},
+          "message": {"type": "string", "description": "Self-contained message for the target."}
+        },
+        "required": ["target", "message"]}
+
+段落 list_agents模式:
+  返回 {"type": "object", "properties": {}}
+
+段落 wait_agent模式:
+  返回 {"type": "object",
+        "properties": {
+          "timeout_ms": {"type": "integer", "description": "Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000."}
+        }}
+
+段落 interrupt_agent模式:
+  返回 {"type": "object",
+        "properties": {
+          "target": {"type": "string", "description": "Teammate name."}
+        },
+        "required": ["target"]}
+
+段落 team_task_create模式:
+  返回 {"type": "object",
+        "properties": {
+          "subject": {"type": "string", "description": "Concise task title."},
+          "description": {"type": "string", "description": "Complete task details and acceptance criteria."},
+          "blocked_by": {"type": "array", "items": {"type": "string"}, "description": "Task ids that must complete first."},
+          "write_scopes": {"type": "array", "items": {"type": "string"}, "description": "Advisory workspace-relative file or directory prefixes this task expects to modify."}
+        },
+        "required": ["subject", "description"]}
+
+段落 team_task_list模式:
+  返回 {"type": "object",
+        "properties": {
+          "status": {"type": "string", "enum": ["pending", "in_progress", "completed"], "description": "Optional exact status filter."},
+          "owner": {"type": "string", "description": "Optional member-name filter; use unowned for tasks without an owner."},
+          "ready": {"type": "boolean", "description": "Optional readiness filter."},
+          "cursor": {"type": "integer", "description": "Zero-based result offset. Defaults to 0."},
+          "limit": {"type": "integer", "description": "Number of rows, 1 through 100. Defaults to 50."}
+        }}
+
+段落 team_task_get模式:
+  返回 {"type": "object",
+        "properties": {
+          "task_id": {"type": "string", "description": "Shared task id."}
+        },
+        "required": ["task_id"]}
+
+段落 team_task_update模式:
+  返回 {"type": "object",
+        "properties": {
+          "task_id": {"type": "string", "description": "Shared task id."},
+          "expected_revision": {"type": "integer", "description": "Current task revision used as the CAS precondition."},
+          "action": {"type": "string", "enum": ["claim", "release", "edit", "set_dependencies", "complete", "reopen", "reassign", "delete"], "description": "Task transition to apply."},
+          "subject": {"type": "string", "description": "Replacement title for edit."},
+          "description": {"type": "string", "description": "Replacement details for edit."},
+          "blocked_by": {"type": "array", "items": {"type": "string"}, "description": "Complete blocker list for set_dependencies."},
+          "write_scopes": {"type": "array", "items": {"type": "string"}, "description": "Replacement advisory write scopes for edit."},
+          "owner": {"type": "string", "description": "Member name for Lead-only reassign; omit to unassign."}
+        },
+        "required": ["task_id", "expected_revision", "action"]}
+
+# 9 个团队工具的模型面声明表（name/description/parameters；execute 由执行面提供）
+段落 团队工具声明表:
+  设 表 为 []
+  列表追加(表, {"name": "spawn_teammate", "description": "Create one named, durable teammate. Only the Team Lead may call this tool.", "parameters": spawn_teammate模式()})
+  列表追加(表, {"name": "send_message", "description": "Send one durable message to another Team member.", "parameters": send_message模式()})
+  列表追加(表, {"name": "list_agents", "description": "List the Lead and every durable teammate with current runtime status.", "parameters": list_agents模式()})
+  列表追加(表, {"name": "wait_agent", "description": "Wait for the next teammate status, mailbox, or shared-task change after this call starts.", "parameters": wait_agent模式()})
+  列表追加(表, {"name": "interrupt_agent", "description": "Interrupt one teammate's current turn while preserving its pending inbox. Team Lead only.", "parameters": interrupt_agent模式()})
+  列表追加(表, {"name": "team_task_create", "description": "Create one unowned pending task on the shared Team task board.", "parameters": team_task_create模式()})
+  列表追加(表, {"name": "team_task_list", "description": "List shared tasks, including readiness, owner, revision, blockers, and write-scope warnings.", "parameters": team_task_list模式()})
+  列表追加(表, {"name": "team_task_get", "description": "Read the complete latest value of one shared task before changing or executing it.", "parameters": team_task_get模式()})
+  列表追加(表, {"name": "team_task_update", "description": "Compare-and-set a shared task action using the latest revision.", "parameters": team_task_update模式()})
+  返回 表
+
+# =====================================================================
+# 执行面（注入「团队能力」字典；真实 IO 委托注入能力，纯逻辑分流在本类内）
+#   能力键：spawnTeammate/sendMessage/listMembers/waitForChange/interrupt/
+#           createTask/listTasks/getTask/updateTask/callerId
+# =====================================================================
+类 团队工具面:
+  属性 能力 等于 空
+
+  段落 构造 接收 能力:
+    己.能力 为 能力
+
+  # spawn_teammate：context 缺省 fresh，provider 分流由宿主按 config 决定
+  段落 spawn执行 接收 参数:
+    设 调用 为 己.能力["spawnTeammate"]
+    返回 调用(参数)
+
+  # send_message
+  段落 send执行 接收 参数:
+    设 调用 为 己.能力["sendMessage"]
+    返回 调用(参数)
+
+  # list_agents
+  段落 列成员执行 接收 参数:
+    设 调用 为 己.能力["listMembers"]
+    返回 调用()
+
+  # wait_agent：超时合法才走 no-progress 短路；不合法或有活跃伙伴则交宿主等待
+  段落 等待执行 接收 参数:
+    设 超时 为 解析等待超时(参数)
+    如果 判等待超时合法(超时) == 假:
+      设 调用 为 己.能力["waitForChange"]
+      返回 调用(超时)
+    设 调用列表 为 己.能力["listMembers"]
+    设 成员表 为 调用列表()
+    设 调用者 为 己.能力["callerId"]
+    设 调用者标识 为 调用者()
+    如果 有无活跃等待伙伴(成员表, 调用者标识) == 假:
+      返回 无进展等待结果()
+    设 等候调用 为 己.能力["waitForChange"]
+    返回 等候调用(超时)
+
+  # interrupt_agent
+  段落 中断执行 接收 参数:
+    设 调用 为 己.能力["interrupt"]
+    返回 调用(参数["target"])
+
+  # team_task_create
+  段落 建任务执行 接收 参数:
+    设 调用 为 己.能力["createTask"]
+    返回 调用(参数)
+
+  # team_task_list：纯逻辑过滤 + 分页（宿主 listTasks 给全量任务视图）
+  段落 列任务执行 接收 参数:
+    设 调用列表 为 己.能力["listTasks"]
+    设 任务表 为 调用列表()
+    设 状态 为 空
+    如果 字典包含键(参数, "status"): 设 状态 为 参数["status"]
+    设 主人 为 空
+    如果 字典包含键(参数, "owner"): 设 主人 为 参数["owner"]
+    设 就绪 为 空
+    如果 字典包含键(参数, "ready"): 设 就绪 为 参数["ready"]
+    设 过滤后 为 过滤团队任务(任务表, 状态, 主人, 就绪)
+    设 游标 为 0
+    如果 字典包含键(参数, "cursor"): 设 游标 为 参数["cursor"]
+    设 上限 为 分页上限缺省
+    如果 字典包含键(参数, "limit"): 设 上限 为 参数["limit"]
+    设 占位 为 判分页(游标, 上限)
+    返回 分页切片(过滤后, 游标, 上限)
+
+  # team_task_get
+  段落 取任务执行 接收 参数:
+    设 调用 为 己.能力["getTask"]
+    返回 调用(参数["task_id"])
+
+  # team_task_update
+  段落 改任务执行 接收 参数:
+    设 调用 为 己.能力["updateTask"]
+    返回 调用(参数)
+
+# =====================================================================
+# 导出
+# =====================================================================
+导出 判安全整数
+导出 解析等待超时
+导出 判等待超时合法
+导出 是否活跃等待状态
+导出 有无活跃等待伙伴
+导出 无进展等待结果
+导出 过滤团队任务
+导出 判分页
+导出 分页切片
+导出 渲染JSON文本
+导出 团队工具声明表
+导出 spawn_teammate模式
+导出 send_message模式
+导出 wait_agent模式
+导出 team_task_create模式
+导出 team_task_list模式
+导出 team_task_update模式
+导出 团队工具面

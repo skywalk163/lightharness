@@ -1,0 +1,416 @@
+# mock大模型服务器.light —— 可脚本化 OpenAI 兼容 mock LLM 服务器（测试支撑域）
+#
+# 上游依据：packages/test-support/llm-mock-server/src/index.ts（startMockLlmServer）。
+# 纯逻辑移植：行为队列（FIFO，耗尽可选循环末位）/ 行为构造 / SSE 帧生成 /
+#   带种子加权随机 / 请求匹配与消费 / 服务器生命周期。
+#
+# HTTP 传输层复用 stdlib/HTTP服务端.light（不重写 socket/分帧/keep-alive）：
+#   - 本模块只提供「请求字典 → 响应字典」的 mock 业务逻辑（分派 方法）；
+#   - 启动Mock服务(选项, 超时值) 内部 新建 HTTP服务端(mock处理器, 超时值) 完成 bind；
+#   - 测试可直接 新建Mock服务(选项) 后调用 实例.分派(请求)，确定性、零 socket 抖动。
+#
+# 命名注意：光明词法器把关键字「为」单独成 token，凡含「为」字的裸标识符都会被切碎，
+#   故本模块一律用「项 / 命中 / 末支 / 脚本」等不含「为」的命名（字符串键 "行为" 不受影响）。
+#
+# 与上游的刻意差异（见交付报告「未移植项」）：
+#   - HTTP服务端 契约是「一次请求 → 一条完整响应字典」，不支持响应中途拆链；
+#     故 connection_reset / stream_disconnect / partial_disconnect / stall 这类
+#     「按字节级 RST/半关/挂起」的传输行为，退化为其线上可观察形状
+#     （SSE content-type + 空体或部分体，且无 [DONE]），不断言真实拆链时序。
+#   - 上游 seededRandom 是 mulberry32 位混合（>>> / 异或 / Math.imul），光明无这些
+#     位运算原语；这里改用确定性整数 LCG（同种子 → 同序列），契约只要求「种子可注入、
+#     同种子可复现、权重按比例」，不要求复刻上游浮点流。
+#   - slow_success / chunkDelayMs 的块间延时为计时维度，本层不模拟延时，线形状同 success。
+
+从 HTTP服务端 导入 HTTP服务端
+从 JSON 导入 解析JSON, 序列化JSON
+
+# ---- 常量（对齐上游 MOCK_LLM_BEHAVIORS / DEFAULT_MOCK_LLM_RANDOM_WEIGHTS）----
+# 24 项；含 "random"（脚本占位，请求时按权重解析为具体行为）。
+设 全部项 为 [
+  "connection_reset", "stream_disconnect", "empty", "empty_body",
+  "stream_eof", "partial_eof", "partial_disconnect", "stall",
+  "malformed_json", "malformed_event", "wrong_content_type",
+  "rate_limit", "server_error", "service_unavailable", "auth_error",
+  "invalid_request", "context_overflow", "quota_exceeded",
+  "success", "reasoning_success", "tool_call_success", "max_tokens",
+  "slow_success", "random"
+]
+
+# stress profile（压力权重，非生产事故频率声明）
+设 默认随机权重 为 [
+  "success": 48, "slow_success": 10, "max_tokens": 2,
+  "connection_reset": 5, "stream_disconnect": 5, "partial_disconnect": 10,
+  "empty": 5, "stall": 2, "rate_limit": 5, "server_error": 4,
+  "service_unavailable": 2, "partial_eof": 1, "malformed_json": 1
+]
+
+# Node 定时器不截断的最大毫秒（对齐 MAX_MOCK_LLM_TIMER_DELAY_MS）
+设 最大定时延迟毫秒 为 2147483647
+
+# ---- 小工具 ----
+# 判断 文本 是否以 后缀 结尾（上游 path.endsWith('/chat/completions')）
+段落 以结尾 接收 文本, 后缀:
+  设 n 为 长(文本)
+  设 m 为 长(后缀)
+  如果 m > n:
+    返回 假
+  返回 文本[n - m:n] == 后缀
+
+# 大小写不敏感取请求头（HTTP 头名大小写不定）
+段落 取请求头 接收 头字典, 名, 缺省:
+  遍历 k 之 头字典:
+    如果 k.lower() == 名.lower():
+      返回 头字典[k]
+  返回 缺省
+
+# 按码点切分文本为每块 大小 个码点（对齐 splitText / Array.from）
+段落 切分文本 接收 文本, 大小:
+  设 块表 为 []
+  设 i 为 0
+  当 i < 长(文本):
+    设 结束 为 i + 大小
+    如果 结束 > 长(文本):
+      设 结束 为 长(文本)
+    块表.追加(文本[i:结束])
+    设 i 为 结束
+  返回 块表
+
+# ---- 带种子伪随机数（确定性整数 LCG；同种子 → 同 [0,1) 序列）----
+类 播种随机:
+  属性 状态 等于 0
+  段落 构造 接收 种子:
+    # 反跑 C 锚点：本行若被改成 `己.状态 为 0` 即「种子被忽略」
+    己.状态 为 种子 % 4294967296
+  段落 下一个:
+    己.状态 为 (己.状态 * 1664525 + 1013904223) % 4294967296
+    返回 己.状态 / 4294967296
+
+# 加权随机取具体行为（对齐 chooseRandomBehavior）
+段落 选随机项 接收 权重对表, 随机器:
+  设 总 为 0
+  遍历 项 之 权重对表:
+    设 总 为 总 + 项[1]
+  设 抽 为 随机器.下一个() * 总
+  遍历 项 之 权重对表:
+    如果 抽 < 项[1]:
+      返回 项[0]
+    设 抽 为 抽 - 项[1]
+  返回 权重对表[长(权重对表) - 1][0]
+
+# ---- SSE 帧拼装 ----
+# 对象帧：data: {json}\n\n
+段落 对象帧 接收 对象:
+  返回 "data: " + 序列化JSON(对象) + "\n\n"
+
+# 原文帧：data: {原样}\n\n（用于 malformed_json 的非 JSON 载荷）
+段落 原文帧 接收 文本:
+  返回 "data: " + 文本 + "\n\n"
+
+# 完成帧：data: [DONE]\n\n（集中一处，反跑 B 锚点）
+段落 完成帧体:
+  返回 "data: [DONE]\n\n"
+
+# 终止块（对齐 terminalChunk）：空 content + choices 层 finish_reason + usage
+段落 终端块 接收 原因, 输出token数:
+  返回 [
+    "choices": [["index": 0, "delta": ["content": ""], "finish_reason": 原因]],
+    "usage": ["prompt_tokens": 3, "completion_tokens": 输出token数]
+  ]
+
+# 错误 JSON 体（对齐 httpError 的 {error:{message,type,code}}）
+段落 错误JSON 接收 消息, 类型, 代码:
+  返回 序列化JSON(["error": ["message": 消息, "type": 类型, "code": 代码]])
+
+
+# ---- mock 服务器（纯逻辑；不绑定 socket，绑定由 启动Mock服务 经 HTTP服务端 完成）----
+类 Mock大模型服务器:
+  # 脚本与游标
+  属性 序列 等于 空
+  属性 光标 等于 0
+  属性 重复末位 等于 假
+  属性 末支 等于 ""
+  # 随机
+  属性 随机器 等于 空
+  属性 权重对表 等于 空
+  # 文案/计时配置
+  属性 成功文本 等于 "mock response recovered"
+  属性 部分文本 等于 "discarded partial response"
+  属性 推理文本 等于 "mock reasoning"
+  属性 块大小 等于 8
+  属性 重试毫秒 等于 1000
+  属性 请求ID 等于 ""
+  属性 工具名 等于 "mock_tool"
+  属性 工具参数 等于 "{\"value\":\"mock\"}"
+  属性 API密钥 等于 ""
+  # 运行时
+  属性 请求记录 等于 空
+  属性 HTTP服务 等于 空
+
+  段落 构造 接收 选项:
+    设 己.序列 为 选项["序列"]
+    设 己.重复末位 为 选项.获取("重复末位", 假)
+    设 己.光标 为 0
+    设 己.末支 为 己.序列[长(己.序列) - 1]
+    设 己.随机器 为 新建 播种随机(选项.获取("随机种子", 0))
+    设 权重源 为 选项.获取("随机权重", 默认随机权重)
+    设 己.权重对表 为 []
+    遍历 名 之 权重源:
+      己.权重对表.追加([名, 权重源[名]])
+    设 己.成功文本 为 选项.获取("成功文本", "mock response recovered")
+    设 己.部分文本 为 选项.获取("部分文本", "discarded partial response")
+    设 己.推理文本 为 选项.获取("推理文本", "mock reasoning")
+    设 己.块大小 为 选项.获取("块大小", 8)
+    设 己.重试毫秒 为 选项.获取("重试毫秒", 1000)
+    设 己.请求ID 为 选项.获取("请求ID", "")
+    设 己.工具名 为 选项.获取("工具名", "mock_tool")
+    设 己.工具参数 为 选项.获取("工具参数", "{\"value\":\"mock\"}")
+    设 己.API密钥 为 选项.获取("API密钥", "")
+    设 己.请求记录 为 []
+    设 己.HTTP服务 为 空
+
+  # 内核分配端口（未启动真实服务时返回 0）
+  段落 端口:
+    如果 己.HTTP服务 == 空:
+      返回 0
+    返回 己.HTTP服务.端口()
+
+  段落 停止:
+    如果 己.HTTP服务 != 空:
+      己.HTTP服务.停止()
+
+  # FIFO 消费一个脚本行为（对齐 selectBehavior）。反跑 A 锚点见 选中 行。
+  段落 消费脚本:
+    设 索引 为 己.光标
+    设 己.光标 为 己.光标 + 1
+    设 选中 为 空
+    # 越界即耗尽（对齐上游 selectBehavior：游标超出序列长度 → 空）
+    如果 索引 < 长(己.序列):
+      设 选中 为 己.序列[索引]
+    如果 选中 == 空:
+      如果 己.重复末位:
+        设 脚本 为 己.末支
+      否则:
+        设 脚本 为 "脚本耗尽"
+    否则:
+      设 脚本 为 选中
+    如果 脚本 == "random":
+      设 命中 为 选随机项(己.权重对表, 己.随机器)
+    否则:
+      设 命中 为 脚本
+    返回 ["脚本": 脚本, "行为": 命中]
+
+  # SSE 成功流：文本分片 + 终止块 + [DONE]；返回 [体, 块数]
+  段落 造成功流 接收 文本, 尾原因:
+    设 体 为 ""
+    设 计数 为 0
+    遍历 块 之 切分文本(文本, 己.块大小):
+      设 体 为 体 + 对象帧(["choices": [["index": 0, "delta": ["content": 块], "finish_reason": 空]]])
+      设 计数 为 计数 + 1
+    设 体 为 体 + 对象帧(终端块(尾原因, 长(文本)))
+    设 计数 为 计数 + 1
+    设 体 为 体 + 完成帧体()
+    设 计数 为 计数 + 1
+    返回 [体, 计数]
+
+  # 工具调用两半分片（对齐 toolCallChunks）
+  段落 造工具分片:
+    设 参数 为 己.工具参数
+    设 中点 为 1 + (长(参数) // 2)
+    如果 中点 > 长(参数):
+      设 中点 为 长(参数)
+    设 前段 为 参数[0:中点]
+    设 后段 为 参数[中点:]
+    设 块1 为 ["choices": [["index": 0, "delta": [
+      "tool_calls": [["index": 0, "id": "mock-call-1", "type": "function",
+        "function": ["name": 己.工具名, "arguments": 前段]]]
+    ], "finish_reason": 空]]]
+    设 块2 为 ["choices": [["index": 0, "delta": [
+      "tool_calls": [["index": 0, "function": ["arguments": 后段]]]
+    ], "finish_reason": 空]]]
+    返回 [块1, 块2]
+
+  # 按命中造响应：返回 [状态, 头字典, 体, 块数]
+  段落 造脚本响应 接收 命中:
+    设 SSE头 为 ["Content-Type": "text/event-stream; charset=utf-8"]
+    设 JSON头 为 ["Content-Type": "application/json; charset=utf-8"]
+    如果 己.请求ID != "":
+      设 JSON头["x-request-id"] 为 己.请求ID
+
+    # ---- 脚本耗尽 ----
+    如果 命中 == "脚本耗尽":
+      返回 [500, JSON头, 错误JSON("mock script exhausted", "mock_error", "MOCK_SCRIPT_EXHAUSTED"), 0]
+
+    # ---- 连接级传输命中：退化为线上可观察形状（无真实拆链）----
+    如果 命中 == "connection_reset":
+      返回 [200, SSE头, "", 0]
+    如果 命中 == "stream_disconnect":
+      返回 [200, SSE头, "", 0]
+    如果 命中 == "stall":
+      返回 [200, SSE头, "", 0]
+
+    # ---- 语义空回复族 ----
+    如果 命中 == "empty":
+      设 体 为 对象帧(终端块("stop", 0)) + 完成帧体()
+      返回 [200, SSE头, 体, 2]
+    如果 命中 == "empty_body":
+      返回 [200, SSE头, "", 0]
+    如果 命中 == "stream_eof":
+      设 体 为 对象帧(["choices": [["index": 0, "delta": ["role": "assistant"], "finish_reason": 空]]])
+      返回 [200, SSE头, 体, 1]
+    如果 命中 == "partial_eof" 或 命中 == "partial_disconnect":
+      设 体 为 ""
+      设 计数 为 0
+      遍历 块 之 切分文本(己.部分文本, 己.块大小):
+        设 体 为 体 + 对象帧(["choices": [["index": 0, "delta": ["content": 块], "finish_reason": 空]]])
+        设 计数 为 计数 + 1
+      返回 [200, SSE头, 体, 计数]
+
+    # ---- 畸形流 ----
+    如果 命中 == "malformed_json":
+      设 体 为 原文帧("{not-json") + 完成帧体()
+      返回 [200, SSE头, 体, 2]
+    如果 命中 == "malformed_event":
+      设 体 为 对象帧(["choices": [空]]) + 完成帧体()
+      返回 [200, SSE头, 体, 2]
+    如果 命中 == "wrong_content_type":
+      设 结果 为 己.造成功流(己.成功文本, "stop")
+      设 头 为 ["Content-Type": "application/json"]
+      返回 [200, 头, 结果[0], 结果[1]]
+
+    # ---- 错误状态族 ----
+    如果 命中 == "rate_limit":
+      设 秒 为 己.重试毫秒 // 1000
+      如果 己.重试毫秒 % 1000 != 0:
+        设 秒 为 秒 + 1
+      设 头 为 JSON头
+      设 头["Retry-After"] 为 转字符串(秒)
+      返回 [429, 头, 错误JSON("mock rate limit", "mock_error", "rate_limit"), 0]
+    如果 命中 == "server_error":
+      返回 [500, JSON头, 错误JSON("mock server error", "mock_error", "server_error"), 0]
+    如果 命中 == "service_unavailable":
+      返回 [503, JSON头, 错误JSON("mock service unavailable", "mock_error", "service_unavailable"), 0]
+    如果 命中 == "auth_error":
+      返回 [401, JSON头, 错误JSON("mock authentication failed", "invalid_api_key", "invalid_api_key"), 0]
+    如果 命中 == "invalid_request":
+      返回 [400, JSON头, 错误JSON("mock invalid request", "mock_error", "invalid_request"), 0]
+    如果 命中 == "context_overflow":
+      返回 [400, JSON头, 错误JSON("mock input exceeds the model context window", "invalid_request_error", "context_length_exceeded"), 0]
+    如果 命中 == "quota_exceeded":
+      返回 [429, JSON头, 错误JSON("mock insufficient quota", "mock_error", "insufficient_quota"), 0]
+
+    # ---- 成功族 ----
+    如果 命中 == "success" 或 命中 == "slow_success":
+      设 结果 为 己.造成功流(己.成功文本, "stop")
+      返回 [200, SSE头, 结果[0], 结果[1]]
+    如果 命中 == "max_tokens":
+      设 结果 为 己.造成功流(己.成功文本, "length")
+      返回 [200, SSE头, 结果[0], 结果[1]]
+    如果 命中 == "reasoning_success":
+      设 体 为 ""
+      设 计数 为 0
+      遍历 块 之 切分文本(己.推理文本, 己.块大小):
+        设 体 为 体 + 对象帧(["choices": [["index": 0, "delta": ["reasoning_content": 块], "finish_reason": 空]]])
+        设 计数 为 计数 + 1
+      设 结果 为 己.造成功流(己.成功文本, "stop")
+      设 体 为 体 + 结果[0]
+      设 计数 为 计数 + 结果[1]
+      返回 [200, SSE头, 体, 计数]
+    如果 命中 == "tool_call_success":
+      设 分片 为 己.造工具分片()
+      设 体 为 对象帧(分片[0]) + 对象帧(分片[1])
+      设 体 为 体 + 对象帧(终端块("tool_calls", 2)) + 完成帧体()
+      返回 [200, SSE头, 体, 4]
+
+    # 兜底
+    返回 [500, JSON头, 错误JSON("unknown behavior: " + 命中, "mock_error", "MOCK_UNKNOWN_BEHAVIOR"), 0]
+
+  # 主分派（HTTP服务端 处理器契约：请求字典 → 响应字典）
+  #   次序对齐上游 handle：方法 → 路径 → 鉴权 → 体 JSON → 消费行为 → 执行。
+  #   任一前置拒绝（405/404/401/坏 JSON）都不消耗脚本。
+  段落 分派 接收 请求:
+    设 方法 为 请求["方法"]
+    设 原路径 为 请求["路径"]
+    设 头 为 请求["头"]
+    # 去查询串
+    设 路径 为 原路径
+    设 q 为 路径.查找("?")
+    如果 q >= 0:
+      设 路径 为 路径[0:q]
+
+    设 JSON头 为 ["Content-Type": "application/json; charset=utf-8"]
+    如果 己.请求ID != "":
+      设 JSON头["x-request-id"] 为 己.请求ID
+
+    如果 方法 != "POST":
+      返回 [405, ["Allow": "POST"], ""]
+    如果 以结尾(路径, "/chat/completions") == 假:
+      返回 [404, JSON头, 错误JSON("not found: " + 方法 + " " + 路径, "mock_error", "not_found")]
+
+    # 鉴权：配置了 API密钥 才校验 Bearer
+    如果 己.API密钥 != "":
+      设 授权 为 取请求头(头, "Authorization", "")
+      如果 授权 != "Bearer " + 己.API密钥:
+        返回 [401, JSON头, 错误JSON("invalid mock bearer token", "invalid_api_key", "invalid_api_key")]
+
+    # 读 JSON 体
+    设 体字节 为 请求["体"]
+    设 体 为 空
+    如果 长(体字节) > 0:
+      设 体文本 为 字符串(体字节, "utf-8")
+      尝试:
+        设 体 为 解析JSON(体文本)
+      捕获 异常 e:
+        返回 [400, JSON头, 错误JSON("request body must be valid JSON", "mock_error", "invalid_json")]
+
+    # 消费行为并执行
+    设 选中 为 己.消费脚本()
+    设 记录 为 [
+      "序号": 长(己.请求记录) + 1,
+      "脚本行为": 选中["脚本"],
+      "行为": 选中["行为"],
+      "路径": 路径,
+      "体": 体,
+      "块数": 0,
+      "结果": "completed"
+    ]
+    己.请求记录.追加(记录)
+    设 结果 为 己.造脚本响应(选中["行为"])
+    设 记录["块数"] 为 结果[3]
+    返回 [结果[0], 结果[1], 结果[2]]
+
+
+# ---- 模块级单例：异步处理器经它拿到当前实例（光明类体不能放 异步 段落）----
+设 当前实例 为 空
+
+# HTTP服务端 每连接回调（请求字典 → 响应字典）
+异步 段落 mock处理器 接收 请求:
+  如果 当前实例 == 空:
+    返回 [500, ["Content-Type": "application/json"], 错误JSON("mock 服务未初始化", "mock_error", "MOCK_NOT_READY")]
+  返回 当前实例.分派(请求)
+
+# 造一个纯逻辑实例（测试可直接 实例.分派(请求)，不绑 socket）
+段落 新建Mock服务 接收 选项:
+  设 实例 为 新建 Mock大模型服务器(选项)
+  设 当前实例 为 实例
+  返回 实例
+
+# 造实例并复用 stdlib/HTTP服务端 真 bind 内核端口（端口=0 由内核分配）
+段落 启动Mock服务 接收 选项, 超时值:
+  设 实例 为 新建Mock服务(选项)
+  设 实例.HTTP服务 为 新建 HTTP服务端(mock处理器, 超时值)
+  返回 实例
+
+导出 Mock大模型服务器
+导出 全部项
+导出 默认随机权重
+导出 最大定时延迟毫秒
+导出 播种随机
+导出 选随机项
+导出 切分文本
+导出 对象帧
+导出 完成帧体
+导出 新建Mock服务
+导出 启动Mock服务
+导出 mock处理器
+导出 当前实例

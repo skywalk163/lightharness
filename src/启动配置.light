@@ -1,0 +1,357 @@
+# 启动配置.light —— 对标原版 packages/boot/app-boot/src/profile.ts（853 行）
+#                  + packages/boot/cmdline/src/index.ts（239 行）
+#                  + apps/cli/src/args.ts（212 行，launcher flags 真正解析处）
+#
+# 覆盖范围（纯逻辑，宿主面已裁剪）：
+#   ① profile 目录解析：$DSH_HOME/profiles/<name>，名称合法性校验
+#      （对齐 profile.ts: resolveProfileDir，L100-107）。
+#   ② profile manifest 读写：package.json 中的 dsh.profile.bundles 有序列表
+#      （对齐 readProfileManifest L658-672 / writeProfileManifest L679-681）。
+#   ③ initProfile：建目录 + 写 manifest + 写空 patch 层文件 + 写 pnpm-workspace.yaml
+#      （对齐 initProfile L170-190；已有文件不覆盖）。
+#   ④ patch 层组合：组合条目(layers) 按 bundles 顺序把每层 patch 叠加到空 entry 表
+#      （对齐 composeEntries L846-853 + profile.spec.ts 的 id 覆盖/insert 追加语义）。
+#   ⑤ launcher flags 解析：解析启动参数(argv) 返回 {模式, profile, patches, args, ...}
+#      三态（profile / dump-config / plugin），对齐 args.ts parseDshArgs。
+#
+# 光明现实差异（重要，已在行为差异清单登记）：
+#   - 上游 patch 文件为 YAML（cordis.patch.yml），光明无 YAML 解析 → 改用 JSON 数组
+#     （cordis.patch.json）。一条 patch 形如 {"id":"x","config":{"k":"v"},"insert":[...]}。
+#   - 上游 applyEntryPatches 是 cordis-plugin-include 的完整 patch 算法（含 group/disable/
+#     !!js 表达式/路径锚定），光明只复刻其可观测核心语义：
+#       · 同 id 的 patch：把 config 字典浅合并到既有 entry（后写覆盖先写）
+#       · patch 带 insert：把 insert 里的新 entry 按其 id 加入输出表
+#     group/disable/!!js 表达式不移植（宿主面，留后续轮）。
+#   - 上游 resolveBundleDir 走 Node 双锚点 require.resolve（install 锚 + profile/node_modules）；
+#     光明无 Node 模块解析器，bundle 目录由调用方显式注入（loadProfileDirectory 简化为
+#     接收「已解析的层列表」而非自行探文件系统）。
+#   - 上游 healProfilesModuleFallback / ensureSymlink / ensureModuleProxy（pnpm 软链/ESM 代理）
+#     属宿主安装面，纯逻辑层不移植。
+#   - 上游 PROFILE_TEMPLATES（acp/web/headless/sdk/sdk-minimal）是 shipped bundle 名表，
+#     光明保留同名常量但 bundles 字段名保留上游原样（@deepseek-ai/dsh-*），
+#     实际解析由调用方注入。
+
+从 主目录路径 导入 解析主目录, 主目录路径
+从 内置核心字符串 导入 开头, 结尾, 截取, 字符串包含
+从 内置核心判型 导入 是字典, 是列表, 是空
+从 内置核心字典 导入 字典键列表
+从 字符串工具轻量 导入 连接字符串, 转小写
+
+# ---- 常量（对齐 profile.ts L42-45 / L110-131 / L139-142）----
+设 资料夹名 为 "profiles"
+设 补丁文件名 为 "cordis.patch.json"   # 光明差异：JSON 替代 YAML
+设 清单文件名 为 "package.json"
+设 工作区文件名 为 "pnpm-workspace.yaml"
+设 缺省补丁重载 为 "live"
+设 保留profile名 为 "node_modules"      # profile.ts L103：launcher 维护的兄弟目录
+
+# ---- 已发布 profile 模板（对齐 profile.ts PROFILE_TEMPLATES L110-131）----
+# 仅保留 bundles 顺序与 patchReload；bundle 目录解析由调用方注入。
+设 已发布模板 为 {
+  "acp": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-acp-app"], "patchReload": "startup"},
+  "web": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"], "patchReload": "live"},
+  "headless": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"], "patchReload": "startup"},
+  "sdk": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-sdk-app"], "patchReload": "startup"},
+  "sdk-minimal": {"bundles": ["@deepseek-ai/dsh-sdk-minimal"], "patchReload": "startup"}
+}
+
+# ---- 自定义 profile 的缺省 bundles（对齐 DEFAULT_PROFILE_BUNDLES L139）----
+设 缺省bundles 为 ["@deepseek-ai/dsh-base"]
+
+# ============================================================
+# ① profile 目录解析（对齐 resolveProfileDir L100-107）
+# ============================================================
+# 名称合法性：空串 / 含 '/' / 含 '\' / '.' / '..' / 'node_modules' 一律抛错。
+# 返回 $DSH_HOME/profiles/<name> 路径（用 主目录路径.主目录路径 拼接，对齐 $DSH_HOME 语义）。
+# 主目录 参数为操作系统主目录（注入式，纯函数化）；配置/环境 透传给 解析主目录。
+段落 解析profile目录 接收 名称, 主目录, 配置=空, 环境=空:
+  如果 名称 == "" 或 名称 == "." 或 名称 == ".." 或 名称 == 保留profile名:
+    抛出 "dsh: invalid profile name " + 转字符串(名称)
+  如果 字符串包含(名称, "/") 或 字符串包含(名称, "\\"):
+    抛出 "dsh: invalid profile name " + 转字符串(名称)
+  返回 主目录路径(主目录, [资料夹名, 名称], 配置, 环境)
+
+# ============================================================
+# ② manifest 读写（对齐 readProfileManifest / writeProfileManifest）
+# ============================================================
+# 读取 目录/package.json；必须是 JSON 对象（null/数组/标量一律抛错）。
+段落 读取profile清单 接收 bin名, 目录:
+  设 路径 为 连接路径(目录, 清单文件名)
+  如果 文件存在(路径) == 假:
+    抛出 bin名 + ": failed to read profile manifest " + 路径 + ": ENOENT"
+  设 原文 为 读取文件(路径)
+  设 解析值 为 解析JSON(原文)
+  # 字段校验：JSON null / 数组 / 标量都不是对象
+  如果 解析值 == 空:
+    抛出 bin名 + ": profile manifest " + 路径 + " must hold a JSON object"
+  如果 是字典(解析值) == 假:
+    抛出 bin名 + ": profile manifest " + 路径 + " must hold a JSON object"
+  返回 解析值
+
+# 写入 目录/package.json（2 空格缩进 + 尾换行，对齐 writeFileSync + '\n'）。
+段落 写入profile清单 接收 目录, 清单:
+  设 路径 为 连接路径(目录, 清单文件名)
+  设 文本 为 序列化JSON(清单, 2) + "\n"
+  写入文件(路径, 文本)
+
+# ============================================================
+# ③ initProfile（对齐 initProfile L170-190）
+# ============================================================
+# 建目录 + 写 package.json（含 dsh.profile.bundles/patchReload）+ 写空 patch 文件（[]）
+# + 写 pnpm-workspace.yaml。已有文件一律不覆盖（重跑幂等）。
+段落 初始化profile 接收 目录, bundles, patchReload:
+  如果 patchReload == 空 或 patchReload == "":
+    设 patchReload 为 缺省补丁重载
+  创建目录(目录)
+  设 清单路径 为 连接路径(目录, 清单文件名)
+  如果 文件存在(清单路径) == 假:
+    设 清单 为 {
+      "name": "dsh-profile-" + 文件名(目录),
+      "private": 真,
+      "dependencies": {},
+      "dsh": {"profile": {"bundles": bundles, "patchReload": patchReload}}
+    }
+    写入profile清单(目录, 清单)
+  设 补丁路径 为 连接路径(目录, 补丁文件名)
+  如果 文件存在(补丁路径) == 假:
+    写入文件(补丁路径, "[]\n")
+  设 工作区路径 为 连接路径(目录, 工作区文件名)
+  如果 文件存在(工作区路径) == 假:
+    写入文件(工作区路径, "packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n")
+
+# ============================================================
+# ④ patch 层加载与组合
+# ============================================================
+# 加载一个 JSON 格式 patch 文件（顶层数组）。文件不存在返回空列表
+# （对齐 loadOptionalPatches 的「missing = no layer」语义；调用方如需硬失败应自己先 existsSync）。
+# 每条 patch 形如 {"id":"x","config":{...},"insert":[...]}。
+段落 加载补丁层 接收 bin名, 路径:
+  如果 文件存在(路径) == 假:
+    返回 []
+  设 原文 为 读取文件(路径)
+  设 解析值 为 解析JSON(原文)
+  如果 是列表(解析值) == 假:
+    抛出 bin名 + ": patch layer " + 路径 + " must hold a JSON array"
+  返回 解析值
+
+# ---- 同 id entry 的 config 浅合并（后写覆盖先写）----
+段落 合并配置 接收 目标entry, 补丁:
+  设 覆盖 为 补丁.获取("config", 空)
+  如果 覆盖 == 空:
+    返回
+  如果 是字典(覆盖) == 假:
+    抛出 "patch config must be an object, got " + 转字符串(覆盖)
+  遍历 键 之 字典键列表(覆盖):
+    设 目标entry[键] 为 覆盖[键]
+
+# ---- 把一条 patch 应用到 entry 表（按 id 索引）----
+# 索引：id → 在 顺序表 中的位置；entry 本身存 顺序表[i]。
+# 顺序：先处理 id 目标（让目标 entry 存在），再处理 insert（往 group 里加子条目）。
+段落 应用补丁 接收 补丁, 顺序表, 索引表:
+  # id 直接补丁：把 config 合并到同 id entry；不存在则新建
+  设 目标id 为 补丁.获取("id", 空)
+  如果 目标id != 空:
+    如果 索引表.包含(目标id):
+      设 现有 为 顺序表[索引表[目标id]]
+      合并配置(现有, 补丁)
+    否则:
+      设 新entry 为 {"id": 目标id}
+      合并配置(新entry, 补丁)
+      设 索引表[目标id] 为 长(顺序表)
+      顺序表.追加(新entry)
+  # insert 列表：把新 entry 加入（按其 id；已存在则合并 config）
+  设 插入 为 补丁.获取("insert", 空)
+  如果 插入 != 空:
+    如果 是列表(插入) == 假:
+      抛出 "patch insert must be an array"
+    遍历 子entry 之 插入:
+      如果 是字典(子entry) == 假:
+        抛出 "patch insert entries must be objects"
+      设 子id 为 子entry.获取("id", 空)
+      如果 子id == 空:
+        抛出 "patch insert entries must declare an id"
+      如果 索引表.包含(子id):
+        设 现有 为 顺序表[索引表[子id]]
+        遍历 键 之 字典键列表(子entry):
+          如果 键 != "id":
+            设 现有[键] 为 子entry[键]
+      否则:
+        设 新entry 为 深拷贝(子entry)
+        设 索引表[子id] 为 长(顺序表)
+        顺序表.追加(新entry)
+
+# ---- 组合条目（对齐 composeEntries L846-853）----
+# layers: 列表[列表[patch]] —— 外层按 bundles 顺序，内层是每层自己的 patch 列表。
+# 按外层顺序、内层顺序依次应用；用户 patch 层应作为 layers 的最后一项。
+# warn: 可选告警接收器（本简化版未使用 group/disable，故无跳过告警；保留参数对齐上游）。
+段落 组合条目 接收 layers:
+  设 顺序表 为 []
+  设 索引表 为 {}
+  遍历 层 之 layers:
+    遍历 补丁 之 层:
+      如果 是字典(补丁) == 假:
+        抛出 "each patch must be an object"
+      应用补丁(补丁, 顺序表, 索引表)
+  返回 顺序表
+
+# ============================================================
+# ⑤ launcher flags 解析（对齐 apps/cli/src/args.ts parseDshArgs L126-211）
+# ============================================================
+# 输入 argv：不含 node/script 的原始参数列表（如 ["--profile", "tui", "--resume", "abc"]）。
+# 输出字典：
+#   {"模式": "profile"|"dump-config"|"plugin",
+#    "profile": <name>, "fromDefaultProfile": <name 或 空>,
+#    "patches": [path, ...], "args": [...inner args],
+#    "defaultOnly": 真/假, "version": <被请求版本号 或 空>}
+#
+# 对齐上游哲学：launcher 只认自己的 flags，第一个不认识的 token 起就是 inner args。
+# 支持的 launcher flags：
+#   --profile <name>                  指定 profile（必填，除非走 plugin 子命令）
+#   --from-default-profile <name>     从已发布模板初始化自定义 profile
+#   --patch <path>                    额外 patch overlay（可重复，不允空串）
+#   --dump-config                     打印组合配置并退出
+#   --dump-default-config             仅打印 bundle 层（不带 user/patch overlay）
+#   web                               子命令别名 = --profile web
+#   plugin --profile <name> <pnpm...> pnpm 转发子命令
+#   -V / --version                    请求版本号（输出 {"模式":"version"}）
+#   -h / --help                       请求帮助（输出 {"模式":"help"}）
+段落 解析启动参数 接收 argv:
+  设 结果 为 _遍历启动flags(argv, 0, "root")
+  返回 结果
+
+# ---- 内部：从 argv[起始下标] 开始扫描 flags，返回 {终止下标, 字段...} ----
+# 上下文："root"（dsh 主命令）或 "web"（web 子命令别名，profile 固定 "web"）。
+段落 _遍历启动flags 接收 argv, 起始下标, 上下文:
+  设 profile 为 空
+  设 fromDefaultProfile 为 空
+  设 patches 为 []
+  设 dumpConfig 为 假
+  设 dumpDefaultConfig 为 假
+  设 版本请求 为 假
+  设 帮助请求 为 假
+  设 i 为 起始下标
+  设 n 为 长(argv)
+  当 i < n:
+    设 标记 为 argv[i]
+    # --profile <name>
+    如果 标记 == "--profile":
+      如果 i + 1 >= n:
+        抛出 "error: --profile needs a name"
+      设 i 为 i + 1
+      设 profile 为 argv[i]
+      如果 profile == "":
+        抛出 "error: --profile needs a name"
+      如果 转小写(profile) == "desktop":
+        抛出 'error: profile "desktop" is managed exclusively by the Electron application'
+    # --from-default-profile <name>
+    否则如果 标记 == "--from-default-profile":
+      如果 i + 1 >= n:
+        抛出 "error: --from-default-profile needs a name"
+      设 i 为 i + 1
+      设 fromDefaultProfile 为 argv[i]
+      如果 fromDefaultProfile == "":
+        抛出 "error: --from-default-profile needs a name"
+    # --patch <path>（可重复）
+    否则如果 标记 == "--patch":
+      如果 i + 1 >= n:
+        抛出 "error: --patch needs a path"
+      设 i 为 i + 1
+      设 路径值 为 argv[i]
+      如果 路径值 == "":
+        抛出 "error: --patch needs a path"
+      patches.追加(路径值)
+    # --dump-config
+    否则如果 标记 == "--dump-config":
+      设 dumpConfig 为 真
+    # --dump-default-config
+    否则如果 标记 == "--dump-default-config":
+      设 dumpDefaultConfig 为 真
+    # -V / --version
+    否则如果 标记 == "-V" 或 标记 == "--version":
+      设 版本请求 为 真
+    # -h / --help
+    否则如果 标记 == "-h" 或 标记 == "--help":
+      设 帮助请求 为 真
+    # web 子命令（仅 root 上下文认）
+    否则如果 上下文 == "root" 且 标记 == "web":
+      设 子结果 为 _遍历启动flags(argv, i + 1, "web")
+      # web 子命令把 profile 固定为 "web"；不允许 root 的 --profile/--patch 等在 web 之前出现
+      如果 子结果["profile"] != 空 或 子结果["fromDefaultProfile"] != 空:
+        抛出 "error: web takes none of parent --profile or --from-default-profile"
+      # 合并：web 分支把 profile 固定为 "web"，其余字段从子扫描继承
+      返回 {
+        "模式": _判定模式(子结果),
+        "profile": "web",
+        "fromDefaultProfile": 子结果["fromDefaultProfile"],
+        "patches": 子结果["patches"],
+        "args": 子结果["args"],
+        "defaultOnly": 子结果["defaultOnly"],
+        "版本请求": 子结果["版本请求"],
+        "帮助请求": 子结果["帮助请求"]
+      }
+    # plugin 子命令（仅 root 上下文认；必须紧跟 --profile <name>）
+    否则如果 上下文 == "root" 且 标记 == "plugin":
+      # plugin 子命令的 --profile 是必填
+      设 子结果 为 _遍历启动flags(argv, i + 1, "plugin")
+      如果 子结果["profile"] == 空:
+        抛出 "error: plugin requires --profile <name>"
+      如果 长(子结果["args"]) == 0:
+        抛出 "error: plugin needs pnpm arguments to forward (e.g. add <package>)"
+      返回 {
+        "模式": "plugin",
+        "profile": 子结果["profile"],
+        "fromDefaultProfile": 空,
+        "patches": [],
+        "args": 子结果["args"],
+        "defaultOnly": 假,
+        "版本请求": 假,
+        "帮助请求": 假
+      }
+    # 第一个不认识的 token 起就是 inner args（passThroughOptions 语义）
+    否则:
+      设 剩余 为 []
+      设 j 为 i
+      当 j < n:
+        剩余.追加(argv[j])
+        设 j 为 j + 1
+      返回 _组装调用(profile, fromDefaultProfile, patches, dumpConfig, dumpDefaultConfig, 版本请求, 帮助请求, 剩余)
+    设 i 为 i + 1
+  # 扫完 argv 没有遇到 inner args
+  返回 _组装调用(profile, fromDefaultProfile, patches, dumpConfig, dumpDefaultConfig, 版本请求, 帮助请求, [])
+
+段落 _组装调用 接收 profile, fromDefaultProfile, patches, dumpConfig, dumpDefaultConfig, 版本请求, 帮助请求, 剩余:
+  # version / help 优先（上游 program.version/help 短路）
+  如果 版本请求:
+    返回 {"模式": "version", "profile": 空, "fromDefaultProfile": 空, "patches": [], "args": [], "defaultOnly": 假, "版本请求": 真, "帮助请求": 假}
+  如果 帮助请求:
+    # help 必须有 profile 才能交给 app；上游 program.help() 直接打印 launcher help
+    返回 {"模式": "help", "profile": profile, "fromDefaultProfile": 空, "patches": [], "args": 剩余, "defaultOnly": 假, "版本请求": 假, "帮助请求": 真}
+  # dump 与 boot 互斥校验（对齐 resolveBoot L96-117）
+  如果 dumpConfig 且 dumpDefaultConfig:
+    抛出 "error: --dump-config and --dump-default-config are mutually exclusive"
+  如果 dumpConfig 或 dumpDefaultConfig:
+    如果 长(剩余) > 0:
+      设 显示表 为 []
+      遍历 参 之 剩余:
+        显示表.追加(转字符串(参))
+      抛出 "error: config dumps take no app arguments, got " + 连接字符串(显示表, " ")
+    如果 dumpDefaultConfig 且 长(patches) > 0:
+      抛出 "error: --dump-default-config prints the bundle layers and takes no --patch"
+    如果 profile == 空:
+      抛出 "error: --profile <name> is required"
+    返回 {"模式": "dump-config", "profile": profile, "fromDefaultProfile": fromDefaultProfile, "patches": patches, "args": [], "defaultOnly": dumpDefaultConfig, "版本请求": 假, "帮助请求": 假}
+  # 默认 profile 引导
+  如果 profile == 空:
+    抛出 "error: --profile <name> is required"
+  返回 {"模式": "profile", "profile": profile, "fromDefaultProfile": fromDefaultProfile, "patches": patches, "args": 剩余, "defaultOnly": 假, "版本请求": 假, "帮助请求": 假}
+
+# ---- web 子命令的模式判定（子扫描已经走完 flags，剩余即为 args）----
+段落 _判定模式 接收 子结果:
+  # web 分支默认走 profile 模式；dump/version/help 由 _组装调用 已判定
+  如果 子结果["版本请求"]:
+    返回 "version"
+  如果 子结果["帮助请求"]:
+    返回 "help"
+  如果 子结果["模式"] == "dump-config":
+    返回 "dump-config"
+  返回 "profile"

@@ -1,0 +1,69 @@
+# 包清单.light —— 对标原版 packages/util/package-manifest/src/{index.ts,types.ts}
+# 上游 index.ts 仅做类型再导出（无运行时导出）；types.ts 定义 package.json.dsh 的形状。
+# 本模块把「无运行时」的类型形状落成可调用的读取/校验纯函数（读取 dsh 字段 + 各角色校验），
+# 与上游 DshBundleManifest / DshProfileManifest / DshClientManifest / DshConfigTreeDeclaration 对齐。
+
+# 从包 JSON 取出 dsh 字段（非字典或缺 dsh → 空字典）
+段落 读包清单DSH 接收 包JSON:
+  如果 是字典(包JSON) == 假:
+    返回 {}
+  设 dsh 为 字典获取(包JSON, "dsh", 空)
+  如果 是字典(dsh) == 假:
+    返回 {}
+  返回 dsh
+
+# DshBundleManifest.patch：相对声明包根的 patch 文件路径，必填非空字符串。
+段落 校验Bundle清单 接收 dsh:
+  如果 是字典(dsh) == 假:
+    返回 假
+  设 patch 为 字典获取(dsh, "patch", 空)
+  如果 是字符串(patch) == 假 或 长(patch) == 0:
+    返回 假
+  返回 真
+
+# DshProfileManifest：bundles 可选字符串数组；patchReload 仅 live/startup。
+段落 校验Profile清单 接收 dsh:
+  如果 是字典(dsh) == 假:
+    返回 假
+  设 bundles 为 字典获取(dsh, "bundles", 空)
+  如果 bundles != 空:
+    如果 是列表(bundles) == 假:
+      返回 假
+    遍历 b 之 bundles:
+      如果 是字符串(b) == 假:
+        返回 假
+  设 reload 为 字典获取(dsh, "patchReload", 空)
+  如果 reload != 空:
+    如果 reload != "live" 且 reload != "startup":
+      返回 假
+  返回 真
+
+# DshClientManifest：platform 必填非空字符串；inject/immediately/external 形状校验。
+段落 校验Client清单 接收 dsh:
+  如果 是字典(dsh) == 假:
+    返回 假
+  设 platform 为 字典获取(dsh, "platform", 空)
+  如果 是字符串(platform) == 假 或 长(platform) == 0:
+    返回 假
+  设 inject 为 字典获取(dsh, "inject", 空)
+  如果 inject != 空 且 是列表(inject) == 假:
+    返回 假
+  设 immediately 为 字典获取(dsh, "immediately", 空)
+  如果 immediately != 空 且 isinstance(immediately, bool) == 假:
+    返回 假
+  设 external 为 字典获取(dsh, "external", 空)
+  如果 external != 空 且 是列表(external) == 假:
+    返回 假
+  返回 真
+
+# DshConfigTreeDeclaration：mount/path 均为非空字符串。
+段落 校验配置树声明 接收 项:
+  如果 是字典(项) == 假:
+    返回 假
+  设 mount 为 字典获取(项, "mount", 空)
+  设 p 为 字典获取(项, "path", 空)
+  如果 是字符串(mount) == 假 或 长(mount) == 0:
+    返回 假
+  如果 是字符串(p) == 假 或 长(p) == 0:
+    返回 假
+  返回 真
