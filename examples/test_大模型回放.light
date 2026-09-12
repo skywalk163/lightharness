@@ -1,0 +1,220 @@
+# test_大模型回放.light —— 任务4 大模型回放（llm-replay 纯逻辑面）对齐判据
+# 运行：python 运行.py examples/test_大模型回放.light
+# 注意：光明字符串内 {标识符} 会触发插值，日志/覆盖文档一律用 序列化JSON 构造；
+#       抛错判据用具名零参段落 + 尝试/捕获（L-050：捕获 错误 as 变量 不支持）。
+
+从 JSON 导入 序列化JSON
+从 大模型回放 导入 解析会话日志, 解析会话头, 推导回放脚本, 展开助手流
+从 大模型回放 导入 解析脚本条目, 物化会话令牌, 解析覆盖文档, 应用覆盖补丁, 整理会话脚本
+从 大模型回放 导入 取最后匹配
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言为真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败：" + 信息 + " | 期望真")
+
+段落 断言抛错 接收 动作, 信息:
+  设 抛了 为 假
+  尝试:
+    动作()
+  捕获 错误:
+    设 抛了 为 真
+  如果 抛了 == 假:
+    抛出 新建 错误("断言失败：" + 信息 + " | 期望抛错但未抛")
+
+段落 造行 接收 值:
+  返回 序列化JSON(值)
+
+# 标准 v3 会话日志：头 + 一条 assistant/message（含 finish 流）
+设 标准日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-1", "createdAt": 1700000000000]) + "\n" + 造行(["type": "assistant/message", "seq": 1, "time": 100, "data": ["turn": 1, "step": 1, "stream": [["type": "text-delta", "index": 0, "text": "你好"], ["type": "finish", "reason": ["kind": "stop"]]]]])
+
+段落 动作混合日志:
+  设 混合日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-m", "createdAt": 1]) + "\n" + 造行(["type": "assistant/message", "seq0": 1, "time0": 0, "data": ["a": 1]]) + "\n" + 造行(["type": "assistant/message", "seq": 2, "time": 1, "data": ["a": 2]])
+  解析会话日志(混合日志)
+
+段落 动作非对象行:
+  设 坏日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-b", "createdAt": 1]) + "\n" + "\"just a string\""
+  解析会话日志(坏日志)
+
+段落 动作非finish流:
+  设 抛出日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-t", "createdAt": 1]) + "\n" + 造行(["type": "assistant/message", "seq": 1, "time": 1, "data": ["turn": 3, "step": 1, "stream": [["type": "text-delta", "index": 0, "text": "断"]]]])
+  推导回放脚本(解析会话日志(抛出日志))
+
+段落 动作未闭合占位符:
+  设 占位2 为 ["kind": "throw", "消息": "x {{fromRequest:[0-9]+", "码": "E3"]
+  解析脚本条目(占位2, [["c": "1"]])
+
+段落 动作未绑定令牌:
+  物化会话令牌(["kind": "hang", "消息": "{{session:3}}"], ["r1"])
+
+段落 动作未知kind:
+  解析覆盖文档(造行([["kind": "wat"]]))
+
+段落 动作非法块类型:
+  解析覆盖文档(造行([["kind": "chunks", "chunks": [["type": "nope"]]]]))
+
+段落 动作空消息throw:
+  解析覆盖文档(造行([["kind": "throw", "chunks": [], "message": "", "code": "E"]]))
+
+段落 动作补丁越界:
+  应用覆盖补丁([["kind": "chunks", "块": []], ["kind": "chunks", "块": []]], [["位置": 5, "条目": ["kind": "hang"]]])
+
+段落 动作补丁重复:
+  应用覆盖补丁([["kind": "chunks", "块": []], ["kind": "chunks", "块": []]], [["位置": 1, "条目": ["kind": "hang"]], ["位置": 1, "条目": ["kind": "hang"]]])
+
+段落 动作零匹配:
+  取最后匹配("zzz", "abc")
+
+段落 主:
+  # ---- 1. 解析会话日志：普通 v3 日志 ----
+  设 事件表 为 解析会话日志(标准日志)
+  断言相等(长度(事件表), 1, "标准日志解析出 1 个事件")
+  设 事件1 为 事件表[0]
+  断言相等(事件1["类型"], "assistant/message", "事件类型")
+  断言相等(事件1["序号"], 1, "事件序号")
+  断言相等(事件1["时间"], 100, "事件时间")
+  断言为真(字典包含键(事件1["数据"], "stream"), "事件数据含 stream 键")
+
+  # ---- 2. 解析会话日志：完整投影行（seq0/time0 + 打包行基数） ----
+  设 投影日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-p", "createdAt": 1]) + "\n" + 造行(["type": "text-chunks", "seq0": 1, "time0": 0, "data": ["index": 0, "texts": ["甲", "乙"]]]) + "\n" + 造行(["type": "assistant/message", "seq": 3, "time": 5, "data": ["turn": 1, "step": 1, "stream": [["type": "text-delta", "index": 0, "text": "丙"], ["type": "finish", "reason": ["kind": "stop"]]]]])
+  设 事件表2 为 解析会话日志(投影日志)
+  断言相等(长度(事件表2), 2, "投影日志解析出 2 个事件")
+  断言相等(事件表2[0]["类型"], "text-chunks", "打包行保留类型")
+  断言相等(事件表2[0]["序号"], 1, "打包行 seq0")
+  断言相等(事件表2[0]["时间"], 0, "打包行 time0")
+  断言相等(事件表2[1]["序号"], 3, "后续完整行 seq 与打包基数衔接")
+
+  # ---- 2b. 解析会话日志：纯 projected 行 → dense seq 按基数推进 ----
+  设 密集日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-d", "createdAt": 1]) + "\n" + 造行(["type": "text-chunks", "data": ["index": 0, "texts": ["甲", "乙"]]]) + "\n" + 造行(["type": "assistant/message", "data": ["turn": 1, "step": 1, "stream": [["type": "finish", "reason": ["kind": "stop"]]]]])
+  设 事件表3 为 解析会话日志(密集日志)
+  断言相等(事件表3[0]["序号"], 0, "projected 打包行 seq 从 0 补")
+  断言相等(事件表3[0]["时间"], 0, "projected 行时间补 0")
+  断言相等(事件表3[1]["序号"], 2, "projected 行按打包基数补 dense seq（0+2=2）")
+
+  # ---- 3. 解析会话日志：projected/complete 混合拒绝 ----
+  断言抛错(动作混合日志, "complete 与 projected 主体行混用拒绝")
+
+  # ---- 4. 解析会话日志：非对象行拒绝 ----
+  断言抛错(动作非对象行, "非对象主体行拒绝")
+
+  # ---- 5. 解析会话头：标识 / 创建时间 / 继承事件数（seedLength） ----
+  设 头日志 为 造行(["version": 0, "id": "sess-h", "createdAt": 42, "seedLength": 7])
+  设 头 为 解析会话头(头日志)
+  断言相等(头["标识"], "sess-h", "会话头标识")
+  断言相等(头["创建时间"], 42, "会话头创建时间")
+  断言相等(头["继承事件数"], 7, "v0 seedLength 继承事件数")
+  设 头2 为 解析会话头(标准日志)
+  断言相等(头2["标识"], "sess-1", "v3 头标识")
+  断言相等(头2["创建时间"], 1700000000000, "v3 头创建时间")
+  断言相等(头2["继承事件数"], 0, "无 seedLength 继承事件数为 0")
+
+  # ---- 6. 推导回放脚本：assistant/message 流 → chunks 条目 ----
+  设 脚本 为 推导回放脚本(解析会话日志(标准日志))
+  断言相等(长度(脚本), 1, "推导出 1 个调用")
+  断言相等(脚本[0]["kind"], "chunks", "条目种类 chunks")
+  断言相等(长度(脚本[0]["块"]), 2, "块数量 2（text-delta + finish）")
+  断言相等(脚本[0]["块"][0]["type"], "text-delta", "首块 text-delta")
+  断言相等(脚本[0]["块"][1]["type"], "finish", "末块 finish")
+
+  # ---- 7. 推导回放脚本：末块非 finish → 抛（抛出流需覆盖文档） ----
+  断言抛错(动作非finish流, "末块非 finish 抛错")
+
+  # ---- 8. 推导回放脚本：assistant/attempt 也收录 ----
+  设 尝试日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-a", "createdAt": 1]) + "\n" + 造行(["type": "assistant/attempt", "seq": 1, "time": 1, "data": ["turn": 2, "step": 5, "stream": [["type": "text-delta", "index": 0, "text": "x"], ["type": "finish", "reason": ["kind": "stop"]]]]])
+  设 脚本2 为 推导回放脚本(解析会话日志(尝试日志))
+  断言相等(长度(脚本2), 1, "assistant/attempt 也推导为调用")
+
+  # ---- 9. 推导回放脚本：compaction/summary 显式 llmStreamCall → rawOutput 块展开 ----
+  设 压缩日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-c", "createdAt": 1]) + "\n" + 造行(["type": "compaction/summary", "seq": 1, "time": 1, "data": ["llmStreamCall": 真, "rawOutput": [["type": "text", "text": "摘要"]], "usage": ["input_tokens": 5, "output_tokens": 3]]])
+  设 脚本3 为 推导回放脚本(解析会话日志(压缩日志))
+  断言相等(长度(脚本3), 1, "显式 llmStreamCall 压缩推导 1 个调用")
+  设 块3 为 脚本3[0]["块"]
+  断言相等(块3[0]["type"], "block-start", "压缩块首 block-start")
+  断言相等(块3[0]["index"], 0, "block-start 索引")
+  断言相等(块3[0]["blockType"], "text", "block-start 块类型")
+  断言相等(块3[1]["type"], "block-end", "压缩块次 block-end")
+  断言相等(块3[2]["type"], "usage", "压缩块含 usage")
+  断言相等(块3[3]["type"], "finish", "压缩块末 finish")
+
+  # ---- 10. 推导回放脚本：非 llmStreamCall 压缩忽略 ----
+  设 纯摘要日志 为 造行(["version": ["major": 3, "minor": 0], "id": "sess-s", "createdAt": 1]) + "\n" + 造行(["type": "compaction/summary", "seq": 1, "time": 1, "data": ["summary": "手工摘要"]])
+  设 脚本4 为 推导回放脚本(解析会话日志(纯摘要日志))
+  断言相等(长度(脚本4), 0, "非 llmStreamCall 压缩不推导")
+
+  # ---- 11. 展开助手流：压缩记录 → 增量块 ----
+  设 展开 为 展开助手流([["type": "chunk", "chunk": ["type": "text-delta", "text": "直通"]], ["type": "text-chunks", "index": 1, "texts": ["甲", "乙"]], ["type": "tool-call-chunks", "index": 2, "id": "c1", "args": ["{}", "{\"x\":1}"]]])
+  断言相等(长度(展开), 5, "展开助手流 5 块（1 直通 + 2 文本 + 2 工具）")
+  断言相等(展开[0]["type"], "text-delta", "chunk 记录直通")
+  断言相等(展开[1]["index"], 1, "text-chunks 索引")
+  断言相等(展开[1]["text"], "甲", "text-chunks 展开文本")
+  断言相等(展开[2]["text"], "乙", "text-chunks 第二条文本")
+  断言相等(展开[3]["type"], "tool-call-delta", "tool-call-chunks 展开为增量")
+  断言相等(展开[4]["argumentsDelta"], "{\"x\":1}", "tool-call 增量参数")
+
+  # ---- 12. 解析脚本条目：fromRequest 最后匹配替换 ----
+  设 无占位 为 ["kind": "throw", "消息": "固定错误", "码": "E1"]
+  设 原样 为 解析脚本条目(无占位, [["role": "user", "content": "goal-42"]])
+  断言相等(原样["消息"], "固定错误", "无占位符原样返回")
+  设 占位 为 ["kind": "throw", "消息": "no match {{fromRequest:goal-([0-9]+)}}", "码": "E2"]
+  设 替换 为 解析脚本条目(占位, [["role": "user", "content": "goal-42 and goal-77"], ["x", "goal-9"]])
+  断言相等(替换["消息"], "no match 9", "fromRequest 取全部字符串叶子的最后匹配组1（goal-9 晚于 goal-77）")
+  设 无组 为 ["kind": "chunks", "块": [["type": "text-delta", "text": "echo {{fromRequest:0x[0-9a-f]+}}"]]]
+  设 替换2 为 解析脚本条目(无组, [["content": "0x1a2b here"]])
+  断言相等(替换2["块"][0]["text"], "echo 0x1a2b", "fromRequest 无捕获组取全匹配")
+  断言抛错(动作未闭合占位符, "未闭合占位符抛错")
+
+  # ---- 13. 物化会话令牌：绑定 / 非法保留 / 未绑定抛错 ----
+  设 令牌条目 为 ["kind": "throw", "消息": "p {{session:1}} c {{session:2}} k {{session:0}}", "码": "E4"]
+  设 物化 为 物化会话令牌(令牌条目, ["real-a", "real-b"])
+  断言相等(物化["消息"], "p real-a c real-b k {{session:0}}", "会话令牌按序绑定，非法序保留")
+  断言抛错(动作未绑定令牌, "未绑定序数抛错")
+
+  # ---- 14. 解析覆盖文档：chunks / throw / hang 三形与校验 ----
+  设 覆盖文本 为 造行([["kind": "chunks", "chunks": [["type": "text-delta", "index": 0, "text": "覆盖"]]], ["kind": "throw", "chunks": [], "message": "boom", "code": "E_BOOM", "accepted": 真], ["kind": "hang", "readyFile": "/tmp/x"]])
+  设 覆盖1 为 解析覆盖文档(覆盖文本)
+  断言相等(长度(覆盖1["条目表"]), 3, "覆盖文档解析 3 条")
+  断言相等(覆盖1["条目表"][0]["kind"], "chunks", "chunks 条目")
+  断言相等(覆盖1["条目表"][1]["kind"], "throw", "throw 条目")
+  断言相等(覆盖1["条目表"][1]["接受"], 真, "throw accepted 解析")
+  断言相等(覆盖1["条目表"][2]["kind"], "hang", "hang 条目")
+  断言相等(覆盖1["条目表"][2]["就绪文件"], "/tmp/x", "hang readyFile")
+  断言抛错(动作未知kind, "未知 kind 拒绝")
+  断言抛错(动作非法块类型, "非法 chunk type 拒绝")
+  断言抛错(动作空消息throw, "throw 空消息拒绝")
+  设 补丁文本 为 造行(["patches": [["at": 1, "entry": ["kind": "hang"]]]])
+  设 补丁文档 为 解析覆盖文档(补丁文本)
+  断言相等(补丁文档["种类"], "补丁", "patches 形态识别")
+  断言相等(补丁文档["补丁表"][0]["位置"], 1, "补丁 at 解析")
+
+  # ---- 15. 应用覆盖补丁：替换 / 追加 / 越界 / 重复 ----
+  设 基础脚本 为 [["kind": "chunks", "块": []], ["kind": "chunks", "块": []]]
+  设 补丁 为 [["位置": 1, "条目": ["kind": "hang"]], ["位置": 2, "条目": ["kind": "throw", "块": [], "消息": "m", "码": "c"]]]
+  设 应用 为 应用覆盖补丁(基础脚本, 补丁)
+  断言相等(长度(应用), 3, "补丁替换+追加后 3 条")
+  断言相等(应用[1]["kind"], "hang", "at=1 原位替换")
+  断言相等(应用[2]["kind"], "throw", "at=2 等于长度追加")
+  断言抛错(动作补丁越界, "补丁越界拒绝")
+  断言抛错(动作补丁重复, "补丁重复 at 拒绝")
+
+  # ---- 16. 整理会话脚本：主脚本 + 子脚本排序 ----
+  设 主脚本 为 ["记录标识": "main-1", "创建时间": 100, "条目表": []]
+  设 子表 为 [["记录标识": "sub-b", "创建时间": 200, "条目表": []], ["记录标识": "sub-a", "创建时间": 100, "条目表": []], ["记录标识": "sub-c", "创建时间": 150, "条目表": []]]
+  设 整理 为 整理会话脚本(主脚本, 子表)
+  断言相等(长度(整理), 4, "主+3 子脚本")
+  断言相等(整理[0]["记录标识"], "main-1", "主脚本在前")
+  断言相等(整理[1]["记录标识"], "sub-a", "同创建时间按记录标识字典序")
+  断言相等(整理[2]["记录标识"], "sub-c", "子脚本按创建时间升序")
+  断言相等(整理[3]["记录标识"], "sub-b", "最晚子脚本在后")
+
+  # ---- 17. 取最后匹配：无捕获组 / 单捕获组 / 多捕获组 ----
+  断言相等(取最后匹配("[0-9a-f]+", "ab12 cd34"), "cd34", "无捕获组取全匹配")
+  断言相等(取最后匹配("id=([0-9]+)", "id=1 id=22"), "22", "单捕获组取组1")
+  断言相等(取最后匹配("(id)=([0-9]+)", "id=1 id=22"), "id", "多捕获组取组1")
+  断言抛错(动作零匹配, "零匹配抛错")
+
+  打印("--- 大模型回放子系统（任务4）测试通过 ---")
+
+主()

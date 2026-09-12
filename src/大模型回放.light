@@ -1,0 +1,551 @@
+# 大模型回放.light —— 对齐原版 packages/test-support/llm-replay/src/index.ts（纯逻辑面）
+#
+# 复刻范围（任务4边界）：
+#   1) 会话日志解析：parseSessionLog / parseSessionHeader（JSONL → 事件表 / 头投影）
+#   2) 回放脚本推导：deriveReplayScript —— assistant/message 与 assistant/attempt 的
+#      内嵌流展开为 chunk 序列（末块须 finish，否则判为抛出流需覆盖文档）；
+#      compaction/summary 显式 llmStreamCall 标记 → rawOutput 块展开 + usage + finish。
+#   3) 请求插值：resolveScriptedEntry —— {{fromRequest:<pattern>}} 模板用当前请求
+#      消息语料（全部字符串叶子 join("\n")）的「最后匹配」替换（last[1] ?? last[0]）。
+#   4) 会话令牌绑定：materializeSessionTokens —— {{session:N}}（N ≥ 1）按首次调用序
+#      绑定实体会话 id，未绑定的序数抛错。
+#   5) 覆盖文档：解析覆盖文档（ReplayEntry[] 或 { patches } 校验）+ 应用覆盖补丁
+#      （at 越界/重复拒绝，at == 长度 追加）+ 会话脚本排序（主脚本 + 子脚本
+#      createdAt 升序、平局 recordedId 字典序）。
+#   跳过宿主接线：installLlmReplay（Cordis 监听）/ loadReplayScript / loadSessionScripts
+#   的文件 IO 与覆盖合并装配（纯逻辑面独立交付）。
+#
+# 光明差异口径（报告登记）：
+#   1) 上游 expandAssistantStream 在 dsh-llm 包；光明侧 展开助手流 内实现等价：
+#      压缩记录（text-chunks/reasoning-chunks/tool-call-chunks）展开为
+#      text-delta/reasoning-delta/tool-call-delta 增量，普通 chunk 记录直通。
+#   2) 光明会话格式 v3 落盘事件数据用中文键（流/消息），上游夹具用英文键
+#      （stream/message）；读取与推导兼容双键（优先英文，回退中文）。
+#   3) 投影行处理（seq0/time0、打包行基数、dense seq、complete/projected 混合拒绝）
+#      在本模块 解析会话日志 内实现；头部版本迁移复用 会话格式.目录读头。
+#   4) 原版 parseSessionHeader 的 inheritedEventCount 取 v0 seedLength；光明头模型
+#      不保存 seedLength，本模块从原始头行读取，缺省 0。
+#   5) 光明字符串把 {1,4} 等花括号量词当重复语法，回放自身的正则（合法序号等）
+#      一律不用花括号量词；fromRequest 模式由调用方提供。
+
+从 JSON 导入 解析JSON, 序列化JSON
+从 会话格式 导入 目录读头, 造目录, V3编解码, 定义迁移, 创建链
+从 会话格式 导入 迁移头V0V1, 迁移事件V0V1, 迁移头V1V2, 迁移事件V1V2, 迁移头V2V3, 迁移事件V2V3
+从 会话格式 导入 造事件
+从 正则表达式 导入 完全匹配, 查找所有
+
+# 会话目录：等价 src/会话格式.light 的 当前目录（"current", V3编解码, 标准链, [3,0]）。
+# 注意：不能导入并直接使用 会话格式.当前目录 —— 「当前目录」是编译器内置映射名
+# （builtins 的 os.getcwd()），编译器会把它发射为带括号调用，导致
+# 'dict' object is not callable；故在本模块内用 造目录 + 标准链 自行构造同名等价物。
+段落 造会话目录:
+  设 迁移表 为 []
+  列表追加(迁移表, 定义迁移("v0-to-v1", 0, 0, 1, 0, 迁移头V0V1, 迁移事件V0V1))
+  列表追加(迁移表, 定义迁移("v1-to-v2", 1, 0, 2, 0, 迁移头V1V2, 迁移事件V1V2))
+  列表追加(迁移表, 定义迁移("v2-to-v3", 2, 0, 3, 0, 迁移头V2V3, 迁移事件V2V3))
+  返回 造目录("current", V3编解码, 创建链(迁移表), ["主": 3, "次": 0])
+
+设 会话目录 为 造会话目录()
+
+# 打包物理行：seq0/time0 键 + data.texts/data.args 基数（v3 投影快照形态）
+设 打包行类型表 为 ["text-chunks", "reasoning-chunks", "tool-call-chunks"]
+# 回放块类型（StreamChunk type 校验表）
+设 回放块类型表 为 ["block-start", "text-delta", "reasoning-delta", "tool-call-delta", "block-end", "usage", "finish"]
+# 会话令牌序号正则（对齐 /^\{\{session:([1-9]\d*)\}\}$/ 的序数面）
+设 会话令牌模式 为 "^[1-9][0-9]*$"
+
+# =====================================================================
+# 行工具
+# =====================================================================
+段落 拆非空行 接收 文本:
+  设 结果 为 []
+  设 当前 为 ""
+  设 i 为 0
+  当 i < 长度(文本):
+    设 字符 为 文本[i]
+    如果 字符 == "\n":
+      列表追加(结果, 当前)
+      设 当前 为 ""
+    否则:
+      如果 字符 != "\r":
+        设 当前 为 当前 + 字符
+    设 i 为 i + 1
+  列表追加(结果, 当前)
+  设 过滤 为 []
+  遍历 行 之 结果:
+    如果 去除空白(行) != "":
+      列表追加(过滤, 行)
+  返回 过滤
+
+段落 查找子串从 接收 文本, 子串, 起点:
+  设 片段 为 截取(文本, 起点, 长度(文本))
+  设 位 为 查找子串(片段, 子串)
+  如果 位 < 0:
+    返回 -1
+  返回 位 + 起点
+
+段落 连接行 接收 表:
+  设 结果 为 ""
+  设 i 为 0
+  当 i < 长度(表):
+    如果 i > 0:
+      设 结果 为 结果 + "\n"
+    设 结果 为 结果 + 表[i]
+    设 i 为 i + 1
+  返回 结果
+
+# =====================================================================
+# 1. 会话日志解析（parseSessionLog / parseSessionHeader 投影）
+# =====================================================================
+# 打包行基数：data.texts / data.args 长度（普通行 1）
+段落 行基数 接收 行值, 种类:
+  如果 列表包含(打包行类型表, 种类) == 假:
+    返回 1
+  设 数据 为 行值.获取("data", {})
+  如果 是字典(数据) == 假:
+    返回 1
+  设 载荷 为 空
+  如果 种类 == "tool-call-chunks":
+    设 载荷 为 数据.获取("args", [])
+  否则:
+    设 载荷 为 数据.获取("texts", [])
+  如果 是列表(载荷) 且 长度(载荷) > 0:
+    返回 长度(载荷)
+  返回 1
+
+# 解析会话日志（JSONL 文本 → 事件表）。头部走 会话格式 版本迁移；主体行处理
+# 投影语义（seq0/time0、打包行基数、dense seq、complete/projected 混合拒绝）。
+段落 解析会话日志 接收 文本:
+  设 行表 为 拆非空行(文本)
+  如果 长度(行表) == 0:
+    抛出 新建 错误("llm-replay: session snapshot must start with a session header")
+  设 头值 为 解析JSON(行表[0])
+  如果 是字典(头值) == 假:
+    抛出 新建 错误("llm-replay: session snapshot line 1 must be a JSON object")
+  设 头 为 目录读头(会话目录, 头值)
+  设 事件表 为 []
+  设 主体形态 为 空
+  设 下一序号 为 0
+  设 行号 为 2
+  设 i 为 1
+  当 i < 长度(行表):
+    设 行值 为 解析JSON(行表[i])
+    如果 是字典(行值) == 假:
+      抛出 新建 错误("llm-replay: session snapshot line " + 转字符串(行号) + " must be a JSON object")
+    设 种类 为 行值.获取("type", "")
+    设 打包 为 列表包含(打包行类型表, 种类)
+    设 序键 为 "seq"
+    设 时键 为 "time"
+    如果 打包:
+      设 序键 为 "seq0"
+      设 时键 为 "time0"
+    设 有序 为 字典包含键(行值, 序键)
+    设 有时 为 字典包含键(行值, 时键)
+    如果 有序 != 有时:
+      抛出 新建 错误("llm-replay: session snapshot line " + 转字符串(行号) + " must contain both " + 序键 + " and " + 时键 + ", or neither")
+    设 现形态 为 "complete"
+    如果 有序 == 假:
+      设 现形态 为 "projected"
+    如果 主体形态 != 空:
+      如果 现形态 != 主体形态:
+        抛出 新建 错误("llm-replay: session snapshot line " + 转字符串(行号) + " cannot mix projected and complete body rows")
+    否则:
+      设 主体形态 为 现形态
+    设 序号 为 0
+    设 时刻 为 0
+    如果 现形态 == "complete":
+      设 序号 为 行值[序键]
+      设 时刻 为 行值[时键]
+    否则:
+      设 序号 为 下一序号
+      设 时刻 为 0
+    设 数据 为 {}
+    如果 字典包含键(行值, "data"):
+      设 数据 为 行值["data"]
+    设 事件项 为 造事件(种类, 序号, 时刻, 数据)
+    如果 字典包含键(行值, "sourceEventSeqs"):
+      事件项["来源事件序号"] 为 行值["sourceEventSeqs"]
+    列表追加(事件表, 事件项)
+    设 下一序号 为 下一序号 + 行基数(行值, 种类)
+    设 行号 为 行号 + 1
+    设 i 为 i + 1
+  返回 事件表
+
+# 解析会话头（文本 → {标识, 创建时间, 继承事件数}）
+段落 解析会话头 接收 文本:
+  设 行表 为 拆非空行(文本)
+  如果 长度(行表) == 0:
+    抛出 新建 错误("llm-replay: session snapshot must start with a session header")
+  设 头值 为 解析JSON(行表[0])
+  如果 是字典(头值) == 假:
+    抛出 新建 错误("llm-replay: session snapshot line 1 must be a JSON object")
+  设 头 为 目录读头(会话目录, 头值)
+  设 结果 为 {}
+  结果["标识"] 为 头["标识"]
+  结果["创建时间"] 为 头["创建时间"]
+  设 继承 为 0
+  如果 字典包含键(头值, "seedLength"):
+    设 种子 为 头值["seedLength"]
+    如果 是整数(种子) 且 种子 >= 0:
+      设 继承 为 种子
+  结果["继承事件数"] 为 继承
+  返回 结果
+
+# =====================================================================
+# 2. 回放脚本推导（deriveReplayScript / expandAssistantStream 投影）
+# =====================================================================
+# 内嵌流展开：压缩记录 → 增量块；普通 chunk / 已展开块直通
+段落 展开助手流 接收 流记录表:
+  设 结果 为 []
+  遍历 记录 之 流记录表:
+    如果 是字典(记录) == 假:
+      继续
+    设 种类 为 记录.获取("type", "")
+    如果 种类 == "chunk":
+      如果 字典包含键(记录, "chunk"):
+        列表追加(结果, 记录["chunk"])
+      继续
+    如果 种类 == "text-chunks" 或 种类 == "reasoning-chunks":
+      设 文本块 为 "text-delta"
+      如果 种类 == "reasoning-chunks":
+        设 文本块 为 "reasoning-delta"
+      设 索引 为 记录.获取("index", 0)
+      设 成员 为 记录.获取("texts", [])
+      遍历 片段 之 成员:
+        列表追加(结果, ["type": 文本块, "index": 索引, "text": 片段])
+      继续
+    如果 种类 == "tool-call-chunks":
+      设 索引 为 记录.获取("index", 0)
+      设 标识 为 记录.获取("id", "")
+      设 成员 为 记录.获取("args", [])
+      遍历 片段 之 成员:
+        设 增量 为 ["type": "tool-call-delta", "index": 索引, "id": 标识, "argumentsDelta": 片段]
+        如果 字典包含键(记录, "name"):
+          增量["name"] 为 记录["name"]
+        列表追加(结果, 增量)
+      继续
+    如果 列表包含(回放块类型表, 种类):
+      列表追加(结果, 记录)
+  返回 结果
+
+# 闭合：空流跳过；末块非 finish 判为抛出流（需 replay.override.json 侧车）
+段落 闭合脚本 接收 脚本, 键, 展开块:
+  如果 长度(展开块) == 0:
+    返回
+  设 尾块 为 展开块[长度(展开块) - 1]
+  如果 尾块["type"] != "finish":
+    抛出 新建 错误("llm-replay: model call " + 键 + " ended without a finish chunk (a thrown stream); this scenario needs a replay.override.json sidecar")
+  列表追加(脚本, ["kind": "chunks", "块": 展开块])
+
+# 取流数据：兼容英文 stream / 光明中文 流
+段落 取流 接收 数据:
+  如果 字典包含键(数据, "stream"):
+    返回 数据["stream"]
+  如果 字典包含键(数据, "流"):
+    返回 数据["流"]
+  返回 []
+
+# 推导回放脚本（事件表 → ReplayEntry[]）
+段落 推导回放脚本 接收 事件表:
+  设 脚本 为 []
+  遍历 事件项 之 事件表:
+    设 种类 为 事件项["类型"]
+    如果 种类 == "compaction/summary":
+      设 数据 为 事件项["数据"]
+      如果 是字典(数据):
+        如果 数据.获取("llmStreamCall", 假) == 真:
+          设 原始输出 为 数据.获取("rawOutput", 空)
+          如果 原始输出 == 空:
+            抛出 新建 错误("llm-replay: compaction/summary marks an LLM stream call without rawOutput")
+          设 块 为 []
+          设 索引 为 0
+          遍历 内容块 之 原始输出:
+            列表追加(块, ["type": "block-start", "index": 索引, "blockType": 内容块.获取("type", "")])
+            列表追加(块, ["type": "block-end", "index": 索引, "block": 内容块])
+            设 索引 为 索引 + 1
+          如果 数据.获取("usage", 空) != 空:
+            列表追加(块, ["type": "usage", "usage": 数据["usage"]])
+          列表追加(块, ["type": "finish", "reason": ["kind": "stop"]])
+          列表追加(脚本, ["kind": "chunks", "块": 块])
+      继续
+    如果 种类 != "assistant/message" 且 种类 != "assistant/attempt":
+      继续
+    设 数据 为 事件项["数据"]
+    如果 是字典(数据) == 假:
+      继续
+    设 流 为 取流(数据)
+    设 展开 为 展开助手流(流)
+    设 键 为 ""
+    设 轮 为 数据.获取("turn", 空)
+    设 步 为 数据.获取("step", 空)
+    如果 轮 == 空 且 步 == 空:
+      设 键 为 "undefined/undefined"
+    否则:
+      设 键 为 转字符串(轮) + "/" + 转字符串(步)
+    闭合脚本(脚本, 键, 展开)
+  返回 脚本
+
+# =====================================================================
+# 3. 请求插值（resolveScriptedEntry 投影）
+# =====================================================================
+# 收集消息语料：全部字符串叶子（对齐 collectStrings，JSON 序列化之前）
+段落 收集字符串 接收 值, 输出表:
+  如果 是字符串(值):
+    列表追加(输出表, 值)
+    返回
+  如果 是列表(值):
+    遍历 项 之 值:
+      收集字符串(项, 输出表)
+    返回
+  如果 是字典(值):
+    遍历 键 之 字典键列表(值):
+      收集字符串(值[键], 输出表)
+  返回
+
+# 取最后匹配：无捕获组 → 全匹配；单捕获组 → 组1；多捕获组 → 组1（last[1] ?? last[0]）
+段落 取最后匹配 接收 模式, 语料:
+  设 匹配表 为 查找所有(模式, 语料)
+  如果 长度(匹配表) == 0:
+    抛出 新建 错误("llm-replay: fromRequest pattern " + 转字符串(模式) + " matched nothing in the request")
+  设 末 为 匹配表[长度(匹配表) - 1]
+  如果 是字符串(末):
+    返回 末
+  返回 末[0]
+
+# 替换字符串中的 {{fromRequest:<pattern>}}（模式取到首个 }}，连续 } 归入模式）
+段落 替换字符串模板 接收 文本, 语料:
+  设 结果 为 ""
+  设 游标 为 0
+  当 真:
+    设 开 为 查找子串从(文本, "{{fromRequest:", 游标)
+    如果 开 < 0:
+      返回 结果 + 截取(文本, 游标, 长度(文本))
+    设 闭 为 查找子串从(文本, "}}", 开 + 14)
+    如果 闭 < 0:
+      抛出 新建 错误("llm-replay: fromRequest placeholder is unterminated in " + 转字符串(文本))
+    当 真:
+      如果 闭 + 2 < 长度(文本):
+        如果 文本[闭 + 2] == "}":
+          设 闭 为 闭 + 1
+          继续
+      跳出
+    设 模式 为 截取(文本, 开 + 14, 闭)
+    设 结果 为 结果 + 截取(文本, 游标, 开) + 取最后匹配(模式, 语料)
+    设 游标 为 闭 + 2
+
+# 递归替换 JSON 值（字符串叶子替换，列表/字典重建）
+段落 替换值 接收 值, 语料:
+  如果 是字符串(值):
+    如果 字符串包含(值, "{{fromRequest:"):
+      返回 替换字符串模板(值, 语料)
+    返回 值
+  如果 是列表(值):
+    设 结果 为 []
+    遍历 项 之 值:
+      列表追加(结果, 替换值(项, 语料))
+    返回 结果
+  如果 是字典(值):
+    设 结果 为 {}
+    遍历 键 之 字典键列表(值):
+      设 结果[键] 为 替换值(值[键], 语料)
+    返回 结果
+  返回 值
+
+# 解析脚本条目：含 fromRequest 占位符 → 请求语料替换后返回新值
+段落 解析脚本条目 接收 条目, 消息表:
+  设 文本 为 序列化JSON(条目)
+  如果 字符串包含(文本, "{{fromRequest:") == 假:
+    返回 条目
+  设 叶子 为 []
+  收集字符串(消息表, 叶子)
+  设 语料 为 连接行(叶子)
+  返回 替换值(条目, 语料)
+
+# =====================================================================
+# 4. 会话令牌绑定（materializeSessionTokens 投影）
+# =====================================================================
+段落 物化字符串 接收 文本, 实体会话表:
+  设 结果 为 ""
+  设 游标 为 0
+  当 真:
+    设 开 为 查找子串从(文本, "{{session:", 游标)
+    如果 开 < 0:
+      返回 结果 + 截取(文本, 游标, 长度(文本))
+    设 闭 为 查找子串从(文本, "}}", 开 + 10)
+    如果 闭 < 0:
+      抛出 新建 错误("llm-replay: session token unterminated in " + 转字符串(文本))
+    设 序号 为 截取(文本, 开 + 10, 闭)
+    如果 完全匹配(会话令牌模式, 序号) == 假:
+      设 结果 为 结果 + 截取(文本, 游标, 闭 + 2)
+      设 游标 为 闭 + 2
+      继续
+    设 编号 为 转整数(序号)
+    设 实 为 空
+    如果 编号 <= 长度(实体会话表):
+      设 实 为 实体会话表[编号 - 1]
+    如果 实 == 空:
+      抛出 新建 错误("llm-replay: session token {{session:" + 序号 + "}} was used before that recorded session bound")
+    设 结果 为 结果 + 截取(文本, 游标, 开) + 实
+    设 游标 为 闭 + 2
+
+段落 物化值 接收 值, 实体会话表:
+  如果 是字符串(值):
+    返回 物化字符串(值, 实体会话表)
+  如果 是列表(值):
+    设 结果 为 []
+    遍历 项 之 值:
+      列表追加(结果, 物化值(项, 实体会话表))
+    返回 结果
+  如果 是字典(值):
+    设 结果 为 {}
+    遍历 键 之 字典键列表(值):
+      设 结果[键] 为 物化值(值[键], 实体会话表)
+    返回 结果
+  返回 值
+
+# 物化会话令牌：{{session:N}} 按首次调用序绑定实体会话 id
+段落 物化会话令牌 接收 条目, 实体会话表:
+  设 文本 为 序列化JSON(条目)
+  如果 字符串包含(文本, "{{session:") == 假:
+    返回 条目
+  返回 物化值(条目, 实体会话表)
+
+# =====================================================================
+# 5. 覆盖文档（ReplayOverrideDoc 解析 / 补丁应用 / 脚本排序）
+# =====================================================================
+# 读取块表：校验 chunk type 在回放块类型表
+段落 读取块表 接收 值, 位置:
+  如果 是列表(值) == 假:
+    抛出 新建 错误("llm-replay: invalid override: " + 位置 + " chunks must be an array")
+  设 结果 为 []
+  设 i 为 0
+  遍历 块 之 值:
+    如果 是字典(块) == 假:
+      抛出 新建 错误("llm-replay: invalid override: " + 位置 + ".chunks[" + 转字符串(i) + "] must have a known StreamChunk type")
+    设 类型名 为 块.获取("type", "")
+    如果 是字符串(类型名) == 假 或 列表包含(回放块类型表, 类型名) == 假:
+      抛出 新建 错误("llm-replay: invalid override: " + 位置 + ".chunks[" + 转字符串(i) + "] must have a known StreamChunk type")
+    列表追加(结果, 块)
+    设 i 为 i + 1
+  返回 结果
+
+# 解析单个回放条目（chunks / throw / hang 三形）
+段落 解析回放条目 接收 值, 位置:
+  如果 是字典(值) == 假:
+    抛出 新建 错误("llm-replay: invalid override: " + 位置 + " must be an object")
+  设 种类 为 值.获取("kind", "")
+  如果 种类 == "chunks":
+    如果 字典包含键(值, "chunks") == 假:
+      抛出 新建 错误("llm-replay: invalid override: " + 位置 + " chunks entry must contain chunks")
+    返回 ["kind": "chunks", "块": 读取块表(值["chunks"], 位置)]
+  如果 种类 == "throw":
+    设 消息 为 值.获取("message", "")
+    设 码 为 值.获取("code", "")
+    如果 是字符串(消息) == 假 或 消息 == "":
+      抛出 新建 错误("llm-replay: invalid override: " + 位置 + " throw entry requires a non-empty message")
+    如果 是字符串(码) == 假 或 码 == "":
+      抛出 新建 错误("llm-replay: invalid override: " + 位置 + " throw entry requires a non-empty code")
+    设 条目 为 ["kind": "throw", "块": 读取块表(值.获取("chunks", []), 位置), "消息": 消息, "码": 码]
+    如果 字典包含键(值, "accepted"):
+      如果 是布尔(值["accepted"]) == 假:
+        抛出 新建 错误("llm-replay: invalid override: " + 位置 + " throw entry accepted must be a boolean")
+      条目["接受"] 为 值["accepted"]
+    返回 条目
+  如果 种类 == "hang":
+    设 条目 为 ["kind": "hang"]
+    如果 字典包含键(值, "readyFile"):
+      设 就绪 为 值["readyFile"]
+      如果 是字符串(就绪) == 假 或 就绪 == "":
+        抛出 新建 错误("llm-replay: invalid override: " + 位置 + " hang entry readyFile must be a non-empty string")
+      条目["就绪文件"] 为 就绪
+    返回 条目
+  抛出 新建 错误("llm-replay: invalid override: " + 位置 + " has unknown kind " + 转字符串(值.获取("kind", 空)))
+
+# 解析覆盖文档：ReplayEntry[] 或 { patches: [{at, entry}] }
+段落 解析覆盖文档 接收 文本:
+  设 值 为 解析JSON(文本)
+  如果 是列表(值):
+    设 条目表 为 []
+    设 i 为 0
+    遍历 项 之 值:
+      列表追加(条目表, 解析回放条目(项, "entry " + 转字符串(i)))
+      设 i 为 i + 1
+    返回 ["种类": "整表", "条目表": 条目表]
+  如果 是字典(值) 且 字典包含键(值, "patches"):
+    设 补丁表 为 值["patches"]
+    如果 是列表(补丁表) == 假:
+      抛出 新建 错误("llm-replay: invalid override: patches must be an array")
+    设 结果 为 []
+    设 j 为 0
+    遍历 补丁 之 补丁表:
+      设 位置 为 "patch " + 转字符串(j)
+      如果 是字典(补丁) == 假:
+        抛出 新建 错误("llm-replay: invalid override: " + 位置 + " must contain exactly at and entry")
+      如果 字典包含键(补丁, "at") == 假 或 字典包含键(补丁, "entry") == 假:
+        抛出 新建 错误("llm-replay: invalid override: " + 位置 + " must contain exactly at and entry")
+      设 at值 为 补丁["at"]
+      如果 是整数(at值) == 假 或 at值 < 0:
+        抛出 新建 错误("llm-replay: invalid override: " + 位置 + " at must be a non-negative safe integer")
+      列表追加(结果, ["位置": at值, "条目": 解析回放条目(补丁["entry"], 位置 + ".entry")])
+      设 j 为 j + 1
+    返回 ["种类": "补丁", "补丁表": 结果]
+  抛出 新建 错误("llm-replay: invalid override: document must be a ReplayEntry[] or { patches: [...] }")
+
+# 应用覆盖补丁：at 越界/重复拒绝；at == 长度 追加；否则原位替换
+段落 应用覆盖补丁 接收 脚本, 补丁表:
+  设 已见 为 []
+  遍历 补丁 之 补丁表:
+    设 at 为 补丁["位置"]
+    如果 at > 长度(脚本):
+      抛出 新建 错误("llm-replay: override patch index " + 转字符串(at) + " out of range (derived script has " + 转字符串(长度(脚本)) + " call(s); == length appends)")
+    如果 列表包含(已见, at):
+      抛出 新建 错误("llm-replay: duplicate override patch index " + 转字符串(at))
+    列表追加(已见, at)
+    如果 at == 长度(脚本):
+      列表追加(脚本, 补丁["条目"])
+    否则:
+      脚本[at] 为 补丁["条目"]
+  返回 脚本
+
+# 会话脚本排序：主脚本在前；子脚本 createdAt 升序，平局 recordedId 字典序
+段落 脚本比较 接收 甲, 乙:
+  如果 甲["创建时间"] != 乙["创建时间"]:
+    如果 甲["创建时间"] < 乙["创建时间"]:
+      返回 -1
+    返回 1
+  如果 甲["记录标识"] < 乙["记录标识"]:
+    返回 -1
+  如果 甲["记录标识"] > 乙["记录标识"]:
+    返回 1
+  返回 0
+
+段落 排序子脚本 接收 子记录表:
+  设 表 为 []
+  遍历 子 之 子记录表:
+    列表追加(表, 子)
+  设 i 为 0
+  当 i < 长度(表):
+    设 j 为 i + 1
+    当 j < 长度(表):
+      如果 脚本比较(表[j], 表[i]) < 0:
+        设 暂 为 表[i]
+        表[i] 为 表[j]
+        表[j] 为 暂
+      设 j 为 j + 1
+    设 i 为 i + 1
+  返回 表
+
+段落 整理会话脚本 接收 主记录, 子记录表:
+  设 结果 为 []
+  列表追加(结果, 主记录)
+  遍历 子 之 排序子脚本(子记录表):
+    列表追加(结果, 子)
+  返回 结果
+
+# 导出清单
+导出 打包行类型表, 回放块类型表
+导出 解析会话日志, 解析会话头
+导出 推导回放脚本, 展开助手流
+导出 解析脚本条目, 物化会话令牌
+导出 解析覆盖文档, 应用覆盖补丁, 整理会话脚本
+导出 取最后匹配, 收集字符串
