@@ -1,0 +1,60 @@
+# 检查点策略.light —— session-checkpoint-policy 纯逻辑移植（对齐上游 packages/session/session-checkpoint-policy/src/index.ts）
+#
+# 第 12 轮任务2（会话投影域）：移植上游 checkpoint-policy 的决策逻辑：
+#   abortedBeforeDispatchResult() → 中止未分发结果()
+#   apply() 的三个钩子决策 → 纯判定函数：
+#     llm/stream       是否绑定会话 → 是否临流检查点(选项, 会话表)
+#     tools/execute    是否顶层工具调用 → 是否顶层工具执行(执行上下文)
+#     agent/pre-step   每步前刷新（决策面恒定）→ 预步骤策略(会话)
+# 剔除：Cordis 插件壳（name/inject/apply）、llm/stream 流包裹、ctx.sessions.flush /
+#       ctx.sessions.get 持久化副作用、signal 实际异步中止。
+#
+# 字典形状（对齐上游 exec/options）：
+#   选项        { "sessionId"?: 标识 }
+#   执行上下文  { "agent"?: 会话, "parent"?: 上下文, "signal": { "aborted": 布尔 } }
+
+段落 中止未分发结果 接收:
+  返回 {"content": [{"type": "text", "text": "Error: tool call aborted before dispatch"}],
+        "isError": 真,
+        "error": {"message": "tool call aborted before dispatch",
+                  "info": {"name": "AbortError", "code": "TOOL_ABORTED_BEFORE_DISPATCH"}}}
+
+段落 是否临流检查点 接收 选项, 会话表:
+  # 对齐 llm/stream：sessionId 有值且会话存在才包裹检查点
+  如果 选项 == 空: 返回 假
+  如果 字典包含键(选项, "sessionId") == 假: 返回 假
+  如果 选项["sessionId"] == 空: 返回 假
+  如果 会话表 == 空: 返回 假
+  返回 字典包含键(会话表, 选项["sessionId"])
+
+段落 是否顶层工具执行 接收 执行上下文:
+  # 对齐 tools/execute：agent 存在且无 parent 才触发
+  如果 执行上下文 == 空: 返回 假
+  如果 字典包含键(执行上下文, "agent") == 假: 返回 假
+  如果 执行上下文["agent"] == 空: 返回 假
+  如果 字典包含键(执行上下文, "parent") 且 执行上下文["parent"] != 空: 返回 假
+  返回 真
+
+段落 工具是否已中止 接收 执行上下文:
+  如果 执行上下文 == 空: 返回 假
+  如果 字典包含键(执行上下文, "signal") == 假: 返回 假
+  如果 执行上下文["signal"] == 空: 返回 假
+  返回 执行上下文["signal"]["aborted"] == 真
+
+段落 工具执行策略 接收 执行上下文:
+  # 对齐 tools/execute：非顶层直通；已中止返回中止结果；否则刷新后继续（刷新为 I/O 剔除）
+  如果 是否顶层工具执行(执行上下文) == 假:
+    返回 {"决定": "直通", "原因": "非顶层"}
+  如果 工具是否已中止(执行上下文) == 真:
+    返回 {"决定": "中止", "原因": "已中止", "结果": 中止未分发结果()}
+  返回 {"决定": "继续", "原因": "已刷新"}
+
+段落 临流策略 接收 选项, 会话表:
+  如果 是否临流检查点(选项, 会话表) == 真:
+    返回 {"决定": "检查点后继续"}
+  返回 {"决定": "直通", "原因": "无会话绑定"}
+
+段落 预步骤策略 接收 会话:
+  # 对齐 agent/pre-step：每步前必刷新（决策面恒定；刷新副作用为 I/O 剔除）
+  如果 会话 == 空: 返回 {"决定": "跳过"}
+  返回 {"决定": "刷新"}
