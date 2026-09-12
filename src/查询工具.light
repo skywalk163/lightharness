@@ -1,0 +1,541 @@
+# 查询工具.light —— tool-session-query 纯逻辑面（对齐上游 input.ts + presentation.ts）
+#
+# 覆盖（剔除宿主胶水 service-boundary.ts / workspace-access.ts）：
+#   1. 工具参数定义：会话搜索参数 / 事件搜索参数 / 目标会话参数（模型 schema）
+#   2. 参数规范化：规范化查询（normalizeQuery）/ 序号区间（sequenceRange）/
+#      时间戳区间（timestampRange）/ ISO 8601 精确解析（parseIsoTimestamp，毫秒+余数）/
+#      非负安全整数 / 非空数组断言
+#   3. 过滤构造：构造会话过滤器（buildSessionFilters）/ 物化父会话标识 /
+#      构造事件过滤器（buildEventFilters）—— 输出与 会话查询过滤.light 物化面兼容
+#      （kind: id / created-at / availability / seq / time / type / surface）
+#   4. 结果呈现：会话/事件搜索文本（formatSessionSearch / formatEventSearch）/
+#      调用卡片（present*）—— 标题视图由调用方注入（宿主胶水读取标题）
+#
+# 时间戳语义（对齐 input.ts）：
+#   - ISO 8601 精确解析为 { 毫秒, 余数 }（毫秒以下规范十进制位，无尾零）
+#   - 区间含入界但排除纯毫秒整点：余数非空时 下界 = nextafter(毫秒, +∞)、
+#     上界 = nextafter(毫秒+1, -∞)（IEEE-754 双精度 ULP 推进）
+#
+# 命名：按光明命名规范 v1 安全写法（危险词根避开；模块级函数名沿用既有宽松约定）。
+
+导入 re
+导入 math
+导入 datetime
+从 JSON 导入 解析JSON, 序列化JSON
+从 会话查询 导入 头取字段, 抽取事件文本
+
+# =====================================================================
+# 1. 工具参数定义（对齐 input.ts sessionSearchParameters/eventSearchParameters/targetSessionParameter）
+# =====================================================================
+设 会话搜索参数 为 {}
+会话搜索参数["query"] 为 ["类型": "string", "必填": 真, "描述": "Literal full-text query over prior session history."]
+会话搜索参数["session_ids"] 为 ["类型": "array", "项": ["类型": "string"], "描述": "Optional session ids to include."]
+会话搜索参数["created_at_from"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 creation-time lower bound."]
+会话搜索参数["created_at_to"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 creation-time upper bound."]
+会话搜索参数["parent_session_ids"] 为 ["类型": "array", "项": ["类型": "string"], "描述": "Optional direct parent session ids."]
+会话搜索参数["include_root_sessions"] 为 ["类型": "boolean", "描述": "Include sessions with no parent in the parent filter."]
+会话搜索参数["availability"] 为 ["类型": "array", "项": ["类型": "string", "枚举": ["live", "persisted"]], "描述": "Require at least one selected source availability."]
+会话搜索参数["event_seq_from"] 为 ["类型": "integer", "描述": "Inclusive event sequence lower bound."]
+会话搜索参数["event_seq_to"] 为 ["类型": "integer", "描述": "Inclusive event sequence upper bound."]
+会话搜索参数["event_time_from"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 event-time lower bound."]
+会话搜索参数["event_time_to"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 event-time upper bound."]
+会话搜索参数["event_types"] 为 ["类型": "array", "项": ["类型": "string"], "描述": "Event types to include."]
+会话搜索参数["event_surfaces"] 为 ["类型": "array", "项": ["类型": "string", "枚举": ["current", "shadowed", "log-only"]], "描述": "Event surfaces to include."]
+
+设 事件搜索参数 为 {}
+事件搜索参数["session_id"] 为 ["类型": "string", "描述": "Target session id. Omit for the current session."]
+事件搜索参数["query"] 为 ["类型": "string", "必填": 真, "描述": "Literal full-text query over the target session."]
+事件搜索参数["seq_from"] 为 ["类型": "integer", "描述": "Inclusive event sequence lower bound."]
+事件搜索参数["seq_to"] 为 ["类型": "integer", "描述": "Inclusive event sequence upper bound."]
+事件搜索参数["time_from"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 event-time lower bound."]
+事件搜索参数["time_to"] 为 ["类型": "string", "描述": "Inclusive timezone-qualified ISO 8601 event-time upper bound."]
+事件搜索参数["event_types"] 为 ["类型": "array", "项": ["类型": "string"], "描述": "Event types to include."]
+事件搜索参数["surfaces"] 为 ["类型": "array", "项": ["类型": "string", "枚举": ["current", "shadowed", "log-only"]], "描述": "Event surfaces to include."]
+
+设 目标会话参数 为 {}
+目标会话参数["session_id"] 为 ["类型": "string", "描述": "Target session id. Omit for the current session."]
+
+# =====================================================================
+# 2. 参数规范化（对齐 input.ts normalizeQuery / sequenceRange / 断言）
+# =====================================================================
+# 错误码（对齐上游 SessionQueryError code）
+设 错误码查询 为 "SESSION_QUERY_INVALID_QUERY"
+设 错误码过滤 为 "SESSION_QUERY_INVALID_FILTER"
+
+# 规范化查询：trim + 空白折叠（\s+ → 空格）+ 非空 + 无 NUL
+段落 规范化查询 接收 值:
+  设 查询 为 re.sub("\\s+", " ", 值).strip()
+  如果 长度(查询) == 0:
+    抛出 新建 错误("session-search query must contain non-whitespace text [" + 错误码查询 + "]")
+  如果 查询.包含("\0"):
+    抛出 新建 错误("session-search query must not contain NUL [" + 错误码查询 + "]")
+  返回 查询
+
+# 非负安全整数断言（JS Number.isSafeInteger 语义：整数且 |v| ≤ 2^53-1）
+段落 非负安全整数 接收 名称, 值:
+  如果 是整数(值) == 假 或 值 < 0 或 值 > 9007199254740991:
+    抛出 新建 错误(名称 + " must be a non-negative safe integer [" + 错误码过滤 + "]")
+
+# 非空数组断言（空数组拒绝）
+段落 非空数组断言 接收 名称, 值表:
+  如果 长度(值表) == 0:
+    抛出 新建 错误(名称 + " must contain at least one value when supplied [" + 错误码过滤 + "]")
+
+# 序号区间：非负安全整数 + from ≤ to；返回 {from?, to?}
+段落 序号区间 接收 起始, 结束:
+  如果 起始 != 空:
+    非负安全整数("sequence lower bound", 起始)
+  如果 结束 != 空:
+    非负安全整数("sequence upper bound", 结束)
+  如果 起始 != 空 且 结束 != 空 且 起始 > 结束:
+    抛出 新建 错误("session sequence range from must be less than or equal to to [" + 错误码过滤 + "]")
+  设 结果 为 {}
+  如果 起始 != 空:
+    结果["from"] 为 起始
+  如果 结束 != 空:
+    结果["to"] 为 结束
+  返回 结果
+
+# =====================================================================
+# 3. ISO 8601 精确时间戳（对齐 input.ts parseIsoTimestamp / compareTimestamps / 边界）
+# =====================================================================
+# 格式：YYYY-MM-DDTHH:MM(:SS(.fff+)?)?(Z|±HH:MM)
+段落 是数字字符 接收 字符:
+  设 码 为 码位(字符)
+  返回 码 >= 48 且 码 <= 57
+
+# 数字串整体校验
+段落 全数字 接收 文本:
+  如果 长度(文本) == 0:
+    返回 假
+  设 i 为 0
+  当 i < 长度(文本):
+    如果 是数字字符(文本[i]) == 假:
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 切出 ISO 部件；格式不匹配返回 空
+段落 匹配ISO时间戳 接收 值:
+  如果 长度(值) < 16:
+    返回 空
+  如果 值[4] != "-" 或 值[7] != "-" 或 值[10] != "T" 或 值[13] != ":":
+    返回 空
+  如果 全数字(截取(值, 0, 4)) == 假:
+    返回 空
+  如果 全数字(截取(值, 5, 7)) == 假:
+    返回 空
+  如果 全数字(截取(值, 8, 10)) == 假:
+    返回 空
+  如果 全数字(截取(值, 11, 13)) == 假:
+    返回 空
+  如果 全数字(截取(值, 14, 16)) == 假:
+    返回 空
+  设 秒 为 ""
+  设 小数 为 ""
+  设 i 为 16
+  如果 i < 长度(值) 且 值[i] == ":":
+    如果 长度(值) - i < 3:
+      返回 空
+    设 秒 为 截取(值, i + 1, i + 3)
+    如果 全数字(秒) == 假:
+      返回 空
+    设 i 为 i + 3
+    如果 i < 长度(值) 且 值[i] == ".":
+      设 起点 为 i + 1
+      设 终点 为 起点
+      当 终点 < 长度(值) 且 是数字字符(值[终点]):
+        设 终点 为 终点 + 1
+      如果 终点 == 起点:
+        返回 空
+      设 小数 为 截取(值, 起点, 终点)
+      设 i 为 终点
+  设 偏移 为 ""
+  如果 i >= 长度(值):
+    返回 空
+  如果 值[i] == "Z":
+    设 偏移 为 "Z"
+    设 i 为 i + 1
+  否则如果 值[i] == "+" 或 值[i] == "-":
+    如果 长度(值) - i != 6:
+      返回 空
+    设 偏移 为 截取(值, i, 长度(值))
+    如果 全数字(截取(偏移, 1, 3)) == 假 或 偏移[3] != ":" 或 全数字(截取(偏移, 4, 6)) == 假:
+      返回 空
+    设 i 为 长度(值)
+  否则:
+    返回 空
+  如果 i != 长度(值):
+    返回 空
+  返回 ["年": 整数(截取(值, 0, 4)), "月": 整数(截取(值, 5, 7)), "日": 整数(截取(值, 8, 10)), "时": 整数(截取(值, 11, 13)), "分": 整数(截取(值, 14, 16)), "秒": 秒, "小数": 小数, "偏移": 偏移]
+
+# 月天数（公历，含闰年）
+段落 月天数 接收 年, 月:
+  如果 月 == 2:
+    如果 (年 % 4 == 0) 且 ((年 % 100 != 0) 或 (年 % 400 == 0)):
+      返回 29
+    返回 28
+  如果 月 == 4 或 月 == 6 或 月 == 9 或 月 == 11:
+    返回 30
+  返回 31
+
+# 历日天数（自 1970-01-01，Howard Hinnant days_from_civil）
+段落 历日天数 接收 年, 月, 日:
+  设 修正年 为 年
+  设 修正月 为 月
+  如果 修正月 <= 2:
+    设 修正年 为 修正年 - 1
+    设 修正月 为 修正月 + 12
+  设 纪元 为 修正年 // 400
+  设 纪元内年 为 修正年 - 纪元 * 400
+  设 季月 为 修正月
+  如果 修正月 > 2:
+    设 季月 为 修正月 - 3
+  否则:
+    设 季月 为 修正月 + 9
+  设 年内日 为 (153 * 季月 + 2) // 5 + 日 - 1
+  设 纪元内日 为 纪元内年 * 365 + 纪元内年 // 4 - 纪元内年 // 100 + 年内日
+  返回 纪元 * 146097 + 纪元内日 - 719468
+
+# 解析 ISO 时间戳：返回 { 毫秒, 余数 }；非法抛错
+段落 解析ISO时间戳 接收 名称, 值:
+  设 部件 为 匹配ISO时间戳(值)
+  如果 部件 == 空:
+    抛出 新建 错误("session " + 名称 + " must be an ISO 8601 timestamp with Z or a numeric offset [" + 错误码过滤 + "]")
+  设 月 为 部件["月"]
+  设 日 为 部件["日"]
+  设 时 为 部件["时"]
+  设 分 为 部件["分"]
+  设 秒 为 0
+  如果 部件["秒"] != "":
+    设 秒 为 整数(部件["秒"])
+  设 偏移时 为 0
+  设 偏移分 为 0
+  设 偏移符号 为 1
+  如果 部件["偏移"] != "Z":
+    设 偏移文本 为 部件["偏移"]
+    如果 偏移文本[0] == "-":
+      设 偏移符号 为 -1
+    设 偏移时 为 整数(截取(偏移文本, 1, 3))
+    设 偏移分 为 整数(截取(偏移文本, 4, 6))
+  如果 月 < 1 或 月 > 12:
+    抛出 新建 错误("session " + 名称 + " must be a valid ISO 8601 timestamp [" + 错误码过滤 + "]")
+  如果 日 < 1 或 日 > 月天数(部件["年"], 月):
+    抛出 新建 错误("session " + 名称 + " must be a valid ISO 8601 timestamp [" + 错误码过滤 + "]")
+  如果 时 > 23 或 分 > 59 或 秒 > 59:
+    抛出 新建 错误("session " + 名称 + " must be a valid ISO 8601 timestamp [" + 错误码过滤 + "]")
+  如果 偏移时 > 23 或 偏移分 > 59:
+    抛出 新建 错误("session " + 名称 + " must be a valid ISO 8601 timestamp [" + 错误码过滤 + "]")
+  设 小数 为 部件["小数"]
+  设 毫秒数字 为 截取(小数, 0, 3)
+  当 长度(毫秒数字) < 3:
+    设 毫秒数字 为 毫秒数字 + "0"
+  设 当日秒 为 时 * 3600 + 分 * 60 + 秒
+  设 天数 为 历日天数(部件["年"], 月, 日)
+  设 总毫秒 为 天数 * 86400000 + 当日秒 * 1000 + 整数(毫秒数字)
+  设 偏移毫秒 为 偏移符号 * (偏移时 * 3600000 + 偏移分 * 60000)
+  设 时间戳 为 总毫秒 - 偏移毫秒
+  # 余数：毫秒以下规范十进制位（无尾零）
+  设 余数 为 截取(小数, 3, 长度(小数))
+  设 余数 为 re.sub("0+$", "", 余数)
+  返回 ["毫秒": 时间戳, "余数": 余数]
+
+# 比较时间戳：毫秒优先，余数逐位（缺位补 0）；返回 -1/0/1
+段落 比较时间戳 接收 甲, 乙:
+  如果 甲["毫秒"] != 乙["毫秒"]:
+    如果 甲["毫秒"] < 乙["毫秒"]:
+      返回 -1
+    返回 1
+  设 长度甲 为 长度(甲["余数"])
+  设 长度乙 为 长度(乙["余数"])
+  设 最大 为 长度甲
+  如果 长度乙 > 最大:
+    设 最大 为 长度乙
+  设 位 为 0
+  当 位 < 最大:
+    设 甲位 为 "0"
+    设 乙位 为 "0"
+    如果 位 < 长度甲:
+      设 甲位 为 甲["余数"][位]
+    如果 位 < 长度乙:
+      设 乙位 为 乙["余数"][位]
+    如果 甲位 != 乙位:
+      如果 甲位 < 乙位:
+        返回 -1
+      返回 1
+    设 位 为 位 + 1
+  返回 0
+
+# 时间下界：余数空 → 毫秒整点；否则 nextafter(毫秒, +∞)（排除纯毫秒整点）
+段落 时间下界 接收 时间戳:
+  如果 时间戳["余数"] == "":
+    返回 时间戳["毫秒"]
+  返回 math.nextafter(时间戳["毫秒"], float("inf"))
+
+# 时间上界：余数空 → 毫秒整点；否则 nextafter(毫秒+1, -∞)
+段落 时间上界 接收 时间戳:
+  如果 时间戳["余数"] == "":
+    返回 时间戳["毫秒"]
+  返回 math.nextafter(时间戳["毫秒"] + 1, float("-inf"))
+
+# 时间戳区间：解析 起始/结束 → {from?, to?}（含边界语义）；未提供返回 空
+段落 时间戳区间 接收 名称, 起始, 结束:
+  如果 起始 == 空 且 结束 == 空:
+    返回 空
+  设 起始戳 为 空
+  设 结束戳 为 空
+  如果 起始 != 空:
+    设 起始戳 为 解析ISO时间戳(名称 + "_from", 起始)
+  如果 结束 != 空:
+    设 结束戳 为 解析ISO时间戳(名称 + "_to", 结束)
+  如果 起始戳 != 空 且 结束戳 != 空 且 比较时间戳(起始戳, 结束戳) > 0:
+    抛出 新建 错误("session " + 名称 + " range from must be less than or equal to to [" + 错误码过滤 + "]")
+  设 结果 为 {}
+  如果 起始戳 != 空:
+    结果["from"] 为 时间下界(起始戳)
+  如果 结束戳 != 空:
+    结果["to"] 为 时间上界(结束戳)
+  返回 结果
+
+# =====================================================================
+# 4. 过滤构造（对齐 input.ts buildSessionFilters / materializeParentSessionIds / buildEventFilters）
+# =====================================================================
+# 构造会话过滤器：session_ids → id；created_at_from/to → created-at；availability
+段落 构造会话过滤器 接收 参数:
+  设 过滤器 为 []
+  如果 参数.获取("session_ids", 空) != 空:
+    设 标识值表 为 参数["session_ids"]
+    非空数组断言("session_ids", 标识值表)
+    列表追加(过滤器, ["kind": "id", "values": 副本(标识值表)])
+  设 创建 为 时间戳区间("created_at", 参数.获取("created_at_from", 空), 参数.获取("created_at_to", 空))
+  如果 创建 != 空:
+    设 创建过滤 为 ["kind": "created-at"]
+    如果 创建.包含("from"):
+      创建过滤["from"] 为 创建["from"]
+    如果 创建.包含("to"):
+      创建过滤["to"] 为 创建["to"]
+    列表追加(过滤器, 创建过滤)
+  如果 参数.获取("availability", 空) != 空:
+    设 可用值 为 参数["availability"]
+    非空数组断言("availability", 可用值)
+    列表追加(过滤器, ["kind": "availability", "values": 副本(可用值)])
+  返回 过滤器
+
+# 物化父会话标识：去重（空/未提供 → 空）
+段落 物化父会话标识 接收 值表:
+  如果 值表 == 空:
+    返回 空
+  非空数组断言("parent_session_ids", 值表)
+  设 去重 为 []
+  遍历 值 之 值表:
+    如果 列表包含(去重, 值) == 假:
+      列表追加(去重, 值)
+  返回 去重
+
+# 构造事件过滤器：seq 区间 / time 区间 / event_types → type / surfaces → surface
+段落 构造事件过滤器 接收 输入:
+  设 过滤器 为 []
+  设 序号 为 序号区间(输入.获取("seqFrom", 空), 输入.获取("seqTo", 空))
+  如果 序号.包含("from") 或 序号.包含("to"):
+    设 序号过滤 为 ["kind": "seq"]
+    如果 序号.包含("from"):
+      序号过滤["from"] 为 序号["from"]
+    如果 序号.包含("to"):
+      序号过滤["to"] 为 序号["to"]
+    列表追加(过滤器, 序号过滤)
+  设 时间 为 时间戳区间("time", 输入.获取("timeFrom", 空), 输入.获取("timeTo", 空))
+  如果 时间 != 空:
+    设 时间过滤 为 ["kind": "time"]
+    如果 时间.包含("from"):
+      时间过滤["from"] 为 时间["from"]
+    如果 时间.包含("to"):
+      时间过滤["to"] 为 时间["to"]
+    列表追加(过滤器, 时间过滤)
+  如果 输入.获取("eventTypes", 空) != 空:
+    设 类型值 为 输入["eventTypes"]
+    非空数组断言("event_types", 类型值)
+    列表追加(过滤器, ["kind": "type", "values": 副本(类型值)])
+  如果 输入.获取("surfaces", 空) != 空:
+    设 表面值 为 输入["surfaces"]
+    非空数组断言("surfaces", 表面值)
+    列表追加(过滤器, ["kind": "surface", "values": 副本(表面值)])
+  返回 过滤器
+
+# =====================================================================
+# 5. 结果呈现（对齐 presentation.ts，标题视图由调用方注入）
+# =====================================================================
+# 标题文本（对齐 workspace-access.titleText；视图 = { text, unavailableCode? }）
+段落 标题文本 接收 视图:
+  如果 视图 == 空:
+    返回 "untitled session"
+  如果 字典包含键(视图, "unavailableCode") 且 视图["unavailableCode"] != 空:
+    返回 视图["text"] + " (title unavailable: " + 视图["unavailableCode"] + ")"
+  返回 视图["text"]
+
+# 格式化时间：epoch 毫秒 → UTC ISO 8601（对齐 new Date(value).toISOString）
+段落 格式化时间 接收 值:
+  设 时刻对象 为 datetime.datetime.fromtimestamp(值 / 1000, datetime.timezone.utc)
+  设 毫秒文本 为 截取(时刻对象.strftime("%f"), 0, 3)
+  返回 时刻对象.strftime("%Y-%m-%dT%H:%M:%S") + "." + 毫秒文本 + "Z"
+
+# 可用性文本（对齐 availabilityText：live/persisted 子集，空 → unavailable）
+段落 可用性文本 接收 记录:
+  设 部分 为 []
+  如果 记录.获取("live", 假) == 真:
+    列表追加(部分, "live")
+  如果 记录.获取("persisted", 假) == 真:
+    列表追加(部分, "persisted")
+  如果 长度(部分) == 0:
+    返回 "unavailable"
+  设 输出 为 ""
+  设 i 为 0
+  遍历 项 之 部分:
+    如果 i > 0:
+      设 输出 为 输出 + ", "
+    设 输出 为 输出 + 项
+    设 i 为 i + 1
+  返回 输出
+
+# 序号表文本（对齐 seqList：空 → none）
+段落 序号表文本 接收 值表:
+  如果 长度(值表) == 0:
+    返回 "none"
+  设 输出 为 ""
+  设 i 为 0
+  遍历 值 之 值表:
+    如果 i > 0:
+      设 输出 为 输出 + ", "
+    设 输出 为 输出 + 转字符串(值)
+    设 i 为 i + 1
+  返回 输出
+
+# 空会话搜索呈现
+段落 格式化空会话搜索:
+  返回 "No prior session matches found."
+
+# 会话搜索呈现（收集 = { items, capped }；标题表 = id → 视图；授权父表 = 父会话标识表）
+段落 格式化会话搜索 接收 收集, 标题表, 授权父表:
+  如果 长度(收集["items"]) == 0:
+    返回 格式化空会话搜索()
+  设 行 为 ["Session search results (" + 转字符串(长度(收集["items"])) + "):"]
+  设 索引 为 0
+  遍历 命中 之 收集["items"]:
+    设 头 为 命中["header"]
+    设 标识 为 头取字段(头, "标识")
+    设 父 为 "root"
+    设 父会话 为 头取字段(头, "父会话")
+    如果 父会话 != 空:
+      如果 列表包含(授权父表, 父会话):
+        设 父 为 父会话
+      否则:
+        设 父 为 "[outside workspace]"
+    设 标题 为 标题文本(标题表.获取(标识, 空))
+    列表追加(行, "")
+    列表追加(行, 转字符串(索引 + 1) + ". Session " + 标识 + " — " + 标题)
+    列表追加(行, "   Created: " + 格式化时间(头取字段(头, "创建时间")))
+    列表追加(行, "   Parent: " + 父)
+    列表追加(行, "   Availability: " + 可用性文本(命中))
+    设 最佳 为 命中["bestMatch"]
+    列表追加(行, "   Best match: seq " + 转字符串(最佳["seq"]) + " | " + 最佳["type"] + " | " + 最佳["surface"] + " | " + 格式化时间(最佳["time"]))
+    列表追加(行, "   Snippet: " + 最佳["snippet"])
+    设 索引 为 索引 + 1
+  如果 收集.获取("capped", 假) == 真:
+    列表追加(行, "")
+    列表追加(行, "Result cap reached. Narrow the query or add filters to find additional matches.")
+  设 输出 为 ""
+  设 i 为 0
+  遍历 项 之 行:
+    如果 i > 0:
+      设 输出 为 输出 + "\n"
+    设 输出 为 输出 + 项
+    设 i 为 i + 1
+  返回 输出
+
+# 事件搜索呈现（标题视图由调用方注入）
+段落 格式化事件搜索 接收 会话标识, 标题视图, 收集:
+  设 行 为 ["Session " + 会话标识 + " — " + 标题文本(标题视图)]
+  如果 长度(收集["items"]) == 0:
+    列表追加(行, "")
+    列表追加(行, "No prior event matches found.")
+    设 输出 为 ""
+    设 i 为 0
+    遍历 项 之 行:
+      如果 i > 0:
+        设 输出 为 输出 + "\n"
+      设 输出 为 输出 + 项
+      设 i 为 i + 1
+    返回 输出
+  列表追加(行, "")
+  列表追加(行, "Event search results (" + 转字符串(长度(收集["items"])) + "):")
+  设 索引 为 0
+  遍历 命中 之 收集["items"]:
+    列表追加(行, 转字符串(索引 + 1) + ". seq " + 转字符串(命中["seq"]) + " | " + 命中["type"] + " | " + 命中["surface"] + " | " + 格式化时间(命中["time"]))
+    列表追加(行, "   Snippet: " + 命中["snippet"])
+    设 索引 为 索引 + 1
+  如果 收集.获取("capped", 假) == 真:
+    列表追加(行, "")
+    列表追加(行, "Result cap reached. Narrow the query or add filters to find additional matches.")
+  设 输出 为 ""
+  设 i 为 0
+  遍历 项 之 行:
+    如果 i > 0:
+      设 输出 为 输出 + "\n"
+    设 输出 为 输出 + 项
+    设 i 为 i + 1
+  返回 输出
+
+# 事件追踪呈现（对齐 formatEventTrace：目标/替换/替换链/被替换/来源/派生）
+段落 格式化事件追踪 接收 会话标识, 标题视图, 追踪:
+  设 目标 为 追踪["目标"]
+  设 替换文本 为 "none"
+  如果 追踪.包含("被替换为"):
+    设 替换文本 为 转字符串(追踪["被替换为"])
+  设 行 为 []
+  列表追加(行, "Session " + 会话标识 + " — " + 标题文本(标题视图))
+  列表追加(行, "Target: seq " + 转字符串(目标["序号"]) + " | " + 目标["类型"] + " | " + 目标["表面"] + " | " + 格式化时间(目标["时间"]))
+  列表追加(行, "Replaced by: " + 替换文本)
+  列表追加(行, "Replacement chain: " + 序号表文本(追踪.获取("替换链", [])))
+  列表追加(行, "Events replaced by target: " + 序号表文本(追踪.获取("替换事件序号表", [])))
+  列表追加(行, "Events cited directly as sources: " + 序号表文本(追踪.获取("来源事件序号表", [])))
+  列表追加(行, "Direct derived events: " + 序号表文本(追踪.获取("派生事件序号表", [])))
+  设 输出 为 ""
+  设 i 为 0
+  遍历 项 之 行:
+    如果 i > 0:
+      设 输出 为 输出 + "\n"
+    设 输出 为 输出 + 项
+    设 i 为 i + 1
+  返回 输出
+
+# ---- 调用卡片呈现（对齐 presentation.ts present*）----
+段落 呈现会话搜索调用 接收 参数:
+  返回 ["card": "generic", "kind": "search", "title": "Search prior sessions", "rawInput": 参数["query"]]
+
+段落 呈现事件搜索调用 接收 参数:
+  返回 ["card": "generic", "kind": "search", "title": "Search session events", "rawInput": 参数["query"]]
+
+段落 呈现会话追踪调用 接收 参数:
+  设 标题 为 "Trace current session"
+  设 标识 为 参数.获取("session_id", 空)
+  如果 标识 != 空:
+    设 标题 为 "Trace session " + 标识
+  设 视图 为 ["card": "generic", "kind": "read", "title": 标题]
+  如果 标识 != 空:
+    视图["rawInput"] 为 标识
+  返回 视图
+
+段落 呈现事件目标调用 接收 动作, 参数:
+  设 原始 为 ["seq": 参数["seq"]]
+  设 标识 为 参数.获取("session_id", 空)
+  如果 标识 != 空:
+    原始["session_id"] 为 标识
+  返回 ["card": "generic", "kind": "read", "title": 动作 + " " + 转字符串(参数["seq"]), "rawInput": 原始]
+
+# ---- 导出清单 ----
+导出 会话搜索参数, 事件搜索参数, 目标会话参数
+导出 规范化查询, 序号区间, 非负安全整数, 非空数组断言
+导出 解析ISO时间戳, 比较时间戳, 时间下界, 时间上界, 时间戳区间
+导出 构造会话过滤器, 物化父会话标识, 构造事件过滤器
+导出 标题文本, 格式化时间, 可用性文本, 序号表文本
+导出 格式化空会话搜索, 格式化会话搜索, 格式化事件搜索, 格式化事件追踪
+导出 呈现会话搜索调用, 呈现事件搜索调用, 呈现会话追踪调用, 呈现事件目标调用
