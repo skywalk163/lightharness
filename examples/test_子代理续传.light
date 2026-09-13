@@ -1,0 +1,175 @@
+# test_子代理续传.light —— 第16轮 任务2（subagent 子代理续传 下）判据
+# 上游：continuation-messages / control-types / run-settlement / model-selection / model-selection-state
+# 运行：cd lightharness && python 运行.py examples/test_子代理续传.light
+# 反跑：_antirun_t2_子代理续传.py（A 结算摘要默认分支 / B 列表项诊断原因放宽 / C 路由键分隔符丢失）
+
+从 子代理续传 导入 代理消息来源, 造代理消息, 带可续回执指引, 结算摘要, 造结算消息
+从 子代理续传 导入 子代理诊断原因表, 是子代理诊断项, 是子代理子项, 是子代理列表项
+从 子代理续传 导入 是子代理目录, 是子代理地址, 是子代理提示请求, 子代理错误码表, 是子代理错误码
+从 子代理续传 导入 末段文本, 失败详情, 运行结局
+从 子代理续传 导入 模型路由键, 断言允许模型路线, 有委托模型请求, 续断言非空
+从 子代理续传 导入 请求代理选项, 断言允许模型选择, 有配置模型选择
+从 子代理续传 导入 模型选择策略键, 模型选择策略版本, 投影模型选择策略, 读模型选择策略, 记录模型选择策略
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败：" + 信息)
+  返回 真
+
+段落 含文本 接收 文本, 子串:
+  设 n 为 字符串长度(文本)
+  设 m 为 字符串长度(子串)
+  设 i 为 0
+  当 i + m <= n:
+    如果 截取(文本, i, i + m) == 子串:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+段落 应抛错 接收 动作, 标签:
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    动作()
+  捕获 异常 为 e:
+    设 抛了 为 真
+    设 消息 为 转字符串(e)
+  如果 抛了 == 假:
+    抛出 新建 错误("应抛错未抛：" + 标签)
+  返回 消息
+
+段落 抛路线非数组:
+  断言允许模型路线("x")
+
+段落 抛路线空提供方:
+  断言允许模型路线([{"provider": "", "model": "m"}])
+
+段落 抛路线重复:
+  断言允许模型路线([{"provider": "p", "model": "m"}, {"provider": "p", "model": "m"}])
+
+段落 抛选择禁用:
+  请求代理选项({"provider": "P", "model": "M"}, 空, {"provider": "p", "model": "m"}, 假)
+
+段落 抛provider无model:
+  请求代理选项({"provider": "P", "model": "M"}, 空, {"provider": "p"}, 真)
+
+段落 抛非空串:
+  续断言非空("", "model")
+
+段落 抛不允许路线:
+  断言允许模型选择({"routes": [{"provider": "p", "model": "m"}]},
+    {"provider": "P", "model": "M"}, {"provider": "x", "model": "y"}, {"provider": "x", "model": "y"})
+
+段落 抛策略空路线:
+  投影模型选择策略(空, {"type": "subagent/model-selection-policy", "data": {"allowedModels": []}})
+
+段落 抛策略坏路线:
+  投影模型选择策略(空, {"type": "subagent/model-selection-policy", "data": {"allowedModels": [{"provider": "", "model": "m"}]}})
+
+段落 主:
+  打印 "===== 第 16 轮任务 2：subagent 子代理续传（下）====="
+
+  # ---- §1 相邻代理消息 / 回执指引 / 结算 ----
+  断言相等(代理消息来源("a1"), {"kind": "agent-message", "form": "relay", "senderSessionId": "a1"}, "1a 代理消息来源")
+  设 代消 为 造代理消息("a1", [{"type": "text", "text": "hi"}])
+  断言相等(代消["content"][0]["text"], "Agent a1 sent a message: ", "1b 造代理消息 前缀")
+  断言相等(长度(代消["content"]), 2, "1c 造代理消息 块数")
+  断言相等(代消["source"]["kind"], "agent-message", "1d 造代理消息 来源种类")
+
+  设 指引块 为 带可续回执指引("p1", [{"type": "text", "text": "do X"}])
+  断言相等(长度(指引块), 2, "1e 回执指引 块数")
+  断言相等(含文本(指引块[1]["text"], '"p1"'), 真, "1f 回执指引 含父标识(JSON)")
+  断言相等(含文本(指引块[1]["text"], "send_message"), 真, "1g 回执指引 含 send_message")
+
+  断言相等(结算摘要("c1", "completed"),
+    "Background subagent c1 finished and will do no further work unless you send it more.", "1h 摘要 completed")
+  断言相等(结算摘要("c1", "aborted"), "Background subagent c1 was stopped before it finished.", "1i 摘要 aborted")
+  断言相等(结算摘要("c1", "max-tokens"), "Background subagent c1 ran out of room before it finished.", "1j 摘要 max-tokens")
+  断言相等(结算摘要("c1", "refusal"), "Background subagent c1 declined the task.", "1k 摘要 refusal")
+  断言相等(结算摘要("c1", "error"), "Background subagent c1 failed before it finished.", "1l 摘要 error")
+  断言相等(结算摘要("c1", "weird"), "Background subagent c1 ended abnormally (weird) before it finished.", "1m 摘要 默认分支")
+
+  设 结算有输出 为 造结算消息("c1", {"stopReason": "completed", "output": [{"type": "text", "text": "done"}]})
+  断言相等(结算有输出["content"][0]["text"], "Background subagent c1 finished and will do no further work unless you send it more.", "1n 结算 摘要行")
+  断言相等(结算有输出["content"][1]["text"], "Its closing message:", "1o 结算 有输出提示")
+  断言相等(结算有输出["content"][2]["text"], "done", "1p 结算 末块文本")
+  断言相等(结算有输出["source"]["kind"], "subagent-settled", "1q 结算 来源种类")
+  设 结算无输出 为 造结算消息("c1", {"stopReason": "error"})
+  断言相等(结算无输出["content"][1]["text"], "It left no closing message.", "1r 结算 无输出占位")
+
+  # ---- §2 控制类型校验 ----
+  断言相等(长度(子代理诊断原因表()), 3, "2a 诊断原因表长度")
+  断言相等(是子代理诊断项({"kind": "diagnostic", "id": "c1", "reason": "corrupt"}), 真, "2b 诊断项 corrupt")
+  断言相等(是子代理诊断项({"kind": "diagnostic", "id": "c1", "reason": "bad"}), 假, "2c 诊断项 非法原因拒绝")
+  断言相等(是子代理子项({"kind": "child", "id": "c1", "activity": "running", "hasChildren": 假, "mode": "one-shot"}), 真, "2d 子项 one-shot")
+  断言相等(是子代理子项({"kind": "child", "id": "c1", "activity": "weird", "hasChildren": 假, "mode": "one-shot"}), 假, "2e 子项 非法活动拒绝")
+  断言相等(是子代理子项({"kind": "child", "id": "c1", "activity": "running", "hasChildren": 假, "mode": "continuable"}), 假, "2f 子项 continuable 缺标签拒绝")
+  断言相等(是子代理子项({"kind": "child", "id": "c1", "activity": "running", "hasChildren": 假, "mode": "continuable", "label": "L"}), 真, "2g 子项 continuable 带标签")
+  断言相等(是子代理列表项({"kind": "child", "id": "c1", "activity": "inactive", "hasChildren": 真, "mode": "one-shot"}), 真, "2h 列表项 child")
+  断言相等(是子代理列表项({"kind": "diagnostic", "id": "c1", "reason": "unavailable"}), 真, "2i 列表项 diagnostic")
+  断言相等(是子代理列表项({"kind": "ghost", "id": "c1"}), 假, "2j 列表项 未知 kind 拒绝")
+  断言相等(是子代理目录({"entries": [{"kind": "child", "id": "c1", "activity": "running", "hasChildren": 假, "mode": "one-shot"}], "parentAvailable": 真}), 真, "2k 目录 合法")
+  断言相等(是子代理目录({"entries": [], "parentAvailable": "yes"}), 假, "2l 目录 parentAvailable 非布尔拒绝")
+  断言相等(是子代理地址({"parentSessionId": "p", "childSessionId": "c", "mode": "one-shot"}), 真, "2m 地址 one-shot")
+  断言相等(是子代理地址({"parentSessionId": "p", "childSessionId": "c", "mode": "weird"}), 假, "2n 地址 非法 mode 拒绝")
+  断言相等(是子代理提示请求({"requestId": "r", "parentSessionId": "p", "childSessionId": "c", "mode": "continuable", "delivery": "steer", "content": []}), 真, "2o 提示请求 合法")
+  断言相等(是子代理提示请求({"requestId": "r", "parentSessionId": "p", "childSessionId": "c", "mode": "one-shot", "delivery": "steer", "content": []}), 假, "2p 提示请求 mode 须 continuable")
+  断言相等(是子代理提示请求({"requestId": "r", "parentSessionId": "p", "childSessionId": "c", "mode": "continuable", "delivery": "push", "content": []}), 假, "2q 提示请求 非法 delivery 拒绝")
+  断言相等(长度(子代理错误码表()), 7, "2r 错误码表长度")
+  断言相等(是子代理错误码("subagent/unauthorized"), 真, "2s 命中错误码")
+  断言相等(是子代理错误码("subagent/nope"), 假, "2t 未知错误码拒绝")
+
+  # ---- §3 单次运行结局 ----
+  断言相等(末段文本([{"type": "text", "text": "a"}, {"type": "img"}, {"type": "text", "text": "b"}]), "ab", "3a 末段文本 拼接 text")
+  断言相等(失败详情({"stopReason": "error"}), "error", "3b 失败详情 无 diagnostic")
+  断言相等(失败详情({"stopReason": "error", "diagnostic": "x"}), "error; diagnostic: x", "3c 失败详情 附 diagnostic")
+  断言相等(运行结局({"stopReason": "completed", "output": [{"type": "text", "text": "ok"}]}),
+    {"status": "completed", "output": "ok"}, "3d 结局 completed")
+  断言相等(运行结局({"stopReason": "aborted"}), {"status": "killed"}, "3e 结局 aborted 无 diagnostic → killed")
+  断言相等(运行结局({"stopReason": "aborted", "diagnostic": "d"}), {"status": "failed", "detail": "aborted; diagnostic: d"}, "3f 结局 aborted 有 diagnostic → failed")
+  断言相等(运行结局({"stopReason": "refusal"}), {"status": "failed", "detail": "refusal"}, "3g 结局 refusal → failed")
+  断言相等(运行结局({"stopReason": "weird"}), {"status": "failed", "detail": "weird"}, "3h 结局 默认分支 failed")
+
+  # ---- §4 模型路由选择 ----
+  断言相等(模型路由键({"provider": "p", "model": "m"}), 序列化JSON(["p", "m"]), "4a 模型路由键 唯一编码")
+  断言相等(含文本(应抛错(抛路线非数组, "路线非数组"), "array of routes"), 真, "4b 断言路线 非数组抛错")
+  断言相等(含文本(应抛错(抛路线空提供方, "空提供方"), "non-empty provider"), 真, "4c 断言路线 空提供方抛错")
+  断言相等(含文本(应抛错(抛路线重复, "路线重复"), "repeats route"), 真, "4d 断言路线 重复抛错")
+  断言相等(有委托模型请求({}), 假, "4e 无委托请求")
+  断言相等(有委托模型请求({"provider": "p"}), 真, "4f 有委托请求 provider")
+  断言相等(含文本(应抛错(抛非空串, "非空串"), "must be non-empty"), 真, "4g 非空串断言 空串抛错")
+  断言相等(请求代理选项({"provider": "P", "model": "M"}, 空, {}, 真), 空, "4h 无请求 → 返回已配置(空)")
+  断言相等(含文本(应抛错(抛选择禁用, "选择禁用"), "disabled"), 真, "4i 选择禁用抛错")
+  断言相等(请求代理选项({"provider": "P", "model": "M"}, 空, {"provider": "p", "model": "m"}, 真),
+    {"provider": "p", "model": "m"}, "4j 请求覆盖 provider/model")
+  断言相等(请求代理选项({"provider": "P", "model": "M"}, {"provider": "C", "model": "C2"}, {}, 真),
+    {"provider": "C", "model": "C2"}, "4k 无请求 → 返回已配置")
+  断言相等(请求代理选项({"provider": "P", "model": "M"}, {"provider": "C", "model": "C2", "reasoning_effort": "low"}, {"provider": "p", "model": "m"}, 真),
+    {"provider": "p", "model": "m"}, "4l 路由变且未给 effort → 丢配置 effort")
+  断言相等(请求代理选项({"provider": "P", "model": "M"}, 空, {"provider": "p", "model": "m", "reasoning_effort": "high"}, 真),
+    {"provider": "p", "model": "m", "reasoning_effort": "high"}, "4m 请求含 effort → 带 effort")
+  断言相等(含文本(应抛错(抛provider无model, "provider无model"), "supplied together"), 真, "4n provider 缺 model 抛错")
+  断言相等(含文本(应抛错(抛不允许路线, "不允许路线"), "is not allowed"), 真, "4o 不允许路线抛错")
+  断言相等(有配置模型选择(空), 假, "4p 未配置模型选择")
+  断言相等(有配置模型选择({"reasoning_effort": "low"}), 真, "4q 配置含 effort")
+
+  # ---- §5 模型选择策略投影 ----
+  断言相等(模型选择策略键(), "subagentModelSelectionPolicy", "5a 策略键")
+  断言相等(模型选择策略版本(), 1, "5b 策略版本")
+  断言相等(投影模型选择策略(空, {"type": "other"}), 空, "5c 投影 非策略事件原样")
+  设 路线表 为 [{"provider": "p", "model": "m"}]
+  断言相等(投影模型选择策略(空, {"type": "subagent/model-selection-policy", "data": {"allowedModels": 路线表}}), 路线表, "5d 投影 首条落库")
+  断言相等(投影模型选择策略(路线表, {"type": "subagent/model-selection-policy", "data": {"allowedModels": [{"provider": "x", "model": "y"}]}}), 路线表, "5e 投影 已设置幂等")
+  断言相等(含文本(应抛错(抛策略空路线, "策略空路线"), "at least one route"), 真, "5f 投影 空路线抛错")
+  断言相等(含文本(应抛错(抛策略坏路线, "策略坏路线"), "non-empty provider"), 真, "5g 投影 坏路线抛错")
+  断言相等(读模型选择策略(空), 空, "5h 读策略 未设置")
+  断言相等(读模型选择策略(路线表), 路线表, "5i 读策略 回传")
+  断言相等(记录模型选择策略(空, 路线表), 路线表, "5j 记录 首次落库")
+  断言相等(记录模型选择策略(路线表, [{"provider": "x", "model": "y"}]), 路线表, "5k 记录 幂等返回原值")
+
+  打印 "test_子代理续传 PASS"

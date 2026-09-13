@@ -1,0 +1,36 @@
+# _repro_L133.light —— 第 16 轮任务 2 语言缺陷复现：明亮缺「码→字符(chr)」内置
+#
+# 上游 model-selection.ts 的 modelRouteKey 用 provider\0model（NUL 分隔符）作稳定身份键。
+# 明亮仅有「字符→码」方向的 字符转ASCII（对应 ord），缺「码→字符」方向的 chr 内置，
+# 因此无法生成 NUL 分隔符；本模块改用 序列化JSON([provider, model]) 作无碰撞唯一键（绕法）。
+#
+# 运行：cd lightharness && python 运行.py examples/_repro_L133.light
+# 预期：rc=0，打印「L-133 复现通过」；若明亮新增了 chr 内置，本脚本会主动抛错告警。
+
+从 字符串处理 导入 字符转ASCII
+
+段落 主:
+  # 1) ord 方向可用：字符转ASCII("A") == 65
+  设 码 为 字符转ASCII("A")
+  如果 码 != 65:
+    抛出 新建 错误("L-133 前提失效：字符转ASCII(ord) 应返回 65，实际=" + 转字符串(码))
+
+  # 2) chr 方向缺失：码转字符 / ASCII转字符 均不存在（调用抛 NameError）
+  设 缺chr 为 假
+  尝试:
+    码转字符(65)
+  捕获 异常 为 e:
+    设 缺chr 为 真
+  尝试:
+    ASCII转字符(65)
+  捕获 异常 为 e:
+    设 缺chr 为 真
+  如果 缺chr != 真:
+    抛出 新建 错误("L-133 前提失效：明亮已存在 chr 内置（码转字符/ASCII转字符），本缺陷应撤销")
+
+  # 3) 绕法正确性佐证：序列化JSON([provider, model]) 可作无碰撞唯一键
+  设 键 为 序列化JSON(["p", "m"])
+  如果 键 != "[\"p\", \"m\"]":
+    抛出 新建 错误("L-133 绕法失效：序列化JSON 编码异常，key=" + 转字符串(键))
+
+  打印 "L-133 复现通过：明亮缺 码→字符(chr) 内置，模型路由键改用 序列化JSON([provider,model]) 编码"

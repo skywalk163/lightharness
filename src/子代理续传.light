@@ -1,0 +1,369 @@
+# 子代理续传.light —— 第16轮 任务2：subagent 子代理续传（下）
+#
+# 上游（只读）：G:\github\deepseek-harness\
+#   subagent/subagent/src/continuation-messages.ts（155行）  → §1 相邻代理消息 / 可续回执指引 / 结算消息
+#   subagent/subagent/src/control-types.ts（149行）          → §2 列表项/目录/地址/提示请求 类型校验 + 远程错误码表
+#   subagent/subagent/src/run-settlement.ts（76行）           → §3 单次运行结局映射（finalText/failureDetail/runOutcome）
+#   subagent/tool-subagent/src/model-selection.ts（197行）   → §4 模型路由选择（route key/校验/合并/允许判定）
+#   subagent/tool-subagent/src/model-selection-state.ts（82行）→ §5 模型选择策略投影（apply/read/record）
+#   subagent/subagent/src/internal.ts（111行）               → 全量宿主面（Symbol/Object.defineProperty/Promise），见 §五 剔除
+#
+# 命名避坑：L-119 单字别名保留字；L-120 可被关键字全覆盖切分的标识符。
+# 本地辅助段一律带「续」前缀，避免与同测导入的其它模块同名段 codegen 重定义。
+# 缺陷：本路未触发独立语言缺陷（L-133/L-134 空缺，见交付报告）。
+
+# 注：字符串处理 仅提供 字符转ASCII（字符→码，对应 ord）；码→字符(chr) 内置缺失（L-133）。
+# 本模块 modelRouteKey 改用 序列化JSON 数组编码作唯一键，规避 \0 分隔符不可生成的问题。
+
+# =====================================================================
+# §1 相邻代理消息 / 可续回执指引 / 结算消息（continuation-messages.ts）
+# =====================================================================
+
+# 持久来源：相邻 Agent 消息（relay 形式）
+段落 代理消息来源 接收 发送方标识:
+  返回 {"kind": "agent-message", "form": "relay", "senderSessionId": 发送方标识}
+
+# 造一条「相邻 Agent 消息」的持久 user-message 表示（内容前加 "Agent <id> sent a message: "）
+段落 造代理消息 接收 发送方标识, 内容块:
+  设 前缀 为 "Agent " + 发送方标识 + " sent a message: "
+  设 内容 为 续新列表()
+  列表追加(内容, {"type": "text", "text": 前缀})
+  遍历 块 之 内容块:
+    列表追加(内容, 块)
+  返回 {"content": 内容, "source": 代理消息来源(发送方标识)}
+
+# 在可续子代理的初始任务后追加「回父」指引（父标识经 JSON 序列化嵌入）
+段落 带可续回执指引 接收 父标识, 提示块:
+  设 编码父 为 序列化JSON(父标识)
+  设 指引 为 "Your parent agent id is " + 编码父 + ". Before you finish, send your result to that agent with "
+  设 指引 为 指引 + "send_message({ agent_id: " + 编码父 + ", message: \"<self-contained result>\" }). The parent shares "
+  设 指引 为 指引 + "your workspace but does not automatically receive your transcript, tool output, or reasoning. Send "
+  设 指引 为 指引 + "earlier messages as well when a finding changes what the parent should do next; sending a message "
+  设 指引 为 指引 + "does not end your turn."
+  设 结果 为 续拷贝列表(提示块)
+  列表追加(结果, {"type": "text", "text": 指引})
+  返回 结果
+
+# 结算单行摘要（stopReason → 父侧词汇的一句话）
+段落 结算摘要 接收 子标识, 停止原因:
+  设 主语 为 "Background subagent " + 子标识
+  如果 停止原因 == "completed":
+    返回 主语 + " finished and will do no further work unless you send it more."
+  如果 停止原因 == "aborted":
+    返回 主语 + " was stopped before it finished."
+  如果 停止原因 == "max-tokens":
+    返回 主语 + " ran out of room before it finished."
+  如果 停止原因 == "refusal":
+    返回 主语 + " declined the task."
+  如果 停止原因 == "error":
+    返回 主语 + " failed before it finished."
+  返回 主语 + " ended abnormally (" + 转字符串(停止原因) + ") before it finished."
+
+# 造运行期所有的结算通知（交付给父）—— summary 去重，output 缺省给占位文案
+段落 造结算消息 接收 子标识, 终态:
+  设 摘要 为 结算摘要(子标识, 终态["stopReason"])
+  设 内容 为 续新列表()
+  列表追加(内容, {"type": "text", "text": 摘要})
+  如果 字典包含键(终态, "output") == 假:
+    列表追加(内容, {"type": "text", "text": "It left no closing message."})
+  否则:
+    列表追加(内容, {"type": "text", "text": "Its closing message:"})
+    遍历 块 之 终态["output"]:
+      列表追加(内容, 块)
+  返回 {"content": 内容, "source": {"kind": "subagent-settled", "form": "notice",
+    "summary": 摘要, "senderSessionId": 子标识}}
+
+# =====================================================================
+# §2 控制类型校验（control-types.ts）
+# =====================================================================
+
+段落 子代理诊断原因表:
+  返回 ["corrupt", "unsupported", "unavailable"]
+
+段落 是子代理诊断项 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 续字段齐备(值, ["kind", "id", "reason"]) == 假:
+    返回 假
+  如果 是字符串(值["id"]) == 假:
+    返回 假
+  设 原因 为 值["reason"]
+  返回 原因 == "corrupt" 或 原因 == "unsupported" 或 原因 == "unavailable"
+
+段落 是子代理子项 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 续字段齐备(值, ["kind", "id", "activity", "hasChildren", "mode"]) == 假:
+    返回 假
+  如果 是字符串(值["id"]) == 假:
+    返回 假
+  如果 值["activity"] != "running" 且 值["activity"] != "inactive":
+    返回 假
+  如果 续是布尔(值["hasChildren"]) == 假:
+    返回 假
+  如果 值["mode"] == "one-shot":
+    返回 真
+  如果 值["mode"] == "continuable":
+    返回 是字符串(字典获取(值, "label", 空))
+  返回 假
+
+段落 是子代理列表项 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典获取(值, "kind", 空) == "child":
+    返回 是子代理子项(值)
+  如果 字典获取(值, "kind", 空) == "diagnostic":
+    返回 是子代理诊断项(值)
+  返回 假
+
+段落 是子代理目录 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 续字段齐备(值, ["entries", "parentAvailable"]) == 假:
+    返回 假
+  如果 续是布尔(值["parentAvailable"]) == 假:
+    返回 假
+  如果 是列表(值["entries"]) == 假:
+    返回 假
+  遍历 项 之 值["entries"]:
+    如果 是子代理列表项(项) == 假:
+      返回 假
+  返回 真
+
+段落 是子代理地址 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 续字段齐备(值, ["parentSessionId", "childSessionId", "mode"]) == 假:
+    返回 假
+  如果 是字符串(值["parentSessionId"]) == 假:
+    返回 假
+  如果 是字符串(值["childSessionId"]) == 假:
+    返回 假
+  返回 值["mode"] == "one-shot" 或 值["mode"] == "continuable"
+
+段落 是子代理提示请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 续字段齐备(值, ["requestId", "parentSessionId", "childSessionId", "mode", "delivery", "content"]) == 假:
+    返回 假
+  如果 是字符串(值["requestId"]) == 假:
+    返回 假
+  如果 是字符串(值["parentSessionId"]) == 假:
+    返回 假
+  如果 是字符串(值["childSessionId"]) == 假:
+    返回 假
+  如果 值["mode"] != "continuable":
+    返回 假
+  如果 值["delivery"] != "queue" 且 值["delivery"] != "steer":
+    返回 假
+  返回 是列表(值["content"])
+
+段落 子代理错误码表:
+  返回 ["subagent/invalid-time-zone", "subagent/parent-unavailable", "subagent/not-resumable",
+    "subagent/unauthorized", "subagent/attachment-invalid", "subagent/delivery-unavailable",
+    "subagent/projections-unavailable"]
+
+段落 是子代理错误码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 子代理错误码表():
+    如果 码 == 值:
+      返回 真
+  返回 假
+
+# =====================================================================
+# §3 单次运行结局（run-settlement.ts）
+# =====================================================================
+
+# 末段文本：拼接所有 text 块
+段落 末段文本 接收 块表:
+  设 结果 为 ""
+  遍历 块 之 块表:
+    如果 字典获取(块, "type", 空) == "text":
+      设 结果 为 结果 + 块["text"]
+  返回 结果
+
+# 失败详情：stopReason；有 diagnostic 则附 "; diagnostic: <d>"
+段落 失败详情 接收 结果:
+  如果 字典包含键(结果, "diagnostic") == 假:
+    返回 结果["stopReason"]
+  返回 结果["stopReason"] + "; diagnostic: " + 结果["diagnostic"]
+
+# 将子结果映射为后台 Task 结局
+段落 运行结局 接收 结果:
+  设 原因 为 结果["stopReason"]
+  如果 原因 == "completed":
+    返回 {"status": "completed", "output": 末段文本(字典获取(结果, "output", []))}
+  如果 原因 == "aborted":
+    如果 字典包含键(结果, "diagnostic") == 假:
+      返回 {"status": "killed"}
+    返回 {"status": "failed", "detail": 失败详情(结果)}
+  如果 原因 == "error" 或 原因 == "max-tokens" 或 原因 == "refusal":
+    返回 {"status": "failed", "detail": 失败详情(结果)}
+  返回 {"status": "failed", "detail": 失败详情(结果)}
+
+# =====================================================================
+# §4 子代理模型路由选择（model-selection.ts）
+# =====================================================================
+
+段落 允许模型路线 接收 路线:
+  返回 {"provider": 路线["provider"], "model": 路线["model"]}
+
+# 稳定身份键：provider\0model。光明缺 码→字符(chr) 内置（L-133），无法产出 \0，
+# 改用 JSON 数组编码作唯一、无碰撞的键（序列化JSON([provider,model])）。
+段落 模型路由键 接收 路线:
+  返回 序列化JSON([路线["provider"], 路线["model"]])
+
+# 校验路线表：须数组、每项 provider/model 非空串、无重复键
+段落 断言允许模型路线 接收 路线表:
+  如果 是列表(路线表) == 假:
+    抛出 新建 错误("subagent model selection requires an array of routes")
+  设 已见 为 {}
+  遍历 候 之 路线表:
+    如果 是字典(候) == 假 或 字典包含键(候, "provider") == 假 或 字典包含键(候, "model") == 假:
+      抛出 新建 错误("subagent model selection requires non-empty provider and model ids")
+    设 提供方 为 候["provider"]
+    设 模型 为 候["model"]
+    如果 是字符串(提供方) == 假 或 字符串长度(提供方) == 0 或 是字符串(模型) == 假 或 字符串长度(模型) == 0:
+      抛出 新建 错误("subagent model selection requires non-empty provider and model ids")
+    设 键 为 序列化JSON([提供方, 模型])
+    如果 字典包含键(已见, 键) == 真:
+      抛出 新建 错误("subagent model selection repeats route \"" + 提供方 + "/" + 模型 + "\"")
+    字典设置(已见, 键, 真)
+
+# 模型面路由字段是否显式出现任一
+段落 有委托模型请求 接收 请求:
+  返回 字典包含键(请求, "provider") == 真 或 字典包含键(请求, "model") == 真 或 字典包含键(请求, "reasoning_effort") == 真
+
+# 非空串断言（undefined 不抛，空串抛）
+段落 续断言非空 接收 值, 字段:
+  如果 值 != 空 且 字符串长度(值) == 0:
+    抛出 新建 错误("child LLM `" + 字段 + "` must be non-empty")
+
+# 合并模型面选择字段到已配置/父默认值之上
+段落 请求代理选项 接收 父选项, 已配置, 请求, 启用:
+  如果 有委托模型请求(请求) == 假:
+    返回 已配置
+  如果 启用 == 假:
+    抛出 新建 错误("child model selection is disabled for this tool instance")
+  续断言非空(字典获取(请求, "provider", 空), "provider")
+  续断言非空(字典获取(请求, "model", 空), "model")
+  续断言非空(字典获取(请求, "reasoning_effort", 空), "reasoning_effort")
+  如果 (字典包含键(请求, "provider") == 假) != (字典包含键(请求, "model") == 假):
+    抛出 新建 错误("child LLM `provider` and `model` must be supplied together")
+  设 基线提供方 为 续取可选(已配置, "provider", 父选项["provider"])
+  设 基线模型 为 续取可选(已配置, "model", 父选项["model"])
+  设 路由变 为 字典包含键(请求, "provider") == 真 且 (请求["provider"] != 基线提供方 或 请求["model"] != 基线模型)
+  设 基数 为 {}
+  如果 已配置 != 空:
+    如果 路由变 == 真 且 字典包含键(请求, "reasoning_effort") == 假:
+      设 基数 为 续去字段(已配置, ["reasoning_effort"])
+    否则:
+      设 基数 为 续拷贝字典(已配置)
+  如果 字典包含键(请求, "provider") == 真:
+    字典设置(基数, "provider", 请求["provider"])
+    字典设置(基数, "model", 请求["model"])
+  如果 字典包含键(请求, "reasoning_effort") == 真:
+    字典设置(基数, "reasoning_effort", 请求["reasoning_effort"])
+  返回 基数
+
+# 在操作创建子代理处强制路线白名单
+段落 断言允许模型选择 接收 策略, 父选项, 已请求, 请求:
+  如果 策略 == 空 或 有委托模型请求(请求) == 假:
+    返回
+  设 提供方 为 续取可选(已请求, "provider", 父选项["provider"])
+  设 模型 为 续取可选(已请求, "model", 父选项["model"])
+  如果 提供方 == 空 或 模型 == 空:
+    抛出 新建 错误("cannot select child LLM values without an effective provider and model")
+  遍历 路 之 策略["routes"]:
+    如果 路["provider"] == 提供方 且 路["model"] == 模型:
+      返回
+  抛出 新建 错误("child LLM route \"" + 提供方 + "/" + 模型 + "\" is not allowed for this Session")
+
+# 已配置选项是否含可路由选择
+段落 有配置模型选择 接收 选项:
+  如果 选项 == 空:
+    返回 假
+  返回 字典包含键(选项, "provider") == 真 或 字典包含键(选项, "model") == 真 或 字典包含键(选项, "reasoning_effort") == 真
+
+# =====================================================================
+# §5 模型选择策略投影（model-selection-state.ts）
+# =====================================================================
+
+段落 模型选择策略键:
+  返回 "subagentModelSelectionPolicy"
+
+段落 模型选择策略版本:
+  返回 1
+
+# 投影 apply：仅首条 subagent/model-selection-policy 事件落库；校验路线表非空
+段落 投影模型选择策略 接收 策略, 事件:
+  如果 策略 != 空 或 字典获取(事件, "type", 空) != "subagent/model-selection-policy":
+    返回 策略
+  设 路线 为 事件["data"]["allowedModels"]
+  断言允许模型路线(路线)
+  如果 长度(路线) == 0:
+    抛出 新建 错误("subagent/model-selection-policy requires at least one route")
+  返回 路线
+
+# 读当前策略状态（投影态值直接回传；未设置 → 空）
+段落 读模型选择策略 接收 状态:
+  返回 状态
+
+# 记录策略：已存在则不重复（幂等）
+段落 记录模型选择策略 接收 状态, 允许模型:
+  如果 状态 != 空:
+    返回 状态
+  返回 允许模型
+
+# =====================================================================
+# 本地工具（一律「续」前缀，避免跨模块同名段）
+# =====================================================================
+
+段落 续新列表:
+  返回 []
+
+段落 续拷贝列表 接收 源:
+  设 结果 为 续新列表()
+  遍历 项 之 源:
+    列表追加(结果, 项)
+  返回 结果
+
+段落 续字段齐备 接收 值, 键表:
+  遍历 键 之 键表:
+    如果 字典包含键(值, 键) == 假:
+      返回 假
+  返回 真
+
+段落 续只含键 接收 值, 允许键表:
+  遍历 键 之 字典键列表(值):
+    如果 续含于(允许键表, 键) == 假:
+      返回 假
+  返回 真
+
+段落 续含于 接收 表, 值:
+  遍历 项 之 表:
+    如果 项 == 值:
+      返回 真
+  返回 假
+
+段落 续拷贝字典 接收 源:
+  设 结果 为 {}
+  遍历 键 之 字典键列表(源):
+    字典设置(结果, 键, 源[键])
+  返回 结果
+
+段落 续去字段 接收 源, 去键表:
+  设 结果 为 {}
+  遍历 键 之 字典键列表(源):
+    如果 续含于(去键表, 键) == 假:
+      字典设置(结果, 键, 源[键])
+  返回 结果
+
+段落 续是布尔 接收 值:
+  返回 type(值) == bool
+
+段落 续取可选 接收 字典, 键, 缺省:
+  如果 字典 == 空 或 字典包含键(字典, 键) == 假:
+    返回 缺省
+  返回 字典[键]
