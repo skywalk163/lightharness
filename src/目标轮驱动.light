@@ -1,0 +1,263 @@
+# 目标轮驱动.light —— 第13轮 任务3：goal-round-driver 纯逻辑面复刻
+#
+# 上游：packages/goal/goal-round-driver/src/index.ts（525 行，宿主注入 agents/goals/sessions）
+#       + prompt.ts（renderGoalRoundPrompt）
+#
+# 复刻范围（只做纯逻辑面）：
+#   §1 来源判定族：是目标轮来源 / 同轮 / 同排队记录（字节级深比较语义用 序列化JSON）
+#   §2 目标引用：取目标引用（GoalRef）
+#   §3 就绪判定：可驱动 / 检查点后就绪
+#   §4 轮次推进决策：推进一轮（核心状态机）
+#   §5 提示渲染：渲染目标轮文本 / 渲染目标轮提示（逐字对齐 prompt.ts）
+#   §6 轮次结束栅栏：轮次结束栅栏（turn/end 的 max-tokens/aborted 解除授权语义）
+#
+# 剔除登记（宿主面，见交付报告 §未移植项）：
+#   apply(ctx) 的 cordis 事件接线（agent/created|disposed|status|error、goal/changed、
+#   session/event）、agents.withoutInitiator 驱动循环、agent.followup 入队、inbox
+#   插入/认领/丢弃反应（restoreOtherClaimed、agent.inbox.prepend）、
+#   ctx.goals.block/pause/disarm 副作用、logger、ctx.effect 生命周期、pre-step 钩子。
+#   本模块把上述宿主输入一律入参化，只产出「决策 + 文案 + 预约形状」。
+#
+# 目标视图形状（对齐 src/目标折叠.light 的 造目标视图 投影字段，只读参考，不接其内部）：
+#   {id, revision, objective, phase, maxGoalRounds, roundsStarted, createdAt, updatedAt,
+#    activation}；phase ∈ active|paused|blocked|complete；activation ∈ armed|disarmed。
+#   为兼容中文键投影，字段读取统一走 视图取（英文键优先，中文别名回退，见 字段别名表）。
+#
+# 命名避坑：不用 取 前缀以外的关键字词根；不用「为」字入标识符（L-084）。
+
+从 JSON 导入 序列化JSON
+
+# =====================================================================
+# §0 常量与字段读取
+# =====================================================================
+
+# 目标阶段/激活闭集（上游 types.ts GoalPhase / GoalActivation）
+设 阶段已激活 为 "active"
+设 授权已武装 为 "armed"
+
+# 阻止块码（上游 goals.block 的 code 取值）
+设 码轮次上限 为 "round-limit"
+设 码入队失败 为 "queue-failed"
+
+# 提示标记与固定指令三段（逐字对齐 prompt.ts:15-23，段间以单个空格拼接）
+设 目标轮头标记 为 "<goal_round>"
+设 目标轮尾标记 为 "</goal_round>"
+设 指令段一 为 "Continue working toward the objective in this same session. Treat the current workspace, tool results, and durable session state as authoritative; inspect them instead of assuming earlier narration is still current."
+设 指令段二 为 "Make concrete progress and verify the result."
+设 指令段三 为 "Before claiming completion, gather evidence that the whole objective is achieved, read the current goal, and mark it complete. If work remains, leave the goal active for the next round. Follow the configured goal-tool policy before reporting a blocker."
+设 固定指令文本 为 指令段一 + " " + 指令段二 + " " + 指令段三
+
+# 字段别名表：规范英文键 → 可接受的键形态（英文优先，中文别名回退）
+# 目标视图键对齐 目标折叠.造目标视图；来源键对齐上游 GoalMessageSource。
+设 字段别名表 为 {"id": ["id", "标识"], "revision": ["revision", "修订"], "objective": ["objective", "客观"], "phase": ["phase", "阶段"], "activation": ["activation", "激活"], "maxGoalRounds": ["maxGoalRounds", "最大轮数"], "roundsStarted": ["roundsStarted", "已开轮次"], "kind": ["kind", "类别"], "goalId": ["goalId", "目标标识"], "round": ["round", "轮次"], "messageId": ["messageId", "消息标识"]}
+
+# 视图取：按别名表读字段；无匹配返回 空（上游 undefined）
+段落 视图取 接收 视图, 键:
+  如果 是字典(视图) == 假:
+    返回 空
+  设 别名 为 字典获取(字段别名表, 键, 空)
+  如果 别名 == 空:
+    返回 字典获取(视图, 键, 空)
+  遍历 名 之 别名:
+    如果 字典包含键(视图, 名):
+      返回 视图[名]
+  返回 空
+
+# 有字段：任一别名键存在（用于「仅当存在时落键」语义）
+段落 有字段 接收 视图, 键:
+  返回 视图取(视图, 键) != 空
+
+# =====================================================================
+# §1 来源判定族（上游 index.ts:49-63）
+# =====================================================================
+
+# isGoalRoundSource：kind == "goal" 且 round > 0
+#   注：round == 0 的 goal 来源是「非自动续作」标记，不算目标轮。
+段落 是目标轮来源 接收 来源:
+  如果 是字典(来源) == 假:
+    返回 假
+  如果 视图取(来源, "kind") != "goal":
+    返回 假
+  设 轮 为 视图取(来源, "round")
+  如果 是整数(轮) == 假:
+    返回 假
+  返回 轮 > 0
+
+# sameRound：goalId/revision/round 三者精确相等（RoundIdentity 比较）
+段落 同轮 接收 来源, 身份:
+  如果 是目标轮来源(来源) == 假:
+    返回 假
+  如果 视图取(来源, "goalId") != 视图取(身份, "goalId"):
+    返回 假
+  如果 视图取(来源, "revision") != 视图取(身份, "revision"):
+    返回 假
+  返回 视图取(来源, "round") == 视图取(身份, "round")
+
+# sameQueued：同轮 + 内容逐项深度相等（上游 isDeepStrictEqual）
+#   内容块表 与 预约["content"] 均为 ContentBlock 列表；用 序列化JSON 表达深度相等。
+段落 同排队记录 接收 内容块表, 来源, 预约:
+  如果 是字典(预约) == 假:
+    返回 假
+  如果 同轮(来源, 预约) == 假:
+    返回 假
+  返回 序列化JSON(内容块表) == 序列化JSON(视图取(预约, "content"))
+
+# =====================================================================
+# §2 目标引用（上游 index.ts:66-68）
+# =====================================================================
+
+段落 取目标引用 接收 视图:
+  返回 {"id": 视图取(视图, "id"), "revision": 视图取(视图, "revision")}
+
+# =====================================================================
+# §3 就绪判定（上游 index.ts:102-114）
+# =====================================================================
+# readyToDrive = fiber ACTIVE && !stopping && agent live && agent.status == idle
+#                && !competingQueued
+# 状态字典（入参布尔集）：
+#   "stopping" 驱动收尾中、"纤维活跃" fiber 活跃、"代理在册" agent 仍在册、
+#   "代理空闲" agent.status == idle、"竞争排队" 有竞争提示排队、
+#   "needsCheckpoint" 需持久化检查点、"attempt" 当前预约、"requested" 有未处理触发。
+
+段落 新轮次驱动状态 接收:
+  返回 {"attempt": 空, "competingQueued": 假, "竞争排队": 假, "needsCheckpoint": 假, "requested": 假, "stopping": 假, "纤维活跃": 真, "代理在册": 真, "代理空闲": 真}
+
+段落 可驱动 接收 状态:
+  如果 是字典(状态) == 假:
+    返回 假
+  如果 字典获取(状态, "stopping", 假) == 真:
+    返回 假
+  如果 字典获取(状态, "纤维活跃", 真) == 假:
+    返回 假
+  如果 字典获取(状态, "代理在册", 真) == 假:
+    返回 假
+  如果 字典获取(状态, "代理空闲", 真) == 假:
+    返回 假
+  如果 竞争排队中(状态) == 真:
+    返回 假
+  返回 真
+
+# 竞争排队读取：兼容 "竞争排队" 与上游字段名 "competingQueued"
+段落 竞争排队中 接收 状态:
+  如果 字典获取(状态, "竞争排队", 假) == 真:
+    返回 真
+  返回 字典获取(状态, "competingQueued", 假) == 真
+
+# readyAfterCheckpoint = readyToDrive && !needsCheckpoint
+段落 检查点后就绪 接收 状态:
+  如果 可驱动(状态) == 假:
+    返回 假
+  返回 字典获取(状态, "needsCheckpoint", 假) == 假
+
+# =====================================================================
+# §4 提示渲染（上游 prompt.ts:12-26）
+# =====================================================================
+# 单块 text：类型 "text"，内容 = <goal_round>\nObjective: <JSON(客观)>\nRound: 轮/上限\n\n<指令>\n</goal_round>
+
+段落 渲染目标轮文本 接收 目标, 轮:
+  返回 目标轮头标记 + "\n" + "Objective: " + 序列化JSON(视图取(目标, "objective")) + "\n" + "Round: " + 转字符串(轮) + "/" + 转字符串(视图取(目标, "maxGoalRounds")) + "\n\n" + 固定指令文本 + "\n" + 目标轮尾标记
+
+段落 渲染目标轮提示 接收 目标, 轮:
+  返回 [{"type": "text", "text": 渲染目标轮文本(目标, 轮)}]
+
+# =====================================================================
+# §5 轮次推进决策状态机（上游 index.ts:138-205 drive()）
+# =====================================================================
+# 入参 宿主（全部宿主面输入）：
+#   "驱动活跃"   readyToDrive 结果（真/假）
+#   "检查点成功" ctx.sessions.flush 结果（真/假）
+#   "消息标识"   createUserMessage 产出的 messageId
+#   "入队失败"   agent.followup 抛错时的原因（空 = 成功）
+#   "最新目标"   入队失败后重新读取的当前目标（空 = 沿用 目标）
+#
+# 返回决策（动作）：
+#   {"动作":"wait"}                       未就绪 / 目标未激活
+#   {"动作":"disarm"}                     检查点失败，解除自动授权
+#   {"动作":"defer-round"}                已有预约 → 让位（清预约 + 需检查点 + 置请求）
+#   {"动作":"block", "码":"round-limit"}  轮次预算耗尽
+#   {"动作":"reserve", ...}               预留下一轮
+#   {"动作":"queue-failed", ...}          followup 抛错（满足条件时附 码/消息）
+
+段落 队列失败封禁判定 接收 最新目标, 预约:
+  如果 最新目标 == 空 或 是字典(最新目标) == 假:
+    返回 假
+  如果 视图取(最新目标, "id") != 视图取(预约, "goalId"):
+    返回 假
+  如果 视图取(最新目标, "revision") != 视图取(预约, "revision"):
+    返回 假
+  如果 视图取(最新目标, "phase") != 阶段已激活:
+    返回 假
+  返回 视图取(最新目标, "activation") == 授权已武装
+
+段落 推进一轮 接收 状态, 目标, 宿主:
+  # (1) 未就绪 → 不做任何事
+  如果 字典获取(宿主, "驱动活跃", 假) == 假:
+    返回 {"动作": "wait"}
+  # (2) 检查点阶段：先落盘再复验（突变/普通提示可能已到达）
+  如果 字典获取(状态, "needsCheckpoint", 假) == 真:
+    状态["needsCheckpoint"] 为 假
+    如果 字典获取(宿主, "检查点成功", 真) == 假:
+      返回 {"动作": "disarm"}
+    如果 可驱动(状态) == 假:
+      返回 {"动作": "wait"}
+  # (3) 已有预约 → 让位（清预约、要求再检查点、置请求；由后续 drive 再推进）
+  如果 字典获取(状态, "attempt", 空) != 空:
+    状态["attempt"] 为 空
+    状态["needsCheckpoint"] 为 真
+    状态["requested"] 为 真
+    返回 {"动作": "defer-round"}
+  # (4) 目标必须存在且 active + armed
+  如果 目标 == 空 或 是字典(目标) == 假:
+    返回 {"动作": "wait"}
+  如果 视图取(目标, "phase") != 阶段已激活:
+    返回 {"动作": "wait"}
+  如果 视图取(目标, "activation") != 授权已武装:
+    返回 {"动作": "wait"}
+  设 已开 为 视图取(目标, "roundsStarted")
+  设 上限 为 视图取(目标, "maxGoalRounds")
+  # (5) 轮次预算耗尽 → 阻止（码 round-limit）
+  如果 已开 >= 上限:
+    返回 {"动作": "block", "码": 码轮次上限, "消息": "目标达到配置上限 " + 转字符串(上限) + " 轮", "目标引用": 取目标引用(目标)}
+  # (6) 预留下一轮：轮号 = 已开轮次 + 1
+  设 轮 为 已开 + 1
+  设 内容块表 为 渲染目标轮提示(目标, 轮)
+  设 预约 为 {"goalId": 视图取(目标, "id"), "revision": 视图取(目标, "revision"), "round": 轮, "messageId": 字典获取(宿主, "消息标识", 空), "content": 内容块表, "phase": "queued", "cancelled": 假, "stale": 假}
+  状态["attempt"] 为 预约
+  设 入队失败 为 字典获取(宿主, "入队失败", 空)
+  如果 入队失败 == 空:
+    返回 {"动作": "reserve", "轮次": 轮, "内容块表": 内容块表, "预约": 预约}
+  # (7) 入队失败 → 清预约；仅当最新目标仍是同一引用且 active+armed 才封禁
+  状态["attempt"] 为 空
+  设 决策 为 {"动作": "queue-failed", "轮次": 轮, "预约": 预约, "失败": 转字符串(入队失败)}
+  设 最新 为 字典获取(宿主, "最新目标", 空)
+  如果 最新 == 空:
+    设 最新 为 目标
+  如果 队列失败封禁判定(最新, 预约) == 真:
+    决策["码"] 为 码入队失败
+    决策["消息"] 为 "无法为目标轮次 " + 转字符串(轮) + " 入队: " + 转字符串(入队失败)
+  返回 决策
+
+# =====================================================================
+# §6 轮次结束栅栏（上游 index.ts:329-339 session/event turn/end 分支）
+# =====================================================================
+# max-tokens → 解除授权；aborted → 已认领/已入会话的预约标记取消，否则解除授权。
+# 返回 "disarm" | "keep-attempt" | "continue"
+段落 轮次结束栅栏 接收 状态, 原因种类:
+  如果 原因种类 == "max-tokens":
+    返回 "disarm"
+  如果 原因种类 != "aborted":
+    返回 "continue"
+  设 预约 为 字典获取(状态, "attempt", 空)
+  如果 预约 != 空:
+    设 阶段 为 视图取(预约, "phase")
+    如果 阶段 == "claimed" 或 阶段 == "admitted":
+      预约["cancelled"] 为 真
+      返回 "keep-attempt"
+  返回 "disarm"
+
+导出 是目标轮来源, 同轮, 同排队记录, 取目标引用, 视图取, 有字段
+导出 新轮次驱动状态, 可驱动, 检查点后就绪, 竞争排队中
+导出 渲染目标轮文本, 渲染目标轮提示, 固定指令文本, 指令段一, 指令段二, 指令段三
+导出 目标轮头标记, 目标轮尾标记
+导出 推进一轮, 队列失败封禁判定, 轮次结束栅栏
+导出 阶段已激活, 授权已武装, 码轮次上限, 码入队失败, 字段别名表
