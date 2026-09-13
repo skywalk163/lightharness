@@ -1,0 +1,313 @@
+# 会话控制类型.light —— 对标上游 packages/api/session-controller/src/ 纯逻辑面（a305303422）
+# 对标 #107（L-137~L-138 预分配空缺；差异 R16-D4）。
+#
+# 上游结构映射：
+#   types.ts（611行）
+#     -> 会话状态表（SessionStatus 8 值逐字）/ 搜索常量（SESSION_SEARCH_RESULT_LIMIT=20、
+#        SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS=240）/ 会话错误种类表（RemoteErrorDetailsMap
+#        13 kind 逐字）/ 是否提示内容部件（PromptContentPart text|image|file）/ 是否队列动作
+#        （QueueAction edit|remove|steer）/ 是否会话地址（SessionAddress session|subagent）/
+#        造模型选择 / 模型投影回退（ModelSelectionProjection next 缺省回退 lastUsed）/
+#        造会话状态值（SessionStatusValue）/ 造流帧（SessionAssistantStreamFrame 三形态）
+#   assistant-stream.ts（102行）
+#     -> 造流累加器 / 接受流帧 / 流快照（SessionAssistantStreamAccumulator.accept/snapshot：
+#        revision 连续性守卫、chunk index 缝隙终止折叠、快照缓存与脏标记）
+#   remote-events.ts（14行）
+#     -> 是远程事件种类（'api-session/activity|added|error|removed|status' 逐字）
+#
+# 宿主面剔除：SessionProjectionMap/接口合并（SessionEventMap/MessageSourceMap/RemoteErrorDetailsMap
+#   为声明合并——以种类判定表承载）、Branded 品牌（字符串承载）、dsh-llm 的
+#   AssistantStreamAccumulator（chunk 推入/文本提取，包外不可见——本层 {time, chunk} 透传，登记 R16-D4）。
+# 绕法：内置裸名（L-090）、无 且/或 行内链（L-043）、标识符避关键字与单字别名切分（L-119/L-120/L-084）、
+#   无花括号文案（L-089）、可选键先 字典包含键（L-103）、双层赋值用 字典设置（L-123）。
+
+导出 会话搜索结果上限 搜索摘要最大码点 会话状态表 是否会话状态 状态运行中 会话错误种类 是否提示内容部件 是否队列动作 是否会话地址 造模型选择 模型投影回退 造会话状态值 是否流帧 造起始帧 造数据帧 造结束帧 造流累加器 接受流帧 流快照 是远程事件种类。
+
+# ---------------- types.ts：常量与状态 ----------------
+设 会话搜索结果上限 为 20
+设 搜索摘要最大码点 为 240
+
+# SessionStatus 8 值逐字（反跑 C 锚点）
+设 会话状态表 为 ["idle", "running", "queued", "steering", "waiting", "loading", "degraded", "orphaned"]
+
+段落 是否会话状态 接收 值:
+  返回 列表包含(会话状态表, 值)
+
+# SessionStatusValue {status, running}——running 仅 running 态为真
+段落 状态运行中 接收 状态:
+  如果 状态 == "running":
+    返回 真
+  返回 假
+
+# SessionStatusValue 构造
+段落 造会话状态值 接收 状态:
+  如果 是否会话状态(状态) == 假:
+    抛出 新建 错误("unknown session status: " + 转字符串(状态))
+  设 值 为 {}
+  值["status"] 为 状态
+  值["running"] 为 状态运行中(状态)
+  返回 值
+
+# ---------------- types.ts：RemoteErrorDetailsMap 13 kind ----------------
+# 返回该错误 kind 的必选细节键表（未知种类返回 空）
+段落 会话错误种类 接收 种类:
+  如果 种类 == "session/model-unavailable":
+    返回 ["provider", "model"]
+  如果 种类 == "session/conflict":
+    返回 ["sessionId", "requestedCwd"]
+  如果 种类 == "session/agent-busy":
+    返回 ["reason"]
+  如果 种类 == "session/invalid-time-zone":
+    返回 ["value"]
+  如果 种类 == "session/workspace-attach-failed":
+    返回 ["sessionId", "workspaceId"]
+  如果 种类 == "agent-preset/conflict":
+    返回 ["sessionId", "requestedPreset"]
+  如果 种类 == "session/attachment-invalid":
+    返回 ["reason"]
+  如果 种类 == "session/queue-item-not-found":
+    返回 ["itemId"]
+  如果 种类 == "session/steer-unavailable":
+    返回 ["itemId"]
+  如果 种类 == "session/title-invalid":
+    返回 ["sessionId"]
+  如果 种类 == "session/fork-unavailable":
+    返回 ["sessionId"]
+  如果 种类 == "subagent/not-found":
+    返回 ["parentSessionId", "childSessionId"]
+  如果 种类 == "subagent/catalog-diagnostic":
+    返回 ["parentSessionId", "childSessionId", "reason"]
+  返回 空
+
+# ---------------- types.ts：内容部件与队列动作 ----------------
+# PromptContentPart：text{text} | image{mediaType, data, name?} | file{receiptId}
+段落 是否提示内容部件 接收 部件:
+  如果 是字典(部件) == 假:
+    返回 假
+  设 形态 为 字典获取(部件, "type", "")
+  如果 形态 == "text":
+    返回 是字符串(字典获取(部件, "text", 空))
+  如果 形态 == "image":
+    如果 是字符串(字典获取(部件, "mediaType", 空)) == 假:
+      返回 假
+    返回 是字符串(字典获取(部件, "data", 空))
+  如果 形态 == "file":
+    返回 是字符串(字典获取(部件, "receiptId", 空))
+  返回 假
+
+# QueueAction：edit{content 非空} | remove | steer
+段落 是否队列动作 接收 动作:
+  如果 是字典(动作) == 假:
+    返回 假
+  设 形态 为 字典获取(动作, "kind", "")
+  如果 形态 == "edit":
+    设 内容 为 字典获取(动作, "content", 空)
+    如果 是列表(内容) == 假:
+      返回 假
+    返回 列表长度(内容) > 0
+  如果 形态 == "remove":
+    返回 真
+  如果 形态 == "steer":
+    返回 真
+  返回 假
+
+# SessionAddress：session{sessionId} | subagent{parentSessionId, childSessionId, mode}
+段落 是否会话地址 接收 地址:
+  如果 是字典(地址) == 假:
+    返回 假
+  设 形态 为 字典获取(地址, "kind", "")
+  如果 形态 == "session":
+    返回 是字符串(字典获取(地址, "sessionId", 空))
+  如果 形态 == "subagent":
+    如果 是字符串(字典获取(地址, "parentSessionId", 空)) == 假:
+      返回 假
+    如果 是字符串(字典获取(地址, "childSessionId", 空)) == 假:
+      返回 假
+    设 模式 为 字典获取(地址, "mode", "")
+    如果 模式 == "one-shot":
+      返回 真
+    如果 模式 == "continuable":
+      返回 真
+    返回 假
+  返回 假
+
+# ---------------- types.ts：模型选择 ----------------
+# ModelSelection {provider, model, reasoningEffort?}
+段落 造模型选择 接收 提供方, 模型, 努力度:
+  设 选择 为 {}
+  选择["provider"] 为 提供方
+  选择["model"] 为 模型
+  如果 努力度 != 空:
+    选择["reasoningEffort"] 为 努力度
+  返回 选择
+
+# ModelSelectionProjection {lastUsed, next}：next 为 空 时回退 lastUsed（上游回退语义）
+段落 模型投影回退 接收 上次使用, 待定:
+  设 有效 为 待定
+  如果 有效 == 空:
+    设 有效 为 上次使用
+  设 投影 为 {}
+  投影["lastUsed"] 为 上次使用
+  投影["next"] 为 有效
+  返回 投影
+
+# ---------------- types.ts：助手流帧三形态 ----------------
+# 'start'：{type, attemptId, revision, startedAfterSeq, turn, step}
+段落 造起始帧 接收 尝试标识, 版本号, 起始游标, 轮次, 步数:
+  设 帧 为 {}
+  帧["type"] 为 "start"
+  帧["attemptId"] 为 尝试标识
+  帧["revision"] 为 版本号
+  帧["startedAfterSeq"] 为 起始游标
+  帧["turn"] 为 轮次
+  帧["step"] 为 步数
+  返回 帧
+
+# 'chunk'：{type, attemptId, revision, index, time, chunk}
+段落 造数据帧 接收 尝试标识, 版本号, 序号, 时间, 块:
+  设 帧 为 {}
+  帧["type"] 为 "chunk"
+  帧["attemptId"] 为 尝试标识
+  帧["revision"] 为 版本号
+  帧["index"] 为 序号
+  帧["time"] 为 时间
+  帧["chunk"] 为 块
+  返回 帧
+
+# 'end'：{type, attemptId, revision, index, outcome}
+#   outcome = {kind:'committed', eventType:'assistant/message'|'assistant/attempt'} | {kind:'aborted'} | {kind:'failed', message}
+段落 造结束帧 接收 尝试标识, 版本号, 序号, 结局:
+  设 帧 为 {}
+  帧["type"] 为 "end"
+  帧["attemptId"] 为 尝试标识
+  帧["revision"] 为 版本号
+  帧["index"] 为 序号
+  帧["outcome"] 为 结局
+  返回 帧
+
+# 帧形状校验（三形态 + 公共字段）
+段落 是否流帧 接收 帧:
+  如果 是字典(帧) == 假:
+    返回 假
+  设 形态 为 字典获取(帧, "type", "")
+  如果 形态 == "start":
+    如果 是字符串(字典获取(帧, "attemptId", 空)) == 假:
+      返回 假
+    返回 是整数(字典获取(帧, "revision", 空))
+  如果 形态 == "chunk":
+    如果 是字符串(字典获取(帧, "attemptId", 空)) == 假:
+      返回 假
+    如果 是整数(字典获取(帧, "index", 空)) == 假:
+      返回 假
+    返回 是整数(字典获取(帧, "revision", 空))
+  如果 形态 == "end":
+    如果 是字符串(字典获取(帧, "attemptId", 空)) == 假:
+      返回 假
+    返回 是整数(字典获取(帧, "revision", 空))
+  返回 假
+
+# ---------------- assistant-stream.ts：累加器 ----------------
+# 累加器形状：{"活跃尝试": 空|MutableAttempt, "版本号": 0, "快照缓存": 空, "有脏": 假}
+# MutableAttempt {attemptId, startedAfterSeq, turn, step, nextIndex, 流表: [{time, chunk}]}
+段落 造流累加器:
+  设 累加器 为 {}
+  累加器["活跃尝试"] 为 空
+  累加器["版本号"] 为 0
+  累加器["快照缓存"] 为 ["revision": 0]  # 上游 EMPTY_BASELINE
+  累加器["有脏"] 为 假
+  返回 累加器
+
+# accept(frame, durableCursor) 算法：
+#   ① start 且 revision==1 且 累加器.revision!=0 -> 重置（新一轮生命周期）
+#   ② frame.revision != revision+1 -> 丢活跃尝试、对齐版本号、脏标记、直接返回（乱序不折叠）
+#   ③ start 建尝试 / chunk 校验 attemptId+index 连续（缝隙终止折叠）/ end 清尝试
+#   ④ 脏标记
+段落 接受流帧 接收 累加器, 帧, 持久游标:
+  设 形态 为 字典获取(帧, "type", "")
+  设 版本号 为 字典获取(帧, "revision", 0)
+  # ① 新一轮生命周期重置
+  如果 形态 == "start":
+    如果 版本号 == 1:
+      如果 累加器["版本号"] != 0:
+        累加器["活跃尝试"] 为 空
+        累加器["版本号"] 为 0
+  # ② 版本不连续：丢尝试、对齐版本、不折叠
+  如果 版本号 != 累加器["版本号"] + 1:
+    累加器["活跃尝试"] 为 空
+    累加器["版本号"] 为 版本号
+    累加器["有脏"] 为 真
+    返回 累加器
+  累加器["版本号"] 为 版本号
+  # ③ 按形态折叠
+  如果 形态 == "start":
+    设 活动项 为 {}
+    活动项["attemptId"] 为 帧["attemptId"]
+    活动项["startedAfterSeq"] 为 持久游标
+    活动项["turn"] 为 帧["turn"]
+    活动项["step"] 为 帧["step"]
+    活动项["nextIndex"] 为 0
+    活动项["流表"] 为 []
+    累加器["活跃尝试"] 为 活动项
+  如果 形态 == "chunk":
+    设 活动项 为 累加器["活跃尝试"]
+    设 缝隙 为 假
+    如果 活动项 == 空:
+      设 缝隙 为 真
+    如果 缝隙 == 假:
+      如果 活动项["attemptId"] != 帧["attemptId"]:
+        设 缝隙 为 真
+    如果 缝隙 == 假:
+      如果 帧["index"] != 活动项["nextIndex"]:
+        设 缝隙 为 真
+    如果 缝隙:
+      累加器["活跃尝试"] 为 空
+    否则:
+      设 条目 为 {}
+      条目["time"] 为 帧["time"]
+      条目["chunk"] 为 帧["chunk"]
+      列表追加(活动项["流表"], 条目)
+      设 活动项["nextIndex"] 为 活动项["nextIndex"] + 1
+  如果 形态 == "end":
+    累加器["活跃尝试"] 为 空
+  # ④ 脏标记
+  累加器["有脏"] 为 真
+  返回 累加器
+
+# snapshot()：非脏返回缓存（身份稳定）；否则物化 {revision, activeAttempt?} 并清脏
+# 空流边界：初始 revision=0，快照 {revision: 0} 无 activeAttempt
+段落 流快照 接收 累加器:
+  如果 累加器["有脏"] == 假:
+    返回 累加器["快照缓存"]
+  设 快照 为 {}
+  快照["revision"] 为 累加器["版本号"]
+  设 活动项 为 累加器["活跃尝试"]
+  如果 活动项 != 空:
+    设 活跃 为 {}
+    活跃["attemptId"] 为 活动项["attemptId"]
+    活跃["startedAfterSeq"] 为 活动项["startedAfterSeq"]
+    活跃["turn"] 为 活动项["turn"]
+    活跃["step"] 为 活动项["step"]
+    活跃["nextIndex"] 为 活动项["nextIndex"]
+    设 流表 为 []
+    遍历 条目 之 活动项["流表"]:
+      列表追加(流表, 条目)
+    活跃["stream"] 为 流表
+    快照["activeAttempt"] 为 活跃
+  累加器["快照缓存"] 为 快照
+  累加器["有脏"] 为 假
+  返回 快照
+
+# ---------------- remote-events.ts ----------------
+# SessionControllerRemoteEvent 5 值逐字
+段落 是远程事件种类 接收 种类:
+  如果 种类 == "api-session/activity":
+    返回 真
+  如果 种类 == "api-session/added":
+    返回 真
+  如果 种类 == "api-session/error":
+    返回 真
+  如果 种类 == "api-session/removed":
+    返回 真
+  如果 种类 == "api-session/status":
+    返回 真
+  返回 假

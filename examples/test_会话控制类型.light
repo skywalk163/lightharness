@@ -1,0 +1,182 @@
+# test_会话控制类型.light —— 第16轮 任务4（api 会话控制器纯逻辑）对齐判据
+# 运行：LIGHT_MERGE=...light-merge python 运行.py examples/test_会话控制类型.light
+# 上游：api/session-controller/src/（types.ts 611 行 + assistant-stream.ts 102 行 + remote-events.ts 14 行）
+#
+# 覆盖：会话状态枚举（8 值/未知/状态值构造/运行判定）/ 搜索常量 / 错误种类表（13 kind）/
+#   内容部件三形态 / 队列动作三形态 / 会话地址两形态 / 模型选择与投影回退 /
+#   助手流帧三形态与形状校验 / 流累加器（空基线/revision 连续/attemptId 不符终止/index 缝隙终止/
+#   快照缓存与脏标记/end 清尝试/重置）/ 远程事件 5 值 / 序列化 round-trip
+#
+# 反跑判据（改源码一行测试必须红，恢复后绿）：
+#   A=正常：会话类型构造->序列化->反序列化 round-trip（回归绿验证）
+#   B=边界：空会话快照判别不崩溃（造流累加器 快照 = revision 0，回归绿验证）
+#   C=变异：会话状态枚举值 idle 改错 -> 状态判定与构造断言红
+
+从 会话控制类型 导入 是否会话状态, 状态运行中, 造会话状态值, 会话错误种类, 是否提示内容部件, 是否队列动作, 是否会话地址, 造模型选择, 模型投影回退, 是否流帧, 造起始帧, 造数据帧, 造结束帧, 造流累加器, 接受流帧, 流快照, 是远程事件种类, 会话搜索结果上限, 搜索摘要最大码点
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言含 接收 文本, 子串, 标签:
+  如果 查找子串(文本, 子串) < 0:
+    抛出 新建 错误("断言含失败: " + 标签 + " 文本=" + 转字符串(文本))
+
+段落 检查抛错含 接收 标签, 子串, 运算:
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    设 忽略 为 运算()
+  捕获 错误 为 e:
+    设 抛了 为 真
+    设 消息 为 转字符串(e)
+  如果 抛了 == 假:
+    抛出 新建 错误("应抛未抛: " + 标签)
+  断言含(消息, 子串, 标签 + "（文案）")
+
+# ---------- 抛错场景 ----------
+段落 场状态非法:
+  造会话状态值("paused")
+
+# ---------- 主流程 ----------
+段落 主:
+  # ============ 1) 会话状态枚举（反跑 C 锚点） ============
+  断言相等(会话搜索结果上限, 20, "搜索结果上限常量")
+  断言相等(搜索摘要最大码点, 240, "搜索摘要码点常量")
+  断言真(是否会话状态("idle"), "idle 合法")
+  断言真(是否会话状态("running"), "running 合法")
+  断言真(是否会话状态("queued"), "queued 合法")
+  断言真(是否会话状态("steering"), "steering 合法")
+  断言真(是否会话状态("waiting"), "waiting 合法")
+  断言真(是否会话状态("loading"), "loading 合法")
+  断言真(是否会话状态("degraded"), "degraded 合法")
+  断言真(是否会话状态("orphaned"), "orphaned 合法")
+  断言真(是否会话状态("paused") == 假, "未知状态判假")
+  设 状态值 为 造会话状态值("idle")
+  断言相等(状态值["status"], "idle", "状态值构造")
+  断言真(状态值["running"] == 假, "idle 非运行")
+  断言相等(造会话状态值("running")["running"], 真, "running 态运行真")
+  检查抛错含("非法状态应抛", "unknown session status: paused", 场状态非法)
+
+  # ============ 2) 错误种类表（13 kind） ============
+  断言相等(列表长度(会话错误种类("session/model-unavailable")), 2, "model-unavailable 键数")
+  断言相等(会话错误种类("session/conflict"), ["sessionId", "requestedCwd"], "conflict 键表")
+  断言相等(会话错误种类("session/agent-busy"), ["reason"], "agent-busy 键表")
+  断言相等(会话错误种类("session/invalid-time-zone"), ["value"], "invalid-time-zone 键表")
+  断言相等(会话错误种类("session/workspace-attach-failed"), ["sessionId", "workspaceId"], "workspace-attach 键表")
+  断言相等(会话错误种类("agent-preset/conflict"), ["sessionId", "requestedPreset"], "preset-conflict 键表")
+  断言相等(会话错误种类("session/attachment-invalid"), ["reason"], "attachment-invalid 键表")
+  断言相等(会话错误种类("session/queue-item-not-found"), ["itemId"], "queue-item 键表")
+  断言相等(会话错误种类("session/steer-unavailable"), ["itemId"], "steer 键表")
+  断言相等(会话错误种类("session/title-invalid"), ["sessionId"], "title 键表")
+  断言相等(会话错误种类("session/fork-unavailable"), ["sessionId"], "fork 键表")
+  断言相等(会话错误种类("subagent/not-found"), ["parentSessionId", "childSessionId"], "subagent-not-found 键表")
+  断言相等(会话错误种类("subagent/catalog-diagnostic"), ["parentSessionId", "childSessionId", "reason"], "catalog-diagnostic 键表")
+  断言真(会话错误种类("未知种类") == 空, "未知种类空")
+
+  # ============ 3) 内容部件 / 队列动作 / 会话地址 ============
+  断言真(是否提示内容部件(["type": "text", "text": "甲"]), "text 部件")
+  断言真(是否提示内容部件(["type": "text"]) == 假, "text 缺 text 拒")
+  断言真(是否提示内容部件(["type": "image", "mediaType": "image/png", "data": "字节"]), "image 部件")
+  断言真(是否提示内容部件(["type": "image", "mediaType": "image/png"]) == 假, "image 缺 data 拒")
+  断言真(是否提示内容部件(["type": "file", "receiptId": "回执-1"]), "file 部件")
+  断言真(是否提示内容部件(["type": "语音"]) == 假, "未知形态拒")
+  断言真(是否队列动作(["kind": "edit", "content": [["type": "text", "text": "改"]]]), "edit 非空内容")
+  断言真(是否队列动作(["kind": "edit", "content": []]) == 假, "edit 空内容拒")
+  断言真(是否队列动作(["kind": "remove"]), "remove 动作")
+  断言真(是否队列动作(["kind": "steer"]), "steer 动作")
+  断言真(是否队列动作(["kind": "未知"]) == 假, "未知动作拒")
+  断言真(是否会话地址(["kind": "session", "sessionId": "s1"]), "session 地址")
+  断言真(是否会话地址(["kind": "subagent", "parentSessionId": "p", "childSessionId": "c", "mode": "one-shot"]), "subagent one-shot")
+  断言真(是否会话地址(["kind": "subagent", "parentSessionId": "p", "childSessionId": "c", "mode": "continuable"]), "subagent continuable")
+  断言真(是否会话地址(["kind": "subagent", "parentSessionId": "p", "childSessionId": "c", "mode": "坏"]) == 假, "subagent 非法模式拒")
+  断言真(是否会话地址(["kind": "subagent", "childSessionId": "c", "mode": "one-shot"]) == 假, "subagent 缺父拒")
+
+  # ============ 4) 模型选择与投影回退 ============
+  设 上次 为 造模型选择("deepseek", "v3", "high")
+  断言相等(上次["reasoningEffort"], "high", "努力度可选键")
+  设 无努力 为 造模型选择("deepseek", "v3", 空)
+  断言真(字典包含键(无努力, "reasoningEffort") == 假, "努力度缺省不落")
+  设 投影回退 为 模型投影回退(上次, 空)
+  断言相等(投影回退["next"]["model"], "v3", "next 空 回退 lastUsed")
+  设 待定 为 造模型选择("openai", "gpt", 空)
+  断言相等(模型投影回退(上次, 待定)["next"]["model"], "gpt", "next 待定优先")
+
+  # ============ 5) 助手流帧三形态 ============
+  设 起始 为 造起始帧("a1", 1, 5, 1, 1)
+  断言相等(起始["type"], "start", "起始帧形态")
+  断言相等(起始["startedAfterSeq"], 5, "起始游标")
+  断言真(是否流帧(起始), "起始帧校验")
+  设 数据 为 造数据帧("a1", 2, 0, 100, "块甲")
+  断言相等(数据["type"], "chunk", "数据帧形态")
+  断言相等(数据["chunk"], "块甲", "数据块")
+  断言真(是否流帧(数据), "数据帧校验")
+  设 结束 为 造结束帧("a1", 3, 2, ["kind": "committed", "eventType": "assistant/message"])
+  断言相等(结束["type"], "end", "结束帧形态")
+  断言相等(结束["outcome"]["kind"], "committed", "结束结局")
+  断言真(是否流帧(结束), "结束帧校验")
+  断言真(是否流帧(["type": "别的"]) == 假, "未知帧拒")
+  # A 判据：构造->序列化->反序列化 round-trip
+  设 序文 为 序列化JSON(数据)
+  设 还原 为 解析JSON(序文)
+  断言相等(还原["index"], 0, "round-trip 序号")
+  断言相等(还原["attemptId"], "a1", "round-trip 尝试标识")
+  断言相等(还原["chunk"], "块甲", "round-trip 数据块")
+
+  # ============ 6) 流累加器（B 判据：空会话快照） ============
+  设 累加器 为 造流累加器()
+  设 空快照 为 流快照(累加器)
+  断言相等(空快照["revision"], 0, "空基线 revision 0")
+  断言真(字典包含键(空快照, "activeAttempt") == 假, "空基线无活跃尝试")
+  # 正常折叠：start -> chunk -> chunk
+  接受流帧(累加器, 造起始帧("a1", 1, 5, 1, 1), 5)
+  接受流帧(累加器, 造数据帧("a1", 2, 0, 10, "你好"), 6)
+  接受流帧(累加器, 造数据帧("a1", 3, 1, 11, "世界"), 7)
+  设 快照甲 为 流快照(累加器)
+  断言相等(快照甲["revision"], 3, "revision 推进")
+  断言相等(列表长度(快照甲["activeAttempt"]["stream"]), 2, "两个 chunk 入流")
+  断言相等(快照甲["activeAttempt"]["nextIndex"], 2, "nextIndex 推进")
+  断言相等(快照甲["activeAttempt"]["startedAfterSeq"], 5, "起始游标记录")
+  # 快照缓存：重复取快照身份稳定（有脏=假）
+  断言相等(流快照(累加器)["revision"], 3, "快照缓存稳定")
+  # chunk index 缝隙 -> 终止折叠（活跃尝试丢弃）
+  接受流帧(累加器, 造数据帧("a1", 4, 3, 12, "跳"), 8)
+  断言真(字典获取(流快照(累加器), "activeAttempt", 空) == 空, "index 缝隙终止折叠")
+  # attemptId 不符 -> 终止折叠
+  设 累加器乙 为 造流累加器()
+  接受流帧(累加器乙, 造起始帧("a1", 1, 5, 1, 1), 5)
+  接受流帧(累加器乙, 造数据帧("别的", 2, 0, 10, "错源"), 6)
+  断言真(字典获取(流快照(累加器乙), "activeAttempt", 空) == 空, "attemptId 不符终止折叠")
+  # 版本跳变 -> 丢尝试对齐版本
+  设 累加器丙 为 造流累加器()
+  接受流帧(累加器丙, 造起始帧("a1", 1, 5, 1, 1), 5)
+  接受流帧(累加器丙, 造数据帧("a1", 9, 0, 10, "跳版"), 6)
+  断言相等(流快照(累加器丙)["revision"], 9, "跳版对齐 revision")
+  断言真(字典获取(流快照(累加器丙), "activeAttempt", 空) == 空, "跳版丢尝试")
+  # end 清尝试
+  设 累加器丁 为 造流累加器()
+  接受流帧(累加器丁, 造起始帧("a1", 1, 5, 1, 1), 5)
+  接受流帧(累加器丁, 造结束帧("a1", 2, 1, ["kind": "aborted"]), 6)
+  断言真(字典获取(流快照(累加器丁), "activeAttempt", 空) == 空, "end 清尝试")
+  # 重置：start revision=1 且已有版本 -> 重置对齐
+  设 累加器戊 为 造流累加器()
+  接受流帧(累加器戊, 造起始帧("a0", 1, 1, 1, 1), 1)
+  接受流帧(累加器戊, 造起始帧("a1", 1, 9, 2, 1), 9)
+  断言相等(流快照(累加器戊)["revision"], 1, "重置后 revision 1")
+  断言相等(流快照(累加器戊)["activeAttempt"]["startedAfterSeq"], 9, "重置后新尝试游标")
+
+  # ============ 7) 远程事件 ============
+  断言真(是远程事件种类("api-session/activity"), "activity 合法")
+  断言真(是远程事件种类("api-session/added"), "added 合法")
+  断言真(是远程事件种类("api-session/error"), "error 合法")
+  断言真(是远程事件种类("api-session/removed"), "removed 合法")
+  断言真(是远程事件种类("api-session/status"), "status 合法")
+  断言真(是远程事件种类("api-session/别的") == 假, "未知远程事件判假")
+
+  打印("test_会话控制类型 PASS")
+
+主()
