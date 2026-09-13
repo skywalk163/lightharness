@@ -1,0 +1,9 @@
+# test_L069.light —— D批次验收：序列化JSON 布尔值（L-069）
+# 缺陷：序列化JSON 不支持布尔值 真/假。
+# 验收结果：已修复——序列化JSON(真) 输出 true，(假) 输出 false。
+
+打印 序列化JSON(真)
+打印 序列化JSON(假)
+如果 序列化JSON(真) != "true":
+    抛出 新建 错误("L-069 验收失败: 序列化JSON(真) 应输出 true")
+打印 "test_L069 PASS"
