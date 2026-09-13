@@ -1,0 +1,210 @@
+# 小域类型.light —— 对标上游 plan/plan-mode + todo/tool-todo + terminal/terminal 的 types.ts（a305303422）
+# 对标 #108（L-139 预分配空缺；差异 R16-D5）。
+#
+# 上游结构映射（以上游真实代码为准；任务书描述与源码差异登记报告 §五）：
+#   plan/plan-mode/types.ts（47行）
+#     -> 造计划投影 / 造计划单元状态 / 计划投影计算（PlanProjection {active, pending} +
+#        PlanUnitState {active, wanted, running, activeAtLastHeader}；上游无 PlanMode 枚举——
+#        投影派生规则据 JSDoc 语义在本层实现，登记 R16-D5）
+#   todo/tool-todo/types.ts（47行）
+#     -> 待办状态表 / 造待办项 / 是否待办项 / 应用待办写入 / 过滤待办 / 待办写入事件 / 待办投影
+#        （TodoItem {content, status 三态}；上游无 id/优先级——任务书「优先级排序」不存在；
+#        'todo/write' 事件 {todos} 全量快照、投影 last-wins、首写前 空）
+#   terminal/terminal/types.ts（177行）
+#        （TerminalSessionStatus {kind:'running'}|{kind:'exited',exitCode,signal}、
+#        TerminalWaitReason 4 值、TerminalSignal 5 值、读分页与发送结果形状；
+#        上游无尺寸/光标位置——任务书「尺寸校验/光标」不存在；读请求缺省校验为本层实现）
+#   三域同模块命名空间隔离：段落名以 前缀/域词 区分，互不干扰。
+#
+# 宿主面剔除：CommandId/Agent/AbortSignal/NodeJS.Signals 品牌——以字符串/裸数值承载（登记）。
+# 绕法：内置裸名（L-090）、无 且/或 行内链（L-043）、标识符避关键字与单字别名切分（L-119/L-120/L-084）、
+#   无花括号文案（L-089）、可选键先 字典包含键（L-103）。
+
+导出 造计划投影 造计划单元状态 计划投影计算 待办状态表 造待办项 是否待办项 应用待办写入 过滤待办 待办写入事件 待办投影 是等待原因 是终端信号 造运行状态 造退出状态 是终端会话状态 造终端快照 造读结果 校验读请求 造发送结果。
+
+# ============ plan/plan-mode ============
+
+# PlanProjection {active: 布尔, pending: 布尔}
+段落 造计划投影 接收 活跃, 待定:
+  设 投影 为 {}
+  投影["active"] 为 活跃
+  投影["pending"] 为 待定
+  返回 投影
+
+# PlanUnitState {active, wanted: 布尔|空, running: {commandId, wanted}|空, activeAtLastHeader: 布尔|空}
+段落 造计划单元状态 接收 活跃, 待定目标, 运行命令, 最近头活跃:
+  设 状态 为 {}
+  状态["active"] 为 活跃
+  状态["wanted"] 为 待定目标
+  状态["running"] 为 运行命令
+  状态["activeAtLastHeader"] 为 最近头活跃
+  返回 状态
+
+# 计划投影派生（JSDoc 语义：pending = 已记录 /plan 选择目标 != active、未经配对 command/done
+#   结算失败、且无更晚 plan/mode 记录该状态 -> wanted 非 空 且 wanted != active 且 running 非 空；
+#   active = 单元态 active）
+段落 计划投影计算 接收 单元状态:
+  设 活跃 为 单元状态["active"]
+  设 待定 为 假
+  设 目标 为 字典获取(单元状态, "wanted", 空)
+  设 在途 为 字典获取(单元状态, "running", 空)
+  如果 目标 != 空:
+    如果 目标 != 活跃:
+      如果 在途 != 空:
+        设 待定 为 真
+  返回 造计划投影(活跃, 待定)
+
+# ============ todo/tool-todo ============
+
+# TodoItem.status 三态（逐字；上游无 id/优先级）
+设 待办状态表 为 ["pending", "in_progress", "completed"]
+
+# 造待办项：content 必填字符串、status 三态（非法抛，文案自拟对齐字面量清单，登记 R16-D5）
+段落 造待办项 接收 内容, 状态:
+  如果 是字符串(内容) == 假:
+    抛出 新建 错误("todo item content must be a string")
+  如果 列表包含(待办状态表, 状态) == 假:
+    抛出 新建 错误("todo item status must be one of pending, in_progress, completed")
+  设 项 为 {}
+  项["content"] 为 内容
+  项["status"] 为 状态
+  返回 项
+
+# TodoItem 形状校验（content 字符串 + status 三态）
+段落 是否待办项 接收 项:
+  如果 是字典(项) == 假:
+    返回 假
+  如果 是字符串(字典获取(项, "content", 空)) == 假:
+    返回 假
+  如果 列表包含(待办状态表, 字典获取(项, "status", 空)) == 假:
+    返回 假
+  返回 真
+
+# todo/write 全量快照（last-wins）：返回替换后的全表
+段落 应用待办写入 接收 当前表, 新表:
+  设 结果 为 []
+  遍历 项 之 新表:
+    如果 是否待办项(项) == 假:
+      抛出 新建 错误("todo item status must be one of pending, in_progress, completed")
+    列表追加(结果, 项)
+  返回 结果
+
+# 按状态过滤（补充实现：上游无过滤函数）
+段落 过滤待办 接收 待办表, 状态:
+  设 结果 为 []
+  遍历 项 之 待办表:
+    如果 项["status"] == 状态:
+      列表追加(结果, 项)
+  返回 结果
+
+# 'todo/write' 事件形状 {todos: 全量快照}
+段落 待办写入事件 接收 待办表:
+  设 事件 为 {}
+  事件["种类"] 为 "todo/write"
+  设 事件["数据"] 为 ["todos": 待办表]
+  返回 事件
+
+# 待办投影折叠：last-wins（每条 todo/write 携带完整替换表）；首写前 空
+段落 待办投影 接收 事件表:
+  设 当前 为 空
+  遍历 事件 之 事件表:
+    如果 事件["种类"] == "todo/write":
+      设 当前 为 字典获取(事件["数据"], "todos", [])
+  返回 当前
+
+# ============ terminal/terminal ============
+
+# TerminalWaitReason 4 值逐字
+段落 是等待原因 接收 值:
+  如果 值 == "stdin_read":
+    返回 真
+  如果 值 == "inferred_idle":
+    返回 真
+  如果 值 == "timeout":
+    返回 真
+  如果 值 == "session_exit":
+    返回 真
+  返回 假
+
+# TerminalSignal 5 值逐字
+段落 是终端信号 接收 值:
+  如果 值 == "SIGINT":
+    返回 真
+  如果 值 == "SIGTERM":
+    返回 真
+  如果 值 == "SIGKILL":
+    返回 真
+  如果 值 == "SIGTSTP":
+    返回 真
+  如果 值 == "SIGHUP":
+    返回 真
+  返回 假
+
+# TerminalSessionStatus {kind:'running'} | {kind:'exited', exitCode: 数|空, signal: 文本|空}
+段落 造运行状态:
+  返回 ["kind": "running"]
+
+段落 造退出状态 接收 退出码, 信号:
+  设 状态 为 {}
+  状态["kind"] 为 "exited"
+  状态["exitCode"] 为 退出码
+  状态["signal"] 为 信号
+  返回 状态
+
+段落 是终端会话状态 接收 状态:
+  如果 是字典(状态) == 假:
+    返回 假
+  设 种类 为 字典获取(状态, "kind", "")
+  如果 种类 == "running":
+    返回 真
+  如果 种类 == "exited":
+    返回 真
+  返回 假
+
+# TerminalSessionSnapshot {sessionId, name?, type, pid?, status}
+段落 造终端快照 接收 会话id, 名称, 类型, 进程id, 状态:
+  设 快照 为 {}
+  快照["sessionId"] 为 会话id
+  如果 名称 != 空:
+    快照["name"] 为 名称
+  快照["type"] 为 类型
+  如果 进程id != 空:
+    快照["pid"] 为 进程id
+  快照["status"] 为 状态
+  返回 快照
+
+# TerminalReadResult {text, totalLines, lineBegin, lineEnd, truncated}
+段落 造读结果 接收 文本, 总行数, 行起, 行止, 已截断:
+  设 结果 为 {}
+  结果["text"] 为 文本
+  结果["totalLines"] 为 总行数
+  结果["lineBegin"] 为 行起
+  结果["lineEnd"] 为 行止
+  结果["truncated"] 为 已截断
+  返回 结果
+
+# TerminalReadRequest 缺省校验（B 判据：空请求不崩溃，回默认值；上游缺省为后端所有）
+# 偏移/行数 为 空 或 非正整数 -> 缺省（偏移 0、行数 50）；返回 {"offset", "count"}
+段落 校验读请求 接收 偏移, 行数:
+  设 规范偏移 为 0
+  设 规范行数 为 50
+  如果 偏移 != 空:
+    如果 是整数(偏移):
+      如果 偏移 >= 0:
+        设 规范偏移 为 偏移
+  如果 行数 != 空:
+    如果 是整数(行数):
+      如果 行数 >= 1:
+        设 规范行数 为 行数
+  返回 ["offset": 规范偏移, "count": 规范行数]
+
+# TerminalSendResult {viewport, waitReason, sessionStatus, truncated}（waitReason 校验）
+段落 造发送结果 接收 视口, 等待原因, 会话状态, 已截断:
+  如果 是等待原因(等待原因) == 假:
+    抛出 新建 错误("terminal wait reason must be one of stdin_read, inferred_idle, timeout, session_exit")
+  设 结果 为 {}
+  结果["viewport"] 为 视口
+  结果["waitReason"] 为 等待原因
+  结果["sessionStatus"] 为 会话状态
+  结果["truncated"] 为 已截断
+  返回 结果
