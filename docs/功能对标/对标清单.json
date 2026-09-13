@@ -1682,6 +1682,105 @@
       "本轮目标": "对标 #91",
       "反跑判据": "_antirun_webhookgh.py 3/3 ALL OK",
       "语言缺陷": "L-095（原登记 L-091 撞号重排）"
+    },
+    {
+      "编号": 92,
+      "功能": "fs/tool-fs 文件系统工具纯逻辑面（read/write/edit/diff + 错误族 + 呈现形状）",
+      "原版包": "packages/fs/tool-fs/src/{index.ts,read.ts,read-target.ts,read-render.ts,read-image.ts,write.ts,edit.ts,diff.ts,error.ts}（11文件，剔除sandbox.ts/session-cwd.ts宿主面）",
+      "光明模块": "src/文件系统工具.light",
+      "状态": "done；0.1.5第14轮：错误族FS错误码+文案/read参数校验与行范围/渲染行号截断/read-image元数据形状/write参数校验与追加创建标志/edit单命中多命中replace_all/diff行级LCS差异计算/呈现形状；宿主面(ctx.fs真实IO/原子写入/目录创建/sandbox策略/session-cwd/waterfall/emit事件总线/read-image attachment服务)入参化剔除",
+      "证据": [
+        "src/文件系统工具.light",
+        "examples/test_文件系统工具.light",
+        "_antirun_t1_文件系统工具.py",
+        "_task1_fs工具_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务1",
+      "反跑判据": "A diff算法失效(不计算LCS/逐行退化)→红；B edit多命中不再要求唯一或replace_all→红；C read行范围上界放开→红",
+      "语言缺陷": "无新缺陷（L-104编号空缺顺延）"
+    },
+    {
+      "编号": 93,
+      "功能": "experimental/agent-team 代理团队纯逻辑（任务看板/任务图/名册/邮箱/日志/活动/生命周期/不变量/校验）",
+      "原版包": "packages/experimental/agent-team/src/{index.ts,types.ts,task-board.ts,task-graph.ts,roster.ts,mailbox.ts,journal.ts,activity.ts,lifecycle.ts,invariant.ts,validation.ts,error.ts,session-message.ts}（14文件纯逻辑，剔除client.ts/persisted.ts/projection.ts订阅宿主面）",
+      "光明模块": "src/代理团队.light",
+      "状态": "done；0.1.5第14轮：类型形状(任务/成员/消息/活动)+任务看板CRUD与状态流转(pending/ready/running/blocked/done/cancelled)+任务图DAG环检测拓扑排序可运行判定+名册注册筛选+邮箱持久队列确认+日志append投影+活动流聚合+生命周期状态机+不变量违反抛错+输入校验+错误族+分页；宿主面(Cordis客户端/持久化存储/投影订阅/子会话实际拉起/mailbox dispatchTails串行投递/activity wait-notify/lifecycle AbortController)剔除登记",
+      "证据": [
+        "src/代理团队.light",
+        "examples/test_代理团队.light",
+        "_antirun_t2_代理团队.py",
+        "_task2_代理团队_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务2",
+      "反跑判据": "A 任务图环检测改为不检测→红；B 状态流转不再校验(release门槛失效)→红；C 邮箱消息确认后不标记已读→红",
+      "语言缺陷": "无新缺陷（L-107~L-110编号空缺顺延）"
+    },
+    {
+      "编号": 94,
+      "功能": "session/session-persistence-jsonl JSONL持久化纯逻辑面（行格式/生成/迁移校验）",
+      "原版包": "packages/session/session-persistence-jsonl/src/{format.ts,generation.ts,migration-verifier.ts}（3文件纯逻辑，剔除storage.ts/lease.ts/worker.ts/win32.ts/zstd*.ts宿主面）",
+      "光明模块": "src/会话持久化JSONL.light",
+      "状态": "done；0.1.5第14轮：行格式(header/事件行区分)+行解析序列化+magic header判别+事件→行生成(按seq排序/header首行)+增量生成(从指定seq)+迁移校验(版本合法/seq连续/类型已知/载荷必选键/多余键拒绝)+校验报告(通过/失败+行号+原因)+与会话格式词汇表衔接(approval/*等已知类型)+路径编码；宿主面(文件读写/文件锁/Worker线程/Windows ACL/zstd压缩/worker传输层)剔除登记",
+      "证据": [
+        "src/会话持久化JSONL.light",
+        "examples/test_会话持久化JSONL.light",
+        "_antirun_t3_会话持久化JSONL.py",
+        "_task3_JSONL持久化_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务3",
+      "反跑判据": "A 行序列化去掉尾换行→红；B 迁移校验不再检查seq连续→红；C 事件生成不按seq排序→红",
+      "语言缺陷": "无新缺陷（L-111~L-112编号空缺顺延）"
+    },
+    {
+      "编号": 95,
+      "功能": "web/web-search 三提供商（deepseek/exa/perplexity）纯逻辑面（参数schema/请求构造/响应归一/错误映射）",
+      "原版包": "packages/web/web-search-deepseek/src/{index.ts,provider.ts,types.ts}+packages/web/web-search-exa/src/{index.ts,provider.ts,types.ts}+packages/web/web-search-perplexity/src/{index.ts,provider.ts,types.ts}（9文件，剔除provider.ts fetch/网络IO/AbortSignal宿主面）",
+      "光明模块": "src/搜索提供商.light",
+      "状态": "done；0.1.5第14轮：统一搜索参数schema(query/limit/time_range/language/safesearch)+各提供商特有参数+参数校验+默认值填充+三提供商请求形状(URL/headers/body)+响应归一(统一[{title,url,snippet,score?,publishedDate?}])+DeepSeek/Exa/Perplexity响应解析+空响应异常响应归一+错误族(API_KEY_MISSING/RATE_LIMITED/INVALID_PARAM/PROVIDER_ERROR/EMPTY_RESPONSE/PARSE_ERROR)+HTTP状态码→错误码映射+提供商注册表；宿主面(fetch/undici网络IO/AbortSignal竞速/resolveApiKey异步凭证解析/WebError类体系/recordRequest会话事件落盘)剔除登记",
+      "证据": [
+        "src/搜索提供商.light",
+        "examples/test_搜索提供商.light",
+        "_antirun_search.py",
+        "_task4_搜索提供商_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务4",
+      "反跑判据": "A 响应归一不再提取url→红；B 参数校验limit上界放开(>100通过)→红；C 错误映射401不再映射为API_KEY_MISSING→红",
+      "语言缺陷": "无新缺陷（L-113~L-115编号空缺顺延）"
+    },
+    {
+      "编号": 96,
+      "功能": "typert/generator + protocol 类型系统纯逻辑面（协议消息/类型IR/分析器/渲染器/发射器）",
+      "原版包": "packages/typert/generator/src/{index.ts,analyzer.ts,model.ts,renderer.ts,emitter.ts}+packages/typert/protocol/src/{index.ts,types.ts,messages.ts}（8文件纯逻辑，剔除cordis-catalog.ts/tsdown-plugin.ts/workspace.ts宿主面）",
+      "光明模块": "src/类型系统.light",
+      "状态": "done；0.1.5第14轮：协议消息(request/response/notification/error)+方法枚举(analyze/render/emit/listSymbols)+请求/响应载荷形状+消息ID生成(req_前缀+随机整数)+消息序列化解析+类型IR(符号表/类型节点/作用域)+类型相等比较(结构相等)+类型可赋值性+分析器(声明文本→IR提取名称/参数/返回/继承/修饰符/文档)+符号表构建查找+重复符号检测+渲染器(IR→声明文本/类型节点→类型字符串/缩进格式化/文档注释渲染)+发射器(多符号合并声明文件/按名排序/导入导出/声明文件头)；宿主面(Cordis目录扫描/tsdown构建插件钩子/文件系统扫描/tsconfig解析)剔除登记",
+      "证据": [
+        "src/类型系统.light",
+        "examples/test_类型系统.light",
+        "_antirun_typert.py",
+        "examples/_repro_L116.light",
+        "_task5_类型系统_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务5",
+      "反跑判据": "A 类型相等比较改为引用相等(不结构相等)→红；B 渲染器union类型不加|分隔→红；C 分析器不再检测重复符号→红",
+      "语言缺陷": "L-116 序列化JSON键序敏感且与字典==语义不一致（节点相等未知种类分支回退JSON串比较，同构键序不同判不等；绕法：直接用==或键规范化后再序列化）"
+    },
+    {
+      "编号": 97,
+      "功能": "session/session-title 族纯逻辑面（类型/规范化/不变量/提示构造/事件形状）",
+      "原版包": "packages/session/session-title/src/{index.ts,types.ts,normalize.ts,invariant.ts}+packages/session/session-title-llm/src/index.ts+packages/session/session-title-first-prompt-llm/src/index.ts+packages/session/session-title-all-prompts-llm/src/index.ts（8文件，剔除client.ts Cordis客户端/LLM实际API调用宿主面）",
+      "光明模块": "src/会话标题族.light",
+      "状态": "done；0.1.5第14轮：类型形状(title/source/createdAt/updatedAt/version)+标题规范化(首尾空白/内部空白折叠/控制字符移除/长度截断[1,100]/超长省略号/空文本→新会话/首字母大写/多行取首行)+不变量(非空/长度≤100/source枚举/version/createdAt≤updatedAt)+first-prompt提示构造+all-prompts提示构造+LLM请求/响应形状+响应解析→规范化标题+标题比较与更新判定+标题更新事件形状(session/title)+与会话格式衔接；命名冲突：任务书原名会话标题.light已被#49(session-title/normalize)占用，本路改用会话标题族.light并只读导入#49规范化会话标题；宿主面(Cordis客户端/服务总线/设置注册/LLM实际API调用fetch/流式响应)剔除登记",
+      "证据": [
+        "src/会话标题族.light",
+        "examples/test_会话标题族.light",
+        "_antirun_title.py",
+        "examples/_repro_L119.light",
+        "examples/_repro_L120.light",
+        "_task6_会话标题族_交付报告.md"
+      ],
+      "本轮目标": "第14轮任务6",
+      "反跑判据": "A 规范化不去除内部空白折叠→红；B 不变量不再检查长度上限(>100通过)→红；C 标题比较不规范化(原始文本相等才判定相等)→红",
+      "语言缺陷": "L-119 L0单字别名是静默保留字且误用报错误导(配/己/自等单字在词法层吞成关键字，第一句合法第二句炸，报错指向缩进而非保留字冲突；绕法：标识符完全避开单字别名表)；L-120 标识符可被关键字序列完全切分时仍被切碎(L-084同族，触发面不同：错误己被切成错误+己，而错误甲正常因为甲不是关键字；绕法：标识符避开可被关键字全覆盖切分的组合)"
     }
   ]
 }
