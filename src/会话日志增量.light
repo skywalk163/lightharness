@@ -1,0 +1,265 @@
+# 会话日志增量.light —— 第13轮 任务4：session-log-deepseek 纯逻辑面复刻
+#
+# 上游：packages/session/session-log-deepseek/src/index.ts（193 行）+ types.ts + invariant.ts
+# 宿主注入 sessions / deepseekLlmApiExtensions；本模块只复刻「线格式翻译 + 水印折叠」，
+# 请求接线（ctx.deepseekLlmApiExtensions.register / prepare / accept 闭包）剔除登记未移植。
+#
+# 复刻面：
+#   §1 线头（wireHeader）：逻辑会话头 → 外部请求原始 JSON 字段（id/parentSession 字符串化、
+#      isSeeded → seedLength；可选键仅在存在时落键）
+#   §2 线事件（wireEvent）：seq/time/data + 可选 ignorable；类型分发（三种表面事件带 surfaceOp、
+#      system|user|tool 带可选 sourceEventSeqs、assistant 不带；未知且可忽略的不透明记录原样保留）
+#   §3 线化操作（wireSurfaceOp）：append 原样；replace 展开为 {op, startSeq, endSeq}
+#   §4 接受水印（acceptedThrough）：增量扫描 + 严格校验 + 取最大通过序号
+#   §5 增量贡献构造（prepare 的 value 部分）：afterSeq/throughSeq/events 后缀
+#   §6 接受确认（accept 的被追加事件）：构造 delivery-accepted 事件（追加动作由宿主/测试注入）
+#
+# 会话视图入参（纯函数化，不 import 会话/会话格式 模块）：
+#   {"头": 会话头, "事件表": 事件列表, "记忆表": 记忆表}
+#   会话头（中文键，括号内为等价英文键，取字段 双形态兼容）：
+#     版本(version) 标识(id) 创建时间(createdAt) 工作目录(cwd)? 父会话(parentSession)?
+#     已播种(isSeeded)? 继承事件数(inheritedEventCount)? 来源(origin)? 委派深度(delegationDepth)?
+#     代理预设(agentPreset)?
+#   事件（会话.light 规范形状）：{"类型","序号","时间","数据"} + 可选 "可忽略"|"表面操作"|"来源事件序号"
+#   记忆表：{"扫描点": 已扫描事件数, "水印": 最高通过序号}（对齐上游 WeakMap<Session, AcceptanceFold>，
+#     由调用方持有以跨调用增量扫描；缺省 扫描点=0、水印=-1）
+# 线格式输出一律 ASCII 键（version/id/createdAt/cwd/parentSession/seedLength/origin/
+#   delegationDepth/agentPreset；seq/time/data/ignorable/type/surfaceOp/sourceEventSeqs），
+#   与上游 JSON 线协议逐字对齐。
+#
+# 命名避坑：标识符不用「为」字（L-084）；循环变量避用「事件」二字（L-004 同源拆分）。
+
+# =====================================================================
+# §0 常量与通用读取
+# =====================================================================
+
+设 事件类型交付接受 为 "session-log-deepseek/delivery-accepted"
+
+# 安全整数上界（Number.MAX_SAFE_INTEGER）
+设 安全整数上限 为 9007199254740991
+
+# 三种「带来源」表面事件（上游 index.ts:80-88）
+设 表面带来源集 为 ["system/message", "user/message", "tool/result"]
+
+# 单一表面事件（上游 index.ts:89-90，不带 sourceEventSeqs）
+设 表面无来源集 为 ["assistant/message"]
+
+# 已知事件类型词汇（上游 core/session/src/known-event-types.ts KNOWN_SESSION_EVENT_TYPES，
+# 57 项；不在集内且 ignorable === true 的记录保持不透明）
+设 已知事件类型集 为 ["agent-preset/selected", "agent/inbox/spliced", "approval/asked", "approval/decided", "approval/policy", "assistant/attempt", "assistant/message", "command/done", "command/run", "compaction/end", "compaction/prune", "compaction/start", "compaction/summary", "deliverables/presented", "feedback/message-delete", "feedback/message-put", "feedback/record", "goal/change", "hook/invoked", "hook/result", "llm/retry", "llm/retry-started", "model/selection", "permission/preset", "plan/mode", "request/context", "request/header", "sandbox/mode", "schedule/change", "session-log-deepseek/delivery-accepted", "session/end-seed", "session/title", "session/title-llm-request", "step/end", "step/start", "subagent/catalog", "subagent/descriptor", "subagent/model-selection-policy", "system/message", "team/member", "team/message/delivered", "team/message/queued", "team/task", "todo/write", "tool-workflow/agent-end", "tool-workflow/agent-start", "tool-workflow/run-end", "tool-workflow/run-start", "tool/call", "tool/ptc-dispatch", "tool/ptc-dispatch-start", "tool/result", "turn/end", "turn/start", "user/message", "web/deepseek-search-llm-request"]
+
+# 取字段：按候选键顺序读取（中文键在前，英文键回退）；全部缺失返回 默认值
+段落 取字段 接收 字典, 键表, 默认值:
+  如果 是字典(字典) == 假:
+    返回 默认值
+  遍历 键 之 键表:
+    如果 字典包含键(字典, 键):
+      返回 字典[键]
+  返回 默认值
+
+# 有字段：候选键中任一存在
+段落 有字段 接收 字典, 键表:
+  如果 是字典(字典) == 假:
+    返回 假
+  遍历 键 之 键表:
+    如果 字典包含键(字典, 键):
+      返回 真
+  返回 假
+
+# 安全整数判定（上游 Number.isSafeInteger && >= 0 && !Object.is(-0)）
+#   注：光明侧 0.0 不是整数 → -0 一并被拒，语义与上游一致。
+段落 是安全整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  如果 值 < 0:
+    返回 假
+  返回 值 <= 安全整数上限
+
+# 数字列表归一（上游 sourceEventSeqs.map(Number)）
+段落 转数字表 接收 表:
+  设 结果 为 []
+  遍历 项 之 表:
+    列表追加(结果, int(项))
+  返回 结果
+
+# 会话头版本号：兼容 数字 / {"主","次"} / [主, 次] 三种承载形态
+段落 取版本号 接收 会话头:
+  设 值 为 取字段(会话头, ["版本", "version", "版本号"], 空)
+  如果 是字典(值):
+    返回 取字段(值, ["主", "major"], 空)
+  如果 是列表(值):
+    返回 值[0]
+  返回 值
+
+# =====================================================================
+# §1 线头（上游 index.ts:56-69 wireHeader）
+# =====================================================================
+# 公钥：version/id/createdAt；可选键仅当逻辑侧存在时落键（上游条件展开）。
+段落 线头 接收 会话头:
+  设 结果 为 {}
+  结果["version"] 为 取版本号(会话头)
+  结果["id"] 为 转字符串(取字段(会话头, ["标识", "id"], ""))
+  结果["createdAt"] 为 取字段(会话头, ["创建时间", "createdAt"], 空)
+  如果 有字段(会话头, ["工作目录", "cwd"]):
+    结果["cwd"] 为 取字段(会话头, ["工作目录", "cwd"], 空)
+  如果 有字段(会话头, ["父会话", "parentSession"]):
+    结果["parentSession"] 为 转字符串(取字段(会话头, ["父会话", "parentSession"], 空))
+  如果 取字段(会话头, ["已播种", "isSeeded"], 假) == 真:
+    结果["seedLength"] 为 取字段(会话头, ["继承事件数", "inheritedEventCount"], 0)
+  如果 有字段(会话头, ["来源", "origin"]):
+    结果["origin"] 为 取字段(会话头, ["来源", "origin"], 空)
+  如果 有字段(会话头, ["委派深度", "delegationDepth"]):
+    结果["delegationDepth"] 为 取字段(会话头, ["委派深度", "delegationDepth"], 空)
+  如果 有字段(会话头, ["代理预设", "agentPreset"]):
+    结果["agentPreset"] 为 取字段(会话头, ["代理预设", "agentPreset"], 空)
+  返回 结果
+
+# =====================================================================
+# §2 线化操作（上游 index.ts:106-110 wireSurfaceOp）
+# =====================================================================
+段落 线化操作 接收 操作:
+  如果 操作 == "append":
+    返回 "append"
+  如果 是字典(操作) == 假:
+    返回 操作
+  如果 取字段(操作, ["op", "操作"], "") != "replace":
+    返回 操作
+  返回 {"op": "replace", "startSeq": int(取字段(操作, ["startSeq", "起序号"], 0)), "endSeq": int(取字段(操作, ["endSeq", "止序号"], 0))}
+
+# =====================================================================
+# §3 线事件（上游 index.ts:72-104 wireEvent）
+# =====================================================================
+# 公共段 = {seq, time, data} + 可选 ignorable；随后按类型分发。
+段落 线事件公共段 接收 日志项:
+  设 结果 为 {}
+  结果["seq"] 为 取字段(日志项, ["序号", "seq"], 空)
+  结果["time"] 为 取字段(日志项, ["时间", "time"], 空)
+  结果["data"] 为 取字段(日志项, ["数据", "data"], 空)
+  如果 有字段(日志项, ["可忽略", "ignorable"]):
+    结果["ignorable"] 为 取字段(日志项, ["可忽略", "ignorable"], 假)
+  返回 结果
+
+段落 线事件 接收 日志项:
+  设 结果 为 线事件公共段(日志项)
+  设 类型 为 取字段(日志项, ["类型", "type"], "")
+  结果["type"] 为 类型
+  如果 列表包含(表面带来源集, 类型):
+    结果["surfaceOp"] 为 线化操作(取字段(日志项, ["表面操作", "surfaceOp"], "append"))
+    如果 有字段(日志项, ["来源事件序号", "sourceEventSeqs"]):
+      结果["sourceEventSeqs"] 为 转数字表(取字段(日志项, ["来源事件序号", "sourceEventSeqs"], []))
+    返回 结果
+  如果 列表包含(表面无来源集, 类型):
+    结果["surfaceOp"] 为 线化操作(取字段(日志项, ["表面操作", "surfaceOp"], "append"))
+    返回 结果
+  # 未知且可忽略的记录：不透明保留（surfaceOp/sourceEventSeqs 原样，不做线化）
+  如果 列表包含(已知事件类型集, 类型) == 假 且 取字段(日志项, ["可忽略", "ignorable"], 假) == 真:
+    结果["ignorable"] 为 真
+    如果 有字段(日志项, ["表面操作", "surfaceOp"]):
+      结果["surfaceOp"] 为 取字段(日志项, ["表面操作", "surfaceOp"], 空)
+    如果 有字段(日志项, ["来源事件序号", "sourceEventSeqs"]):
+      结果["sourceEventSeqs"] 为 取字段(日志项, ["来源事件序号", "sourceEventSeqs"], 空)
+  返回 结果
+
+# =====================================================================
+# §4 接受水印折叠（上游 index.ts:117-150 acceptedThrough）
+# =====================================================================
+# 增量扫描（起点 = 记忆表.扫描点），只认 delivery-accepted 事件：
+#   格式版本：非安全整数 → 抛畸形；≠ 会话头版本 → 跳过
+#   通过序号：非安全整数 或 >= 事件自身序号 → 抛畸形
+#   会话标识：非非空字符串 → 抛畸形；≠ 会话头标识 → 跳过（继承分叉标记保留父标识）
+#   水印取最大通过序号；未接受前为 -1。
+段落 接受至 接收 会话视图:
+  设 事件表 为 取字段(会话视图, ["事件表", "events"], [])
+  设 会话头 为 取字段(会话视图, ["头", "header"], {})
+  设 记忆表 为 取字段(会话视图, ["记忆表", "记忆"], {})
+  设 水印 为 取字段(记忆表, ["水印"], -1)
+  如果 是整数(水印) == 假:
+    设 水印 为 -1
+  设 起点 为 取字段(记忆表, ["扫描点"], 0)
+  如果 是整数(起点) == 假:
+    设 起点 为 0
+  如果 起点 < 0:
+    设 起点 为 0
+  设 长 为 列表长度(事件表)
+  设 格式版本 为 取版本号(会话头)
+  设 会话标识 为 转字符串(取字段(会话头, ["标识", "id"], ""))
+  设 序号 为 起点
+  当 序号 < 长:
+    设 日志项 为 事件表[序号]
+    如果 是字典(日志项) == 假:
+      抛出 新建 错误("session-log-deepseek: missing event " + 转字符串(序号) + " below captured length " + 转字符串(长))
+    设 此处序号 为 取字段(日志项, ["序号", "seq"], 序号)
+    如果 取字段(日志项, ["类型", "type"], "") != 事件类型交付接受:
+      设 序号 为 序号 + 1
+      继续
+    设 数据 为 取字段(日志项, ["数据", "data"], {})
+    设 接受版本 为 取字段(数据, ["sessionFormatVersion", "会话格式版本"], 0)
+    如果 是安全整数(接受版本) == 假:
+      抛出 新建 错误("session-log-deepseek: malformed acceptance format version at seq " + 转字符串(此处序号))
+    如果 接受版本 != 格式版本:
+      设 序号 为 序号 + 1
+      继续
+    设 通过序号 为 取字段(数据, ["throughSeq", "通过序号"], 空)
+    设 标识值 为 取字段(数据, ["sessionId", "会话标识"], 空)
+    如果 是安全整数(通过序号) == 假:
+      抛出 新建 错误("session-log-deepseek: malformed acceptance watermark at seq " + 转字符串(此处序号))
+    如果 是字符串(标识值) == 假:
+      抛出 新建 错误("session-log-deepseek: malformed acceptance watermark at seq " + 转字符串(此处序号))
+    如果 字符串长度(标识值) == 0:
+      抛出 新建 错误("session-log-deepseek: malformed acceptance watermark at seq " + 转字符串(此处序号))
+    如果 通过序号 >= 此处序号:
+      抛出 新建 错误("session-log-deepseek: malformed acceptance watermark at seq " + 转字符串(此处序号))
+    如果 标识值 != 会话标识:
+      设 序号 为 序号 + 1
+      继续
+    如果 通过序号 > 水印:
+      设 水印 为 通过序号
+    设 序号 为 序号 + 1
+  记忆表["扫描点"] 为 长
+  记忆表["水印"] 为 水印
+  返回 水印
+
+# =====================================================================
+# §5 增量贡献构造（上游 index.ts:160-178 prepare 的 value）
+# =====================================================================
+# afterSeq = 接受点；throughSeq = 末事件序号；events = 接受点+1 起的线事件列表。
+# 事件表为空（上游 throughSeq === undefined）→ 返回 空（不产出贡献）。
+段落 构造增量 接收 会话视图, 接受点:
+  设 事件表 为 取字段(会话视图, ["事件表", "events"], [])
+  设 长 为 列表长度(事件表)
+  如果 长 == 0:
+    返回 空
+  设 末项 为 事件表[长 - 1]
+  设 会话头 为 取字段(会话视图, ["头", "header"], {})
+  设 线事件表 为 []
+  设 序号 为 接受点 + 1
+  当 序号 < 长:
+    列表追加(线事件表, 线事件(事件表[序号]))
+    设 序号 为 序号 + 1
+  设 结果 为 {}
+  结果["version"] 为 1
+  结果["sessionFormatVersion"] 为 取版本号(会话头)
+  结果["session"] 为 线头(会话头)
+  结果["afterSeq"] 为 接受点
+  结果["throughSeq"] 为 取字段(末项, ["序号", "seq"], 空)
+  结果["events"] 为 线事件表
+  返回 结果
+
+# =====================================================================
+# §6 接受确认（上游 index.ts:181-188 accept 追加的事件）
+# =====================================================================
+# 返回「应被追加到事件表」的 delivery-accepted 事件（规范中文键形状）；
+# 追加动作由宿主/测试注入（本模块不改 src/会话.light 与 src/会话格式.light）。
+段落 确认接受 接收 会话视图, 通过序号, 时间值:
+  设 事件表 为 取字段(会话视图, ["事件表", "events"], [])
+  设 会话头 为 取字段(会话视图, ["头", "header"], {})
+  设 数据 为 {}
+  数据["sessionId"] 为 转字符串(取字段(会话头, ["标识", "id"], ""))
+  数据["sessionFormatVersion"] 为 取版本号(会话头)
+  数据["throughSeq"] 为 通过序号
+  返回 {"类型": 事件类型交付接受, "序号": 列表长度(事件表), "时间": 时间值, "数据": 数据}
+
+导出 事件类型交付接受, 已知事件类型集, 表面带来源集, 表面无来源集, 安全整数上限
+导出 取字段, 有字段, 是安全整数, 转数字表, 取版本号
+导出 线头, 线事件, 线事件公共段, 线化操作
+导出 接受至, 构造增量, 确认接受
