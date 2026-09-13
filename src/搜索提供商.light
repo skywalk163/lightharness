@@ -1,0 +1,478 @@
+# 搜索提供商.light —— 第14轮 任务4：web-search 族（deepseek + exa + perplexity）纯逻辑面复刻
+#
+# 上游：packages/web/web-search-deepseek/src/{provider.ts, types.ts}
+#       packages/web/web-search-exa/src/{provider.ts, types.ts}
+#       packages/web/web-search-perplexity/src/{provider.ts, types.ts}
+#       packages/web/web/src/types.ts（WebSearchRequest / WebSearchResult / WebSearchSource 统一词表）
+#
+# 复刻面（纯逻辑）：
+#   §1 统一参数模式 + 校验（任务书统一 schema；复用 工具.校验参数）
+#   §2 各提供商默认值填充 + 可用性判定（上游 available()）
+#   §3 请求形状构造（URL/method/headers/body；不发送，返回字典）
+#   §4 响应归一（DeepSeek 结果块+引用摘录 / Exa highlights / Perplexity search_results→citations 回退）
+#   §5 错误族 + HTTP 状态码→错误码映射
+#   §6 提供商注册表（名称/描述/默认端点/默认模型/认证头）+ 未知提供商抛错
+#
+# 宿主面剔除登记（未移植，宿主注入）：
+#   - provider.ts 的 fetch/undici 网络 IO、重定向策略 redirect:'error'、AbortSignal 竞速
+#     （abortable/throwIfSearchAborted/searchAborted/isAbortError）、真实超时与重试；
+#   - API 密钥解析（resolveApiKey 异步解析、CredentialRef 诊断）；
+#   - WebError / HarnessError 类体系（本模块以 {ok,code,message,provider} 纯字典承载）；
+#   - DeepSeek 的 recordRequest 钩子（会话事件 'web/deepseek-search-llm-request'）。
+#
+# 任务书扩展登记（上游无对应，按 §复刻范围 实现，已在交付报告 §语言差异/行为差异 登记）：
+#   - 统一参数的 limit/time_range/language/safesearch 与 [1,100] 上限；
+#   - 错误码词汇 API_KEY_MISSING/RATE_LIMITED/INVALID_PARAM/PROVIDER_ERROR/EMPTY_RESPONSE/PARSE_ERROR
+#     与 HTTP 状态码映射（上游一律 WEB_PROVIDER_ERROR，状态码只进消息文本）；
+#   - Perplexity 的 time_range → search_recency_filter 映射（上游走 Options.searchRecency）。
+#
+# 命名避坑：标识符不用「为」字（L-084）；避保留字/内建前缀（字典/包含/输出/空/返回/设/是/并/之）。
+
+从 工具 导入 校验参数
+从 字符串工具 导入 去除首尾空白
+
+# =====================================================================
+# §0 常量
+# =====================================================================
+
+# 提供商 id（上游 EXA_PROVIDER_ID / PERPLEXITY_PROVIDER_ID / DEEPSEEK_PROVIDER_ID）
+设 提供商深寻 为 "deepseek-official"
+设 提供商艾克萨 为 "exa"
+设 提供商彭普 为 "perplexity"
+
+# 默认端点（上游 *_DEFAULT_BASE_URL）
+设 深寻默认端点 为 "https://api.deepseek.com/anthropic/v1"
+设 艾克萨默认端点 为 "https://api.exa.ai"
+设 彭普默认端点 为 "https://api.perplexity.ai"
+
+# 默认模型（上游 DEEPSEEK_DEFAULT_MODEL / PERPLEXITY_DEFAULT_MODEL）
+设 深寻默认模型 为 "deepseek-v4-flash"
+设 彭普默认模型 为 "sonar"
+
+# 默认上限（上游 DEEPSEEK_DEFAULT_MAX_TOKENS / PERPLEXITY_DEFAULT_MAX_TOKENS）
+设 深寻默认最大令牌 为 4096
+设 彭普默认最大令牌 为 1024
+
+# DeepSeek web_search 服务工具每次请求最大使用次数（上游 DEEPSEEK_DEFAULT_MAX_USES）
+设 深寻默认最大次数 为 5
+
+# Exa 默认每条结果高亮句数 + 默认检索模式（上游 EXA_DEFAULT_HIGHLIGHTS_PER_RESULT / EXA_DEFAULT_SEARCH_TYPE）
+设 艾克萨默认高亮数 为 1
+设 艾克萨默认检索型 为 "auto"
+
+# Anthropic 兼容接口版本（上游 DEEPSEEK_DEFAULT_API_VERSION）
+设 默认接口版本 为 "2023-06-01"
+
+# 归属头（上游 provider.ts USER_AGENT）
+设 归属代理 为 "deepseek-harness/0.0.1"
+
+# DeepSeek 原生 web_search 服务工具（上游 provider.ts:215）
+设 搜索工具类型 为 "web_search_20250305"
+设 搜索工具名 为 "web_search"
+
+# ---- 本卡归一错误码（任务书 §复刻范围 4）----
+设 码缺密钥 为 "API_KEY_MISSING"
+设 码限流 为 "RATE_LIMITED"
+设 码参数非法 为 "INVALID_PARAM"
+设 码提供商错误 为 "PROVIDER_ERROR"
+设 码空响应 为 "EMPTY_RESPONSE"
+设 码解析失败 为 "PARSE_ERROR"
+设 码已中止 为 "ABORTED"
+
+# =====================================================================
+# §0b 通用读取（中文键在前，英文键回退）
+# =====================================================================
+
+段落 取字段 接收 表, 键表, 默认值:
+  如果 type(表) != dict:
+    返回 默认值
+  遍历 键 之 键表:
+    如果 字典包含键(表, 键):
+      返回 表[键]
+  返回 默认值
+
+段落 有字段 接收 表, 键表:
+  如果 type(表) != dict:
+    返回 假
+  遍历 键 之 键表:
+    如果 字典包含键(表, 键):
+      返回 真
+  返回 假
+
+# 键存在且是非空文本
+段落 有非空文本 接收 表, 键:
+  如果 type(表) != dict:
+    返回 假
+  如果 字典包含键(表, 键) == 假:
+    返回 假
+  设 值 为 表[键]
+  如果 type(值) != str:
+    返回 假
+  返回 字符串长度(值) > 0
+
+# 去首尾空白后的长度（上游 highlight.trim().length > 0）
+段落 去空白长 接收 文本:
+  如果 type(文本) != str:
+    返回 0
+  返回 字符串长度(去除首尾空白(文本))
+
+段落 是正整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  返回 值 > 0
+
+# =====================================================================
+# §1 统一参数模式与校验（任务书 §复刻范围 1）
+# =====================================================================
+
+段落 时间范围枚举:
+  返回 ["day", "week", "month", "year"]
+
+段落 安全搜索枚举:
+  返回 ["off", "moderate", "strict"]
+
+# 统一搜索参数 JSON Schema（limit ∈ [1,100]；time_range/safesearch 枚举；query 非空）
+段落 统一参数模式:
+  设 模式 为 {"type": "object", "required": ["query"]}
+  设 属性 为 {}
+  属性["query"] 为 {"type": "string", "minLength": 1}
+  属性["limit"] 为 {"type": "integer", "minimum": 1, "maximum": 100}
+  属性["max_results"] 为 {"type": "integer", "minimum": 1, "maximum": 100}
+  属性["time_range"] 为 {"type": "string", "enum": 时间范围枚举()}
+  属性["language"] 为 {"type": "string", "minLength": 2}
+  属性["safesearch"] 为 {"type": "string", "enum": 安全搜索枚举()}
+  模式["properties"] 为 属性
+  返回 模式
+
+# 校验统一参数：返回结构化错误列表（空列表 = 通过）。复用 工具.校验参数（JSON Schema 子集）
+段落 校验搜索参数 接收 参数:
+  返回 校验参数(统一参数模式(), 参数)
+
+段落 有搜索参数错误 接收 参数:
+  返回 长(校验搜索参数(参数)) > 0
+
+# 归一公共参数（别名统一到 maxResults / timeRange / language / safesearch）
+段落 归一参数 接收 参数:
+  设 结果 为 {}
+  结果["query"] 为 取字段(参数, ["query", "查询"], "")
+  如果 有字段(参数, ["limit", "max_results", "maxResults", "结果上限"]):
+    结果["maxResults"] 为 取字段(参数, ["limit", "max_results", "maxResults", "结果上限"], 空)
+  如果 有字段(参数, ["time_range", "timeRange", "时间范围"]):
+    结果["timeRange"] 为 取字段(参数, ["time_range", "timeRange", "时间范围"], 空)
+  如果 有字段(参数, ["language", "语言"]):
+    结果["language"] 为 取字段(参数, ["language", "语言"], 空)
+  如果 有字段(参数, ["safesearch", "safeSearch", "安全搜索"]):
+    结果["safesearch"] 为 取字段(参数, ["safesearch", "safeSearch", "安全搜索"], 空)
+  返回 结果
+
+# =====================================================================
+# §2 默认值填充与可用性判定（上游 *_DEFAULT_* 常量 + available()）
+# =====================================================================
+
+段落 深寻默认参数:
+  返回 {"baseURL": 深寻默认端点, "model": 深寻默认模型, "apiVersion": 默认接口版本, "maxTokens": 深寻默认最大令牌, "maxUses": 深寻默认最大次数}
+
+段落 艾克萨默认参数:
+  返回 {"baseURL": 艾克萨默认端点, "searchType": 艾克萨默认检索型, "highlightsPerResult": 艾克萨默认高亮数}
+
+段落 彭普默认参数:
+  返回 {"baseURL": 彭普默认端点, "model": 彭普默认模型, "maxTokens": 彭普默认最大令牌}
+
+段落 提供商默认参数 接收 提供商名:
+  如果 提供商名 == 提供商深寻:
+    返回 深寻默认参数()
+  如果 提供商名 == 提供商艾克萨:
+    返回 艾克萨默认参数()
+  如果 提供商名 == 提供商彭普:
+    返回 彭普默认参数()
+  抛出 新建 错误("unknown web search provider: " + 提供商名)
+
+# 默认值 + 宿主覆盖（选项 覆盖 默认）
+段落 填默认参数 接收 提供商名, 选项:
+  设 配置 为 提供商默认参数(提供商名)
+  如果 type(选项) == dict:
+    遍历 键 之 选项:
+      配置[键] 为 选项[键]
+  返回 配置
+
+# 上游 available()：密钥非空 + 关键上限为正整数（URL 可解析性由宿主面校验，剔除登记）
+段落 可服务 接收 提供商名, 密钥, 选项:
+  如果 type(密钥) != str:
+    返回 假
+  如果 字符串长度(密钥) == 0:
+    返回 假
+  设 配置 为 填默认参数(提供商名, 选项)
+  如果 提供商名 == 提供商深寻:
+    如果 是正整数(配置["maxTokens"]) == 假:
+      返回 假
+    返回 是正整数(配置["maxUses"])
+  如果 提供商名 == 提供商艾克萨:
+    返回 是正整数(配置["highlightsPerResult"])
+  如果 提供商名 == 提供商彭普:
+    返回 是正整数(配置["maxTokens"])
+  返回 假
+
+# =====================================================================
+# §3 请求形状构造（上游各 provider 的 fetch 入参；本模块只造字典不发送）
+# =====================================================================
+
+段落 公共请求头 接收 密钥:
+  设 头 为 {}
+  头["content-type"] 为 "application/json"
+  头["accept"] 为 "application/json"
+  头["user-agent"] 为 归属代理
+  头["authorization"] 为 "Bearer " + 密钥
+  返回 头
+
+# DeepSeek：Anthropic 兼容 Messages + 原生 web_search 服务工具
+段落 构造深寻请求 接收 归一, 配置, 密钥:
+  设 提示文本 为 "Perform a web search for the query: " + 归一["query"]
+  设 正文 为 {}
+  正文["model"] 为 配置["model"]
+  正文["max_tokens"] 为 配置["maxTokens"]
+  正文["messages"] 为 [{"role": "user", "content": [{"type": "text", "text": 提示文本}]}]
+  正文["tools"] 为 [{"type": 搜索工具类型, "name": 搜索工具名, "max_uses": 配置["maxUses"]}]
+  设 头 为 公共请求头(密钥)
+  头["x-api-key"] 为 密钥
+  头["anthropic-version"] 为 配置["apiVersion"]
+  返回 {"url": 配置["baseURL"] + "/messages", "method": "POST", "headers": 头, "body": 正文}
+
+# Exa：POST /search，正文带 highlights contents
+段落 构造艾克萨请求 接收 归一, 配置, 密钥:
+  设 正文 为 {}
+  正文["query"] 为 归一["query"]
+  正文["type"] 为 配置["searchType"]
+  正文["contents"] 为 {"highlights": {"highlightsPerUrl": 配置["highlightsPerResult"]}}
+  如果 有字段(归一, ["maxResults"]):
+    正文["numResults"] 为 归一["maxResults"]
+  返回 {"url": 配置["baseURL"] + "/search", "method": "POST", "headers": 公共请求头(密钥), "body": 正文}
+
+# Perplexity：OpenAI 兼容 chat/completions
+段落 构造彭普请求 接收 归一, 配置, 密钥:
+  设 正文 为 {}
+  正文["model"] 为 配置["model"]
+  正文["max_tokens"] 为 配置["maxTokens"]
+  正文["messages"] 为 [{"role": "user", "content": 归一["query"]}]
+  如果 有字段(归一, ["timeRange"]):
+    正文["search_recency_filter"] 为 归一["timeRange"]
+  返回 {"url": 配置["baseURL"] + "/chat/completions", "method": "POST", "headers": 公共请求头(密钥), "body": 正文}
+
+段落 构造请求 接收 提供商名, 参数, 密钥, 选项:
+  设 归一 为 归一参数(参数)
+  设 配置 为 填默认参数(提供商名, 选项)
+  如果 提供商名 == 提供商深寻:
+    返回 构造深寻请求(归一, 配置, 密钥)
+  如果 提供商名 == 提供商艾克萨:
+    返回 构造艾克萨请求(归一, 配置, 密钥)
+  如果 提供商名 == 提供商彭普:
+    返回 构造彭普请求(归一, 配置, 密钥)
+  抛出 新建 错误("unknown web search provider: " + 提供商名)
+
+# =====================================================================
+# §4 响应归一（上游 mapAnthropicResponse / mapExaResponse / mapPerplexityResponse）
+# =====================================================================
+
+# 上游 citationSnippets：URL→首个非空 cited_text（首次出现者胜）
+段落 引用摘录 接收 块表:
+  设 摘录 为 {}
+  遍历 块 之 块表:
+    如果 取字段(块, ["type"], "") != "text":
+      跳过
+    遍历 引用 之 取字段(块, ["citations"], []):
+      设 地址 为 取字段(引用, ["url"], 空)
+      设 文 为 取字段(引用, ["cited_text"], 空)
+      如果 type(地址) != str:
+        跳过
+      如果 字符串长度(地址) == 0:
+        跳过
+      如果 type(文) != str:
+        跳过
+      如果 字符串长度(文) == 0:
+        跳过
+      如果 字典包含键(摘录, 地址):
+        跳过
+      摘录[地址] 为 文
+  返回 摘录
+
+# 上游 mapAnthropicResponse：无结果块 → 抛错；按 url 去重；title/page_age 非空才落键
+段落 归一深寻响应 接收 载荷:
+  设 块表 为 取字段(载荷, ["content"], [])
+  设 结果块 为 []
+  遍历 块 之 块表:
+    如果 取字段(块, ["type"], "") == "web_search_tool_result":
+      列表追加(结果块, 块)
+  如果 长(结果块) == 0:
+    抛出 新建 错误("DeepSeek returned no web_search_tool_result blocks; the request may not have triggered native web search")
+  设 摘录 为 引用摘录(块表)
+  设 见过 为 {}
+  设 来源表 为 []
+  遍历 块 之 结果块:
+    遍历 项 之 取字段(块, ["content"], []):
+      如果 取字段(项, ["type"], "") != "web_search_result":
+        跳过
+      设 地址 为 取字段(项, ["url"], "")
+      如果 type(地址) != str:
+        跳过
+      如果 字符串长度(地址) == 0:
+        跳过
+      如果 字典包含键(见过, 地址):
+        跳过
+      见过[地址] 为 真
+      设 来源 为 {"url": 地址}
+      如果 有非空文本(项, "title"):
+        来源["title"] 为 项["title"]
+      如果 字典包含键(摘录, 地址):
+        来源["snippet"] 为 摘录[地址]
+      如果 有非空文本(项, "page_age"):
+        来源["publishedAt"] 为 项["page_age"]
+      列表追加(来源表, 来源)
+  返回 {"sources": 来源表, "truncated": 假}
+
+# 上游：取首个非空白高亮句
+段落 首个非空高亮 接收 高亮表:
+  如果 type(高亮表) != list:
+    返回 空
+  遍历 高亮 之 高亮表:
+    如果 去空白长(高亮) > 0:
+      返回 高亮
+  返回 空
+
+# 上游 mapExaResponse：无 highlight 的条目被丢弃（不臆造 snippet）
+段落 归一艾克萨响应 接收 载荷:
+  设 来源表 为 []
+  遍历 项 之 取字段(载荷, ["results"], []):
+    设 摘录 为 首个非空高亮(取字段(项, ["highlights"], []))
+    如果 摘录 == 空:
+      跳过
+    设 来源 为 {"url": 取字段(项, ["url"], ""), "snippet": 摘录}
+    如果 有非空文本(项, "title"):
+      来源["title"] 为 项["title"]
+    如果 有非空文本(项, "publishedDate"):
+      来源["publishedAt"] 为 项["publishedDate"]
+    列表追加(来源表, 来源)
+  返回 {"sources": 来源表, "truncated": 假}
+
+# 上游 mapPerplexityResponse：search_results 优先（结构化），否则 citations 回退（仅 url）
+段落 归一彭普响应 接收 载荷:
+  设 结果 为 {}
+  设 选表 为 取字段(载荷, ["choices"], [])
+  如果 长(选表) > 0:
+    设 消息 为 取字段(选表[0], ["message"], {})
+    设 内容 为 取字段(消息, ["content"], 空)
+    如果 type(内容) == str:
+      如果 字符串长度(内容) > 0:
+        结果["content"] 为 内容
+  设 结构化 为 取字段(载荷, ["search_results"], 空)
+  设 来源表 为 []
+  如果 type(结构化) == list:
+    遍历 项 之 结构化:
+      设 来源 为 {"url": 取字段(项, ["url"], "")}
+      如果 有非空文本(项, "title"):
+        来源["title"] 为 项["title"]
+      如果 有非空文本(项, "snippet"):
+        来源["snippet"] 为 项["snippet"]
+      如果 有非空文本(项, "date"):
+        来源["publishedAt"] 为 项["date"]
+      列表追加(来源表, 来源)
+  否则:
+    遍历 地址 之 取字段(载荷, ["citations"], []):
+      列表追加(来源表, {"url": 地址})
+  结果["sources"] 为 来源表
+  结果["truncated"] 为 假
+  返回 结果
+
+段落 归一搜索响应 接收 提供商名, 载荷:
+  如果 提供商名 == 提供商深寻:
+    返回 归一深寻响应(载荷)
+  如果 提供商名 == 提供商艾克萨:
+    返回 归一艾克萨响应(载荷)
+  如果 提供商名 == 提供商彭普:
+    返回 归一彭普响应(载荷)
+  抛出 新建 错误("unknown web search provider: " + 提供商名)
+
+# 空响应归一（上游语义：无结果 → 空 sources + 错误信息，不抛）
+段落 归一空响应:
+  返回 {"sources": [], "truncated": 假, "error": {"code": 码空响应, "message": "provider returned no search results"}}
+
+# 异常响应归一（解析失败 / 非预期形状）
+段落 归一异常响应 接收 提供商名, 消息:
+  返回 {"sources": [], "truncated": 假, "error": {"code": 码解析失败, "message": 消息, "provider": 提供商名}}
+
+# =====================================================================
+# §5 错误族与状态码映射
+# =====================================================================
+
+段落 造搜索错误 接收 码, 消息, 提供商名:
+  返回 {"ok": 假, "code": 码, "message": 消息, "provider": 提供商名}
+
+段落 是成功状态 接收 状态:
+  返回 状态 >= 200 且 状态 <= 299
+
+# 任务书扩展：HTTP 状态码 → 归一错误码（上游一律 WEB_PROVIDER_ERROR，状态码只进消息）
+段落 状态码转错误码 接收 状态:
+  如果 状态 == 401:
+    返回 码缺密钥
+  如果 状态 == 403:
+    返回 码缺密钥
+  如果 状态 == 429:
+    返回 码限流
+  如果 状态 == 400:
+    返回 码参数非法
+  如果 状态 == 422:
+    返回 码参数非法
+  返回 码提供商错误
+
+# 上游 WebError 码 → 本卡归一码（宿主接线时用于上译）
+段落 上游码转本卡码 接收 上游码:
+  如果 上游码 == "WEB_PROVIDER_CREDENTIAL_MISSING":
+    返回 码缺密钥
+  如果 上游码 == "WEB_ABORTED":
+    返回 码已中止
+  返回 码提供商错误
+
+段落 错误码文案 接收 码:
+  如果 码 == 码缺密钥:
+    返回 "missing or invalid API key"
+  如果 码 == 码限流:
+    返回 "provider rate limit exceeded"
+  如果 码 == 码参数非法:
+    返回 "invalid search parameters"
+  如果 码 == 码空响应:
+    返回 "provider returned no search results"
+  如果 码 == 码解析失败:
+    返回 "provider response could not be parsed"
+  如果 码 == 码已中止:
+    返回 "search aborted"
+  返回 "web search provider failed"
+
+# =====================================================================
+# §6 提供商注册表
+# =====================================================================
+
+段落 提供商列表:
+  返回 [提供商深寻, 提供商艾克萨, 提供商彭普]
+
+段落 是已知提供商 接收 名:
+  遍历 名项 之 提供商列表():
+    如果 名项 == 名:
+      返回 真
+  返回 假
+
+# 注册项：名称/描述/默认端点/默认模型/认证头/请求体操作
+段落 提供商描述 接收 名:
+  如果 名 == 提供商深寻:
+    返回 {"名称": 提供商深寻, "描述": "DeepSeek Anthropic-compatible Messages with native web_search server tool", "默认端点": 深寻默认端点, "默认模型": 深寻默认模型, "认证头": "x-api-key + authorization", "方法": "POST", "路径": "/messages"}
+  如果 名 == 提供商艾克萨:
+    返回 {"名称": 提供商艾克萨, "描述": "Exa search API with highlight contents", "默认端点": 艾克萨默认端点, "默认模型": 空, "认证头": "authorization", "方法": "POST", "路径": "/search"}
+  如果 名 == 提供商彭普:
+    返回 {"名称": 提供商彭普, "描述": "Perplexity OpenAI-compatible chat completions", "默认端点": 彭普默认端点, "默认模型": 彭普默认模型, "认证头": "authorization", "方法": "POST", "路径": "/chat/completions"}
+  抛出 新建 错误("unknown web search provider: " + 名)
+
+段落 取提供商 接收 名:
+  返回 提供商描述(名)
+
+段落 提供商注册表:
+  设 表 为 {}
+  遍历 名 之 提供商列表():
+    表[名] 为 提供商描述(名)
+  返回 表
