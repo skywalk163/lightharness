@@ -119,6 +119,12 @@
 设 占 为 定词汇("assistant/message", ["message"], [])
 设 占 为 定词汇("session/end-seed", ["length"], [])
 
+# ---- approval 审计对（第13轮决策2 补登：interaction/user-approval，轮封闭审计事件）----
+# 键名与 src/审批.light 请求审批审计 实际落盘一致（id/callId/reason 保留英文，工具名/结果 中文映射）。
+设 占 为 定词汇("approval/policy", ["policy"], [])
+设 占 为 定词汇("approval/asked", ["id", "工具名"], ["callId", "reason"])
+设 占 为 定词汇("approval/decided", ["id", "结果"], [])
+
 # 未知事件类型是否可忽略（v2 起：不认识的事件类型保持排队直通）
 段落 已知事件类型 接收 种类:
   返回 字典包含键(事件词汇表, 种类)

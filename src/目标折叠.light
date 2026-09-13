@@ -363,6 +363,9 @@
   返回 视图
 
 # ===== 轮次驱动决策（对标原版 goal-round-driver/index.ts 的纯决策面）=====
+# 【第13轮决策3 归并标注】本区块为 #35 目标折叠 内置驱动面，与 #88 目标轮驱动.light 并存。
+#   专用模块 目标轮驱动.light 更完整（检查点阶段+queue-failed+轮次结束栅栏 4 分支），
+#   新代码请优先使用 目标轮驱动.light；本区块为兼容保留，不删除（避免回归），待确认无引用后收敛。
 # 复刻：轮次预约生命周期（queued→claimed→admitted / cancelled / stale）、
 # 空闲时圈定暂停到被丢弃的 attempt 引用（#33fa98b3c2）、宿主暂停中止 live turn（#29ce849738）、
 # max-tokens 解除授权、fail-closed 预约校验、预步决策声明 startsRequestSeries（#d3ab4ce53d）。

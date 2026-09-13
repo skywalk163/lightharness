@@ -1,4 +1,6 @@
 # 目标轮驱动.light —— 第13轮 任务3：goal-round-driver 纯逻辑面复刻
+# 【第13轮决策3 归并标注】本模块为 #88 goal-round-driver 驱动面专用模块（更完整：检查点阶段+queue-failed+轮次结束栅栏）。
+#   与 #35 目标折叠.light 内置驱动区块并存；新代码优先使用本模块，目标折叠.light 内置区块为兼容保留。
 #
 # 上游：packages/goal/goal-round-driver/src/index.ts（525 行，宿主注入 agents/goals/sessions）
 #       + prompt.ts（renderGoalRoundPrompt）
