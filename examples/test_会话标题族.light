@@ -1,0 +1,362 @@
+# test_会话标题族.light —— 第14轮 任务6（会话标题域）判据
+# 上游：packages/session/session-title/src/{types.ts, normalize.ts, invariant.ts}
+#       packages/session/session-title-llm/src/index.ts（配置校验/系统提示/组帧/结束原因/结果装配）
+#       packages/session/session-title-first-prompt-llm/src/index.ts（选首条消息）
+#       packages/session/session-title-all-prompts-llm/src/index.ts（选全部消息）
+# 运行：cd lightharness && python 运行.py examples/test_会话标题族.light
+# 反跑：_antirun_title.py
+#   （A 规范化不做内部空白折叠 / B 不变量不再检查 messageSeqs 空⟺user 配对 / C 标题比较不规范化）
+#
+# ⚠️ 命名说明：本模块取名 `会话标题族`（非任务书写的 `会话标题`）——
+#    `src/会话标题.light` 与 `examples/test_会话标题.light` 均已被**第49号对标卡**
+#    （session-title/normalize）占用且已 done；若按任务书原名落地会直接覆盖既有交付物。
+#    故本路新增 `会话标题族.light` / `test_会话标题族.light`，只读导入 #49 的规范化能力。
+#    命名偏差已在 `_task6_会话标题族_交付报告.md` §移交清单 登记，由路M 收口裁定。
+#
+# ⚠️ 命名避坑（本轮实测新增）：v4.0 L0 单字别名是**静默保留字**，不可用作标识符 ——
+#    若/则/否/是/段/出/导/遍/对/跳/过/试/捕/抛/终/返/配/长/首/末/余/设/为/从/当/空。
+#    实测 `设 配 为 [...]` 合法，但 `打印 配[0]` 会被词法定为 `匹配 [0]` 语句 →
+#    codegen 产出 `match [0]:` 空体 → IndentationError（报「缩进错误」，误导性极强）。
+#    本文件全部变量名避开上述单字别名。
+
+从 会话标题族 导入 取字段, 有字段, 连接文本, 是正整数, 断言正整数, 是安全序号
+从 会话标题族 导入 造来源回退, 造来源提供方, 造来源用户, 是合法来源
+从 会话标题族 导入 造标题载荷, 造标题快照, 造标题用户消息, 造标题输入
+从 会话标题族 导入 校验标题配置, 造标题配置
+从 会话标题族 导入 标题系统提示, 组帧消息, 选首条消息, 选全部消息, 按模式选消息
+从 会话标题族 导入 消息序号表, 造标题请求载荷, 结束原因错误, 拼接文本块, 含工具调用块
+从 会话标题族 导入 造标题结果, 完成标题调用, 解析路线, 准备标题调用
+从 会话标题族 导入 标题同值, 需更新标题, 造标题事件, 事件定位, 校验标题事件
+从 会话标题族 导入 标题事件类型, 标题请求事件类型, 标题事件词汇内, 标题事件处置
+从 溢出 导入 字节长度
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败：" + 信息)
+  返回 真
+
+段落 含子串 接收 文本, 子串:
+  设 文本长 为 字符串长度(文本)
+  设 子串长 为 字符串长度(子串)
+  设 位 为 0
+  当 位 + 子串长 <= 文本长:
+    如果 截取(文本, 位, 位 + 子串长) == 子串:
+      返回 真
+    设 位 为 位 + 1
+  返回 假
+
+段落 主:
+  打印 "===== 第 14 轮任务 6：会话标题域（纯逻辑面）====="
+
+  # ---- §0 通用读取与小工具 ----
+  断言相等(取字段({"a": 1}, ["a"], 0), 1, "0a 取字段命中")
+  断言相等(取字段({"a": 1}, ["b"], 7), 7, "0b 取字段缺键回默认")
+  断言相等(取字段({"b": 2}, ["a", "b"], 0), 2, "0c 取字段按候选序取首个命中")
+  断言相等(取字段("不是字典", ["a"], 5), 5, "0d 取字段非字典回默认")
+  断言相等(有字段({"a": 1}, ["a"]), 真, "0e 有字段 有")
+  断言相等(有字段({"a": 1}, ["z"]), 假, "0f 有字段 无")
+  断言相等(有字段("不是字典", ["a"]), 假, "0g 有字段 非字典")
+  断言相等(连接文本(["甲", "乙", "丙"], "-"), "甲-乙-丙", "0h 连接文本")
+  断言相等(连接文本([], "-"), "", "0i 连接文本 空表")
+  断言相等(连接文本(["独"], "-"), "独", "0j 连接文本 单元素")
+
+  断言相等(是正整数(3), 真, "0k 正整数 3")
+  断言相等(是正整数(0), 假, "0l 正整数 拒绝 0")
+  断言相等(是正整数(-1), 假, "0m 正整数 拒绝负数")
+  断言相等(是正整数("3"), 假, "0n 正整数 拒绝字符串")
+  断言相等(是正整数(2.5), 假, "0o 正整数 拒绝小数")
+  断言相等(是正整数(空), 假, "0p 正整数 拒绝空")
+
+  尝试:
+    设 占位A 为 断言正整数("timeoutMs", 0)
+    断言真(假, "0q 断言正整数 0 应抛错")
+  捕获 异常 错误A:
+    断言真(含子串(转字符串(错误A), "timeoutMs must be a positive integer"), "0q 断言正整数 抛错文案")
+
+  断言相等(是安全序号(0), 真, "0r 安全序号 0")
+  断言相等(是安全序号(-1), 假, "0s 安全序号 拒绝负数")
+  断言相等(是安全序号(9007199254740991), 真, "0t 安全序号 上限")
+  断言相等(是安全序号(9007199254740992), 假, "0u 安全序号 超上限")
+  断言相等(是安全序号("1"), 假, "0v 安全序号 拒绝字符串")
+
+  # ---- §1 类型形状 ----
+  断言相等(造来源回退(), {"kind": "fallback"}, "1a 来源 回退")
+  设 源提供方 为 造来源提供方("deepseek-official", "deepseek-chat")
+  断言相等(源提供方["kind"], "provider", "1b 来源 提供方 kind")
+  断言相等(源提供方["provider"], "deepseek-official", "1c 来源 提供方 provider")
+  断言相等(源提供方["model"]["provider"], "deepseek-official", "1d 来源 提供方 model.provider")
+  断言相等(源提供方["model"]["model"], "deepseek-chat", "1e 来源 提供方 model.model")
+  断言相等(字典包含键(造来源提供方("exa", ""), "model"), 假, "1f 空 model 不挂 model 字段")
+  断言相等(造来源用户(), {"kind": "user"}, "1g 来源 用户")
+
+  断言相等(是合法来源(造来源回退()), 真, "1h 合法来源 fallback")
+  断言相等(是合法来源(造来源提供方("perplexity", "")), 真, "1i 合法来源 provider")
+  断言相等(是合法来源(造来源用户()), 真, "1j 合法来源 user")
+  断言相等(是合法来源({"kind": "manual"}), 假, "1k 非法来源 manual")
+  断言相等(是合法来源({}), 假, "1l 非法来源 缺 kind")
+  断言相等(是合法来源("user"), 假, "1m 非法来源 非字典")
+
+  设 标题载荷 为 造标题载荷("修复登录", [1, 2], 造来源用户())
+  断言相等(标题载荷["title"], "修复登录", "1n 载荷 title")
+  断言相等(标题载荷["messageSeqs"], [1, 2], "1o 载荷 messageSeqs")
+  断言相等(标题载荷["source"]["kind"], "user", "1p 载荷 source")
+
+  设 标题快照 为 造标题快照(标题载荷, 5, 1000)
+  断言相等(标题快照["title"], "修复登录", "1q 快照 复制载荷字段")
+  断言相等(标题快照["messageSeqs"], [1, 2], "1r 快照 复制序号表")
+  断言相等(标题快照["eventSeq"], 5, "1s 快照 eventSeq")
+  断言相等(标题快照["updatedAt"], 1000, "1t 快照 updatedAt")
+
+  断言相等(造标题用户消息(3, "你好"), {"seq": 3, "text": "你好"}, "1u 标题用户消息")
+  断言相等(造标题输入("首条", 2, 9), {"first": "首条", "count": 2, "lastSeq": 9}, "1v 标题输入")
+
+  # ---- §2 配置校验 ----
+  设 配置 为 造标题配置(5, 10, 4000, 100, 5000)
+  断言相等(配置["targetWords"], 5, "2a 造配置 targetWords")
+  断言相等(配置["targetCjkCharacters"], 10, "2b 造配置 targetCjkCharacters")
+  断言相等(配置["maxInputBytes"], 4000, "2c 造配置 maxInputBytes")
+  断言相等(配置["maxOutputTokens"], 100, "2d 造配置 maxOutputTokens")
+  断言相等(配置["timeoutMs"], 5000, "2e 造配置 timeoutMs")
+
+  设 已校验 为 校验标题配置(配置)
+  断言相等(已校验["targetWords"], 5, "2f 校验通过 回拷字段")
+  断言相等(字典包含键(已校验, "provider"), 假, "2g 未给 provider/model 时不挂键")
+
+  尝试:
+    设 占位B 为 校验标题配置("不是字典")
+    断言真(假, "2h 非字典配置应抛错")
+  捕获 异常 错误B:
+    断言真(含子串(转字符串(错误B), "configuration is required"), "2h 非字典配置 抛错文案")
+
+  尝试:
+    设 占位C 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 5000, "temperature": 0})
+    断言真(假, "2i 未知配置键应抛错")
+  捕获 异常 错误C:
+    断言真(含子串(转字符串(错误C), "unknown config key"), "2i 未知配置键 抛错文案")
+
+  尝试:
+    设 占位D 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100})
+    断言真(假, "2j 缺 timeoutMs 应抛错")
+  捕获 异常 错误D:
+    断言真(含子串(转字符串(错误D), "timeoutMs must be a positive integer"), "2j 缺 timeoutMs 抛错文案")
+
+  尝试:
+    设 占位E 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 2147483648})
+    断言真(假, "2k 超时超上限应抛错")
+  捕获 异常 错误E:
+    断言真(含子串(转字符串(错误E), "timeoutMs must not exceed 2147483647"), "2k 超时超上限 抛错文案")
+
+  设 顶格配置 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 2147483647})
+  断言相等(顶格配置["timeoutMs"], 2147483647, "2l 超时恰好等于上限 通过")
+
+  尝试:
+    设 占位F 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 5000, "provider": "exa"})
+    断言真(假, "2m 只给 provider 应抛错")
+  捕获 异常 错误F:
+    断言真(含子串(转字符串(错误F), "provider and model must be supplied together"), "2m 只给 provider 抛错文案")
+
+  尝试:
+    设 占位G 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 5000, "provider": "", "model": "m"})
+    断言真(假, "2n 空 provider 应抛错")
+  捕获 异常 错误G:
+    断言真(含子串(转字符串(错误G), "must be non-empty strings"), "2n 空 provider 抛错文案")
+
+  尝试:
+    设 占位H 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 5000, "provider": "exa", "model": ""})
+    断言真(假, "2o 空 model 应抛错")
+  捕获 异常 错误H:
+    断言真(含子串(转字符串(错误H), "must be non-empty strings"), "2o 空 model 抛错文案")
+
+  设 带路线配置 为 校验标题配置({"targetWords": 5, "targetCjkCharacters": 10, "maxInputBytes": 4000, "maxOutputTokens": 100, "timeoutMs": 5000, "provider": "exa", "model": "exa-pro"})
+  断言相等(带路线配置["provider"], "exa", "2p 提供方/模型成对 通过 provider")
+  断言相等(带路线配置["model"], "exa-pro", "2q 提供方/模型成对 通过 model")
+
+  # ---- §3 提示构造与消息选择 ----
+  设 提示 为 标题系统提示(配置)
+  断言真(含子串(提示, "Create a concise title for an AI coding-assistant session from the supplied human messages."), "3a 系统提示 第1行")
+  断言真(含子串(提示, "Return only the title on one line"), "3b 系统提示 第2行")
+  断言真(含子串(提示, "Use the language of the messages."), "3c 系统提示 第3行")
+  断言真(含子串(提示, "Aim for about 5 words in non-CJK languages or 10 CJK characters."), "3d 系统提示 第4行含目标词数/汉字数")
+
+  设 消息一 为 造标题用户消息(1, "修复登录页崩溃")
+  设 消息二 为 造标题用户消息(2, "再加个单测")
+  设 消息表 为 [消息一, 消息二]
+
+  设 组帧 为 组帧消息(消息表)
+  断言真(含子串(组帧, "Generate the session title from this JSON array of human messages:"), "3e 组帧 前缀")
+  断言真(含子串(组帧, "修复登录页崩溃"), "3f 组帧 含消息文本")
+
+  设 首条表 为 选首条消息(消息表)
+  断言相等(长(首条表), 1, "3g 选首条 只留一条")
+  断言相等(首条表[0]["seq"], 1, "3h 选首条 保首条")
+  尝试:
+    设 占位I 为 选首条消息([])
+    断言真(假, "3i 空消息表 选首条应抛错")
+  捕获 异常 错误I:
+    断言真(含子串(转字符串(错误I), "first-prompt title provider requires one human message"), "3i 空消息表 抛错文案")
+
+  设 全部表 为 选全部消息(消息表)
+  断言相等(长(全部表), 2, "3j 选全部 保全部")
+  断言相等(全部表[1]["seq"], 2, "3k 选全部 保序")
+
+  断言相等(长(按模式选消息("first-prompt", 消息表)), 1, "3l 按模式 first-prompt")
+  断言相等(长(按模式选消息("all-prompts", 消息表)), 2, "3m 按模式 all-prompts")
+  尝试:
+    设 占位J 为 按模式选消息("llm-auto", 消息表)
+    断言真(假, "3n 未知模式应抛错")
+  捕获 异常 错误J:
+    断言真(含子串(转字符串(错误J), "unknown automatic mode"), "3n 未知模式 抛错文案")
+
+  # ---- §4 请求/响应形状 ----
+  断言相等(消息序号表(消息表), [1, 2], "4a 消息序号表")
+  断言相等(消息序号表([]), [], "4b 消息序号表 空")
+
+  设 路线 为 {"provider": "exa", "model": "exa-pro"}
+  设 请求载荷 为 造标题请求载荷("llm", 消息表, 路线, 提示, 100)
+  断言相等(请求载荷["titleProvider"], "llm", "4c 请求载荷 titleProvider")
+  断言相等(请求载荷["messageSeqs"], [1, 2], "4d 请求载荷 messageSeqs")
+  断言相等(请求载荷["route"]["model"], "exa-pro", "4e 请求载荷 route")
+  断言相等(请求载荷["system"], 提示, "4f 请求载荷 system")
+  断言相等(请求载荷["messages"][0]["seq"], 1, "4g 请求载荷 messages")
+  断言相等(请求载荷["maxTokens"], 100, "4h 请求载荷 maxTokens")
+
+  断言相等(结束原因错误("stop", 空), 空, "4i 结束原因 stop 无错")
+  断言相等(结束原因错误("error", {"message": "boom"}), "boom", "4j 结束原因 error 取 message")
+  断言相等(结束原因错误("aborted", {"message": "用户中止"}), "用户中止", "4k 结束原因 aborted 取 message")
+  断言真(含子串(结束原因错误("max-tokens", 空), "maxOutputTokens"), "4l 结束原因 max-tokens 文案")
+  断言真(含子串(结束原因错误("tool-calls", 空), "unexpectedly requested a tool"), "4m 结束原因 tool-calls 文案")
+  断言真(含子串(结束原因错误("weird", 空), "unsupported finish reason"), "4n 结束原因 未知文案")
+
+  设 混合块 为 [{"type": "text", "text": "甲"}, {"type": "tool-call", "name": "x"}, {"type": "text", "text": "乙"}]
+  断言相等(拼接文本块(混合块), "甲 乙", "4o 拼接文本块 只取 text 且空格连接")
+  断言相等(拼接文本块([]), "", "4p 拼接文本块 空表")
+  断言相等(含工具调用块(混合块), 真, "4q 含工具调用块 有")
+  断言相等(含工具调用块([{"type": "text", "text": "甲"}]), 假, "4r 含工具调用块 无")
+
+  断言相等(造标题结果("标题", [1], 路线), {"title": "标题", "messageSeqs": [1], "model": 路线}, "4s 造标题结果")
+
+  设 正常块 为 [{"type": "text", "text": "  修复   登录页崩溃  "}]
+  设 完成 为 完成标题调用(正常块, "stop", 空, 消息表, 路线)
+  断言相等(完成["title"], "修复 登录页崩溃", "4t 完成调用 规范化标题（内部空白折叠）")
+  断言相等(完成["messageSeqs"], [1, 2], "4u 完成调用 引用序号")
+  断言相等(完成["model"]["provider"], "exa", "4v 完成调用 路线回填")
+
+  尝试:
+    设 占位K 为 完成标题调用(正常块, "max-tokens", 空, 消息表, 路线)
+    断言真(假, "4w 结束原因非 stop 应抛错")
+  捕获 异常 错误K:
+    断言真(含子串(转字符串(错误K), "maxOutputTokens"), "4w 结束原因非 stop 抛错文案")
+
+  尝试:
+    设 占位L 为 完成标题调用([{"type": "text", "text": "甲"}, {"type": "tool-call", "name": "x"}], "stop", 空, 消息表, 路线)
+    断言真(假, "4x 含工具调用块应抛错")
+  捕获 异常 错误L:
+    断言真(含子串(转字符串(错误L), "must contain text only"), "4x 含工具调用块 抛错文案")
+
+  尝试:
+    设 占位M 为 完成标题调用([{"type": "text", "text": "   "}], "stop", 空, 消息表, 路线)
+    断言真(假, "4y 无正文应抛错")
+  捕获 异常 错误M:
+    断言真(含子串(转字符串(错误M), "produced no text"), "4y 无正文 抛错文案")
+
+  # ---- §5 调用准备 ----
+  断言相等(解析路线(带路线配置, {})["model"], "exa-pro", "5a 解析路线 配置优先")
+  断言相等(解析路线(配置, {"route": 路线})["model"], "exa-pro", "5b 解析路线 视图回退")
+  尝试:
+    设 占位N 为 解析路线(配置, {})
+    断言真(假, "5c 无路线应抛错")
+  捕获 异常 错误N:
+    断言真(含子串(转字符串(错误N), "no logged request route"), "5c 无路线 抛错文案")
+
+  设 已备 为 准备标题调用(配置, {"route": 路线}, 首条表, "first-prompt")
+  断言相等(已备["路线"]["model"], "exa-pro", "5d 准备 路线")
+  断言相等(已备["字节数"], 字节长度(已备["组帧"]), "5e 准备 字节数等于组帧 UTF-8 字节长")
+  断言真(已备["字节数"] > 0, "5f 准备 字节数为正")
+  断言相等(已备["载荷"]["titleProvider"], "first-prompt", "5g 准备 载荷 titleProvider")
+  断言相等(已备["载荷"]["maxTokens"], 100, "5h 准备 载荷 maxTokens 取配置")
+  断言真(含子串(已备["载荷"]["system"], "Create a concise title"), "5i 准备 载荷 system 为系统提示")
+
+  尝试:
+    设 占位O 为 准备标题调用(配置, {"route": 路线}, [], "first-prompt")
+    断言真(假, "5j 空消息应抛错")
+  捕获 异常 错误O:
+    断言真(含子串(转字符串(错误O), "at least one source message is required"), "5j 空消息 抛错文案")
+
+  尝试:
+    设 占位P 为 准备标题调用(造标题配置(5, 10, 1, 100, 5000), {"route": 路线}, 首条表, "first-prompt")
+    断言真(假, "5k 超出 maxInputBytes 应抛错")
+  捕获 异常 错误P:
+    断言真(含子串(转字符串(错误P), "exceeding maxInputBytes"), "5k 超出字节上限 抛错文案")
+
+  # ---- §6 比较/更新 + 事件形状 + 不变量 ----
+  断言相等(标题同值("  修复登录  ", "修复登录"), 真, "6a 同值 首尾空白忽略")
+  断言相等(标题同值("修复  登录", "修复 登录"), 真, "6b 同值 内部空白折叠后相等")
+  断言相等(标题同值("修复登录", "修复退出"), 假, "6c 同值 内容不同")
+  断言相等(需更新标题("修复登录", "修复登录"), 假, "6d 同值不更新")
+  断言相等(需更新标题("修复登录", "修复退出"), 真, "6e 异值需更新")
+
+  设 标题事件 为 造标题事件("修复登录", [1, 2], 造来源提供方("exa", "exa-pro"), 7, 1700000000)
+  断言相等(标题事件["类型"], "session/title", "6f 事件 类型")
+  断言相等(标题事件["序号"], 7, "6g 事件 序号")
+  断言相等(标题事件["时间"], 1700000000, "6h 事件 时间")
+  断言相等(标题事件["数据"]["title"], "修复登录", "6i 事件 数据 title")
+  断言相等(标题事件["数据"]["source"]["kind"], "provider", "6j 事件 数据 source")
+
+  设 用户事件 为 {"序号": 1, "类型": "user/message", "数据": {"source": {"kind": "user"}}}
+  设 助手事件 为 {"序号": 2, "类型": "assistant/message", "数据": {"source": {"kind": "assistant"}}}
+  设 会话视图 为 {"事件表": [用户事件, 助手事件]}
+  断言相等(事件定位(会话视图, 1)["类型"], "user/message", "6k 事件定位 命中")
+  断言相等(事件定位(会话视图, 99), 空, "6l 事件定位 未命中返回空")
+
+  断言相等(校验标题事件(造标题事件("人工改名", [], 造来源用户(), 9, 1), 会话视图), 真, "6m 不变量 user 来源序号表须为空")
+  尝试:
+    设 占位Q 为 校验标题事件(造标题事件("人工改名", [1], 造来源用户(), 9, 1), 会话视图)
+    断言真(假, "6n user 来源带序号应抛错")
+  捕获 异常 错误Q:
+    断言真(含子串(转字符串(错误Q), "must cite no message seqs"), "6n user 来源带序号 抛错文案")
+
+  断言相等(校验标题事件(造标题事件("自动标题", [1], 造来源提供方("exa", "exa-pro"), 9, 1), 会话视图), 真, "6o 不变量 provider 来源须引用更早的人消息")
+  尝试:
+    设 占位R 为 校验标题事件(造标题事件("自动标题", [], 造来源提供方("exa", "exa-pro"), 9, 1), 会话视图)
+    断言真(假, "6p provider 来源无序号应抛错")
+  捕获 异常 错误R:
+    断言真(含子串(转字符串(错误R), "must cite at least one message seq"), "6p provider 来源无序号 抛错文案")
+
+  尝试:
+    设 占位S 为 校验标题事件(造标题事件("自动标题", [-1], 造来源提供方("exa", "exa-pro"), 9, 1), 会话视图)
+    断言真(假, "6q 非法序号应抛错")
+  捕获 异常 错误S:
+    断言真(含子串(转字符串(错误S), "has an invalid message seq"), "6q 非法序号 抛错文案")
+
+  尝试:
+    设 占位T 为 校验标题事件(造标题事件("自动标题", [1, 1], 造来源提供方("exa", "exa-pro"), 9, 1), 会话视图)
+    断言真(假, "6r 重复序号应抛错")
+  捕获 异常 错误T:
+    断言真(含子串(转字符串(错误T), "repeats message seq 1"), "6r 重复序号 抛错文案")
+
+  尝试:
+    设 占位U 为 校验标题事件(造标题事件("自动标题", [2], 造来源提供方("exa", "exa-pro"), 1, 1), 会话视图)
+    断言真(假, "6s 序号不早于事件应抛错")
+  捕获 异常 错误U:
+    断言真(含子串(转字符串(错误U), "must name an earlier human user/message"), "6s 序号不早于事件 抛错文案")
+
+  尝试:
+    设 占位V 为 校验标题事件(造标题事件("自动标题", [2], 造来源提供方("exa", "exa-pro"), 9, 1), 会话视图)
+    断言真(假, "6t 引用非人消息应抛错")
+  捕获 异常 错误V:
+    断言真(含子串(转字符串(错误V), "must name an earlier human user/message"), "6t 引用非人消息 抛错文案")
+
+  # ---- §7 与会话格式词汇表衔接 ----
+  断言相等(标题事件类型(), "session/title", "7a 标题事件类型")
+  断言相等(标题请求事件类型(), "session/title-llm-request", "7b 标题请求事件类型")
+  断言相等(标题事件词汇内(), 假, "7c session/title 未登记入会话格式词汇表")
+  断言相等(标题事件处置(), "未知可忽略", "7d 未登记事件按 v2 未知可忽略处置")
+
+  打印 "test_会话标题族 PASS"
+
+主()

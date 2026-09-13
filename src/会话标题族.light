@@ -1,0 +1,405 @@
+# 会话标题族.light —— 第14轮 任务6：session-title 族（纯逻辑面）复刻
+#
+# 上游：packages/session/session-title/src/{types.ts, invariant.ts}
+#       packages/session/session-title-llm/src/index.ts（配置校验/系统提示/组帧/结束原因/结果装配）
+#       packages/session/session-title-first-prompt-llm/src/index.ts（选首条消息）
+#       packages/session/session-title-all-prompts-llm/src/index.ts（选全部消息）
+#
+# ⚠️ 模块命名说明：`src/会话标题.light` 已被**第49号对标卡**（session-title/normalize：
+#    清理标题文本 / 截断标题Utf8 / 规范化会话标题 / 回退会话标题）占用且已 done，
+#    本模块**只读导入**它复用规范化能力，自身覆盖家族余下未复刻面，故取名「会话标题族」。
+#    对标卡 #97 的映射与命名偏差已在交付报告 §移交清单 登记，由路M 收口裁定。
+#
+# 复刻面（纯逻辑）：
+#   §1 类型形状：来源（fallback/provider/user）、标题载荷、快照、标题输入、用户消息
+#   §2 配置校验：resolveSessionTitleLlmConfig（未知键/正整数/超时上限/provider·model 成对）
+#   §3 提示构造：systemPrompt（逐字 4 行）、frameMessages（JSON 组帧）、按模式选消息
+#   §4 LLM 请求/响应形状：session/title-llm-request 载荷、finishError、文本块拼接、结果装配
+#   §5 调用准备（组帧/字节上限/路线解析）与完成（结束原因/工具块/规范化/空标题）
+#   §6 标题比较与更新判定 + `session/title` 事件形状 + 事件不变量（messageSeqs 空 ⟺ kind=user）
+#   §7 与会话格式词汇表衔接（标题事件是否已登记 / 未知可忽略处置）
+#
+# 宿主面剔除登记（未移植）：client.ts（Cordis 客户端/服务总线/设置注册）、
+#   ctx.llm.stream 实际调用与 timeout deadline、会话 append/投影订阅、SessionTitleProviderId 品牌构造、
+#   BlockAssembler 的流式装配（本模块以「块表 + 结束种类」入参投影）。
+#
+# 任务书扩展登记（上游无对应）：任务书 §1 提出的 source 枚举 'first-prompt'|'all-prompts'|'llm'|'manual'
+#   与「版本号 v1/v2 / createdAt / updatedAt ≤ 上限」不变量 —— 上游实际是
+#   kind: fallback|provider|user + 快照 eventSeq/updatedAt，且不变量是 messageSeqs ⟺ kind=user。
+#   本模块按**上游忠实**实现，偏差在交付报告 §语言差异/行为差异 R14-D6 登记。
+#
+# 命名避坑：标识符不用「为」字（L-084）；避保留字/内建前缀（空/返回/设/是/并/之/包含/输出/字典/父）。
+# 命名避坑（第14轮任务6 新登记）：
+#   - L-119 v4.0 「L0 单字别名」是**静默保留字**（配/己/自/对/段/遍/出/导/跳/过/试/捕/抛/终/返/若/则/否/是/
+#     设/为/从/当/空/长/首/末/余/父/常/并/与/且/或/的/在/到/现/例/步/断/接/承/宏/引/掷/跃/非/真），
+#     误用时被重解析为语句并报「缩进错误」（实测 `打印 配[0]` → `match [0]:` 空体），误导极强；
+#   - L-120 标识符**可被关键字序列完全切分**时仍被切开（`错误己` = 错误+己 → 解析失败），
+#     与 L-084 同族但触发面不同：`错误甲`/`首条表`/`文本长` 安全（不可全切分）。
+#   最小复现：examples/_repro_L119.light / _repro_L120.light（绕法形态 rc=0）。
+
+从 JSON 导入 序列化JSON
+从 溢出 导入 字节长度
+从 会话标题 导入 规范化会话标题
+从 会话格式 导入 已知事件类型
+
+# =====================================================================
+# §0 常量与通用读取
+# =====================================================================
+
+设 事件类型标题 为 "session/title"
+设 事件类型标题请求 为 "session/title-llm-request"
+
+# 上游 SessionTitleSource.kind 三值
+设 来源种类集 为 ["fallback", "provider", "user"]
+
+# 上游 SessionTitleAutomaticMode
+设 自动模式集 为 ["first-prompt", "all-prompts"]
+
+# 上游 SESSION_TITLE_TIMEOUT_CODE
+设 超时码 为 "SESSION_TITLE_TIMEOUT"
+
+# 上游 MAX_TIMER_DELAY_MS（2^31-1）
+设 最大定时器毫秒 为 2147483647
+
+# 上游 Number.MAX_SAFE_INTEGER
+设 安全整数上限 为 9007199254740991
+
+# 上游 resolveSessionTitleLlmConfig 的合法键集
+设 配置键集 为 ["targetWords", "targetCjkCharacters", "maxInputBytes", "maxOutputTokens", "timeoutMs", "provider", "model"]
+
+段落 取字段 接收 表, 键表, 默认值:
+  如果 type(表) != dict:
+    返回 默认值
+  遍历 键 之 键表:
+    如果 字典包含键(表, 键):
+      返回 表[键]
+  返回 默认值
+
+段落 有字段 接收 表, 键表:
+  如果 type(表) != dict:
+    返回 假
+  遍历 键 之 键表:
+    如果 字典包含键(表, 键):
+      返回 真
+  返回 假
+
+段落 连接文本 接收 表, 分隔:
+  设 累积 为 ""
+  设 首 为 真
+  遍历 项 之 表:
+    如果 首:
+      设 累积 为 项
+      设 首 为 假
+    否则:
+      设 累积 为 累积 + 分隔 + 项
+  返回 累积
+
+段落 是正整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  返回 值 > 0
+
+段落 断言正整数 接收 名, 值:
+  如果 是正整数(值) == 假:
+    抛出 新建 错误("session-title-llm: " + 名 + " must be a positive integer")
+  返回 真
+
+# 上游 SessionSeq 校验：安全非负整数
+段落 是安全序号 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  如果 值 < 0:
+    返回 假
+  返回 值 <= 安全整数上限
+
+# =====================================================================
+# §1 类型形状（上游 types.ts）
+# =====================================================================
+
+段落 造来源回退:
+  返回 {"kind": "fallback"}
+
+# 上游：{ kind:'provider', provider, model? }，model 为 { provider, model } 出处
+段落 造来源提供方 接收 提供方, 模型:
+  设 结果 为 {"kind": "provider", "provider": 提供方}
+  如果 type(模型) == str 且 字符串长度(模型) > 0:
+    结果["model"] 为 {"provider": 提供方, "model": 模型}
+  返回 结果
+
+段落 造来源用户:
+  返回 {"kind": "user"}
+
+段落 是合法来源 接收 来源:
+  如果 type(来源) != dict:
+    返回 假
+  设 种 为 取字段(来源, ["kind"], "")
+  遍历 项 之 来源种类集:
+    如果 项 == 种:
+      返回 真
+  返回 假
+
+段落 造标题载荷 接收 标题, 序号表, 来源:
+  返回 {"title": 标题, "messageSeqs": 序号表, "source": 来源}
+
+段落 造标题快照 接收 载荷, 事件序号, 更新时间:
+  设 结果 为 {}
+  遍历 键 之 载荷:
+    结果[键] 为 载荷[键]
+  结果["eventSeq"] 为 事件序号
+  结果["updatedAt"] 为 更新时间
+  返回 结果
+
+段落 造标题用户消息 接收 序号, 文本:
+  返回 {"seq": 序号, "text": 文本}
+
+# 上游 TitleInputState：首条 / 计数 / 末序号
+段落 造标题输入 接收 首条, 计数, 末序号:
+  返回 {"first": 首条, "count": 计数, "lastSeq": 末序号}
+
+# =====================================================================
+# §2 配置校验（上游 resolveSessionTitleLlmConfig）
+# =====================================================================
+
+段落 校验标题配置 接收 配置:
+  如果 type(配置) != dict:
+    抛出 新建 错误("session-title-llm: configuration is required")
+  遍历 键 之 配置:
+    设 已知 为 假
+    遍历 好键 之 配置键集:
+      如果 好键 == 键:
+        设 已知 为 真
+    如果 已知 == 假:
+      抛出 新建 错误("session-title-llm: unknown config key \"" + 键 + "\"")
+  断言正整数("targetWords", 取字段(配置, ["targetWords"], 空))
+  断言正整数("targetCjkCharacters", 取字段(配置, ["targetCjkCharacters"], 空))
+  断言正整数("maxInputBytes", 取字段(配置, ["maxInputBytes"], 空))
+  断言正整数("maxOutputTokens", 取字段(配置, ["maxOutputTokens"], 空))
+  断言正整数("timeoutMs", 取字段(配置, ["timeoutMs"], 空))
+  如果 配置["timeoutMs"] > 最大定时器毫秒:
+    抛出 新建 错误("session-title-llm: timeoutMs must not exceed " + 转字符串(最大定时器毫秒))
+  设 有提供方 为 字典包含键(配置, "provider")
+  设 有模型 为 字典包含键(配置, "model")
+  如果 有提供方 != 有模型:
+    抛出 新建 错误("session-title-llm: provider and model must be supplied together")
+  如果 有提供方 == 真:
+    如果 type(配置["provider"]) != str 或 字符串长度(配置["provider"]) == 0:
+      抛出 新建 错误("session-title-llm: provider and model overrides must be non-empty strings")
+    如果 type(配置["model"]) != str 或 字符串长度(配置["model"]) == 0:
+      抛出 新建 错误("session-title-llm: provider and model overrides must be non-empty strings")
+  设 副本 为 {}
+  遍历 键 之 配置:
+    副本[键] 为 配置[键]
+  返回 副本
+
+段落 造标题配置 接收 目标词数, 目标汉字数, 最大输入字节, 最大输出令牌, 超时毫秒:
+  返回 {"targetWords": 目标词数, "targetCjkCharacters": 目标汉字数, "maxInputBytes": 最大输入字节, "maxOutputTokens": 最大输出令牌, "timeoutMs": 超时毫秒}
+
+# =====================================================================
+# §3 提示构造（上游 systemPrompt / frameMessages / 消息选择）
+# =====================================================================
+
+# 上游 systemPrompt：逐字 4 行
+段落 标题系统提示 接收 配置:
+  设 行表 为 []
+  列表追加(行表, "Create a concise title for an AI coding-assistant session from the supplied human messages.")
+  列表追加(行表, "Return only the title on one line, **in plain text of natural language**, with no quotes, prefix, explanation, Markdown, XML, or terminal control codes. No code is allowed.")
+  列表追加(行表, "Use the language of the messages.")
+  列表追加(行表, "Aim for about " + 转字符串(配置["targetWords"]) + " words in non-CJK languages or " + 转字符串(配置["targetCjkCharacters"]) + " CJK characters.")
+  返回 连接文本(行表, "\n")
+
+# 上游 frameMessages：JSON 组帧，用户文本无法破坏结构分隔符
+段落 组帧消息 接收 消息表:
+  返回 "Generate the session title from this JSON array of human messages:\n" + 序列化JSON(消息表)
+
+# 上游 first-prompt 选择器
+段落 选首条消息 接收 消息表:
+  如果 type(消息表) != list:
+    抛出 新建 错误("first-prompt title provider requires one human message")
+  如果 长(消息表) == 0:
+    抛出 新建 错误("first-prompt title provider requires one human message")
+  返回 [消息表[0]]
+
+# 上游 all-prompts 选择器
+段落 选全部消息 接收 消息表:
+  设 副本 为 []
+  遍历 项 之 消息表:
+    列表追加(副本, 项)
+  返回 副本
+
+段落 按模式选消息 接收 模式, 消息表:
+  如果 模式 == "first-prompt":
+    返回 选首条消息(消息表)
+  如果 模式 == "all-prompts":
+    返回 选全部消息(消息表)
+  抛出 新建 错误("session-title-llm: unknown automatic mode " + 转字符串(模式))
+
+# =====================================================================
+# §4 请求/响应形状（上游 session/title-llm-request 载荷 + finishError + 结果装配）
+# =====================================================================
+
+段落 消息序号表 接收 消息表:
+  设 结果 为 []
+  遍历 消息 之 消息表:
+    列表追加(结果, 取字段(消息, ["seq"], 空))
+  返回 结果
+
+# 上游 append('session/title-llm-request', {...}) 的事件数据
+段落 造标题请求载荷 接收 标题提供方, 消息表, 路线, 系统提示, 最大令牌:
+  设 结果 为 {}
+  结果["titleProvider"] 为 标题提供方
+  结果["messageSeqs"] 为 消息序号表(消息表)
+  结果["route"] 为 路线
+  结果["system"] 为 系统提示
+  结果["messages"] 为 消息表
+  结果["maxTokens"] 为 最大令牌
+  返回 结果
+
+# 上游 finishError：结束原因 → 错误文案（stop 无错）
+段落 结束原因错误 接收 结束种类, 失败:
+  如果 结束种类 == "stop":
+    返回 空
+  如果 结束种类 == "error" 或 结束种类 == "aborted":
+    返回 取字段(失败, ["message"], "")
+  如果 结束种类 == "max-tokens":
+    返回 "session-title-llm: title output reached maxOutputTokens"
+  如果 结束种类 == "tool-calls":
+    返回 "session-title-llm: title model unexpectedly requested a tool"
+  返回 "session-title-llm: unsupported finish reason \"" + 转字符串(结束种类) + "\""
+
+# 上游：blocks.filter(text).map(text).join(' ')
+段落 拼接文本块 接收 块表:
+  设 段 为 []
+  遍历 块 之 块表:
+    如果 取字段(块, ["type"], "") == "text":
+      列表追加(段, 取字段(块, ["text"], ""))
+  返回 连接文本(段, " ")
+
+段落 含工具调用块 接收 块表:
+  遍历 块 之 块表:
+    如果 取字段(块, ["type"], "") == "tool-call":
+      返回 真
+  返回 假
+
+段落 造标题结果 接收 标题, 序号表, 路线:
+  返回 {"title": 标题, "messageSeqs": 序号表, "model": 路线}
+
+# 上游 generateSessionTitleWithLlm 的纯逻辑尾段
+段落 完成标题调用 接收 块表, 结束种类, 失败, 选中消息, 路线:
+  设 错 为 结束原因错误(结束种类, 失败)
+  如果 type(错) == str 且 字符串长度(错) > 0:
+    抛出 新建 错误(错)
+  如果 含工具调用块(块表):
+    抛出 新建 错误("session-title-llm: title output must contain text only")
+  设 标题 为 规范化会话标题(拼接文本块(块表), 安全整数上限)
+  如果 字符串长度(标题) == 0:
+    抛出 新建 错误("session-title-llm: title model produced no text")
+  返回 造标题结果(标题, 消息序号表(选中消息), 路线)
+
+# =====================================================================
+# §5 调用准备（上游：空消息校验 → 组帧 → 字节上限 → 路线解析 → 载荷）
+# =====================================================================
+
+段落 解析路线 接收 配置, 请求视图:
+  如果 有字段(配置, ["provider"]) 且 有字段(配置, ["model"]):
+    返回 {"provider": 配置["provider"], "model": 配置["model"]}
+  设 路线 为 取字段(请求视图, ["route", "路线"], 空)
+  如果 路线 == 空:
+    抛出 新建 错误("session-title-llm: no logged request route is available; configure provider and model together")
+  返回 路线
+
+段落 准备标题调用 接收 配置, 请求视图, 选中消息, 标题提供方:
+  如果 长(选中消息) == 0:
+    抛出 新建 错误("session-title-llm: at least one source message is required")
+  设 组帧 为 组帧消息(选中消息)
+  设 字节数 为 字节长度(组帧)
+  如果 字节数 > 配置["maxInputBytes"]:
+    抛出 新建 错误("session-title-llm: input is " + 转字符串(字节数) + " bytes, exceeding maxInputBytes " + 转字符串(配置["maxInputBytes"]))
+  设 路线 为 解析路线(配置, 请求视图)
+  设 载荷 为 造标题请求载荷(标题提供方, 选中消息, 路线, 标题系统提示(配置), 配置["maxOutputTokens"])
+  设 结果 为 {}
+  结果["组帧"] 为 组帧
+  结果["字节数"] 为 字节数
+  结果["路线"] 为 路线
+  结果["载荷"] 为 载荷
+  返回 结果
+
+# =====================================================================
+# §6 比较/更新判定 + 事件形状 + 事件不变量（上游 invariant.ts）
+# =====================================================================
+
+# 上游：新标题与旧标题规范化后相等则不更新
+段落 标题同值 接收 甲, 乙:
+  返回 规范化会话标题(甲, 安全整数上限) == 规范化会话标题(乙, 安全整数上限)
+
+段落 需更新标题 接收 旧标题, 新标题:
+  返回 标题同值(旧标题, 新标题) == 假
+
+# 上游 session/title 事件：log-only
+段落 造标题事件 接收 标题, 序号表, 来源, 序号, 时间:
+  设 事件 为 {}
+  事件["类型"] 为 事件类型标题
+  事件["序号"] 为 序号
+  事件["时间"] 为 时间
+  事件["数据"] 为 造标题载荷(标题, 序号表, 来源)
+  返回 事件
+
+段落 事件定位 接收 会话视图, 序号:
+  遍历 事件 之 取字段(会话视图, ["事件表", "events"], []):
+    如果 取字段(事件, ["序号", "seq"], 空) == 序号:
+      返回 事件
+  返回 空
+
+# 上游 invariant.validate：messageSeqs 空 ⟺ source.kind === 'user'
+#   并逐条校验：安全序号 / 不重复 / 必须指向更早的「人」user/message
+段落 校验标题事件 接收 事件, 会话视图:
+  设 数据 为 取字段(事件, ["数据", "data"], {})
+  设 来源 为 取字段(数据, ["source"], {})
+  设 序号表 为 取字段(数据, ["messageSeqs"], [])
+  设 事件序号 为 取字段(事件, ["序号", "seq"], 0)
+  设 来源种 为 取字段(来源, ["kind"], "")
+  设 序号数 为 长(序号表)
+  设 用户改 为 来源种 == "user"
+  如果 (序号数 == 0) != 用户改:
+    如果 用户改:
+      抛出 新建 错误("session/title event " + 转字符串(事件序号) + " with source \"user\" must cite no message seqs; got " + 转字符串(序号数))
+    抛出 新建 错误("session/title event " + 转字符串(事件序号) + " with source \"" + 来源种 + "\" must cite at least one message seq; got 0")
+  设 见过 为 {}
+  遍历 序 之 序号表:
+    如果 是安全序号(序) == 假:
+      抛出 新建 错误("session/title event " + 转字符串(事件序号) + " has an invalid message seq " + 转字符串(序))
+    如果 字典包含键(见过, 序):
+      抛出 新建 错误("session/title event " + 转字符串(事件序号) + " repeats message seq " + 转字符串(序))
+    见过[序] 为 真
+    设 被引 为 空
+    如果 序 < 事件序号:
+      设 被引 为 事件定位(会话视图, 序)
+    设 可用 为 假
+    如果 被引 != 空:
+      设 被引型 为 取字段(被引, ["类型", "type"], "")
+      设 被引数据 为 取字段(被引, ["数据", "data"], {})
+      设 被引源 为 取字段(被引数据, ["source"], {})
+      如果 被引型 == "user/message" 且 取字段(被引源, ["kind"], "") == "user":
+        设 可用 为 真
+    如果 可用 == 假:
+      抛出 新建 错误("session/title event " + 转字符串(事件序号) + " message seq " + 转字符串(序) + " must name an earlier human user/message")
+  返回 真
+
+# =====================================================================
+# §7 与会话格式词汇表衔接
+# =====================================================================
+
+段落 标题事件类型:
+  返回 事件类型标题
+
+段落 标题请求事件类型:
+  返回 事件类型标题请求
+
+# 上游 session/title 是否为「已知事件类型」
+段落 标题事件词汇内:
+  返回 已知事件类型(事件类型标题)
+
+# 不在词汇表则按 v2 语义「未知可忽略」处置（上游 known-event-types 未收录 session/title）
+段落 标题事件处置:
+  如果 标题事件词汇内():
+    返回 "已登记"
+  返回 "未知可忽略"
