@@ -1,0 +1,20 @@
+# test_L095.light —— L-095 最小复现：HMAC_SHA256 非标准实现
+# 缺陷：HMAC_SHA256 实为单轮 PBKDF2，密钥未走 ipad/opad，与标准 HMAC-SHA256 不一致。
+# 当前（修复前）：立红（对拍不一致）
+# 修复后：与 Python 标准库 hmac.new(key, msg, sha256) 输出一致（期望值离线预计算）
+# 期望值1 = hmac.new("密钥", "消息", sha256).hexdigest()
+# 期望值2 = hmac.new(b"key", b"The quick brown fox jumps over the lazy dog", sha256).hexdigest()
+
+从 哈希 导入 HMAC_SHA256
+
+设 结果甲 为 HMAC_SHA256("密钥", "消息")
+打印 结果甲
+如果 结果甲 != "51785c6051c3d60392c441ada800662e64a027761ff96d71237c51da0eb25020":
+    抛出 新建 错误("L-095 对拍失败: 消息/密钥 与标准 HMAC 不一致")
+
+设 结果乙 为 HMAC_SHA256("key", "The quick brown fox jumps over the lazy dog")
+打印 结果乙
+如果 结果乙 != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8":
+    抛出 新建 错误("L-095 对拍失败: RFC 用例与标准 HMAC 不一致")
+
+打印 "test_L095 PASS"
