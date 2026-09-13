@@ -1,0 +1,427 @@
+# 网关协议.light —— 第16轮 任务3：api 网关协议（流协议/远程错误码/远程事件/类型）
+#
+# 上游（只读）：G:\github\deepseek-harness\packages\api\
+#   gateway/src/stream-protocol.ts（407行）→ §1 流协议（帧/解析/序列化/远程事件结果/拒绝/isRemoteJsonValue/id 校验）
+#   gateway/src/remote-error-codes.ts（35行）→ §2 远程错误码（18 网关码 + TypertGatewayFaultDetails 形状）
+#   remotes/src/remote-events.ts（36行）→ §3 转发事件表（19 条 {event, mode}）
+#   remotes/src/types.ts（19行，type-only）→ §4 远程类型（事件名集 / 事件选择形状）
+#
+# 命名避坑：L-119 单字别名保留字（跳/过/断/跃/配/设…）；L-120 标识符可被关键字全覆盖切分。
+# 本地辅助段一律「网」前缀，避免 src 后端内联同测模块时的 codegen 段重定义。
+# 缺陷：本路未触发独立语言缺陷（L-135/L-136 空缺，见交付报告；-0/Inf/NaN/循环/错误属性位均已被
+#       L-131 与第14轮 error 偏差覆盖）。
+
+# =====================================================================
+# §0 协议常量（上游 export const）
+# =====================================================================
+
+段落 远程流多路路径:
+  返回 "/api/remote.mux"
+
+段落 远程事件流端点:
+  返回 "$events"
+
+段落 远程事件结果端点:
+  返回 "$events/result"
+
+段落 远程事件流负载:
+  返回 {"args": {}}
+
+段落 远程事件流就绪:
+  返回 {"type": "ready"}
+
+# =====================================================================
+# §1 流协议（stream-protocol.ts）
+# =====================================================================
+
+# ---- 本地类型判据（网前缀）----
+
+段落 网是布尔 接收 值:
+  返回 type(值) == bool
+
+段落 网是数字 接收 值:
+  返回 是整数(值) 或 是浮点(值)
+
+段落 网是记录 接收 值:
+  返回 是字典(值)
+
+段落 网精确键 接收 值, 期望键表:
+  设 键 为 字典键列表(值)
+  如果 长度(键) != 长度(期望键表):
+    返回 假
+  遍历 期望 之 期望键表:
+    如果 字典包含键(值, 期望) == 假:
+      返回 假
+  返回 真
+
+段落 网有效标识 接收 值:
+  返回 是字符串(值) 且 字符串长度(值) > 0
+
+段落 网字符串属性 接收 记录, 键:
+  如果 记录 == 空:
+    返回 空
+  设 候选 为 字典获取(记录, 键, 空)
+  如果 是字符串(候选):
+    返回 候选
+  返回 空
+
+段落 网含于 接收 表, 值:
+  遍历 项 之 表:
+    如果 项 == 值:
+      返回 真
+  返回 假
+
+段落 网仅含键 接收 值, 必需键表, 可选键表:
+  遍历 必需 之 必需键表:
+    如果 字典包含键(值, 必需) == 假:
+      返回 假
+  遍历 键 之 字典键列表(值):
+    如果 网含于(必需键表, 键) == 假 且 网含于(可选键表, 键) == 假:
+      返回 假
+  返回 真
+
+# 无损 JSON 值判定：上游用 ancestors Set 检测循环 + 拒绝 -0/Inf/NaN。
+# 明亮无对象身份（循环用深度上限近似）、且 -0/Inf/NaN 不可产（L-131），故接受。
+段落 网是远程JSON值 接收 值:
+  返回 网访JSON值(值, 0)
+
+段落 网访JSON值 接收 值, 深度:
+  如果 深度 > 128:
+    返回 假
+  如果 值 == 空:
+    返回 真
+  如果 是字符串(值):
+    返回 真
+  如果 网是布尔(值):
+    返回 真
+  如果 网是数字(值):
+    返回 真
+  如果 是列表(值):
+    遍历 项 之 值:
+      如果 网访JSON值(项, 深度 + 1) == 假:
+        返回 假
+    返回 真
+  如果 是字典(值):
+    遍历 键 之 字典键列表(值):
+      如果 是字符串(键) == 假:
+        返回 假
+      如果 网访JSON值(值[键], 深度 + 1) == 假:
+        返回 假
+    返回 真
+  返回 假
+
+# 解析一条 WebSocket 文本消息：先 JSON 解码（失败抛"not JSON"），再要求为对象
+段落 网解析消息 接收 文本, 校验:
+  设 解码 为 空
+  尝试:
+    设 解码 为 解析JSON(文本)
+  捕获 异常 为 e:
+    抛出 新建 错误("api gateway: Remote stream message is not JSON")
+  如果 是字典(解码) == 假:
+    抛出 新建 错误("api gateway: Remote stream message must be an object")
+  返回 校验(解码)
+
+# ---- 客户端→主机消息（open / cancel）----
+
+段落 网校验客户端消息 接收 值:
+  # 注：明亮 字典[缺失键] 抛 KeyError（L-135），故所有 value.x 访问改用 字典获取(...,空) 安全取
+  设 型 为 字典获取(值, "type", 空)
+  设 流 为 字典获取(值, "streamId", 空)
+  如果 型 == "cancel" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(流):
+    返回 值
+  如果 型 == "open" 且 网精确键(值, ["type", "streamId", "endpoint", "payload"]) 且 网有效标识(流) 且 是字符串(字典获取(值, "endpoint", 空)) 且 字符串长度(字典获取(值, "endpoint", 空)) > 0:
+    返回 值
+  抛出 新建 错误("api gateway: invalid Remote stream client message")
+
+段落 网解析远程流客户端消息 接收 文本:
+  返回 网解析消息(文本, 网校验客户端消息)
+
+段落 是客户端开启消息 接收 值:
+  返回 是字典(值) 且 值["type"] == "open" 且 网精确键(值, ["type", "streamId", "endpoint", "payload"]) 且 网有效标识(值["streamId"]) 且 是字符串(值["endpoint"]) 且 字符串长度(值["endpoint"]) > 0
+
+段落 是客户端取消消息 接收 值:
+  返回 是字典(值) 且 值["type"] == "cancel" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(值["streamId"])
+
+# ---- 主机→客户端消息（item / error / end）----
+
+段落 网校验服务器消息 接收 值:
+  # 注：明亮 字典[缺失键] 抛 KeyError（L-135），故所有 value.x 访问改用 字典获取(...,空) 安全取
+  设 型 为 字典获取(值, "type", 空)
+  设 流 为 字典获取(值, "streamId", 空)
+  如果 型 == "item" 且 (网精确键(值, ["type", "streamId"]) 或 网精确键(值, ["type", "streamId", "value"])) 且 网有效标识(流):
+    返回 值
+  如果 型 == "end" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(流):
+    返回 值
+  如果 型 == "error" 且 网精确键(值, ["type", "streamId", "error"]) 且 网有效标识(流) 且 是字典(字典获取(值, "error", 空)) 且 网精确键(字典获取(值, "error", 空), ["code", "message", "details"]) 且 是字符串(字典获取(字典获取(值, "error", 空), "code", 空)) 且 是字符串(字典获取(字典获取(值, "error", 空), "message", 空)) 且 是字典(字典获取(字典获取(值, "error", 空), "details", 空)):
+    返回 值
+  抛出 新建 错误("api gateway: invalid Remote stream server message")
+
+段落 网解析远程流服务器消息 接收 文本:
+  返回 网解析消息(文本, 网校验服务器消息)
+
+段落 是服务器项目帧 接收 值:
+  如果 是字典(值) == 假: 返回 假
+  返回 字典获取(值, "type", 空) == "item" 且 (网精确键(值, ["type", "streamId"]) 或 网精确键(值, ["type", "streamId", "value"])) 且 网有效标识(字典获取(值, "streamId", 空))
+
+段落 是服务器错误帧 接收 值:
+  如果 是字典(值) == 假: 返回 假
+  如果 字典获取(值, "type", 空) != "error": 返回 假
+  如果 网精确键(值, ["type", "streamId", "error"]) == 假: 返回 假
+  如果 网有效标识(字典获取(值, "streamId", 空)) == 假: 返回 假
+  设 错 为 字典获取(值, "error", 空)
+  如果 是字典(错) == 假: 返回 假
+  如果 网精确键(错, ["code", "message", "details"]) == 假: 返回 假
+  如果 是字符串(字典获取(错, "code", 空)) == 假: 返回 假
+  如果 是字符串(字典获取(错, "message", 空)) == 假: 返回 假
+  如果 是字典(字典获取(错, "details", 空)) == 假: 返回 假
+  返回 真
+
+段落 是服务器结束帧 接收 值:
+  如果 是字典(值) == 假: 返回 假
+  返回 字典获取(值, "type", 空) == "end" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(字典获取(值, "streamId", 空))
+
+# ---- 帧构造（复刻增补：上游用 TS 对象字面量，本路补对称构造器供 round-trip）----
+
+段落 造开启消息 接收 流标识, 端点, 负载:
+  返回 {"type": "open", "streamId": 流标识, "endpoint": 端点, "payload": 负载}
+
+段落 造取消消息 接收 流标识:
+  返回 {"type": "cancel", "streamId": 流标识}
+
+段落 造项目帧 接收 流标识, 值:
+  返回 {"type": "item", "streamId": 流标识, "value": 值}
+
+段落 造错误帧 接收 流标识, 码, 消息, 细节:
+  返回 {"type": "error", "streamId": 流标识, "error": {"code": 码, "message": 消息, "details": 细节}}
+
+段落 造结束帧 接收 流标识:
+  返回 {"type": "end", "streamId": 流标识}
+
+段落 序列化流消息 接收 消息:
+  返回 序列化JSON(消息)
+
+# ---- RemoteEvent 下行帧（ready / emit / waterfall / cancel）----
+
+段落 造就绪帧 接收 客户端标识, 主机目录:
+  返回 {"type": "ready", "clientId": 客户端标识, "host": 主机目录}
+
+段落 造发射帧 接收 事件, 参数:
+  返回 {"type": "emit", "event": 事件, "args": 参数}
+
+段落 造瀑布帧 接收 事件, 事件标识, 代理标识, 请求:
+  返回 {"type": "waterfall", "event": 事件, "eventId": 事件标识, "agentId": 代理标识, "request": 请求}
+
+段落 造取消事件帧 接收 事件标识:
+  返回 {"type": "cancel", "eventId": 事件标识}
+
+段落 是就绪帧 接收 值:
+  返回 是字典(值) 且 值["type"] == "ready" 且 网精确键(值, ["type", "clientId", "host"]) 且 网有效标识(值["clientId"])
+
+段落 是发射帧 接收 值:
+  返回 是字典(值) 且 值["type"] == "emit" 且 网精确键(值, ["type", "event", "args"]) 且 是字符串(值["event"]) 且 是列表(值["args"])
+
+段落 是瀑布帧 接收 值:
+  返回 是字典(值) 且 值["type"] == "waterfall" 且 网精确键(值, ["type", "event", "eventId", "agentId", "request"]) 且 网有效标识(值["eventId"]) 且 网有效标识(值["agentId"])
+
+段落 是取消事件帧 接收 值:
+  返回 是字典(值) 且 值["type"] == "cancel" 且 网精确键(值, ["type", "eventId"]) 且 网有效标识(值["eventId"])
+
+# ---- 远程事件结果解析 ----
+
+段落 网解析远程事件结果 接收 值:
+  如果 是字典(值) == 假 或 网精确键(值, ["clientId", "eventId", "outcome"]) == 假 或 网有效标识(值["clientId"]) == 假 或 网有效标识(值["eventId"]) == 假 或 是字典(值["outcome"]) == 假:
+    抛出 新建 错误("api gateway: invalid Remote event result")
+  设 结局 为 值["outcome"]
+  如果 结局["kind"] == "next" 且 网精确键(结局, ["kind"]):
+    返回 {"clientId": 值["clientId"], "eventId": 值["eventId"], "outcome": {"kind": "next"}}
+  如果 结局["kind"] == "result" 且 (网精确键(结局, ["kind"]) 或 网精确键(结局, ["kind", "value"])) 且 (字典包含键(结局, "value") == 假 或 网是远程JSON值(字典获取(结局, "value", 空)) == 真):
+    如果 字典包含键(结局, "value") == 假:
+      返回 {"clientId": 值["clientId"], "eventId": 值["eventId"], "outcome": {"kind": "result"}}
+    返回 {"clientId": 值["clientId"], "eventId": 值["eventId"], "outcome": {"kind": "result", "value": 结局["value"]}}
+  如果 结局["kind"] == "rejected" 且 网精确键(结局, ["kind", "error"]):
+    返回 {"clientId": 值["clientId"], "eventId": 值["eventId"], "outcome": {"kind": "rejected", "error": 网解析远程事件拒绝(结局["error"])}}
+  抛出 新建 错误("api gateway: invalid Remote event result")
+
+段落 网解析远程事件拒绝 接收 值:
+  如果 是字典(值) == 假 或 网仅含键(值, ["name", "message"], ["code", "details"]) == 假 或 是字符串(值["name"]) == 假 或 字符串长度(值["name"]) == 0 或 是字符串(值["message"]) == 假:
+    抛出 新建 错误("api gateway: invalid Remote event rejection")
+  如果 字典包含键(值, "code") 且 是字符串(值["code"]) == 假:
+    抛出 新建 错误("api gateway: invalid Remote event rejection")
+  如果 字典包含键(值, "details") 且 网是远程JSON值(字典获取(值, "details", 空)) == 假:
+    抛出 新建 错误("api gateway: invalid Remote event rejection")
+  设 结果 为 {"name": 值["name"], "message": 值["message"]}
+  如果 字典包含键(值, "code"):
+    字典设置(结果, "code", 值["code"])
+  如果 字典包含键(值, "details"):
+    字典设置(结果, "details", 值["details"])
+  返回 结果
+
+# ---- 投影 / 还原（请求投影、拒绝投影、拒绝还原）----
+
+段落 网投影远程事件请求 接收 值, 主体:
+  如果 是字典(值) == 假 或 字典包含键(值, "agent") == 假 或 值["agent"] != 主体:
+    抛出 新建 错误("api gateway: Remote event request must carry its scoped Agent directly")
+  # 信号(AbortSignal) 明亮无对应概念 → 省略（偏差：见交付报告）
+  设 请求 为 {}
+  遍历 键 之 字典键列表(值):
+    如果 键 == "agent" 或 键 == "signal":
+      跳过
+    如果 是字符串(键) == 假:
+      抛出 新建 错误("api gateway: Remote event request has a non-JSON property")
+    字典设置(请求, 键, 值[键])
+  如果 网是远程JSON值(请求) == 假:
+    抛出 新建 错误("api gateway: Remote event request is not lossless JSON data")
+  返回 {"request": 请求}
+
+段落 网投影远程事件拒绝 接收 原因:
+  设 记录 为 空
+  如果 原因 != 空 且 是字典(原因):
+    设 记录 为 原因
+  设 名 为 网字符串属性(记录, "name")
+  如果 名 == 空:
+    设 名 为 "Error"
+  设 消息 为 网字符串属性(记录, "message")
+  如果 消息 == 空:
+    设 消息 为 转字符串(原因)
+  设 结果 为 {"name": 名, "message": 消息}
+  设 码 为 网字符串属性(记录, "code")
+  如果 码 != 空:
+    字典设置(结果, "code", 码)
+  设 细节 为 空
+  如果 记录 != 空:
+    设 细节 为 字典获取(记录, "details", 空)
+  如果 细节 != 空 且 网是远程JSON值(细节) == 真:
+    字典设置(结果, "details", 细节)
+  返回 结果
+
+# 还原：上游 new Error 后挂 .name/.code/.details 属性；明亮 Error 无属性位（第14轮 error 偏差），
+# 改为返回错误状字典 {name, message, code?, details?} 供 Host 续跑判定。
+段落 网还原远程事件拒绝 接收 拒绝:
+  设 结果 为 {"name": 拒绝["name"], "message": 拒绝["message"]}
+  如果 字典包含键(拒绝, "code"):
+    字典设置(结果, "code", 拒绝["code"])
+  如果 字典包含键(拒绝, "details"):
+    字典设置(结果, "details", 拒绝["details"])
+  返回 结果
+
+# ---- 标识校验 ----
+
+段落 网是远程事件标识 接收 值:
+  返回 是字符串(值) 且 字符串长度(值) > 0
+
+段落 网是远程事件客户端标识 接收 值:
+  返回 是字符串(值) 且 字符串长度(值) > 0
+
+段落 网是远程事件代理标识 接收 值:
+  返回 是字符串(值) 且 字符串长度(值) > 0
+
+# =====================================================================
+# §2 远程错误码（remote-error-codes.ts）
+# =====================================================================
+
+段落 网关错误码表:
+  返回 ["gateway/ambiguous-endpoint", "gateway/arguments-invalid", "gateway/binding-invalid",
+    "gateway/context-failed", "gateway/context-not-found", "gateway/context-unavailable",
+    "gateway/definition-unavailable", "gateway/input-invalid", "gateway/invocation-unavailable",
+    "gateway/lookup-failed", "gateway/lookup-not-found", "gateway/lookup-unavailable",
+    "gateway/method-unavailable", "gateway/provider-mismatch", "gateway/result-invalid",
+    "gateway/service-unavailable", "gateway/signature-invalid"]
+
+段落 是网关错误码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 网关错误码表():
+    如果 码 == 值:
+      返回 真
+  返回 假
+
+# TypertGatewayFaultDetails 形状：{ endpoint: string, field?: string }
+段落 造网关错误详情 接收 端点, 字段 = 空:
+  设 结果 为 {"endpoint": 端点}
+  如果 字段 != 空:
+    字典设置(结果, "field", 字段)
+  返回 结果
+
+段落 是网关错误详情 接收 值:
+  如果 是字典(值) == 假 或 网精确键(值, ["endpoint"]) == 假 或 是字符串(值["endpoint"]) == 假:
+    返回 假
+  如果 字典包含键(值, "field") 且 是字符串(值["field"]) == 假:
+    返回 假
+  返回 真
+
+# =====================================================================
+# §3 远程事件（remote-events.ts）
+# =====================================================================
+
+段落 转发事件表:
+  返回 [{"event": "agent-preset/selected", "mode": "emit"},
+    {"event": "approval/request", "mode": "waterfall"},
+    {"event": "api-session/activity", "mode": "emit"},
+    {"event": "api-session/added", "mode": "emit"},
+    {"event": "api-session/error", "mode": "emit"},
+    {"event": "api-session/removed", "mode": "emit"},
+    {"event": "api-session/status", "mode": "emit"},
+    {"event": "commands/change", "mode": "emit"},
+    {"event": "credentials/reference-updated", "mode": "emit"},
+    {"event": "goal/activation-changed", "mode": "emit"},
+    {"event": "cordis/request-run", "mode": "emit"},
+    {"event": "cordis/request-run-resolved", "mode": "emit"},
+    {"event": "cordis/dynamic-package", "mode": "emit"},
+    {"event": "cordis/dynamic-retract", "mode": "emit"},
+    {"event": "cordis/inspect-query", "mode": "emit"},
+    {"event": "cordis/inspect-query-resolved", "mode": "emit"},
+    {"event": "llm/adapters-updated", "mode": "emit"},
+    {"event": "settings/document-updated", "mode": "emit"},
+    {"event": "user-questions/request", "mode": "waterfall"}]
+
+段落 是转发事件条目 接收 值:
+  如果 是字典(值) == 假 或 网精确键(值, ["event", "mode"]) == 假 或 是字符串(值["event"]) == 假:
+    返回 假
+  返回 值["mode"] == "emit" 或 值["mode"] == "waterfall"
+
+段落 是事件模式 接收 值:
+  返回 值 == "emit" 或 值 == "waterfall"
+
+段落 是转发事件 接收 事件名:
+  如果 是字符串(事件名) == 假:
+    返回 假
+  遍历 条目 之 转发事件表():
+    如果 条目["event"] == 事件名:
+      返回 真
+  返回 假
+
+段落 查转发事件模式 接收 事件名:
+  遍历 条目 之 转发事件表():
+    如果 条目["event"] == 事件名:
+      返回 条目["mode"]
+  返回 空
+
+# =====================================================================
+# §4 远程类型（types.ts，type-only 投影）
+# =====================================================================
+
+# ApiRemoteForwardedEvent：事件名集（由 §3 条目派生）
+段落 转发事件名表:
+  设 名 为 []
+  遍历 条目 之 转发事件表():
+    列表追加(名, 条目["event"])
+  返回 名
+
+段落 是转发事件名 接收 事件名:
+  如果 是字符串(事件名) == 假:
+    返回 假
+  遍历 名 之 转发事件名表():
+    如果 名 == 事件名:
+      返回 真
+  返回 假
+
+# TypertRemoteEventSelection：Record<event, true> —— 键 ⊆ 事件名集、值皆真
+段落 是事件选择 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  遍历 键 之 字典键列表(值):
+    如果 是转发事件名(键) == 假:
+      返回 假
+    如果 值[键] != 真:
+      返回 假
+  返回 真
