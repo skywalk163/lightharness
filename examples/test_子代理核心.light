@@ -1,0 +1,267 @@
+# test_子代理核心.light —— 第16轮 任务1（subagent 子代理核心 上）判据
+# 上游：packages/subagent/subagent/src/{catalog,descriptor,depth,error,assistant-output,inbox}.ts
+# 运行：cd lightharness && python 运行.py examples/test_子代理核心.light
+# 反跑：_antirun_t1_子代理核心.py（A 目录投影不看继承切点 / B 深度不再取较大值 / C 描述符版本改错）
+
+从 子代理核心 导入 目录载荷版本, 目录模式表, 是目录模式, 是目录条目, 造目录条目
+从 子代理核心 导入 造目录行, 是目录行, 目录状态版本, 目录投影初值, 应用目录事件, 目录条目表
+从 子代理核心 导入 校验目录状态, 是合法目录状态, 造目录确立载荷
+从 子代理核心 导入 描述符版本, 描述符基础键表, 描述符可续键表, 工具过滤键表, 是工具过滤
+从 子代理核心 导入 是单次描述符, 是可续描述符, 是描述符, 造描述符, 解析描述符, 折叠描述符, 解析工具过滤
+从 子代理核心 导入 读委托深度, 校验最大深度, 是合法最大深度
+从 子代理核心 导入 子代理错误名, 子代理错误码表, 是子代理错误码, 子代理错误消息, 造子代理错误, 是子代理错误
+从 子代理核心 导入 合并助手流文本, 收集助手文本, 归一助手输出
+从 子代理核心 导入 交付方式表, 是交付方式, 造收件箱, 是收件箱, 收件箱积压, 收件箱投递, 收件箱关闭, 读收件箱关闭
+
+段落 断言相等 接收 实际, 期望, 信息:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言真 接收 条件, 信息:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败：" + 信息)
+  返回 真
+
+段落 含文本 接收 文本, 子串:
+  设 n 为 字符串长度(文本)
+  设 m 为 字符串长度(子串)
+  设 i 为 0
+  当 i + m <= n:
+    如果 截取(文本, i, i + m) == 子串:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+# 抛错判据（零参段落作实参 + 消息子串）
+段落 应抛错 接收 动作, 标签:
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    动作()
+  捕获 异常 为 e:
+    设 抛了 为 真
+    设 消息 为 转字符串(e)
+  如果 抛了 == 假:
+    抛出 新建 错误("应抛错未抛：" + 标签)
+  返回 消息
+
+段落 抛非字典描述符:
+  解析描述符([1, 2])
+
+段落 抛描述符版本非数值:
+  解析描述符({"version": "3", "mode": "one-shot", "provider": "p"})
+
+段落 抛描述符模式非法:
+  解析描述符({"version": 3, "mode": "weird", "provider": "p"})
+
+段落 抛描述符未知字段:
+  解析描述符({"version": 3, "mode": "one-shot", "provider": "p", "extra": 1})
+
+段落 抛描述符缺提供方:
+  解析描述符({"version": 3, "mode": "one-shot"})
+
+段落 抛可续描述符未知字段:
+  解析描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l", "zzz": 1})
+
+段落 抛工具过滤无声明:
+  解析工具过滤({})
+
+段落 抛工具过滤非数组:
+  解析工具过滤({"allow": "x"})
+
+段落 抛深度负数:
+  读委托深度(0, -1)
+
+段落 抛深度非整数:
+  读委托深度(0, 1.5)
+
+段落 抛最大深度负数:
+  校验最大深度(-2)
+
+段落 抛描述符不可序列化:
+  设 负零 为 0.0 * (0 - 1)
+  造描述符({"mode": "continuable", "provider": "p", "label": "l", "persona": 负零})
+
+段落 抛关闭投递:
+  设 箱 为 造收件箱("agent-1")
+  收件箱关闭(箱)
+  收件箱投递(箱, "m", "queue")
+
+段落 主:
+  打印 "===== 第 16 轮任务 1：subagent 子代理核心（上）====="
+
+  # ---- §1 父侧目录 ----
+  断言相等(目录载荷版本(), 0, "1a 目录载荷版本")
+  断言相等(目录模式表(), ["one-shot", "continuable"], "1b 目录模式表")
+  断言相等(是目录模式("one-shot"), 真, "1c 合法模式")
+  断言相等(是目录模式("resumable"), 假, "1d 非法模式")
+  断言相等(是目录模式(1), 假, "1e 非串模式")
+
+  设 单次条目 为 造目录条目("one-shot", "child-1", 100)
+  断言相等(单次条目, {"version": 0, "childId": "child-1", "childCreatedAt": 100, "mode": "one-shot"},
+    "1f 造目录条目 one-shot 无标签不落键")
+  设 单次带标签 为 造目录条目("one-shot", "child-1", 100, "任务A")
+  断言相等(单次带标签["label"], "任务A", "1g 造目录条目 one-shot 带标签")
+  设 可续条目 为 造目录条目("continuable", "child-2", 200, "会话B")
+  断言相等(可续条目["label"], "会话B", "1h 可续条目标签")
+  断言相等(是目录条目(单次条目), 真, "1i 是目录条目 one-shot")
+  断言相等(是目录条目(可续条目), 真, "1j 是目录条目 continuable")
+  断言相等(是目录条目({"version": 1, "childId": "c", "childCreatedAt": 0, "mode": "one-shot"}), 假, "1k 版本不符拒绝")
+  断言相等(是目录条目({"version": 0, "childId": "", "childCreatedAt": 0, "mode": "one-shot"}), 假, "1l 空标识拒绝")
+  断言相等(是目录条目({"version": 0, "childId": "c", "childCreatedAt": -1, "mode": "one-shot"}), 假, "1m 负创建时间拒绝")
+  断言相等(是目录条目({"version": 0, "childId": "c", "childCreatedAt": 0, "mode": "continuable"}), 假, "1n 可续缺标签拒绝")
+  断言相等(是目录条目({"version": 0, "childId": "c", "childCreatedAt": 0, "mode": "one-shot", "label": 7}), 假, "1o 标签非串拒绝")
+
+  设 目录行 为 造目录行(可续条目)
+  断言相等(目录行, {"id": "child-2", "createdAt": 200, "mode": "continuable", "label": "会话B"},
+    "1p 造目录行 键序/内容")
+  断言相等(字典包含键(造目录行(单次条目), "label"), 假, "1q 无标签行不落 label")
+  断言相等(是目录行(目录行), 真, "1r 是目录行")
+  断言相等(是目录行({"id": "c", "createdAt": 0, "mode": "continuable"}), 假, "1s 行缺标签拒绝")
+
+  断言相等(目录状态版本(), 2, "1t 目录状态版本")
+  断言相等(目录投影初值(7), {"inheritedEventCount": 7}, "1u 投影初值")
+  设 目录初值 为 目录投影初值(0)
+  断言相等(应用目录事件(目录初值, {"type": "session/other", "seq": 0, "data": {}}), 目录初值,
+    "1v 非目录事件 状态原样")
+  断言相等(应用目录事件(目录初值, {"type": "subagent/catalog", "seq": 0, "data": 单次条目})["head"],
+    [单次条目], "1w 目录事件 追加头")
+  断言相等(应用目录事件(目录投影初值(5),
+    {"type": "subagent/catalog", "seq": 3, "data": 单次条目}), {"inheritedEventCount": 5},
+    "1x 继承切点 忽略继承内事件")
+  设 目录状态 为 应用目录事件(目录初值, {"type": "subagent/catalog", "seq": 0, "data": 可续条目})
+  断言相等(目录条目表(目录状态), [目录行], "1y 条目表 与行一致")
+  断言相等(校验目录状态(目录状态), "", "1z 状态合法")
+  断言相等(校验目录状态({"active": []}), "subagent catalog state is missing inheritedEventCount", "1A 状态缺字段")
+  断言相等(含文本(校验目录状态({"inheritedEventCount": -1}), "non-negative"), 真, "1B 负继承数")
+  断言相等(含文本(校验目录状态({"inheritedEventCount": 0, "head": [{"x": 1}]}), "invalid"), 真, "1C 头条目非法")
+  断言相等(是合法目录状态(目录状态), 真, "1D 是合法目录状态")
+  断言相等(造目录确立载荷("child-9", 900, {"mode": "one-shot"})["childId"], "child-9", "1E 目录确立载荷")
+
+  # ---- §2 描述符 ----
+  断言相等(描述符版本(), 3, "2a 描述符版本")
+  断言相等(描述符基础键表(), ["version", "mode", "provider", "label"], "2b 基础键表")
+  断言相等(长度(描述符可续键表()), 9, "2c 可续键表长度")
+  断言相等(工具过滤键表(), ["allow", "deny"], "2d 工具过滤键表")
+  断言相等(是工具过滤({"allow": ["a"]}), 真, "2e 工具过滤 allow")
+  断言相等(是工具过滤({"deny": ["a", "b"]}), 真, "2f 工具过滤 deny")
+  断言相等(是工具过滤({}), 假, "2g 工具过滤 无声明拒绝")
+  断言相等(是工具过滤({"allow": ["a"], "zzz": 1}), 假, "2h 工具过滤 未知键拒绝")
+  断言相等(是工具过滤({"allow": "a"}), 假, "2i 工具过滤 非数组拒绝")
+
+  断言相等(是单次描述符({"version": 3, "mode": "one-shot", "provider": "p"}), 真, "2j 单次描述符")
+  断言相等(是单次描述符({"version": 3, "mode": "one-shot", "provider": "p", "label": "l"}), 真, "2k 单次描述符 带标签")
+  断言相等(是单次描述符({"version": 3, "mode": "one-shot", "provider": "p", "persona": "x"}), 假, "2l 单次描述符 未知键拒绝")
+  断言相等(是单次描述符({"version": 2, "mode": "one-shot", "provider": "p"}), 假, "2m 单次描述符 版本不符")
+  断言相等(是可续描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l"}), 真, "2n 可续描述符")
+  断言相等(是可续描述符({"version": 3, "mode": "continuable", "provider": "p"}), 假, "2o 可续描述符 缺标签")
+  断言相等(是可续描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l",
+    "toolFilter": {"allow": ["a"]}}), 真, "2p 可续描述符 带工具过滤")
+  断言相等(是可续描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l",
+    "toolFilter": {}}), 假, "2q 可续描述符 坏工具过滤")
+  断言相等(是描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l"}), 真, "2r 是描述符")
+
+  断言相等(造描述符({"mode": "one-shot", "provider": "p"}),
+    {"version": 3, "mode": "one-shot", "provider": "p"}, "2s 造描述符 单次 无标签")
+  断言相等(造描述符({"mode": "one-shot", "provider": "p", "label": "发起A"})["label"], "发起A", "2t 造描述符 单次 带标签")
+  设 可续快照 为 造描述符({"mode": "continuable", "provider": "p", "label": "l", "agentModel": "m",
+    "persona": "人格", "toolFilter": {"deny": ["x"]}})
+  断言相等(可续快照["agentModel"], "m", "2u 造描述符 可续 带模型")
+  断言相等(可续快照["toolFilter"], {"deny": ["x"]}, "2v 造描述符 可续 工具过滤")
+  断言相等(字典包含键(可续快照, "agentProvider"), 假, "2w 造描述符 缺省可选键不落")
+
+  断言相等(解析描述符({"version": 2, "mode": "one-shot", "provider": "p"}), 空, "2x 解析 旧版本 → 空")
+  断言相等(解析描述符({"version": 3, "mode": "one-shot", "provider": "p"})["mode"], "one-shot", "2y 解析 单次")
+  断言相等(解析描述符({"version": 3, "mode": "continuable", "provider": "p", "label": "l",
+    "toolFilter": {"allow": ["a"]}})["toolFilter"], {"allow": ["a"]}, "2z 解析 可续 工具过滤")
+  断言相等(含文本(应抛错(抛非字典描述符, "非字典"), "must be an object"), 真, "2A 解析 非字典抛错")
+  断言相等(含文本(应抛错(抛描述符版本非数值, "版本非数值"), "must be a number"), 真, "2B 解析 版本非数值抛错")
+  断言相等(含文本(应抛错(抛描述符模式非法, "模式非法"), "one-shot"), 真, "2C 解析 模式非法抛错")
+  断言相等(含文本(应抛错(抛描述符未知字段, "未知字段"), "unknown field"), 真, "2D 解析 未知键抛错")
+  断言相等(含文本(应抛错(抛描述符缺提供方, "缺提供方"), "provider"), 真, "2E 解析 缺 provider 抛错")
+  断言相等(含文本(应抛错(抛可续描述符未知字段, "可续未知字段"), "unknown field"), 真, "2F 解析 可续未知键抛错")
+  断言相等(含文本(应抛错(抛工具过滤无声明, "工具过滤无声明"), "allow and/or deny"), 真, "2G 工具过滤 无声明抛错")
+  断言相等(含文本(应抛错(抛工具过滤非数组, "工具过滤非数组"), "array of strings"), 真, "2H 工具过滤 非数组抛错")
+  断言相等(含文本(应抛错(抛描述符不可序列化, "不可序列化"), "JSON-serializable"), 真, "2I 造描述符 不可序列化抛错")
+
+  断言相等(折叠描述符([]), 空, "2J 折叠 空事件 → 空")
+  断言相等(折叠描述符([{"type": "session/other", "seq": 0}]), 空, "2K 折叠 无描述符事件 → 空")
+  断言相等(折叠描述符([{"type": "subagent/descriptor", "seq": 0, "data":
+    {"version": 3, "mode": "one-shot", "provider": "p"}}])["mode"], "one-shot",
+    "2L 折叠 首条描述符")
+  断言相等(折叠描述符([{"type": "subagent/descriptor", "seq": 0, "data":
+    {"version": 3, "mode": "continuable", "provider": "p", "label": "首选"}},
+    {"type": "subagent/descriptor", "seq": 1, "data":
+    {"version": 3, "mode": "continuable", "provider": "q", "label": "后条"}}])["provider"], "p",
+    "2M 折叠 首条权威")
+
+  # ---- §3 委托深度 ----
+  断言相等(读委托深度(空, 空), 0, "3a 深度 双空为 0")
+  断言相等(读委托深度(2, 空), 2, "3b 深度 仅头部")
+  断言相等(读委托深度(空, 3), 3, "3c 深度 仅运行时")
+  断言相等(读委托深度(2, 5), 5, "3d 深度 运行时更深取运行时")
+  断言相等(读委托深度(6, 1), 6, "3e 深度 头部更深取头部（单调不可降）")
+  断言相等(含文本(应抛错(抛深度负数, "深度负数"), "non-negative safe integer"), 真, "3f 深度 负数抛错")
+  断言相等(含文本(应抛错(抛深度非整数, "深度非整数"), "non-negative safe integer"), 真, "3g 深度 非整数抛错")
+  断言相等(校验最大深度(空), 真, "3h 最大深度 可缺省")
+  断言相等(校验最大深度(4), 真, "3i 最大深度 合法")
+  断言相等(含文本(应抛错(抛最大深度负数, "最大深度负数"), "non-negative safe integer"), 真, "3j 最大深度 负数抛错")
+  断言相等(是合法最大深度(空), 真, "3k 是合法最大深度 缺省")
+  断言相等(是合法最大深度(0), 真, "3l 是合法最大深度 零")
+  断言相等(是合法最大深度(-1), 假, "3m 是合法最大深度 负数拒绝")
+
+  # ---- §4 错误 ----
+  断言相等(子代理错误名(), "SubagentError", "4a 错误名")
+  断言相等(子代理错误码表(), ["ACTIVATION_CLOSING"], "4b 错误码表")
+  断言相等(是子代理错误码("ACTIVATION_CLOSING"), 真, "4c 命中错误码")
+  断言相等(是子代理错误码("OTHER"), 假, "4d 未知错误码")
+  断言相等(子代理错误消息("被拒绝", "ACTIVATION_CLOSING"), "被拒绝 [ACTIVATION_CLOSING]", "4e 错误消息拼接")
+  设 错值 为 造子代理错误("被拒绝", "ACTIVATION_CLOSING")
+  断言相等(错值, {"name": "SubagentError", "message": "被拒绝", "code": "ACTIVATION_CLOSING"}, "4f 造错误形状")
+  断言相等(是子代理错误(错值), 真, "4g 是子代理错误")
+  断言相等(是子代理错误({"name": "Error", "message": "x", "code": "ACTIVATION_CLOSING"}), 假, "4h 名字不符拒绝")
+
+  # ---- §5 助手输出 ----
+  断言相等(合并助手流文本(["a", "b", "c"]), "abc", "5a 合并流文本")
+  断言相等(合并助手流文本([]), "", "5b 合并空流")
+  断言相等(收集助手文本([{"type": "text", "text": "甲"}, {"type": "image"},
+    {"type": "text", "text": "乙"}]), "甲乙", "5c 收集文本块")
+  断言相等(归一助手输出([]), 空, "5d 空事件 → 空输出")
+  设 消息事件 为 {"type": "assistant/message", "seq": 0,
+    "data": {"message": {"content": [{"type": "text", "text": "最终"}]}, "stream": ["x"]}}
+  断言相等(归一助手输出([消息事件]), [{"type": "text", "text": "最终"}], "5e 末条非空消息优先")
+  设 空消息事件 为 {"type": "assistant/message", "seq": 1,
+    "data": {"message": {"content": []}, "stream": ["y"]}}
+  断言相等(归一助手输出([消息事件, 空消息事件]), [{"type": "text", "text": "最终"}],
+    "5f 空消息不覆盖非空输出")
+  断言相等(归一助手输出([{"type": "assistant/attempt", "seq": 0, "data": {"stream": ["甲", "乙"]}}]),
+    [{"type": "text", "text": "甲乙"}], "5g 无消息回落累计流文本")
+  断言相等(归一助手输出([{"type": "assistant/attempt", "seq": 0, "data": {"stream": [""]}}]), 空,
+    "5h 空流回落为空")
+
+  # ---- §6 收件箱 ----
+  断言相等(交付方式表(), ["queue", "steer"], "6a 交付方式表")
+  断言相等(是交付方式("steer"), 真, "6b 合法交付方式")
+  断言相等(是交付方式("push"), 假, "6c 非法交付方式")
+  设 箱 为 造收件箱("agent-1")
+  断言相等(箱["代理标识"], "agent-1", "6d 收件箱 代理标识")
+  断言相等(是收件箱(箱), 真, "6e 是收件箱")
+  断言相等(收件箱积压(箱), 假, "6f 空箱无积压")
+  断言相等(收件箱投递(箱, "消息甲", "steer"), 真, "6g 投递 steer")
+  断言相等(长度(箱["下一步"]), 1, "6h steer 进下一步")
+  断言相等(收件箱积压(箱), 真, "6i 有积压")
+  断言相等(收件箱投递(箱, "消息乙", "queue"), 真, "6j 投递 queue")
+  断言相等(长度(箱["下轮"]), 1, "6k queue 进下轮")
+  断言相等(长度(箱["下一步"]), 1, "6l steer 队列未被 queue 污染")
+  断言相等(读收件箱关闭(箱), 假, "6m 初始未关闭")
+  断言相等(收件箱关闭(箱), 真, "6n 首次关闭生效")
+  断言相等(读收件箱关闭(箱), 真, "6o 关闭后状态")
+  断言相等(收件箱关闭(箱), 假, "6p 重复关闭幂等为假")
+  设 关箱 为 造收件箱("agent-2")
+  收件箱关闭(关箱)
+  设 关闭投递消息 为 应抛错(抛关闭投递, "关闭后投递")
+  断言相等(含文本(关闭投递消息, "ACTIVATION_CLOSING"), 真, "6q 关闭投递抛错含错误码")
+  断言相等(含文本(关闭投递消息, "was not accepted"), 真, "6r 关闭投递抛错文案")
+
+  打印 "test_子代理核心 PASS"
