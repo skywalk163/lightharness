@@ -1,0 +1,689 @@
+# 附件反馈.light —— 第15轮 任务3：attachment + feedback 纯逻辑面复刻
+#
+# 上游（G:\github\deepseek-harness）：
+#   packages/attachment/attachment/src/brand.ts            → §1 附件标识品牌
+#   packages/attachment/attachment/src/types.ts            → §2 类型与形状
+#   packages/attachment/attachment/src/admission.ts        → §3 wire 准入（规范 base64）
+#   packages/attachment/attachment/src/request-projection.ts → §4 请求投影几何
+#   packages/attachment/attachment/src/error.ts            → §5 附件错误族
+#   packages/feedback/command-feedback/src/{types,index}.ts → §6 会话级反馈
+#   packages/feedback/message-feedback/src/{types,index}.ts → §7 消息级反馈
+#
+# 只读复用（不重复实现）：
+#   src/附件准入.light（第48号卡，已 1:1 覆盖 admission.ts 的「规范 base64 判定 / 解码字节长度」，
+#     并已随第11轮补齐 判定规范base64按策略 / 解码校验 / 规整文件名 / 存文件输入 / 造文件引用 /
+#     准入编码文件）。本模块**导入**其 是规范base64 与 解码字节长度 作为准入判据底座，
+#     避免第二份实现漂移；附件批次限额语义见该模块 校验图片批次。
+#
+# 剔除登记（不复刻）：attachment/index.ts（Cordis Service 装配面）、attachment-local/（宿主面：
+#   压缩/编码/sharp/Node fs）、*/tests 与 fixtures；feedback 的 SessionFeedbackService /
+#   MessageFeedbackService（Cordis Remote 服务与持久化事务）、apply() 命令注册。
+#
+# 语言缺陷：L-125 —— 内建 四舍五入 用银行家舍入（round-half-even），与 JS Math.round（half-up）不一致，
+#   直接命中 request-projection.ts 的 Math.round 移植。绕法见 取整半数上。
+#   最小复现：examples/_repro_L125.light（绕法形态 rc=0）。
+#
+# 命名避坑：L-119 单字别名保留字（配/己/自/对/段/遍/出/导/跳/过/试/捕/抛/终/返/若/则/否/是/设/为/
+#   从/当/空/长/首/末/余/父/常/并/与/且/或/的/在/到/现/例/步/断/接/承/宏/引/掷/跃/非/真）；
+#   L-120 标识符可被关键字序列完全切分时仍被切碎。本模块标识符全部避开。
+
+从 附件准入 导入 是规范base64, 解码字节长度
+从 字符串处理 导入 字符转ASCII, 截取
+
+# =====================================================================
+# §1 附件标识品牌（brand.ts）
+# 上游 AttachmentId / ImageVariantId 是 Branded<'...'> 的同一性函数，不校验。
+# 本模块保留同一性语义，另给**项目级**形状判据（上游无此校验，属本研究加强项，
+# 已在交付报告 §语言差异 登记）。
+# =====================================================================
+
+# AttachmentId(value)：同一性品牌
+段落 造附件标识 接收 值:
+  返回 值
+
+# ImageVariantId(value)：同一性品牌
+段落 造变体标识 接收 值:
+  返回 值
+
+# 项目级形状判据：非空字符串，且不含路径分隔符 / 冒号 / 空白（上游注释要求「绝不是文件路径或
+# 带凭证 URL」，故按该不变量给出可测判据）
+段落 是附件标识形状 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  如果 字符串长度(值) == 0:
+    返回 假
+  设 i 为 0
+  设 n 为 字符串长度(值)
+  当 i < n:
+    设 码 为 字符转ASCII(字符串获取(值, i))
+    如果 码 == 47:
+      返回 假
+    如果 码 == 58:
+      返回 假
+    如果 是空白码(码):
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 空白码：tab/LF/VT/FF/CR/space/NBSP/全角空格
+段落 是空白码 接收 码:
+  如果 码 == 9:
+    返回 真
+  如果 码 == 10:
+    返回 真
+  如果 码 == 11:
+    返回 真
+  如果 码 == 12:
+    返回 真
+  如果 码 == 13:
+    返回 真
+  如果 码 == 32:
+    返回 真
+  如果 码 == 160:
+    返回 真
+  如果 码 == 12288:
+    返回 真
+  返回 假
+
+# 修剪首尾空白（纯光明实现：不用 .strip()，避开宿主字符串方法在原生后端的返回 [] 陷阱）
+段落 修剪空白 接收 文本:
+  如果 是字符串(文本) == 假:
+    返回 ""
+  设 n 为 字符串长度(文本)
+  设 首 为 0
+  当 首 < n:
+    如果 是空白码(字符转ASCII(字符串获取(文本, 首))) == 假:
+      跳出
+    设 首 为 首 + 1
+  设 尾 为 尾下标(文本)
+  如果 尾 <= 首:
+    返回 ""
+  返回 截取(文本, 首, 尾)
+
+# 尾部非空白后的下标（独占）
+段落 尾下标 接收 文本:
+  设 n 为 字符串长度(文本)
+  设 尾 为 n
+  当 尾 > 0:
+    如果 是空白码(字符转ASCII(字符串获取(文本, 尾 - 1))) == 假:
+      返回 尾
+    设 尾 为 尾 - 1
+  返回 0
+
+# =====================================================================
+# §2 类型与形状（types.ts）
+# =====================================================================
+
+# ImageMediaType：v1 附件通路接受的栅格图片格式
+段落 图片媒体类型表:
+  返回 ["image/png", "image/jpeg", "image/webp", "image/gif"]
+
+段落 是合法图片媒体类型 接收 值:
+  遍历 媒体 之 图片媒体类型表():
+    如果 值 == 媒体:
+      返回 真
+  返回 假
+
+# 项目级：媒体类型分类（任务书 §测试要求 要求「分类/未知类型默认值」；上游无此函数）
+段落 图片媒体分类 接收 值:
+  如果 是合法图片媒体类型(值):
+    返回 "图片"
+  返回 "未知"
+
+# ImageAttachmentRef 形状：attachmentId + mediaType + bytes + width + height（+ name/originalDimensions）
+段落 是图片附件引用 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["attachmentId", "mediaType", "bytes", "width", "height"]) == 假:
+    返回 假
+  如果 是附件标识形状(值["attachmentId"]) == 假:
+    返回 假
+  如果 是合法图片媒体类型(值["mediaType"]) == 假:
+    返回 假
+  如果 是非负整数(值["bytes"]) == 假:
+    返回 假
+  如果 是正整数(值["width"]) == 假:
+    返回 假
+  如果 是正整数(值["height"]) == 假:
+    返回 假
+  如果 字典包含键(值, "name") == 真 且 是字符串(值["name"]) == 假:
+    返回 假
+  如果 字典包含键(值, "originalDimensions") == 真:
+    设 原 为 值["originalDimensions"]
+    如果 是字典(原) == 假:
+      返回 假
+    如果 字段齐备(原, ["width", "height"]) == 假:
+      返回 假
+    如果 是正整数(原["width"]) == 假 或 是正整数(原["height"]) == 假:
+      返回 假
+  返回 真
+
+# 造图片附件引用（对齐 ImageAttachmentRef 字面形状；name/originalDimensions 可选传 空）
+段落 造图片附件引用 接收 标识, 媒体类型, 字节数, 宽, 高, 名称 = 空, 原宽 = 空, 原高 = 空:
+  设 结果 为 {"attachmentId": 标识, "mediaType": 媒体类型, "bytes": 字节数, "width": 宽, "height": 高}
+  如果 名称 != 空:
+    字典设置(结果, "name", 名称)
+  如果 原宽 != 空 且 原高 != 空:
+    字典设置(结果, "originalDimensions", {"width": 原宽, "height": 原高})
+  返回 结果
+
+# FileAttachmentRef 形状：attachmentId(=sha256 摘要) + name + bytes
+段落 是文件附件引用 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["attachmentId", "name", "bytes"]) == 假:
+    返回 假
+  如果 是附件标识形状(值["attachmentId"]) == 假:
+    返回 假
+  如果 是字符串(值["name"]) == 假 或 字符串长度(值["name"]) == 0:
+    返回 假
+  返回 是非负整数(值["bytes"])
+
+段落 造文件附件引用 接收 标识, 名称, 字节数:
+  返回 {"attachmentId": 标识, "name": 名称, "bytes": 字节数}
+
+# EncodedImageAttachment：mediaType + data(base64) + 可选 name
+段落 是编码图片附件 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["mediaType", "data"]) == 假:
+    返回 假
+  如果 是合法图片媒体类型(值["mediaType"]) == 假:
+    返回 假
+  如果 是字符串(值["data"]) == 假:
+    返回 假
+  返回 是规范BASE64图片(值["data"])
+
+# EncodedFileAttachment：data(base64) + 可选 name；空串是合法零字节载荷
+段落 是编码文件附件 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["data"]) == 假:
+    返回 假
+  如果 是字符串(值["data"]) == 假:
+    返回 假
+  返回 是规范BASE64文件(值["data"])
+
+# ImageAttachmentLimits：部署解析出的限额
+段落 是图片附件限制 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["maxImageBytes", "maxImagesPerMessage", "maxMessageImageBytes", "maxImagePixels", "maxImageDimension", "mediaTypes"]) == 假:
+    返回 假
+  如果 是正整数(值["maxImageBytes"]) == 假:
+    返回 假
+  如果 是正整数(值["maxImagesPerMessage"]) == 假:
+    返回 假
+  如果 是正整数(值["maxMessageImageBytes"]) == 假:
+    返回 假
+  如果 是正整数(值["maxImagePixels"]) == 假:
+    返回 假
+  如果 是正整数(值["maxImageDimension"]) == 假:
+    返回 假
+  如果 是列表(值["mediaTypes"]) == 假:
+    返回 假
+  遍历 媒体 之 值["mediaTypes"]:
+    如果 是合法图片媒体类型(媒体) == 假:
+      返回 假
+  返回 真
+
+段落 造图片附件限制 接收 单张上限, 每消息张数, 消息总上限, 像素上限, 边长上限, 媒体类型表:
+  返回 {"maxImageBytes": 单张上限, "maxImagesPerMessage": 每消息张数,
+    "maxMessageImageBytes": 消息总上限, "maxImagePixels": 像素上限,
+    "maxImageDimension": 边长上限, "mediaTypes": 媒体类型表}
+
+# PromptContentPart / AttachmentAdmissionPart / AdmittedPromptContentPart 种类判别
+段落 提示部件种类表:
+  返回 ["text", "image", "file"]
+
+段落 是提示部件 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假:
+    返回 假
+  设 种 为 值["type"]
+  如果 种 == "text":
+    返回 是字符串(值["text"]) == 真
+  如果 种 == "image":
+    如果 是合法图片媒体类型(值["mediaType"]) == 假:
+      返回 假
+    返回 是字符串(值["data"])
+  如果 种 == "file":
+    如果 字典包含键(值, "attachment") == 假:
+      返回 假
+    返回 是文件附件引用(值["attachment"])
+  返回 假
+
+# 已准入部件：text 原样；image/file 都换成 durable 引用
+段落 是已准入部件 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假:
+    返回 假
+  设 种 为 值["type"]
+  如果 种 == "text":
+    返回 是字符串(值["text"]) == 真
+  如果 种 == "image":
+    如果 字典包含键(值, "attachment") == 假:
+      返回 假
+    返回 是图片附件引用(值["attachment"])
+  如果 种 == "file":
+    如果 字典包含键(值, "attachment") == 假:
+      返回 假
+    返回 是文件附件引用(值["attachment"])
+  返回 假
+
+# 字段齐备：键都在（布尔链用顺序 如果，避开 且 组合）
+段落 字段齐备 接收 值, 键表:
+  遍历 键 之 键表:
+    如果 字典包含键(值, 键) == 假:
+      返回 假
+  返回 真
+
+# 非负整数 / 正整数（对齐上游 Number.isSafeInteger + >= 0 / > 0 的组合判据）
+段落 是非负整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  返回 值 >= 0
+
+段落 是正整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  返回 值 > 0
+
+# =====================================================================
+# §3 wire 准入（admission.ts）
+# 判据底座复用 #48 附件准入.light：是规范base64（字符集/长度/填充/尾比特四判据）、
+# 解码字节长度（组数*3 - 填充数，纯算术）。
+# 上游分派：图片空串 reject（INVALID_IMAGE_BASE64）；文件空串 accept（零字节合法）。
+# =====================================================================
+
+段落 是规范BASE64图片 接收 数据:
+  如果 是字符串(数据) == 假:
+    返回 假
+  如果 字符串长度(数据) == 0:
+    返回 假
+  返回 是规范base64(数据)
+
+段落 是规范BASE64文件 接收 数据:
+  如果 是字符串(数据) == 假:
+    返回 假
+  返回 是规范base64(数据)
+
+# 准入单张图片（decodeCanonicalBase64 + saveInput 的纯逻辑投影）
+段落 准入单张图片 接收 上传:
+  如果 是字典(上传) == 假:
+    返回 {"通过": 假, "错误码": "INVALID_IMAGE_BASE64", "消息": 规范错误消息("INVALID_IMAGE_BASE64"), "字节数": 0}
+  如果 是合法图片媒体类型(上传["mediaType"]) == 假:
+    返回 {"通过": 假, "错误码": "UNSUPPORTED_IMAGE_TYPE", "消息": 规范错误消息("UNSUPPORTED_IMAGE_TYPE"), "字节数": 0}
+  如果 是规范BASE64图片(上传["data"]) == 假:
+    返回 {"通过": 假, "错误码": "INVALID_IMAGE_BASE64", "消息": 规范错误消息("INVALID_IMAGE_BASE64"), "字节数": 0}
+  设 字节数 为 解码字节长度(上传["data"])
+  设 输入 为 {"mediaType": 上传["mediaType"], "字节数": 字节数}
+  如果 字典包含键(上传, "name") == 真:
+    字典设置(输入, "name", 上传["name"])
+  返回 {"通过": 真, "输入": 输入, "字节数": 字节数}
+
+# 准入单个文件（空文件是合法零字节载荷）
+段落 准入单个文件 接收 上传:
+  如果 是字典(上传) == 假:
+    返回 {"通过": 假, "错误码": "INVALID_FILE_BASE64", "消息": 规范错误消息("INVALID_FILE_BASE64"), "字节数": 0}
+  如果 是规范BASE64文件(上传["data"]) == 假:
+    返回 {"通过": 假, "错误码": "INVALID_FILE_BASE64", "消息": 规范错误消息("INVALID_FILE_BASE64"), "字节数": 0}
+  设 输入 为 {"字节数": 解码字节长度(上传["data"])}
+  如果 字典包含键(上传, "name") == 真:
+    字典设置(输入, "name", 上传["name"])
+  返回 {"通过": 真, "输入": 输入, "字节数": 输入["字节数"]}
+
+# 准入图片批次（逐项规范 base64 + 张数/单张/总字节限额，按调用方顺序）
+段落 准入图片批次 接收 上传表, 限制:
+  如果 是列表(上传表) == 假:
+    返回 {"通过": 假, "序号": 0, "错误码": "INVALID_IMAGE_BASE64", "总字节": 0, "张数": 0}
+  设 张数 为 长度(上传表)
+  如果 张数 > 限制["maxImagesPerMessage"]:
+    返回 {"通过": 假, "序号": 0, "错误码": "TOO_MANY_IMAGES", "总字节": 0, "张数": 张数}
+  设 总字节 为 0
+  设 序号 为 0
+  遍历 上传 之 上传表:
+    设 单 为 准入单张图片(上传)
+    如果 单["通过"] == 假:
+      返回 {"通过": 假, "序号": 序号, "错误码": 单["错误码"], "总字节": 总字节, "张数": 张数}
+    如果 单["字节数"] > 限制["maxImageBytes"]:
+      返回 {"通过": 假, "序号": 序号, "错误码": "IMAGE_TOO_LARGE", "总字节": 总字节, "张数": 张数}
+    设 总字节 为 总字节 + 单["字节数"]
+    如果 总字节 > 限制["maxMessageImageBytes"]:
+      返回 {"通过": 假, "序号": 序号, "错误码": "IMAGES_TOO_LARGE", "总字节": 总字节, "张数": 张数}
+    设 序号 为 序号 + 1
+  返回 {"通过": 真, "序号": 0, "错误码": "", "总字节": 总字节, "张数": 张数}
+
+# =====================================================================
+# §4 请求投影几何（request-projection.ts）
+# 上游 Math.min / Math.sqrt / Math.floor / Math.round 逐句对照。
+# L-125 绕法：Math.round → 取整半数上（向下取整(x + 0.5)），不用内建 四舍五入（银行家舍入）。
+# =====================================================================
+
+# JS Math.round 语义（half-up，正数）：floor(x + 0.5)
+段落 取整半数上 接收 x:
+  返回 向下取整(x + 0.5)
+
+# requestImageDimensions：保比整数尺寸 + 硬像素预算；小图不放大
+段落 投影图片尺寸 接收 宽, 高, 最大像素:
+  设 比例 为 最小数(1, 平方根(最大像素 / (宽 * 高)))
+  如果 比例 == 1:
+    返回 {"width": 宽, "height": 高}
+  如果 宽 >= 高:
+    设 投宽 为 最大整数(1, 向下取整(宽 * 比例))
+    设 投高 为 最大整数(1, 取整半数上(投宽 * 高 / 宽))
+    当 投宽 * 投高 > 最大像素:
+      如果 投宽 <= 1:
+        设 投宽 为 1
+        设 投高 为 最大整数(1, 取整半数上(投宽 * 高 / 宽))
+        返回 {"width": 投宽, "height": 投高}
+      设 投宽 为 投宽 - 1
+      设 投高 为 最大整数(1, 取整半数上(投宽 * 高 / 宽))
+    返回 {"width": 投宽, "height": 投高}
+  设 投高 为 最大整数(1, 向下取整(高 * 比例))
+  设 投宽 为 最大整数(1, 取整半数上(投高 * 宽 / 高))
+  当 投宽 * 投高 > 最大像素:
+    如果 投高 <= 1:
+      设 投高 为 1
+      设 投宽 为 最大整数(1, 取整半数上(投高 * 宽 / 高))
+      返回 {"width": 投宽, "height": 投高}
+    设 投高 为 投高 - 1
+    设 投宽 为 最大整数(1, 取整半数上(投高 * 宽 / 高))
+  返回 {"width": 投宽, "height": 投高}
+
+# ImageRequestPolicy（maxPixels/maxBytes）驱动的确定性投影
+段落 投影策略尺寸 接收 宽, 高, 策略:
+  返回 投影图片尺寸(宽, 高, 策略["maxPixels"])
+
+段落 最大整数 接收 a, b:
+  如果 a >= b:
+    返回 a
+  返回 b
+
+段落 最小数 接收 a, b:
+  如果 a <= b:
+    返回 a
+  返回 b
+
+# =====================================================================
+# §5 附件错误族（error.ts）
+# =====================================================================
+
+段落 图片准入错误码表:
+  返回 ["TOO_MANY_IMAGES", "IMAGES_TOO_LARGE", "UNSUPPORTED_IMAGE_TYPE", "INVALID_IMAGE_BASE64",
+    "INVALID_IMAGE", "IMAGE_TYPE_MISMATCH", "IMAGE_TOO_LARGE", "IMAGE_TOO_MANY_PIXELS",
+    "IMAGE_DIMENSION_TOO_LARGE"]
+
+段落 附件错误码表:
+  设 表 为 列表创建()
+  遍历 码 之 图片准入错误码表():
+    列表追加(表, 码)
+  遍历 码 之 ["INVALID_FILE_BASE64", "INVALID_ATTACHMENT_REF", "ATTACHMENT_CORRUPT",
+    "ATTACHMENT_WRITE_FAILED", "ATTACHMENT_NOT_FOUND", "ATTACHMENT_READ_FAILED",
+    "ATTACHMENT_PROJECTION_UNSUPPORTED", "ATTACHMENT_FILES_UNSUPPORTED"]:
+    列表追加(表, 码)
+  返回 表
+
+段落 是图片准入错误码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 图片准入错误码表():
+    如果 值 == 码:
+      返回 真
+  返回 假
+
+段落 是附件错误码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 附件错误码表():
+    如果 值 == 码:
+      返回 真
+  返回 假
+
+# 造 AttachmentError 的可序列化形状（上游 class 的 name/code/message 三字段）
+段落 造附件错误 接收 消息, 码:
+  返回 {"name": "AttachmentError", "message": 消息, "code": 码}
+
+# isAttachmentError：按 code ∈ 附件错误码表 判定（上游按原型链 + code 双重判定，
+# 光明无跨包原型链，按注释「消费方只依据 code 路由」取 code 判据）
+段落 是附件错误 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "code") == 假:
+    返回 假
+  返回 是附件错误码(值["code"])
+
+# isImageAdmissionError：code ∈ 图片准入子集（调用方错误 vs 存储故障的分水岭）
+段落 是图片准入错误 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "code") == 假:
+    返回 假
+  返回 是图片准入错误码(值["code"])
+
+# 上游在 admission.ts 内联的两条 verbatim 文案；其余码上游无文案（返回码本身，不杜撰）
+段落 规范错误消息 接收 码:
+  如果 码 == "INVALID_IMAGE_BASE64":
+    返回 "Image upload is not canonical base64."
+  如果 码 == "INVALID_FILE_BASE64":
+    返回 "File upload is not canonical base64."
+  返回 码
+
+# =====================================================================
+# §6 会话级反馈（command-feedback）
+# =====================================================================
+
+# FEEDBACK_CATEGORIES：产品面展示顺序，每个面自有本地化标签
+段落 反馈类别表:
+  返回 ["task-result", "instruction-following", "product-interaction", "service-stability",
+    "resource-cost", "security-privacy-permission", "other"]
+
+段落 是合法反馈类别 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 类 之 反馈类别表():
+    如果 值 == 类:
+      返回 真
+  返回 假
+
+# USAGE（verbatim）
+段落 反馈用法文案:
+  返回 "Usage: /feedback <text>"
+
+段落 反馈必填文案:
+  返回 "Feedback text is required. " + 反馈用法文案()
+
+# recordFeedback：首尾空白丢弃；空白文本记为缺省；两项皆无仍记录（表示请求复核）
+段落 规范化反馈记录 接收 文本, 类别:
+  设 结果 为 字典创建()
+  设 净 为 修剪空白(文本)
+  如果 字符串长度(净) > 0:
+    字典设置(结果, "text", 净)
+  如果 类别 != 空:
+    字典设置(结果, "category", 类别)
+  返回 结果
+
+# SessionFeedbackRecordValue：{recorded: true}
+段落 造反馈记录确认:
+  返回 {"recorded": 真}
+
+# SessionFeedbackSessionNotFound：{code:'session-not-found', sessionId}
+段落 造反馈会话缺失 接收 会话标识:
+  返回 {"code": "session-not-found", "sessionId": 会话标识}
+
+# SessionFeedbackRecordResult 两分支
+段落 造反馈成功结果 接收 值:
+  返回 {"ok": 真, "value": 值}
+
+段落 造反馈失败结果 接收 错误:
+  返回 {"ok": 假, "error": 错误}
+
+# executeFeedbackCommand 的纯逻辑投影：原文修剪为空 → 用法错误
+段落 反馈命令结果 接收 原文, 会话标识, 匿名标识:
+  如果 字符串长度(修剪空白(原文)) == 0:
+    返回 {"kind": "error", "text": 反馈必填文案()}
+  返回 {"kind": "success", "text": "Feedback recorded for session " + 会话标识
+    + "\nAnonymous user: " + 匿名标识 + "."}
+
+# =====================================================================
+# §7 消息级反馈（message-feedback）
+# =====================================================================
+
+段落 反馈评分表:
+  返回 ["positive", "negative"]
+
+段落 是合法评分 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 评 之 反馈评分表():
+    如果 值 == 评:
+      返回 真
+  返回 假
+
+# 字符串 UTF-8 字节长度（对齐 Buffer.byteLength(note,'utf8')）
+段落 字节数 接收 文本:
+  设 总 为 0
+  设 i 为 0
+  设 n 为 字符串长度(文本)
+  当 i < n:
+    设 码 为 字符转ASCII(字符串获取(文本, i))
+    如果 码 < 128:
+      设 总 为 总 + 1
+    否则:
+      如果 码 < 2048:
+        设 总 为 总 + 2
+      否则:
+        如果 码 < 65536:
+          设 总 为 总 + 3
+        否则:
+          设 总 为 总 + 4
+    设 i 为 i + 1
+  返回 总
+
+# resolveNote：缺省 → 成功(空)；纯空白 → note-blank；超字节上限 → note-too-large；否则成功(原文)
+段落 校验备注 接收 备注, 上限字节:
+  如果 备注 == 空:
+    返回 {"ok": 真, "值": 空}
+  如果 是字符串(备注) == 假:
+    返回 {"ok": 假, "error": {"code": "note-blank"}}
+  如果 字符串长度(修剪空白(备注)) == 0:
+    返回 {"ok": 假, "error": {"code": "note-blank"}}
+  设 实际 为 字节数(备注)
+  如果 实际 > 上限字节:
+    返回 {"ok": 假, "error": {"code": "note-too-large", "maxBytes": 上限字节, "actualBytes": 实际}}
+  返回 {"ok": 真, "值": 备注}
+
+# itemSchema：messageId/rating(+note 非空白)(+category 枚举)/version/createdAt/updatedAt，
+# 且 updatedAt >= createdAt
+段落 是合法反馈项 接收 项:
+  如果 是字典(项) == 假:
+    返回 假
+  如果 字段齐备(项, ["messageId", "rating", "version", "createdAt", "updatedAt"]) == 假:
+    返回 假
+  如果 是字符串(项["messageId"]) == 假 或 字符串长度(项["messageId"]) == 0:
+    返回 假
+  如果 是合法评分(项["rating"]) == 假:
+    返回 假
+  如果 字典包含键(项, "note") == 真:
+    如果 是字符串(项["note"]) == 假:
+      返回 假
+    如果 字符串长度(修剪空白(项["note"])) == 0:
+      返回 假
+  如果 字典包含键(项, "category") == 真 且 是合法反馈类别(项["category"]) == 假:
+    返回 假
+  如果 是字符串(项["version"]) == 假 或 字符串长度(项["version"]) == 0:
+    返回 假
+  如果 是非负整数(项["createdAt"]) == 假:
+    返回 假
+  如果 是非负整数(项["updatedAt"]) == 假:
+    返回 假
+  返回 项["updatedAt"] >= 项["createdAt"]
+
+# 造反馈项：createdAt 继承已有项；updatedAt = max(现在, 已有项.updatedAt)；version 由调用方给
+# （上游用 randomUUID，宿主面剔除；纯逻辑由入参注入）
+# ⚠️ 键序按上游对象字面量顺序构造（messageId, rating, note?, category?, version, createdAt, updatedAt），
+#    避免 L-116（序列化JSON 保留插入序）导致的对拍假红。
+段落 造反馈项 接收 消息标识, 评分, 备注, 类别, 版本, 现在, 已有项:
+  设 创建 为 现在
+  设 更新 为 现在
+  如果 已有项 != 空:
+    设 创建 为 已有项["createdAt"]
+    如果 现在 > 已有项["updatedAt"]:
+      设 更新 为 现在
+    否则:
+      设 更新 为 已有项["updatedAt"]
+  设 项 为 {"messageId": 消息标识, "rating": 评分}
+  如果 备注 != 空:
+    字典设置(项, "note", 备注)
+  如果 类别 != 空:
+    字典设置(项, "category", 类别)
+  字典设置(项, "version", 版本)
+  字典设置(项, "createdAt", 创建)
+  字典设置(项, "updatedAt", 更新)
+  返回 项
+
+# 材料无变化判定：不追加事件、保留原版本
+段落 应跳过写入 接收 已有项, 评分, 备注, 类别:
+  如果 已有项 == 空:
+    返回 假
+  如果 已有项["rating"] != 评分:
+    返回 假
+  设 已有备注 为 空
+  如果 字典包含键(已有项, "note") == 真:
+    设 已有备注 为 已有项["note"]
+  如果 已有备注 != 备注:
+    返回 假
+  设 已有类别 为 空
+  如果 字典包含键(已有项, "category") == 真:
+    设 已有类别 为 已有项["category"]
+  返回 已有类别 == 类别
+
+# 版本比对：请求版本 vs (已有项?.version ?? 空)
+段落 已有版本 接收 已有项:
+  如果 已有项 == 空:
+    返回 空
+  返回 已有项["version"]
+
+段落 是版本冲突 接收 请求版本, 已有项:
+  返回 请求版本 != 已有版本(已有项)
+
+段落 造版本冲突 接收 已有项:
+  如果 已有项 == 空:
+    返回 {"code": "version-conflict", "current": 空}
+  返回 {"code": "version-conflict", "current": 已有项}
+
+# currentItems：fold 会话事件流（put 按 messageId 覆盖、delete 移除、他包事件忽略），
+# 过滤 sessionId，返回首建序（Python 字典保插入序）
+段落 当前反馈项 接收 会话标识, 事件表:
+  设 表 为 字典创建()
+  遍历 事件 之 事件表:
+    设 种类 为 ""
+    如果 字典包含键(事件, "type") == 真:
+      设 种类 为 事件["type"]
+    如果 种类 == "feedback/message-put":
+      设 数据 为 事件["data"]
+      如果 数据["sessionId"] == 会话标识:
+        字典设置(表, 数据["item"]["messageId"], 数据["item"])
+    否则:
+      如果 种类 == "feedback/message-delete":
+        设 数据2 为 事件["data"]
+        如果 数据2["sessionId"] == 会话标识:
+          字典删除(表, 数据2["messageId"])
+  设 结果 为 列表创建()
+  遍历 键 之 字典键列表(表):
+    列表追加(结果, 表[键])
+  返回 结果
+
+# MessageFeedbackFailure code 表（供测试与路由）
+段落 消息反馈失败码表:
+  返回 ["session-not-found", "target-not-found", "version-conflict", "note-blank", "note-too-large"]
+
+段落 是消息反馈失败码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 消息反馈失败码表():
+    如果 值 == 码:
+      返回 真
+  返回 假
