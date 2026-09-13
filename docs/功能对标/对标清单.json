@@ -7,7 +7,8 @@
     "lightharness 已移除 退出码值/收尾进程/会话工厂/补录 等绕法，协程代理.light 恢复正式名 异步代理.light，",
     "缺陷账与验收判据状态已回填。",
     "语言缺陷：光明写不出/写错/绕不过的地方，登记进 docs/功能对标/语言缺陷账.md。",
-    "编号 + 功能名 双字段匹配改状态，只认编号会串条目。"
+    "编号 + 功能名 双字段匹配改状态，只认编号会串条目。",
+    "【第13轮 2026-09-13】新增 #86~#91：str-replace-editor / shell-env / goal-round-driver / session-log-deepseek / authorization / webhook-github 六域纯逻辑复刻；语言缺陷账 L-091~L-103；行为差异清单 R13-D 段。"
   ],
   "版本": "0.1.5-rc.2（a305303422，2026-09-10）；覆盖记录至第7轮（2026-09-11）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
@@ -1597,6 +1598,90 @@
       "本轮目标": "done：#73 未覆盖子包行为对照收口 D1~D10 全部修复；反跑 _antirun_approval.py 3/3 PASS（CRLF 变异串字节级处理）",
       "反跑判据": "A never 策略改 ask→红；B 裁决结果集少一种→红；C hasOpenTurn 判定改错→红",
       "语言缺陷": []
+    },
+    {
+      "编号": 86,
+      "功能": "fs/tool-str-replace-editor 编辑器工具（view/create/str_replace/insert 四命令 + 校验/文案/呈现形状）",
+      "原版包": "packages/fs/tool-str-replace-editor/src/index.ts（531 行）",
+      "光明模块": "src/字符串替换编辑器.light",
+      "状态": "done；0.1.5第13轮：命令集 view/create/str_replace/insert（无 undo）+ 解析目标（空串/非绝对路径文案）+ 格式化文件视图（6 位行号右对齐/view_range 校验族/截断尾注 TRUNCATED_MESSAGE）+ 目录 2 层树（过滤隐藏/node_modules/__pycache__ 按路径码点排序）+ create 已存在拒绝 + str_replace（唯一命中/FS_EDIT_NOT_FOUND 未出现/FS_AMBIGUOUS_EDIT 多命中行号）+ insert 行范围 [0,总行数] + requiredForCommand 门禁 + presentEditorCall 呈现形状（卡片/差异/位置）；宿主面（ctx.fs/沙箱/waterfall/emit/defineTool 注册）入参化剔除",
+      "证据": [
+        "src/字符串替换编辑器.light",
+        "examples/test_字符串替换编辑器.light"
+      ],
+      "本轮目标": "#60 点名未实现收口；对标 #86",
+      "反跑判据": "_antirun_t1_字符串替换编辑器.py 3/3 ALL OK",
+      "语言缺陷": "L-091"
+    },
+    {
+      "编号": 87,
+      "功能": "shell/shell-env 受信环境注册表（DSH_* 快照/枚举）",
+      "原版包": "packages/shell/shell-env/src/index.ts（181 行）+ subprocess/types.ts DSH_ENV_PREFIX + util/home-paths resolveDshHome",
+      "光明模块": "src/外壳环境.light",
+      "状态": "done；0.1.5第13轮：DSH_ENV_PREFIX=DSH_ 三保留键（DSH_HOME/DSH_SHELL/DSH_SESSION_ID）+ 键后缀 ^[A-Z][A-Z0-9_]*$ ASCII 手写判定 + 注册校验链（名唯一/键合法/描述非空/键归属防重复，文案逐条）+ 快照 collect（内置两键/会话id 注入/贡献者按名升序/未声明键与非字符串拒绝/按键序冻结）+ list 扁平化排序 + 注销闭包 + 家目录解析（显式>环境>~/.dsh）；Cordis 宿主面入参化剔除；localeCompare 以码点序近似（行为差异 R13-D1）",
+      "证据": [
+        "src/外壳环境.light",
+        "examples/test_外壳环境.light"
+      ],
+      "本轮目标": "对标 #87",
+      "反跑判据": "_antirun_t2_外壳环境.py 3/3 ALL OK",
+      "语言缺陷": "L-092"
+    },
+    {
+      "编号": 88,
+      "功能": "goal/goal-round-driver 目标轮驱动纯逻辑面（判定族+轮次状态机+提示渲染）",
+      "原版包": "packages/goal/goal-round-driver/src/index.ts（457 行）+ prompt.ts（26 行）",
+      "光明模块": "src/目标轮驱动.light",
+      "状态": "done；0.1.5第13轮：是目标轮来源（kind=goal 且 round>0）+ 同轮/同排队记录（序列化JSON 深比较）+ 取目标引用 + 可驱动栅栏（非停止/代理空闲/无竞争排队）+ 推进一轮状态机（检查点阶段/已有预约让位/未激活返回/round-limit 阻止/轮号=已开+1/queue-failed 阻止）+ 渲染目标轮提示（<goal_round> Objective 序列化 + Round 轮/上限 + 三段固定指令逐字对齐）+ 轮次结束栅栏 4 分支；宿主面（agent/goals/sessions/inbox/pre-step/驱动循环/生命周期/invariant 伴随插件）剔除登记；与 目标折叠.light 内置驱动区块并存，路M 登记待归并决策",
+      "证据": [
+        "src/目标轮驱动.light",
+        "examples/test_目标轮驱动.light"
+      ],
+      "本轮目标": "对标 #88；与 #35 目标折叠驱动区块并存（待归并决策）",
+      "反跑判据": "_antirun_goalround.py 3/3 ALL OK",
+      "语言缺陷": "L-093（与任务4 共用）"
+    },
+    {
+      "编号": 89,
+      "功能": "session/session-log-deepseek 增量会话日志线格式（翻译+水印折叠）",
+      "原版包": "packages/session/session-log-deepseek/src/index.ts（192 行）+ types.ts（90 行）+ invariant.ts（74 行）",
+      "光明模块": "src/会话日志增量.light",
+      "状态": "done；0.1.5第13轮：线头翻译（version/id 字符串化/createdAt + 条件展开 cwd/parentSession/seedLength=继承事件数/origin/delegationDepth/agentPreset）+ 线事件类型分发（system|user|tool 带 surfaceOp+sourceEventSeqs 数字归一/assistant 仅 surfaceOp/未知可忽略不透明保留）+ 线化操作（append 原样/replace 展开）+ 接受水印折叠（增量扫描起点/六步校验序/格式版本安全整数含 -0/水印取最大/会话标识匹配/记忆表缓存写回）+ 构造增量（afterSeq/throughSeq/后缀起点）+ 确认接受（delivery-accepted 事件 4 键）；宿主面（请求扩展注册/prepare 会话查表/accept 真实追加/invariant 伴随插件）剔除登记；继承分叉豁免（invariant.ts:29-33 isOwnSeq）偏差登记未移植",
+      "证据": [
+        "src/会话日志增量.light",
+        "examples/test_会话日志增量.light"
+      ],
+      "本轮目标": "对标 #89",
+      "反跑判据": "_antirun_sesslog.py 3/3 ALL OK",
+      "语言缺陷": "L-093、L-094"
+    },
+    {
+      "编号": 90,
+      "功能": "credentials/authorization 授权链（注册表+校验链+单键单尝试状态机）",
+      "原版包": "packages/credentials/authorization/src/index.ts（534 行）+ types.ts + invariant.ts",
+      "光明模块": "src/授权链.light",
+      "状态": "done；0.1.5第13轮：类型形状（方法/通知/选项/提问 text|secret|select/状态/结算/结果/条目）+ 错误族（授权错误 码族 NO_FLOW/UNKNOWN_METHOD/ALREADY_IN_FLIGHT/NOT_COMMITTED/DUPLICATE_FLOW + 授权被拒错误 DECLINED 仅人拒绝可抛）+ 注册流程（重复键拒绝+注销闭包）+ begin 校验链顺序（NO_FLOW→UNKNOWN_METHOD 方法缺省首方法→ALREADY_IN_FLIGHT→已中止直接 cancelled 不占槽→占槽→尝试→释放→结算广播）+ 尝试（中止竞态/提交观察/notify 与 prompt 包装/提交契约 NOT_COMMITTED）+ 结算广播（监听器失败隔离 普通记日志/INVARIANT 全跑完后重抛）；宿主面（ctx.effect/events.dispatch/credentials 事件/AbortSignal）入参化剔除；中止以布尔标志+处理器表同步模拟",
+      "证据": [
+        "src/授权链.light",
+        "examples/test_授权链.light"
+      ],
+      "本轮目标": "对标 #90",
+      "反跑判据": "_antirun_授权链.py 3/3 ALL OK",
+      "语言缺陷": "L-092（D7 同族）、L-096~L-103（D1-D9）"
+    },
+    {
+      "编号": 91,
+      "功能": "webhook/webhook-github GitHub 签名 webhook 路由纯逻辑面（验签+载荷归一+配置）",
+      "原版包": "packages/webhook/webhook-github/src/{body.ts,handler.ts,index.ts,types.ts}（258 行）",
+      "光明模块": "src/网络钩子GitHub.light",
+      "状态": "done；0.1.5第13轮：错误族 网络钩子HTTP错误（400/401/405/413/415/503 文本回读）+ 内容长度（十进制正则等价手写/超安全整数 413）+ 有界 UTF-8 读体（声明/流累计上限）+ 必需头（headersDistinct 单值非空）+ JSON 内容类型（至多一个 charset）+ 方法门禁 405（allow: POST）+ 签名验证（sha256= 前缀/64 位十六进制/恒定时间比较 max 长循环）/HMAC 走 stdlib 哈希（L-095 pbkdf2 近似，对外对拍须宿主面标准 hmac）+ 载荷归一（JSON 对象非数组/无损）+ 配置校验（source/path 六闸）+ 交付构造（kind github/source/deliveryId/event/receivedAt）+ 十一段门禁链；宿主面（webServer 路由/真实 HTTP 流/凭据读取/派发时间）入参化剔除",
+      "证据": [
+        "src/网络钩子GitHub.light",
+        "examples/test_网络钩子GitHub.light"
+      ],
+      "本轮目标": "对标 #91",
+      "反跑判据": "_antirun_webhookgh.py 3/3 ALL OK",
+      "语言缺陷": "L-095（原登记 L-091 撞号重排）"
     }
   ]
 }
