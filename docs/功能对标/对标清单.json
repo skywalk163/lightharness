@@ -1863,6 +1863,88 @@
         "_antirun_t6_协议深化.py"
       ],
       "本轮目标": "done：ACP MCP/模型控制/语义更新 + 钩子分离/事件/运行器/类型，159断言"
+    },
+    {
+      "编号": 104,
+      "功能": "subagent 子代理核心纯逻辑面（目录/描述符/深度/错误/助手输出/收件箱）",
+      "原版包": "packages/subagent/subagent/src/{catalog.ts,descriptor.ts,depth.ts,error.ts,assistant-output.ts,inbox.ts}（6文件纯逻辑，剔除index.ts/client.ts/child-agent.ts/continuation*.ts/control*.ts/invariant.ts/lifecycle.ts/list-children.ts/out-of-process.ts/projection*.ts/types.ts等宿主面）",
+      "光明模块": "src/子代理核心.light",
+      "状态": "done；0.1.5第16轮：子代理目录(注册/查找/列举/默认)+描述符(SubagentDescriptor形状/字段校验)+深度限制(最大深度/超限判定)+错误类型+助手输出(形状/文本提取/归一)+收件箱(入队/出队/积压判定)；除零抛错非Infinity(L-131)",
+      "证据": [
+        "src/子代理核心.light",
+        "examples/test_子代理核心.light",
+        "examples/_repro_L131.light",
+        "_antirun_t1_子代理核心.py"
+      ],
+      "本轮目标": "done：子代理核心纯逻辑面，覆盖目录/描述符/深度/错误/输出/收件箱"
+    },
+    {
+      "编号": 105,
+      "功能": "subagent 子代理续传+模型选择纯逻辑面（续传消息/控制类型/内部/运行结算/模型选择/选择状态）",
+      "原版包": "packages/subagent/subagent/src/{continuation-messages.ts,control-types.ts,internal.ts,run-settlement.ts}+packages/subagent/tool-subagent/src/{model-selection.ts,model-selection-state.ts}（6文件纯逻辑，剔除tool-subagent/index.ts/invariant.ts/list-models.ts/model-selection-settings.ts宿主面/tool-subagent-control全部宿主面）",
+      "光明模块": "src/子代理续传.light",
+      "状态": "done；0.1.5第16轮：续传消息(ContinuationMessage形状/构造/序列化/判别)+控制类型(ControlMessage/控制指令/控制结果)+内部工具+运行结算(RunSettlement形状/状态转换/结果汇总)+模型选择(候选排序/选择策略/回退)+模型选择状态(状态机/当前模型追踪)；缺chr内置无法生成NUL分隔符(L-133)用序列化JSON数组作唯一键绕法",
+      "证据": [
+        "src/子代理续传.light",
+        "examples/test_子代理续传.light",
+        "examples/_repro_L133.light",
+        "_antirun_t2_子代理续传.py"
+      ],
+      "本轮目标": "done：子代理续传+模型选择纯逻辑面"
+    },
+    {
+      "编号": 106,
+      "功能": "api 网关协议纯逻辑面（流协议/远程错误码/远程事件/类型）",
+      "原版包": "packages/api/gateway/src/{stream-protocol.ts,remote-error-codes.ts}+packages/api/remotes/src/{remote-events.ts,types.ts}（4文件纯逻辑，剔除gateway/index.ts/stream-server.ts/types.ts宿主面/remotes/index.ts宿主面）",
+      "光明模块": "src/网关协议.light",
+      "状态": "done；0.1.5第16轮：流协议(StreamProtocol帧格式/序列化round-trip/消息类型判别/数据帧/心跳帧/错误帧/流控制序列号)+远程错误码(错误码表/码到消息映射/类别判别)+远程事件(RemoteEvent形状/判别/构造)+远程类型；字典缺失键抛KeyError非undefined短路(L-135)用字典获取(值,键,空)安全取值绕法",
+      "证据": [
+        "src/网关协议.light",
+        "examples/test_网关协议.light",
+        "examples/_repro_L135.light",
+        "_antirun_t3_网关协议.py"
+      ],
+      "本轮目标": "done：api网关协议纯逻辑面，流协议407行大文件"
+    },
+    {
+      "编号": 107,
+      "功能": "api 会话控制器纯逻辑面（类型611行大文件/助手流/远程事件）",
+      "原版包": "packages/api/session-controller/src/{types.ts,assistant-stream.ts,remote-events.ts}（3文件纯逻辑，types.ts 611行大文件；剔除agent.ts/catalog.ts/commands.ts/control.ts/file-references.ts/history.ts/index.ts/list.ts/media-references.ts/model-selection-projection.ts/skill-catalog.ts等全部cordis/node宿主面+client/子目录）",
+      "光明模块": "src/会话控制类型.light",
+      "状态": "done；0.1.5第16轮：会话控制器全套类型(Session/会话状态/视图/列表/快照/事件类型/命令类型/投影类型/媒体引用/文件引用)+助手流(AssistantStream形状/流事件/增量合并/文本提取)+远程事件；变量名以关键字开头被断开(L-137)变量名避开关键字字样绕法",
+      "证据": [
+        "src/会话控制类型.light",
+        "examples/test_会话控制类型.light",
+        "examples/_repro_L137.light",
+        "_antirun_t4_会话控制类型.py"
+      ],
+      "本轮目标": "done：api会话控制器纯逻辑面，types.ts 611行大文件"
+    },
+    {
+      "编号": 108,
+      "功能": "小域类型合并纯逻辑面（plan计划模式/todo待办/terminal终端类型）",
+      "原版包": "packages/plan/plan-mode/src/{types.ts,client.ts}+packages/todo/tool-todo/src/{types.ts,client.ts}+packages/terminal/terminal/src/types.ts（5文件纯逻辑，client.ts为纯类型重导出并入types；剔除plan/index.ts+invariant.ts/todo/index.ts+invariant.ts/terminal/index.ts/terminal-bash全部宿主面）",
+      "光明模块": "src/小域类型.light",
+      "状态": "done；0.1.5第16轮：计划模式(PlanMode枚举/计划状态/配置/步骤类型)+待办(TodoItem形状/状态转换/优先级/列表过滤)+终端(TerminalSession形状/状态/输出格式/尺寸/光标位置/事件)；三域类型同模块命名空间隔离",
+      "证据": [
+        "src/小域类型.light",
+        "examples/test_小域类型.light",
+        "_antirun_t5_小域类型.py"
+      ],
+      "本轮目标": "done：小域类型合并，plan/todo/terminal三域纯逻辑类型"
+    },
+    {
+      "编号": 109,
+      "功能": "api 控制器类型合并纯逻辑面（workspace-files/settings-controller/workspace-controller类型）",
+      "原版包": "packages/api/workspace-files/src/types.ts+packages/api/settings-controller/src/types.ts+packages/api/workspace-controller/src/types.ts（3文件纯逻辑，剔除各控制器index.ts/commands.ts/feed.ts/changes.ts/credentials.ts/directory-picker.ts等全部cordis/node宿主面+runtime-diagnostics宿主面）",
+      "光明模块": "src/控制器类型.light",
+      "状态": "done；0.1.5第16轮：工作区文件类型(FileChange形状/变更类型/文件快照/列表过滤/变更事件)+设置控制器类型(Settings形状/设置键/值/变更事件/凭证类型)+工作区控制器类型(Workspace形状/状态/目录选择/事件/Feed类型)；三域类型同模块命名空间隔离",
+      "证据": [
+        "src/控制器类型.light",
+        "examples/test_控制器类型.light",
+        "_antirun_t6_控制器类型.py"
+      ],
+      "本轮目标": "done：api控制器类型合并，workspace/settings三域纯逻辑类型"
     }
   ]
 }
