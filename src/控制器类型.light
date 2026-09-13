@@ -1,0 +1,944 @@
+# 控制器类型.light —— 对标 #109 域：api 控制器类型合并（workspace-files / settings-controller / workspace-controller）
+# 原版：packages/api/workspace-files/src/types.ts      (166 行)
+#       packages/api/settings-controller/src/types.ts  ( 39 行)
+#       packages/api/workspace-controller/src/types.ts (128 行)
+#
+# 三域纯类型 + 判别联合 + 远程错误码映射（declare module RemoteErrorDetailsMap 之纯逻辑投影）。
+# 宿主面（cordis/defineTool/client）一律剔除，本模块只承载形状判型与默认构造。
+#
+# ── 键映射约定（忠实上游 wire 形状，全部英文键）──────────────────────
+#   文件域：absolutePath/version/bytes/offset/limit/text/lines/eof/data/name/type/size/
+#           path/entries/truncated/absent/kind/change
+#   设置域：opened/path
+#   工作区域：workspaceId/path/title/sessionIds/createdAt/updatedAt/workspace/created/
+#           beforeWorkspaceId/deleted/workspaceIds/sessionId/beforeSessionId/archivedSessionIds/
+#           items/type/value
+#   错误细节（RemoteErrorDetailsMap 投影）：path/limit/kind/ns/expected/actual/ref/name/
+#           capability/workspaceId/sessionId/beforeSessionId
+#
+# ── 光明降级点（口径明确，勿当 bug）────────────────────────────────────
+#   1. 判别联合（union）在光明中投影为「形态判型 + 类别取出」，键名忠实上游
+#      （文件变更：存在形态 {absolutePath,version} / 缺席形态 {absolutePath,absent:真}；
+#       监视帧：{kind:"ready"} / {kind:"change",change}；
+#       跟随增量：{type:...} 四形态；跟随帧：{type:"baseline",value} 或增量）。
+#   2. 错误码详情映射表以「码 → 必填键 + 类型」判型承载，不注册宿主协议（declare module 宿主面）。
+#   3. 内建 字典设置 在编译器为裸名（无需导入），可变字典一律 字典创建 + 字典设置 逐键构造。
+#   4. 可选字段一律 字典包含键 探测，缺失即不校验；required 字段缺失即 假。
+
+从 内置核心转换 导入 转字符串
+从 内置核心判型 导入 是字典, 是列表, 是字符串, 是整数
+从 内置核心字典 导入 字典创建, 字典包含键, 字典键列表, 字典获取, 取可选
+从 内置核心列表 导入 列表创建, 列表长度, 列表获取, 列表追加, 列表包含
+
+# =====================================================================
+# §0 通用工具
+# =====================================================================
+段落 判字符串表 接收 值:
+  如果 是列表(值) == 假:
+    返回 假
+  设 步 为 0
+  当 步 < 列表长度(值):
+    如果 是字符串(列表获取(值, 步)) == 假:
+      返回 假
+    设 步 为 步 + 1
+  返回 真
+
+段落 判非负整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  如果 值 < 0:
+    返回 假
+  返回 真
+
+段落 是布尔值 接收 值:
+  # L-129 同族：光明 `0 == 假` 为真，不能用相等判布尔，必须用类型判别
+  返回 type(值) == bool
+
+段落 判路径详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "path") == 假:
+    返回 假
+  返回 是字符串(值["path"])
+
+# =====================================================================
+# §1 工作区文件域（workspace-files/types.ts）
+# =====================================================================
+# WorkspaceFileStat {absolutePath:string 必填, version:string 必填, bytes?:number}
+段落 判文件统计 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "absolutePath") == 假 或 字典包含键(值, "version") == 假:
+    返回 假
+  如果 是字符串(值["absolutePath"]) == 假:
+    返回 假
+  如果 是字符串(值["version"]) == 假:
+    返回 假
+  如果 字典包含键(值, "bytes") == 真:
+    如果 判非负整数(值["bytes"]) == 假:
+      返回 假
+  返回 真
+
+段落 造文件统计 接收 绝对路径, 版本, 字节:
+  设 结果 为 字典创建()
+  字典设置(结果, "absolutePath", 绝对路径)
+  字典设置(结果, "version", 版本)
+  如果 字节 != 空:
+    字典设置(结果, "bytes", 字节)
+  返回 结果
+
+# WorkspaceFileRange {offset?:number, limit?:number}（两键全可选）
+段落 判文本区间 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "offset") == 真:
+    如果 判非负整数(值["offset"]) == 假:
+      返回 假
+  如果 字典包含键(值, "limit") == 真:
+    如果 判非负整数(值["limit"]) == 假:
+      返回 假
+  返回 真
+
+段落 造文本区间 接收 偏移, 上限:
+  设 结果 为 字典创建()
+  如果 偏移 != 空:
+    字典设置(结果, "offset", 偏移)
+  如果 上限 != 空:
+    字典设置(结果, "limit", 上限)
+  返回 结果
+
+# WorkspaceFileText = Stat + {offset:number, text:string, lines:number, eof:boolean} 全必填
+段落 判页文本 接收 值:
+  如果 判文件统计(值) == 假:
+    返回 假
+  如果 字典包含键(值, "offset") == 假 或 字典包含键(值, "text") == 假:
+    返回 假
+  如果 字典包含键(值, "lines") == 假 或 字典包含键(值, "eof") == 假:
+    返回 假
+  如果 判非负整数(值["offset"]) == 假:
+    返回 假
+  如果 是字符串(值["text"]) == 假:
+    返回 假
+  如果 判非负整数(值["lines"]) == 假:
+    返回 假
+  如果 是布尔值(值["eof"]) == 假:
+    返回 假
+  返回 真
+
+段落 造页文本 接收 绝对路径, 版本, 字节, 偏移, 文本, 行数, 末尾:
+  设 结果 为 造文件统计(绝对路径, 版本, 字节)
+  字典设置(结果, "offset", 偏移)
+  字典设置(结果, "text", 文本)
+  字典设置(结果, "lines", 行数)
+  字典设置(结果, "eof", 末尾)
+  返回 结果
+
+# WorkspaceByteRange {offset?:number, length?:number}（两键全可选）
+段落 判字节区间 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "offset") == 真:
+    如果 判非负整数(值["offset"]) == 假:
+      返回 假
+  如果 字典包含键(值, "length") == 真:
+    如果 判非负整数(值["length"]) == 假:
+      返回 假
+  返回 真
+
+段落 造字节区间 接收 偏移, 长度:
+  设 结果 为 字典创建()
+  如果 偏移 != 空:
+    字典设置(结果, "offset", 偏移)
+  如果 长度 != 空:
+    字典设置(结果, "length", 长度)
+  返回 结果
+
+# WorkspaceFileBytes = Stat + {offset:number, data:string, eof:boolean} 全必填
+段落 判字节窗 接收 值:
+  如果 判文件统计(值) == 假:
+    返回 假
+  如果 字典包含键(值, "offset") == 假 或 字典包含键(值, "data") == 假:
+    返回 假
+  如果 字典包含键(值, "eof") == 假:
+    返回 假
+  如果 判非负整数(值["offset"]) == 假:
+    返回 假
+  如果 是字符串(值["data"]) == 假:
+    返回 假
+  如果 是布尔值(值["eof"]) == 假:
+    返回 假
+  返回 真
+
+段落 造字节窗 接收 绝对路径, 版本, 字节, 偏移, 数据, 末尾:
+  设 结果 为 造文件统计(绝对路径, 版本, 字节)
+  字典设置(结果, "offset", 偏移)
+  字典设置(结果, "data", 数据)
+  字典设置(结果, "eof", 末尾)
+  返回 结果
+
+# WorkspaceDirectoryEntry {name:string, type:file|directory|other, size?:number}
+段落 判目录项类型 接收 值:
+  如果 值 == "file":
+    返回 真
+  如果 值 == "directory":
+    返回 真
+  如果 值 == "other":
+    返回 真
+  返回 假
+
+段落 判目录项 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "name") == 假 或 字典包含键(值, "type") == 假:
+    返回 假
+  如果 是字符串(值["name"]) == 假:
+    返回 假
+  如果 判目录项类型(值["type"]) == 假:
+    返回 假
+  如果 字典包含键(值, "size") == 真:
+    如果 判非负整数(值["size"]) == 假:
+      返回 假
+  返回 真
+
+段落 造目录项 接收 名称, 类型, 大小:
+  设 结果 为 字典创建()
+  字典设置(结果, "name", 名称)
+  字典设置(结果, "type", 类型)
+  如果 大小 != 空:
+    字典设置(结果, "size", 大小)
+  返回 结果
+
+# WorkspaceDirectoryListing {path:string, entries:DirectoryEntry[], truncated:boolean} 全必填
+段落 判目录清单 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "path") == 假 或 字典包含键(值, "entries") == 假:
+    返回 假
+  如果 字典包含键(值, "truncated") == 假:
+    返回 假
+  如果 是字符串(值["path"]) == 假:
+    返回 假
+  如果 是列表(值["entries"]) == 假:
+    返回 假
+  设 步 为 0
+  当 步 < 列表长度(值["entries"]):
+    如果 判目录项(列表获取(值["entries"], 步)) == 假:
+      返回 假
+    设 步 为 步 + 1
+  如果 是布尔值(值["truncated"]) == 假:
+    返回 假
+  返回 真
+
+段落 造目录清单 接收 路径, 条目, 截断:
+  设 结果 为 字典创建()
+  字典设置(结果, "path", 路径)
+  字典设置(结果, "entries", 条目)
+  字典设置(结果, "truncated", 截断)
+  返回 结果
+
+# WorkspaceFileChange = {absolutePath,version} | {absolutePath,absent:true}
+段落 判变更存在 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "absolutePath") == 假 或 字典包含键(值, "version") == 假:
+    返回 假
+  如果 是字符串(值["absolutePath"]) == 假:
+    返回 假
+  如果 是字符串(值["version"]) == 假:
+    返回 假
+  返回 真
+
+段落 判变更缺席 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "absolutePath") == 假 或 字典包含键(值, "absent") == 假:
+    返回 假
+  如果 是字符串(值["absolutePath"]) == 假:
+    返回 假
+  如果 值["absent"] == 真:
+    返回 真
+  返回 假
+
+段落 判文件变更 接收 值:
+  如果 判变更存在(值) == 真:
+    返回 真
+  如果 判变更缺席(值) == 真:
+    返回 真
+  返回 假
+
+段落 造变更存现 接收 绝对路径, 版本:
+  设 结果 为 字典创建()
+  字典设置(结果, "absolutePath", 绝对路径)
+  字典设置(结果, "version", 版本)
+  返回 结果
+
+段落 造变更缺席 接收 绝对路径:
+  设 结果 为 字典创建()
+  字典设置(结果, "absolutePath", 绝对路径)
+  字典设置(结果, "absent", 真)
+  返回 结果
+
+段落 取变更路径 接收 值:
+  如果 判文件变更(值) == 假:
+    返回 空
+  返回 值["absolutePath"]
+
+# WorkspaceFileWatchFrame = {kind:ready} | {kind:change, change:WorkspaceFileChange}
+段落 判就绪帧 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "kind") == 假:
+    返回 假
+  如果 值["kind"] == "ready":
+    返回 真
+  返回 假
+
+段落 判变更帧 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "kind") == 假 或 字典包含键(值, "change") == 假:
+    返回 假
+  如果 值["kind"] == "change":
+    如果 判文件变更(值["change"]) == 真:
+      返回 真
+  返回 假
+
+段落 判监视帧 接收 值:
+  如果 判就绪帧(值) == 真:
+    返回 真
+  如果 判变更帧(值) == 真:
+    返回 真
+  返回 假
+
+段落 造就绪帧:
+  设 结果 为 字典创建()
+  字典设置(结果, "kind", "ready")
+  返回 结果
+
+段落 造变更帧 接收 变更:
+  设 结果 为 字典创建()
+  字典设置(结果, "kind", "change")
+  字典设置(结果, "change", 变更)
+  返回 结果
+
+段落 取监视帧类别 接收 值:
+  如果 判监视帧(值) == 假:
+    返回 空
+  返回 值["kind"]
+
+段落 取监视帧变更 接收 值:
+  如果 判变更帧(值) == 假:
+    返回 空
+  返回 值["change"]
+
+# 文件域错误码（workspace-file/*）
+段落 判文件错误码 接收 码:
+  如果 码 == "workspace-file/not-found":
+    返回 真
+  如果 码 == "workspace-file/outside-workspace":
+    返回 真
+  如果 码 == "workspace-file/too-large":
+    返回 真
+  如果 码 == "workspace-file/not-text":
+    返回 真
+  如果 码 == "workspace-file/not-regular-file":
+    返回 真
+  如果 码 == "workspace-file/not-directory":
+    返回 真
+  返回 假
+
+段落 判符号种类 接收 值:
+  如果 值 == "directory":
+    返回 真
+  如果 值 == "symlink":
+    返回 真
+  如果 值 == "other":
+    返回 真
+  返回 假
+
+段落 判文件种类 接收 值:
+  如果 值 == "file":
+    返回 真
+  如果 值 == "symlink":
+    返回 真
+  如果 值 == "other":
+    返回 真
+  返回 假
+
+段落 判文件错误详情 接收 码, 详情:
+  如果 判文件错误码(码) == 假:
+    返回 假
+  如果 是字典(详情) == 假:
+    返回 假
+  如果 码 == "workspace-file/not-found":
+    返回 判路径详情(详情)
+  如果 码 == "workspace-file/outside-workspace":
+    返回 判路径详情(详情)
+  如果 码 == "workspace-file/too-large":
+    如果 字典包含键(详情, "path") == 假 或 字典包含键(详情, "limit") == 假:
+      返回 假
+    如果 是字符串(详情["path"]) == 假:
+      返回 假
+    如果 判非负整数(详情["limit"]) == 假:
+      返回 假
+    返回 真
+  如果 码 == "workspace-file/not-text":
+    返回 判路径详情(详情)
+  如果 码 == "workspace-file/not-regular-file":
+    如果 字典包含键(详情, "path") == 假 或 字典包含键(详情, "kind") == 假:
+      返回 假
+    如果 是字符串(详情["path"]) == 假:
+      返回 假
+    如果 判符号种类(详情["kind"]) == 假:
+      返回 假
+    返回 真
+  如果 码 == "workspace-file/not-directory":
+    如果 字典包含键(详情, "path") == 假 或 字典包含键(详情, "kind") == 假:
+      返回 假
+    如果 是字符串(详情["path"]) == 假:
+      返回 假
+    如果 判文件种类(详情["kind"]) == 假:
+      返回 假
+    返回 真
+  返回 假
+
+# =====================================================================
+# §2 设置控制器域（settings-controller/types.ts）
+# =====================================================================
+# SettingsDocumentOpenValue {opened:true}
+段落 判文档打开值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "opened") == 假:
+    返回 假
+  如果 值["opened"] == 真:
+    返回 真
+  返回 假
+
+段落 造文档打开值:
+  设 结果 为 字典创建()
+  字典设置(结果, "opened", 真)
+  返回 结果
+
+# AgentPresetDirectoryOpenValue = {opened:true} | {opened:false, path:string}
+段落 判目录打开真 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "opened") == 假:
+    返回 假
+  如果 值["opened"] == 真:
+    返回 真
+  返回 假
+
+段落 判目录打开拒 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "opened") == 假 或 字典包含键(值, "path") == 假:
+    返回 假
+  如果 值["opened"] == 真:
+    返回 假
+  如果 值["opened"] == 假:
+    如果 是字符串(值["path"]) == 真:
+      返回 真
+  返回 假
+
+段落 判目录打开值 接收 值:
+  如果 判目录打开真(值) == 真:
+    返回 真
+  如果 判目录打开拒(值) == 真:
+    返回 真
+  返回 假
+
+段落 造目录打开:
+  设 结果 为 字典创建()
+  字典设置(结果, "opened", 真)
+  返回 结果
+
+段落 造目录拒绝 接收 路径:
+  设 结果 为 字典创建()
+  字典设置(结果, "opened", 假)
+  字典设置(结果, "path", 路径)
+  返回 结果
+
+段落 取拒绝路径 接收 值:
+  如果 判目录打开拒(值) == 假:
+    返回 空
+  返回 值["path"]
+
+# 设置域错误码（settings/*, credential/*）
+段落 判设置错误码 接收 码:
+  如果 码 == "settings/rejected":
+    返回 真
+  如果 码 == "settings/conflict":
+    返回 真
+  如果 码 == "credential/rejected":
+    返回 真
+  返回 假
+
+段落 判设置拒绝详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "ns") == 假:
+    返回 假
+  返回 是字符串(值["ns"])
+
+段落 判设置冲突详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "ns") == 假 或 字典包含键(值, "expected") == 假:
+    返回 假
+  如果 字典包含键(值, "actual") == 假:
+    返回 假
+  如果 是字符串(值["ns"]) == 假:
+    返回 假
+  如果 判非负整数(值["expected"]) == 假:
+    返回 假
+  如果 判非负整数(值["actual"]) == 假:
+    返回 假
+  返回 真
+
+段落 判凭据拒绝详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "ref") == 假:
+    返回 假
+  返回 是字符串(值["ref"])
+
+# =====================================================================
+# §3 工作区控制器域（workspace-controller/types.ts）
+# =====================================================================
+# WorkspaceView {workspaceId:string, path:string, title:string,
+#                sessionIds:string[], createdAt:string, updatedAt:string} 全必填
+段落 判工作区视图 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假 或 字典包含键(值, "path") == 假:
+    返回 假
+  如果 字典包含键(值, "title") == 假 或 字典包含键(值, "sessionIds") == 假:
+    返回 假
+  如果 字典包含键(值, "createdAt") == 假 或 字典包含键(值, "updatedAt") == 假:
+    返回 假
+  如果 是字符串(值["workspaceId"]) == 假:
+    返回 假
+  如果 是字符串(值["path"]) == 假:
+    返回 假
+  如果 是字符串(值["title"]) == 假:
+    返回 假
+  如果 判字符串表(值["sessionIds"]) == 假:
+    返回 假
+  如果 是字符串(值["createdAt"]) == 假:
+    返回 假
+  如果 是字符串(值["updatedAt"]) == 假:
+    返回 假
+  返回 真
+
+段落 造工作区视图 接收 工作区标识, 路径, 标题, 会话标识表, 创建时刻, 更新时刻:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceId", 工作区标识)
+  字典设置(结果, "path", 路径)
+  字典设置(结果, "title", 标题)
+  字典设置(结果, "sessionIds", 会话标识表)
+  字典设置(结果, "createdAt", 创建时刻)
+  字典设置(结果, "updatedAt", 更新时刻)
+  返回 结果
+
+# WorkspaceCreateRequest {path:string}
+段落 判创建请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "path") == 假:
+    返回 假
+  返回 是字符串(值["path"])
+
+段落 造创建请求 接收 路径:
+  设 结果 为 字典创建()
+  字典设置(结果, "path", 路径)
+  返回 结果
+
+# WorkspaceCreateValue {workspace:WorkspaceView, created:boolean}
+段落 判创建值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspace") == 假 或 字典包含键(值, "created") == 假:
+    返回 假
+  如果 判工作区视图(值["workspace"]) == 假:
+    返回 假
+  如果 是布尔值(值["created"]) == 假:
+    返回 假
+  返回 真
+
+段落 造创建值 接收 工作区, 已创建:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspace", 工作区)
+  字典设置(结果, "created", 已创建)
+  返回 结果
+
+# WorkspaceRenameRequest {workspaceId:string, title:string}
+段落 判改名请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假 或 字典包含键(值, "title") == 假:
+    返回 假
+  如果 是字符串(值["workspaceId"]) == 假:
+    返回 假
+  如果 是字符串(值["title"]) == 假:
+    返回 假
+  返回 真
+
+段落 造改名请求 接收 工作区标识, 标题:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceId", 工作区标识)
+  字典设置(结果, "title", 标题)
+  返回 结果
+
+# WorkspaceValue {workspace:WorkspaceView}
+段落 判工作区值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspace") == 假:
+    返回 假
+  返回 判工作区视图(值["workspace"])
+
+段落 造工作区值 接收 工作区:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspace", 工作区)
+  返回 结果
+
+# WorkspaceDeleteRequest {workspaceId:string}
+段落 判删除请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假:
+    返回 假
+  返回 是字符串(值["workspaceId"])
+
+段落 造删除请求 接收 工作区标识:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceId", 工作区标识)
+  返回 结果
+
+# WorkspaceDeleteValue {deleted:true}
+段落 判删除值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "deleted") == 假:
+    返回 假
+  如果 值["deleted"] == 真:
+    返回 真
+  返回 假
+
+段落 造删除值:
+  设 结果 为 字典创建()
+  字典设置(结果, "deleted", 真)
+  返回 结果
+
+# WorkspaceInsertBeforeRequest {workspaceId:string, beforeWorkspaceId?:string}
+段落 判前置请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假:
+    返回 假
+  如果 是字符串(值["workspaceId"]) == 假:
+    返回 假
+  如果 字典包含键(值, "beforeWorkspaceId") == 真:
+    如果 是字符串(值["beforeWorkspaceId"]) == 假:
+      返回 假
+  返回 真
+
+段落 造前置请求 接收 工作区标识, 前置工作区标识:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceId", 工作区标识)
+  如果 前置工作区标识 != 空:
+    字典设置(结果, "beforeWorkspaceId", 前置工作区标识)
+  返回 结果
+
+# WorkspaceOrderValue {workspaceIds:string[]}
+段落 判顺序值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceIds") == 假:
+    返回 假
+  返回 判字符串表(值["workspaceIds"])
+
+段落 造顺序值 接收 工作区标识表:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceIds", 工作区标识表)
+  返回 结果
+
+# WorkspaceInsertSessionBeforeRequest {workspaceId, sessionId, beforeSessionId?}
+段落 判会话前置请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假 或 字典包含键(值, "sessionId") == 假:
+    返回 假
+  如果 是字符串(值["workspaceId"]) == 假:
+    返回 假
+  如果 是字符串(值["sessionId"]) == 假:
+    返回 假
+  如果 字典包含键(值, "beforeSessionId") == 真:
+    如果 是字符串(值["beforeSessionId"]) == 假:
+      返回 假
+  返回 真
+
+段落 造会话前置请求 接收 工作区标识, 会话标识, 前置会话标识:
+  设 结果 为 字典创建()
+  字典设置(结果, "workspaceId", 工作区标识)
+  字典设置(结果, "sessionId", 会话标识)
+  如果 前置会话标识 != 空:
+    字典设置(结果, "beforeSessionId", 前置会话标识)
+  返回 结果
+
+# WorkspaceArchiveSessionRequest {sessionId:string}
+段落 判归档请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "sessionId") == 假:
+    返回 假
+  返回 是字符串(值["sessionId"])
+
+段落 造归档请求 接收 会话标识:
+  设 结果 为 字典创建()
+  字典设置(结果, "sessionId", 会话标识)
+  返回 结果
+
+# WorkspaceArchiveValue {archivedSessionIds:string[]}
+段落 判归档值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "archivedSessionIds") == 假:
+    返回 假
+  返回 判字符串表(值["archivedSessionIds"])
+
+段落 造归档值 接收 归档会话标识表:
+  设 结果 为 字典创建()
+  字典设置(结果, "archivedSessionIds", 归档会话标识表)
+  返回 结果
+
+# WorkspaceBaseline {items:WorkspaceView[], archivedSessionIds:string[]}
+段落 判基线 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "items") == 假 或 字典包含键(值, "archivedSessionIds") == 假:
+    返回 假
+  如果 是列表(值["items"]) == 假:
+    返回 假
+  设 步 为 0
+  当 步 < 列表长度(值["items"]):
+    如果 判工作区视图(列表获取(值["items"], 步)) == 假:
+      返回 假
+    设 步 为 步 + 1
+  如果 判字符串表(值["archivedSessionIds"]) == 假:
+    返回 假
+  返回 真
+
+段落 造基线 接收 项目, 归档会话标识表:
+  设 结果 为 字典创建()
+  字典设置(结果, "items", 项目)
+  字典设置(结果, "archivedSessionIds", 归档会话标识表)
+  返回 结果
+
+# WorkspaceFollowIncrement 四形态（type 判别）
+段落 判增量更新 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假 或 字典包含键(值, "workspace") == 假:
+    返回 假
+  如果 值["type"] == "upsert":
+    如果 判工作区视图(值["workspace"]) == 真:
+      返回 真
+  返回 假
+
+段落 判增量移除 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假 或 字典包含键(值, "workspaceId") == 假:
+    返回 假
+  如果 值["type"] == "remove":
+    如果 是字符串(值["workspaceId"]) == 真:
+      返回 真
+  返回 假
+
+段落 判增量排序 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假 或 字典包含键(值, "workspaceIds") == 假:
+    返回 假
+  如果 值["type"] == "order":
+    如果 判字符串表(值["workspaceIds"]) == 真:
+      返回 真
+  返回 假
+
+段落 判增量归档 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假 或 字典包含键(值, "archivedSessionIds") == 假:
+    返回 假
+  如果 值["type"] == "archived":
+    如果 判字符串表(值["archivedSessionIds"]) == 真:
+      返回 真
+  返回 假
+
+段落 判增量 接收 值:
+  如果 判增量更新(值) == 真:
+    返回 真
+  如果 判增量移除(值) == 真:
+    返回 真
+  如果 判增量排序(值) == 真:
+    返回 真
+  如果 判增量归档(值) == 真:
+    返回 真
+  返回 假
+
+段落 取增量类型 接收 值:
+  如果 判增量(值) == 假:
+    返回 空
+  返回 值["type"]
+
+段落 造增量更新 接收 工作区:
+  设 结果 为 字典创建()
+  字典设置(结果, "type", "upsert")
+  字典设置(结果, "workspace", 工作区)
+  返回 结果
+
+段落 造增量移除 接收 工作区标识:
+  设 结果 为 字典创建()
+  字典设置(结果, "type", "remove")
+  字典设置(结果, "workspaceId", 工作区标识)
+  返回 结果
+
+段落 造增量排序 接收 工作区标识表:
+  设 结果 为 字典创建()
+  字典设置(结果, "type", "order")
+  字典设置(结果, "workspaceIds", 工作区标识表)
+  返回 结果
+
+段落 造增量归档 接收 归档会话标识表:
+  设 结果 为 字典创建()
+  字典设置(结果, "type", "archived")
+  字典设置(结果, "archivedSessionIds", 归档会话标识表)
+  返回 结果
+
+# WorkspaceFollowFrame = {type:baseline, value:Baseline} | Increment
+段落 判基线帧 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "type") == 假 或 字典包含键(值, "value") == 假:
+    返回 假
+  如果 值["type"] == "baseline":
+    如果 判基线(值["value"]) == 真:
+      返回 真
+  返回 假
+
+段落 判跟随帧 接收 值:
+  如果 判基线帧(值) == 真:
+    返回 真
+  如果 判增量(值) == 真:
+    返回 真
+  返回 假
+
+段落 造基线帧 接收 基线:
+  设 结果 为 字典创建()
+  字典设置(结果, "type", "baseline")
+  字典设置(结果, "value", 基线)
+  返回 结果
+
+段落 取跟随帧类型 接收 值:
+  如果 判跟随帧(值) == 假:
+    返回 空
+  返回 值["type"]
+
+# 工作区域错误码（workspace/*, directory-picker/*）
+段落 判工作区错误码 接收 码:
+  如果 码 == "workspace/invalid-path":
+    返回 真
+  如果 码 == "workspace/name-conflict":
+    返回 真
+  如果 码 == "workspace/move-invalid":
+    返回 真
+  如果 码 == "directory-picker/unavailable":
+    返回 真
+  如果 码 == "directory-picker/unreadable":
+    返回 真
+  如果 码 == "directory-picker/exists":
+    返回 真
+  如果 码 == "directory-picker/create-failed":
+    返回 真
+  返回 假
+
+段落 判名称冲突详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "name") == 假:
+    返回 假
+  返回 是字符串(值["name"])
+
+段落 判移动无效详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "workspaceId") == 假 或 字典包含键(值, "sessionId") == 假:
+    返回 假
+  如果 是字符串(值["workspaceId"]) == 假:
+    返回 假
+  如果 是字符串(值["sessionId"]) == 假:
+    返回 假
+  如果 字典包含键(值, "beforeSessionId") == 真:
+    如果 是字符串(值["beforeSessionId"]) == 假:
+      返回 假
+  返回 真
+
+段落 判目录选择详情 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "path") == 真:
+    如果 是字符串(值["path"]) == 假:
+      返回 假
+  如果 字典包含键(值, "capability") == 真:
+    如果 是字符串(值["capability"]) == 假:
+      返回 假
+  如果 字典包含键(值, "path") == 假 且 字典包含键(值, "capability") == 假:
+    返回 假
+  返回 真
+
+段落 判工作区错误详情 接收 码, 详情:
+  如果 判工作区错误码(码) == 假:
+    返回 假
+  如果 是字典(详情) == 假:
+    返回 假
+  如果 码 == "workspace/invalid-path":
+    返回 判路径详情(详情)
+  如果 码 == "workspace/name-conflict":
+    返回 判名称冲突详情(详情)
+  如果 码 == "workspace/move-invalid":
+    返回 判移动无效详情(详情)
+  如果 码 == "directory-picker/unavailable":
+    如果 字典包含键(详情, "capability") == 假:
+      返回 假
+    返回 是字符串(详情["capability"])
+  如果 码 == "directory-picker/unreadable":
+    返回 判路径详情(详情)
+  如果 码 == "directory-picker/exists":
+    返回 判路径详情(详情)
+  如果 码 == "directory-picker/create-failed":
+    返回 判路径详情(详情)
+  返回 假
+
+# =====================================================================
+# 导出清单（空格分隔、无句号；供测试与后续路 import）
+# =====================================================================
+导出 是布尔值 判字符串表 判非负整数 判路径详情
+导出 判文件统计 造文件统计 判文本区间 造文本区间 判页文本 造页文本
+导出 判字节区间 造字节区间 判字节窗 造字节窗
+导出 判目录项类型 判目录项 造目录项 判目录清单 造目录清单
+导出 判变更存在 判变更缺席 判文件变更 造变更存现 造变更缺席 取变更路径
+导出 判就绪帧 判变更帧 判监视帧 造就绪帧 造变更帧 取监视帧类别 取监视帧变更
+导出 判文件错误码 判符号种类 判文件种类 判文件错误详情
+导出 判文档打开值 造文档打开值 判目录打开真 判目录打开拒 判目录打开值
+导出 造目录打开 造目录拒绝 取拒绝路径 判设置错误码 判设置拒绝详情 判设置冲突详情 判凭据拒绝详情
+导出 判工作区视图 造工作区视图 判创建请求 造创建请求 判创建值 造创建值
+导出 判改名请求 造改名请求 判工作区值 造工作区值 判删除请求 造删除请求 判删除值 造删除值
+导出 判前置请求 造前置请求 判顺序值 造顺序值 判会话前置请求 造会话前置请求
+导出 判归档请求 造归档请求 判归档值 造归档值 判基线 造基线
+导出 判增量更新 判增量移除 判增量排序 判增量归档 判增量 取增量类型
+导出 造增量更新 造增量移除 造增量排序 造增量归档
+导出 判基线帧 判跟随帧 造基线帧 取跟随帧类型
+导出 判工作区错误码 判名称冲突详情 判移动无效详情 判目录选择详情 判工作区错误详情
