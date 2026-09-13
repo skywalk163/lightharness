@@ -1,0 +1,542 @@
+# 预设深化.light —— 第15轮 任务5：preset 深化 + persona + settings 类型 + skill 徽章（纯逻辑面）复刻
+#
+# 上游：
+#   packages/preset/agent-presets/src/composition-inventory.ts → §1 预设组合清单
+#   packages/preset/agent-presets/src/types.ts                 → §1.6 预设行/名册/文档 + 远程错误码
+#   packages/preset/persona/src/index.ts                       → §2 角色行（段名/配置默认值/校验）
+#   packages/settings/settings/src/types.ts                    → §3 设置类型（来源/视图/路径操作/描述值）
+#   packages/skill/skill-badge/src/index.ts                    → §4 技能徽章（bundled provider 描述符）
+#
+# ⚠️ 任务书交叉核对（重要，已登记交付报告 §移交清单）：
+#   - packages/preset/agent-presets/src/display.ts（presetDisplayText + BUILT_IN_PRESET_KEYS）已由
+#     **第72号卡** src/预设.light（造显示文本 / 内置预设文案）1:1 覆盖；
+#   - agent-presets 的 specifier/preset/metadata/session/discovery/mount/authoring 同样属 #72；
+#   - settings/settings/src/redact.ts（redactSecrets 走查 + 秘密位置）已由 src/设置.light（脱敏值/走查）覆盖；
+#   - packages/skill/skill/src/index.ts（技能名校验/渲染/候选校验）已由 src/技能清单.light 覆盖。
+#   故本模块**不重复实现**上述四面：§1 只做 composition-inventory 增量（三态启用/!!js 条件/展平/挂载行），
+#   §3 只做 types.ts 的形状判据。交付报告的测试中对既有三模块做只读集成回归（不修改它们）。
+#
+# 语言缺陷：L-129 —— 光明条件真值遵循 Python（空列表/空字典判假），与 JS `Boolean()`（空数组/空对象
+#   判真）不一致，直译上游 `Boolean(disabledNode)` 会静默翻转。绕法见 布尔。最小复现 examples/_repro_L129.light。
+#
+# 命名避坑：L-119 单字别名保留字；L-120 可全切分标识符。
+
+从 字符串处理 导入 字符转ASCII
+
+# =====================================================================
+# §1 预设组合清单（composition-inventory.ts）
+# =====================================================================
+
+# CompositionRowEnablement = true | false | 'conditional'
+段落 是合法启用值 接收 值:
+  如果 是布尔值(值) == 真:
+    返回 真
+  返回 值 == "conditional"
+
+# L-129 绕法：JS `Boolean(value)` 真值表（空数组/空对象判真；空/0/空串/假/NaN判假）
+段落 布尔 接收 值:
+  如果 值 == 空:
+    返回 假
+  如果 是布尔值(值):
+    返回 值
+  如果 是整数(值):
+    返回 值 != 0
+  如果 是浮点(值):
+    返回 值 != 0
+  如果 是字符串(值):
+    返回 字符串长度(值) != 0
+  # 列表/字典（含空者）在 JS 中一律判真
+  返回 真
+
+# isJsExpr 的光明投影：`!!js` 节点在纯逻辑内以带标记的字典承载 {"js表达式": 表达式文本}
+段落 是动态禁用标记 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "js表达式") == 假:
+    返回 假
+  返回 是字符串(值["js表达式"])
+
+# disabledContribution：!!js → 交求值能力；拒绝（抛）→ 'conditional'；其余按 JS 真值
+段落 禁用贡献 接收 值, 求值能力:
+  如果 是动态禁用标记(值) == 真:
+    尝试:
+      返回 布尔(求值能力(值["js表达式"]))
+    捕获 异常甲:
+      返回 "conditional"
+  返回 布尔(值)
+
+# combineDisabled：任一字面真即真；否则任一条件即条件；否则假
+段落 合并禁用 接收 外层, 自身:
+  如果 外层 == 真:
+    返回 真
+  如果 自身 == 真:
+    返回 真
+  如果 外层 == "conditional":
+    返回 "conditional"
+  如果 自身 == "conditional":
+    返回 "conditional"
+  返回 假
+
+# enabled = 禁用三态 → 启用三态（真 → 假；conditional → conditional；假 → 真）
+段落 启用取值 接收 禁用:
+  如果 禁用 == 真:
+    返回 假
+  如果 禁用 == "conditional":
+    返回 "conditional"
+  返回 真
+
+# entryId：Loader 树内 id，或组合文件声明 id；空串视作 null（光明以 空 表示）
+段落 行标识 接收 行:
+  设 原 为 空
+  如果 字典包含键(行, "id") == 真:
+    设 原 为 行["id"]
+  如果 是字符串(原) == 假:
+    返回 空
+  如果 字符串长度(原) == 0:
+    返回 空
+  返回 原
+
+# 是否组行（group===true 的结构行只递归、不产出）
+段落 是否组行 接收 行:
+  如果 是字典(行) == 假:
+    返回 假
+  如果 字典包含键(行, "group") == 假:
+    返回 假
+  返回 行["group"] == 真
+
+# 造组合行（AgentPresetCompositionRow；condition 仅在 !!js 时出现）
+段落 造组合行 接收 行, 禁用:
+  设 结果 为 {"entryId": 行标识(行), "moduleName": 行["name"], "enabled": 启用取值(禁用)}
+  如果 是动态禁用标记(字典获取(行, "disabled", 空)) == 真:
+    字典设置(结果, "condition", 行["disabled"]["js表达式"])
+  返回 结果
+
+# flattenRows：组行递归继承外层 disabled；叶子行产出（累积表原地追加）
+段落 展平行 接收 行表, 外层禁用, 求值能力, 累积表:
+  遍历 值 之 行表:
+    设 行 为 值
+    设 禁用 为 合并禁用(外层禁用, 禁用贡献(字典获取(行, "disabled", 空), 求值能力))
+    如果 是否组行(行) == 真:
+      展平行(字典获取(行, "config", []), 禁用, 求值能力, 累积表)
+    否则:
+      列表追加(累积表, 造组合行(行, 禁用))
+  返回 累积表
+
+# fileComposition：解析后的行列表 → 展平（解析能力为宿主面，剔除）
+段落 组合行 接收 行表, 求值能力:
+  设 累积 为 列表创建()
+  返回 展平行(行表, 假, 求值能力, 累积)
+
+# mountedCompositionRows：Loader 树项 → 行（enabled=!disabled；组行跳过）
+段落 挂载行 接收 树项表:
+  设 找到 为 列表创建()
+  遍历 项 之 树项表:
+    设 选项 为 字典获取(项, "options", {})
+    如果 字典获取(选项, "group", 假) == 真:
+      设 占位 为 0
+    否则:
+      设 行 为 {"entryId": 字典获取(项, "id", 空), "moduleName": 选项["name"],
+        "enabled": 取反(字典获取(选项, "disabled", 假))}
+      如果 是动态禁用标记(字典获取(选项, "disabled", 空)) == 真:
+        字典设置(行, "condition", 选项["disabled"]["js表达式"])
+      如果 字典包含键(项, "fiber") == 真 且 字典包含键(项["fiber"], "state") == 真:
+        字典设置(行, "fiberState", 项["fiber"]["state"])
+      列表追加(找到, 行)
+  返回 找到
+
+# 是组合行（AgentPresetCompositionRow 形状）
+段落 是组合行 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["entryId", "moduleName", "enabled"]) == 假:
+    返回 假
+  如果 是字符串(值["moduleName"]) == 假:
+    返回 假
+  如果 值["entryId"] != 空 且 是字符串(值["entryId"]) == 假:
+    返回 假
+  如果 是合法启用值(值["enabled"]) == 假:
+    返回 假
+  如果 字典包含键(值, "condition") == 真 且 是字符串(值["condition"]) == 假:
+    返回 假
+  返回 真
+
+# 是组合（AgentPresetComposition）
+段落 是组合 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["id", "trust", "isDefault", "rows"]) == 假:
+    返回 假
+  如果 是字符串(值["id"]) == 假 或 字符串长度(值["id"]) == 0:
+    返回 假
+  如果 是合法信任(值["trust"]) == 假:
+    返回 假
+  如果 是布尔值(值["isDefault"]) == 假:
+    返回 假
+  如果 是列表(值["rows"]) == 假:
+    返回 假
+  遍历 行 之 值["rows"]:
+    如果 是组合行(行) == 假:
+      返回 假
+  返回 真
+
+# =====================================================================
+# §1.6 预设行/名册/文档 + 远程错误码（agent-presets/types.ts）
+# =====================================================================
+
+段落 是合法信任 接收 值:
+  如果 值 == "system":
+    返回 真
+  返回 值 == "user"
+
+段落 是预设行 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["id", "trust", "isDefault"]) == 假:
+    返回 假
+  如果 是字符串(值["id"]) == 假 或 字符串长度(值["id"]) == 0:
+    返回 假
+  如果 是合法信任(值["trust"]) == 假:
+    返回 假
+  如果 是布尔值(值["isDefault"]) == 假:
+    返回 假
+  返回 真
+
+段落 是预设名册 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["presets", "authorable"]) == 假:
+    返回 假
+  如果 是列表(值["presets"]) == 假:
+    返回 假
+  如果 是布尔值(值["authorable"]) == 假:
+    返回 假
+  遍历 行 之 值["presets"]:
+    如果 是预设行(行) == 假:
+      返回 假
+  返回 真
+
+段落 是预设文档 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["agentPreset", "trust", "content"]) == 假:
+    返回 假
+  如果 是字符串(值["agentPreset"]) == 假 或 字符串长度(值["agentPreset"]) == 0:
+    返回 假
+  如果 是合法信任(值["trust"]) == 假:
+    返回 假
+  返回 是字符串(值["content"])
+
+段落 预设远程错误码表:
+  返回 ["agent-preset/not-found", "agent-preset/invalid", "agent-preset/read-only", "agent-preset/locked"]
+
+段落 是预设远程错误码 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 码 之 预设远程错误码表():
+    如果 值 == 码:
+      返回 真
+  返回 假
+
+# =====================================================================
+# §2 角色行（persona/index.ts）
+# =====================================================================
+
+段落 角色前缀段名:
+  返回 "deployment:persona-prefix"
+
+段落 角色后缀段名:
+  返回 "deployment:persona-suffix"
+
+# Config 默认值：suffix '' / complete false / includeRuntimeContext true
+段落 角色配置默认值 接收 前缀:
+  返回 {"prefix": 前缀, "suffix": "", "complete": 假, "includeRuntimeContext": 真}
+
+# Config schema 校验：prefix 必填字符串；三个可选字段类型受限
+段落 校验角色配置 接收 配置:
+  如果 是字典(配置) == 假:
+    返回 "persona config must be a mapping"
+  如果 字段齐备(配置, ["prefix"]) == 假:
+    返回 "persona prefix is required"
+  如果 是字符串(配置["prefix"]) == 假:
+    返回 "persona prefix must be a string"
+  如果 字典包含键(配置, "suffix") == 真 且 是字符串(配置["suffix"]) == 假:
+    返回 "persona suffix must be a string"
+  如果 字典包含键(配置, "complete") == 真 且 是布尔值(配置["complete"]) == 假:
+    返回 "persona complete must be a boolean"
+  如果 字典包含键(配置, "includeRuntimeContext") == 真 且 是布尔值(配置["includeRuntimeContext"]) == 假:
+    返回 "persona includeRuntimeContext must be a boolean"
+  返回 ""
+
+段落 是角色配置 接收 配置:
+  返回 校验角色配置(配置) == ""
+
+段落 是布尔值 接收 值:
+  # L-129 同族：光明 `0 == 假` 为真，不能用相等判布尔，必须用类型判别
+  返回 type(值) == bool
+
+# 空前缀在渲染时丢弃该段（matching the registry）
+段落 段是否渲染 接收 文本:
+  返回 字符串长度(文本) > 0
+
+# =====================================================================
+# §3 设置类型（settings/types.ts）
+# =====================================================================
+
+段落 设置来源表:
+  返回 ["update", "provider"]
+
+段落 是合法设置来源 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 源 之 设置来源表():
+    如果 值 == 源:
+      返回 真
+  返回 假
+
+段落 设置应用时机表:
+  返回 ["live", "restart"]
+
+段落 是合法应用时机 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  遍历 时 之 设置应用时机表():
+    如果 值 == 时:
+      返回 真
+  返回 假
+
+# JsonValue：null | boolean | number | string | JsonValue[] | {[k]: JsonValue}
+段落 是JSON值 接收 值:
+  如果 值 == 空:
+    返回 真
+  如果 是布尔值(值):
+    返回 真
+  如果 是整数(值):
+    返回 真
+  如果 是浮点(值):
+    返回 真
+  如果 是字符串(值):
+    返回 真
+  如果 是列表(值):
+    设 i 为 0
+    设 n 为 长度(值)
+    当 i < n:
+      如果 是JSON值(值[i]) == 假:
+        返回 假
+      设 i 为 i + 1
+    返回 真
+  如果 是字典(值):
+    遍历 键 之 字典键列表(值):
+      # JSON 对象键必须是字符串（上游 JsonValue 的对象分支即此约束）
+      如果 是字符串(键) == 假:
+        返回 假
+      如果 是JSON值(值[键]) == 假:
+        返回 假
+    返回 真
+  返回 假
+
+# 路径：字符串数组（空数组即 section 根）
+段落 是路径 接收 值:
+  如果 是列表(值) == 假:
+    返回 假
+  遍历 段 之 值:
+    如果 是字符串(段) == 假:
+      返回 假
+  返回 真
+
+段落 是根路径 接收 路径:
+  返回 长度(路径) == 0
+
+# SettingsSecretView：{path, set}
+段落 是秘密视图 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["path", "set"]) == 假:
+    返回 假
+  如果 是路径(值["path"]) == 假:
+    返回 假
+  返回 是布尔值(值["set"])
+
+# SettingsNamespaceView：ns/schema/value/applies/secrets/revision（+base/user 可选）
+段落 是命名空间视图 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["ns", "schema", "value", "applies", "secrets", "revision"]) == 假:
+    返回 假
+  如果 是字符串(值["ns"]) == 假 或 字符串长度(值["ns"]) == 0:
+    返回 假
+  如果 是合法应用时机(值["applies"]) == 假:
+    返回 假
+  如果 是非负整数(值["revision"]) == 假:
+    返回 假
+  如果 是JSON值(值["schema"]) == 假:
+    返回 假
+  如果 是JSON值(值["value"]) == 假:
+    返回 假
+  如果 字典包含键(值, "base") == 真 且 是JSON值(值["base"]) == 假:
+    返回 假
+  如果 字典包含键(值, "user") == 真 且 是JSON值(值["user"]) == 假:
+    返回 假
+  如果 是列表(值["secrets"]) == 假:
+    返回 假
+  遍历 秘密 之 值["secrets"]:
+    如果 是秘密视图(秘密) == 假:
+      返回 假
+  返回 真
+
+段落 造命名空间视图 接收 命名空间, 模式, 解析值, 应用时机, 秘密表, 修订号:
+  返回 {"ns": 命名空间, "schema": 模式, "value": 解析值, "applies": 应用时机,
+    "secrets": 秘密表, "revision": 修订号}
+
+# SettingsPathOpView：{op:'set',path,value} | {op:'unset',path}
+段落 是路径操作 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["op", "path"]) == 假:
+    返回 假
+  如果 是路径(值["path"]) == 假:
+    返回 假
+  如果 值["op"] == "set":
+    如果 字段齐备(值, ["value"]) == 假:
+      返回 假
+    返回 是JSON值(值["value"])
+  如果 值["op"] == "unset":
+    返回 真
+  返回 假
+
+# SettingsDescribeValue：{writable, hasDocument, namespaces}
+段落 是描述值 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["writable", "hasDocument", "namespaces"]) == 假:
+    返回 假
+  如果 是布尔值(值["writable"]) == 假:
+    返回 假
+  如果 是布尔值(值["hasDocument"]) == 假:
+    返回 假
+  如果 是列表(值["namespaces"]) == 假:
+    返回 假
+  遍历 视图 之 值["namespaces"]:
+    如果 是命名空间视图(视图) == 假:
+      返回 假
+  返回 真
+
+# =====================================================================
+# §4 技能徽章（skill-badge/index.ts 的 bundled provider 描述符）
+# =====================================================================
+
+段落 徽章提供方名:
+  返回 "dsh-badge"
+
+段落 徽章来源:
+  返回 "bundled"
+
+# BUNDLED_SKILL_RANK（packages/skill/skill/src/index.ts:28）
+段落 徽章排名:
+  返回 600
+
+段落 徽章调用策略:
+  返回 {"modelInvocable": 真, "userInvocable": 真}
+
+# DESCRIPTION（verbatim，含 U+201C/U+201D 弯引号）
+段落 徽章描述:
+  返回 "Add the official “powered by dsh” badge to documents, pull requests, merge requests, and other content produced with DeepSeek Harness. Use whenever creating a pull request or merge request. Also use when the user asks for a dsh badge, powered-by-dsh attribution, or a reusable dsh badge asset or snippet."
+
+段落 是资源基 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["kind", "path"]) == 假:
+    返回 假
+  如果 值["kind"] != "directory":
+    返回 假
+  返回 是字符串(值["path"])
+
+# 造徽章候选：宿主面事实（资源目录绝对路径 / 正文 URL）由调用方注入
+段落 造徽章候选 接收 资源基路径, 正文地址:
+  返回 {"name": 徽章提供方名(), "description": 徽章描述(), "invocation": 徽章调用策略(),
+    "provider": 徽章提供方名(), "source": 徽章来源(),
+    "resourceBase": {"kind": "directory", "path": 资源基路径}, "rank": 徽章排名(),
+    "locator": 正文地址}
+
+段落 是徽章候选 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["name", "description", "invocation", "provider", "source", "resourceBase", "rank", "locator"]) == 假:
+    返回 假
+  如果 值是合法徽章名(值["name"]) == 假:
+    返回 假
+  如果 是字符串(值["description"]) == 假 或 字符串长度(值["description"]) == 0:
+    返回 假
+  如果 是调用策略(值["invocation"]) == 假:
+    返回 假
+  如果 是字符串(值["provider"]) == 假:
+    返回 假
+  如果 是合法技能来源(值["source"]) == 假:
+    返回 假
+  如果 是资源基(值["resourceBase"]) == 假:
+    返回 假
+  如果 是非负整数(值["rank"]) == 假:
+    返回 假
+  返回 是字符串(值["locator"])
+
+段落 是调用策略 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字段齐备(值, ["modelInvocable", "userInvocable"]) == 假:
+    返回 假
+  如果 是布尔值(值["modelInvocable"]) == 假:
+    返回 假
+  返回 是布尔值(值["userInvocable"])
+
+段落 是合法技能来源 接收 值:
+  如果 值 == "bundled":
+    返回 真
+  如果 值 == "user":
+    返回 真
+  如果 值 == "project":
+    返回 真
+  返回 值 == "plugin"
+
+# 徽章名合规（对齐 skill 包 isSkillName 的 kebab-case 规则；本模块本地实现，避免跨模块同名段）
+段落 值是合法徽章名 接收 名:
+  如果 是字符串(名) == 假:
+    返回 假
+  如果 字符串长度(名) == 0:
+    返回 假
+  设 段首 为 真
+  设 段长 为 0
+  设 i 为 0
+  当 i < 字符串长度(名):
+    设 码 为 字符转ASCII(字符串获取(名, i))
+    如果 码 == 45:
+      如果 段长 == 0:
+        返回 假
+      设 段长 为 0
+      设 段首 为 真
+    否则:
+      如果 码 < 97 或 码 > 122:
+        返回 假
+      设 段长 为 段长 + 1
+      设 段首 为 假
+    设 i 为 i + 1
+  返回 段长 > 0
+
+# =====================================================================
+# 本地工具（避免跨模块同名段）
+# =====================================================================
+
+段落 字段齐备 接收 值, 键表:
+  遍历 键 之 键表:
+    如果 字典包含键(值, 键) == 假:
+      返回 假
+  返回 真
+
+段落 是非负整数 接收 值:
+  如果 是整数(值) == 假:
+    返回 假
+  返回 值 >= 0
+
+# 取反（避 L-119：「非」是保留单字别名，不可作标识符）
+段落 取反 接收 值:
+  如果 值 == 真:
+    返回 假
+  返回 真
