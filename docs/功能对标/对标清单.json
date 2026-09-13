@@ -1945,6 +1945,85 @@
         "_antirun_t6_控制器类型.py"
       ],
       "本轮目标": "done：api控制器类型合并，workspace/settings三域纯逻辑类型"
+    },
+    {
+      "编号": 110,
+      "功能": "宿主运行时与插件生命周期原型（虚拟宿主运行时）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：Cordis Context/Service/插件生命周期模式 + 上游 packages/core/session/src/index.ts 插件结构 + packages/boot/ 启动流程",
+      "光明模块": "src/宿主运行时.light",
+      "状态": "done；0.1.5第17轮原型：运行时状态机(未初始化→初始化中→运行中→停止中→已停止→错误)/插件接口(名称/版本/依赖/提供服务/监听事件/安装启动停止卸载钩子)/插件加载器(按依赖拓扑排序/循环检测/缺失检测/错误隔离)/服务注册表(注册/获取/列举/依赖注入)/运行时事件(启动前/启动后/停止前/停止后/插件安装失败)",
+      "证据": [
+        "src/宿主运行时.light",
+        "examples/test_宿主运行时.light",
+        "_antirun_t1_宿主运行时.py"
+      ],
+      "本轮目标": "done：虚拟宿主运行时原型，插件生命周期+服务注册表"
+    },
+    {
+      "编号": 111,
+      "功能": "宿主上下文与作用域原型（Context数据结构+作用域机制）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：Cordis Context类型增强模式(declare module interface Context) + 上游 packages/scope/ 作用域过滤机制(@dshScopeScan/Scoped<T>/scopeOf/scopeTarget)",
+      "光明模块": "src/宿主上下文.light",
+      "状态": "done；0.1.5第17轮原型：Context数据结构(属性字典/父上下文引用/作用域标记/上下文ID/创建销毁时间)/上下文操作(设置/获取/自有/删除/列举/快照/恢复)/属性继承链(子上下文覆盖父上下文/逐级向上查找)/作用域机制(创建/匹配/作用域链/全局匹配所有/父作用域匹配)/上下文传递(请求级/会话级/全局/传递给插件钩子和服务方法)/上下文快照恢复；作用域保留关键字(L-143)变量名改域标记绕法",
+      "证据": [
+        "src/宿主上下文.light",
+        "examples/test_宿主上下文.light",
+        "examples/_repro_L143.light",
+        "_antirun_t2_宿主上下文.py"
+      ],
+      "本轮目标": "done：宿主上下文与作用域原型"
+    },
+    {
+      "编号": 112,
+      "功能": "宿主事件接线原型（事件类型注册表+绑定器+作用域过滤扇出+错误隔离）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：Cordis Events声明模式(declare module interface Events + @mode emit/waterfall) + 上游 packages/core/session/src/index.ts 事件声明(scope-filtered dispatch) + 已有 src/事件.light(事件总线实现)",
+      "光明模块": "src/宿主事件.light",
+      "状态": "done；0.1.5第17轮原型：事件类型注册表(事件名/模式emit-waterfall/参数形状/返回值形状/作用域类型/描述/校验)/事件绑定器(插件声明监听事件/自动绑定/解绑/插件停止自动解绑)/事件扇出(作用域过滤复用宿主上下文作用域匹配/无作用域全局监听/作用域信息传递监听器)/错误隔离(单个监听器抛错不影响其他/错误记录/waterfall下错误视为委托)/事件统计(派发计数/调用计数/重置)；基于已有事件.light只读导入，不修改",
+      "证据": [
+        "src/宿主事件.light",
+        "examples/test_宿主事件.light",
+        "_antirun_t3_宿主事件.py"
+      ],
+      "本轮目标": "done：宿主事件接线原型，基于已有事件.light的接线层"
+    },
+    {
+      "编号": 113,
+      "功能": "宿主工具接线原型（工具发现器+执行上下文注入+权限控制+分组命名空间）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：上游 defineTool 模式(工具定义name/description/parameters/execute) + 上游 packages/core/tools/ 工具注册表和执行流水线 + 上游 packages/agent-loop/tool-calls.ts 工具调用处理 + 已有 src/工具.light(工具注册表+执行流水线)",
+      "光明模块": "src/宿主工具.light",
+      "状态": "done；0.1.5第17轮原型：工具发现器(插件声明提供工具/启动自动注册/停止自动注销/工具名冲突加命名空间前缀)/执行上下文注入(运行时引用/上下文/会话ID/作用域/取消令牌/调用者/请求ID)/取消令牌(创建/标记取消/监听回调/校验未取消)/权限控制(可见性public-internal-private/调用权限检查/调用审计日志/速率限制)/工具分组与命名空间(分组列举/全名插件名工具名/短名唯一时可用)/工具调用协议(完整流程权限检查→上下文创建→参数校验→执行流水线→审计→返回结果/取消调用/批量调用)；基于已有工具.light只读导入校验参数，不修改",
+      "证据": [
+        "src/宿主工具.light",
+        "examples/test_宿主工具.light",
+        "_antirun_t4_宿主工具.py"
+      ],
+      "本轮目标": "done：宿主工具接线原型，基于已有工具.light的接线层"
+    },
+    {
+      "编号": 114,
+      "功能": "宿主IO抽象层原型（IO结果统一形状+取消令牌+超时重试+文件系统/进程提供者接口内存模拟）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：Node.js fs/child_process/net/stream API + 上游 packages/fs/ 文件系统抽象 + 上游 packages/code-runtime/ 代码运行时抽象 + 上游 packages/subagent/ 进程外执行抽象 + 已有 src/子进程.light(具体实现)/src/文件系统工具.light(具体工具)/src/流.light(LLM流)",
+      "光明模块": "src/宿主IO.light",
+      "状态": "done；0.1.5第17轮原型：IO结果统一形状(成功/失败/错误码表NOT_FOUND-PERMISSION_DENIED-ALREADY_EXISTS-TIMEOUT-CANCELLED-INVALID_ARGUMENT-IO_ERROR-UNSUPPORTED_OPERATION)/IO取消令牌(创建/标记取消/监听/校验未取消)/IO超时与重试(超时控制/重试策略最大重试次数-初始延迟-倍增因子-可重试错误码/带重试执行/退避延迟计算)/文件系统提供者接口(读/写/列目录/存在/删除/重命名/创建目录/文件信息+内存模拟实现字典路径文件内容)/路径操作(拼接/规范化/父目录/文件名/扩展名/绝对路径判别)/进程提供者接口(启动/等待/终止/列举/标准输入输出/退出码+内存模拟实现字典进程ID进程句柄)/IO事件(io/started-completed-failed-cancelled-retry-progress)；初判L-149模块级函数无闭包经探针隔离实为标识符笔误(参数中文数据函数体误写英文data)，修正后append正常生效，非语言缺陷不登记，L-149空缺",
+      "证据": [
+        "src/宿主IO.light",
+        "examples/test_宿主IO.light",
+        "_antirun_t5_宿主IO.py"
+      ],
+      "本轮目标": "done：宿主IO抽象层原型，接口定义+内存模拟实现"
+    },
+    {
+      "编号": 115,
+      "功能": "宿主配置接线原型（配置注册表+多层加载器+配置变更事件+凭证接线+配置验证器）",
+      "原版包": "原型设计（非上游逐行复刻）；设计灵感：上游 packages/settings/ 设置子系统(Cordis服务+schemastery模式解析) + 上游 packages/credentials/ 凭证子系统(CredentialProvider抽象/四层存储) + 上游 packages/boot/ 启动配置(profile/manifest/patch/launcher flags) + 上游 packages/api/settings-controller/ 设置控制器 + 已有 src/设置.light(纯逻辑核心)/src/凭据.light(凭据子系统)/src/启动配置.light(启动配置)",
+      "光明模块": "src/宿主配置.light",
+      "状态": "done；0.1.5第17轮原型：配置注册表(配置项键/类型string-number-boolean-object-array/默认值/校验函数/描述/来源/可变性只读-运行时可改-热更新/命名空间/秘密标记/分组/类型校验)/配置存储与获取(当前值表/默认值表/来源追踪/获取/尝试获取/设置/重置/快照)/配置加载器(多层合并命令行>环境变量>配置文件>默认值/环境变量名到配置键映射+值类型转换/配置文件键值对解析/命令行--键=值解析/复用设置.light分层合并)/配置变更事件(变更前可否决/变更后/重置/监听器/变更历史)/凭证接线(凭证提供者接口注册/解析凭证/脱敏复用设置.light脱敏值/凭证层优先级/凭证变更事件)/配置验证器(验证全部/验证单个/启动时验证)；基于已有设置.light/凭据.light只读导入，不修改",
+      "证据": [
+        "src/宿主配置.light",
+        "examples/test_宿主配置.light",
+        "_antirun_t6_宿主配置.py"
+      ],
+      "本轮目标": "done：宿主配置接线原型，基于已有设置/凭据/启动配置的接线框架"
     }
   ]
 }
