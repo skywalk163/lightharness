@@ -70,7 +70,7 @@ python 运行.py examples/运行Web服务器.light
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `HARNESS_WEB_MOCK` | `1` | `1`=mock 模式（无需密钥），`0`=真实大模型模式 |
+| `HARNESS_WEB_MOCK` | 自动检测 | `1`=强制 mock（无需密钥）；缺省自动检测：`.env`/环境变量能读出大模型密钥则真实模式（不弹配置页），读不出则以 mock 占位启动并在页面自动弹出配置引导 |
 | `HARNESS_WEB_TOKEN` | 自动生成 | 登录令牌（URL 里的 `?token=`） |
 | `HARNESS_WEB_NO_OPEN` | 未设置 | 设置为 `1` 则不自动打开浏览器 |
 | `HARNESS_WEB_LIFETIME` | — | 令牌有效期（秒） |
