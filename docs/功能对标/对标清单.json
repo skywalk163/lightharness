@@ -1781,6 +1781,88 @@
       "本轮目标": "第14轮任务6",
       "反跑判据": "A 规范化不去除内部空白折叠→红；B 不变量不再检查长度上限(>100通过)→红；C 标题比较不规范化(原始文本相等才判定相等)→红",
       "语言缺陷": "L-119 L0单字别名是静默保留字且误用报错误导(配/己/自等单字在词法层吞成关键字，第一句合法第二句炸，报错指向缩进而非保留字冲突；绕法：标识符完全避开单字别名表)；L-120 标识符可被关键字序列完全切分时仍被切碎(L-084同族，触发面不同：错误己被切成错误+己，而错误甲正常因为甲不是关键字；绕法：标识符避开可被关键字全覆盖切分的组合)"
+    },
+    {
+      "编号": 98,
+      "功能": "context/session-reference 会话引用纯逻辑面（配置/序列化/投影/溢出/类型）",
+      "原版包": "packages/context/session-reference/src/{config.ts,serialization.ts,projection.ts,spill.ts,types.ts}（5文件纯逻辑，剔除index.ts Cordis装配面；uri.ts复用既有#33 src/会话引用.light）",
+      "光明模块": "src/会话引用深化.light",
+      "状态": "done；0.1.5第15轮：命名冲突（既有src/会话引用.light已覆盖#33 uri.ts）改深化名，只读导入复用URI编解码；配置校验(maxReferences 1..3/candidateLimit/maxReferenceBytes/referenceContextFraction)+标签安全序列化(<转\\u003c)+投影提取+溢出策略+类型形状",
+      "证据": [
+        "src/会话引用深化.light",
+        "examples/test_会话引用深化.light",
+        "_antirun_t1_会话引用深化.py"
+      ],
+      "本轮目标": "done：会话引用配置校验/序列化round-trip/投影提取/溢出策略/类型判别，覆盖正常/边界/异常三态"
+    },
+    {
+      "编号": 99,
+      "功能": "storage 存储核心与JSON纯逻辑面（后端接口/错误/注册表 + JSON格式/单记录单元/单文件单元）",
+      "原版包": "packages/storage/storage/src/{backend.ts,error.ts,registry.ts}+packages/storage/storage-json/src/{format.ts,per-record-unit.ts,single-unit.ts}（6文件纯逻辑，剔除storage/index.ts装配面/storage-json/atomic.ts fs依赖/storage-json/index.ts装配面/storage-sqlite宿主面/storage-domain已覆盖#59）",
+      "光明模块": "src/存储核心.light",
+      "状态": "done；0.1.5第15轮：存储错误7码逐字(backend-not-found/form-not-mounted/duplicate-backend/duplicate-mount/version-mismatch/malformed-medium/closed)以文本承载；KvUnit契约(loadAll/putRecord upsert/deleteRecord幂等/backup/close幂等)；介质以字典<路径,文档文本>模拟；per-record目录即状态+bootstrapLegacyUnit+SAFE_KEY_RE；single-unit整文档+ENOENT空态+物化推迟首写",
+      "证据": [
+        "src/存储核心.light",
+        "examples/test_存储核心.light",
+        "examples/_repro_L123.light",
+        "_antirun_t2_存储核心.py"
+      ],
+      "本轮目标": "done：存储后端契约/错误码/注册表/JSON格式/单记录单元/单文件单元，内存后端验证契约一致性"
+    },
+    {
+      "编号": 100,
+      "功能": "attachment 附件 + feedback 反馈纯逻辑面（准入校验/品牌/错误/请求投影/类型 + 命令反馈/消息反馈）",
+      "原版包": "packages/attachment/attachment/src/{admission.ts,brand.ts,error.ts,request-projection.ts,types.ts}+packages/feedback/command-feedback/src/{index.ts,types.ts}+packages/feedback/message-feedback/src/{index.ts,types.ts}（9文件纯逻辑，剔除attachment/index.ts装配面/attachment-local宿主面(压缩/编码/文件存储/图片)）",
+      "光明模块": "src/附件反馈.light",
+      "状态": "done；0.1.5第15轮：附件准入校验(类型白名单/大小限制/危险类型拦截)+附件品牌(类型名称/分类)+附件错误(Rejected/TooLarge/Unsupported)+请求投影(从请求提取附件元数据)+命令反馈(收集/评分/汇总)+消息反馈(点赞/点踩/注释/计数)；四舍五入银行家舍入与JS不一致(L-125)用取整半数上绕法",
+      "证据": [
+        "src/附件反馈.light",
+        "examples/test_附件反馈.light",
+        "examples/_repro_L125.light",
+        "_antirun_t3_附件反馈.py"
+      ],
+      "本轮目标": "done：附件准入/品牌/错误/投影/类型 + 命令反馈/消息反馈，148断言覆盖正常/边界/异常"
+    },
+    {
+      "编号": 101,
+      "功能": "schedule 调度深化 + jobs 任务核心 + guard 守卫纯逻辑面（投影/事务/类型 + 品牌/类型 + 重复工具提醒/超时策略）",
+      "原版包": "packages/schedule/schedule/src/{projection.ts,transaction.ts,types.ts}+packages/jobs/jobs/src/{brand.ts,types.ts}+packages/guard/repeat-tool-reminder/src/index.ts+packages/guard/timeout-policy/src/index.ts（7文件纯逻辑，剔除schedule/domain.ts已覆盖#29/schedule/tools.ts宿主面/schedule/index.ts装配面/schedule/invariant.ts+persistence.ts+runtime.ts宿主面/jobs/index.ts+invariant.ts宿主面/jobs-local已覆盖#53/tool-jobs已覆盖#53）",
+      "光明模块": "src/调度深化.light",
+      "状态": "done；0.1.5第15轮：调度投影(从记录提取视图/计算下次运行时间/after/at/every三种)+调度事务(批量更新/冲突检测/部分失败)+调度类型(ScheduleRecord形状/三种调度判别)+任务品牌(状态名称/分类)+任务类型(JobId格式/JobSnapshot形状)+重复工具提醒(连续N次相同调用触发/冷却期)+超时策略(默认/按工具差异化/超时文案)；字典对象身份键不可表达(L-127)用归属令牌字符串绕法",
+      "证据": [
+        "src/调度深化.light",
+        "examples/test_调度深化.light",
+        "examples/_repro_L127.light",
+        "_antirun_t4_调度深化.py"
+      ],
+      "本轮目标": "done：调度投影/事务/类型 + 任务品牌/类型 + 重复工具提醒/超时策略，128断言"
+    },
+    {
+      "编号": 102,
+      "功能": "preset 预设深化 + persona 角色 + settings 设置 + skill 技能纯逻辑面（组合清单/显示/类型 + 角色 + 脱敏/类型 + 注册/徽章）",
+      "原版包": "packages/preset/agent-presets/src/{composition-inventory.ts,display.ts,types.ts}+packages/preset/persona/src/index.ts+packages/settings/settings/src/{redact.ts,types.ts}+packages/skill/skill/src/index.ts+packages/skill/skill-badge/src/index.ts（8文件纯逻辑，剔除agent-presets已覆盖#72的7文件/index.ts装配面/invariant.ts宿主面/settings/index.ts+invariant.ts宿主面/settings-file宿主面/skill-filesystem宿主面/tool-skill宿主面）",
+      "光明模块": "src/预设深化.light",
+      "状态": "done；0.1.5第15轮：预设组合清单(列出预设包含的插件/工具/提示段/投影单元)+预设显示(名称/状态/描述格式化)+预设类型(PresetSpec/PresetMount形状)+角色定义(Persona类型/系统提示前缀/角色切换)+设置脱敏(敏感键脱敏/白名单/黑名单/脱敏文案)+设置类型(SettingsKey/SettingsValue)+技能注册(注册/查找/启用状态)+技能徽章(徽章类型/渲染/状态)；空列表空字典判假+0==假与JS不一致(L-129)用显式JS真值表绕法",
+      "证据": [
+        "src/预设深化.light",
+        "examples/test_预设深化.light",
+        "examples/_repro_L129.light",
+        "_antirun_t5_预设深化.py"
+      ],
+      "本轮目标": "done：预设组合清单/显示/类型 + 角色 + 设置脱敏/类型 + 技能注册/徽章，150断言"
+    },
+    {
+      "编号": 103,
+      "功能": "acp ACP深化 + hooks 钩子协议深化纯逻辑面（MCP消息/模型控制/语义更新 + 分离运行/事件/运行器/类型）",
+      "原版包": "packages/acp/acp/src/{mcp.ts,model-control.ts,updates.ts}+packages/hooks/hook-protocol/src/{detached.ts,events.ts,runner.ts,types.ts}（7文件纯逻辑，剔除acp/content.ts已覆盖#37/acp/codec.ts已覆盖#40/acp/index.ts+session.ts宿主面/hook-protocol/matcher.ts+codec.ts+merge.ts已覆盖#56/hook-protocol/invariant.ts宿主面/hooks-claude-code+hooks-codex宿主面）",
+      "光明模块": "src/协议深化.light",
+      "状态": "done；0.1.5第15轮：ACP MCP消息(请求/响应/通知形状/序列化round-trip)+ACP模型控制(模型切换/参数调整/控制指令)+ACP语义更新(提交更新/更新批次/更新确认)+分离钩子运行(静默期检测/完成检测/结果回收)+钩子事件(执行事件形状/序列化/判别)+钩子运行器(命令执行结果/输出解码/成功失败)+钩子协议类型(CommandHook/HookDialect/HookOutput形状)；无新语言缺陷(L-130空缺)",
+      "证据": [
+        "src/协议深化.light",
+        "examples/test_协议深化.light",
+        "_antirun_t6_协议深化.py"
+      ],
+      "本轮目标": "done：ACP MCP/模型控制/语义更新 + 钩子分离/事件/运行器/类型，159断言"
     }
   ]
 }
