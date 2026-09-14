@@ -1,0 +1,43 @@
+{
+ "corpus_files": 771,
+ "embed_now": [
+  "为",
+  "尝试",
+  "返回"
+ ],
+ "corpus_changed": 18,
+ "corpus_changed_files": [
+  "light-merge\\examples\\L1_baihua\\05_遍循环.light",
+  "light-merge\\examples\\L1_baihua\\07_字典.light",
+  "light-merge\\examples\\L1_baihua\\08_函数.light",
+  "light-merge\\examples\\L1_baihua\\09_异常.light",
+  "light-merge\\examples\\L3_domain\\all_in_one_L3_demo.light",
+  "light-merge\\examples\\L3_domain\\demo1_sql.light",
+  "light-merge\\examples\\L4_python\\all_in_one_demo.light",
+  "light-merge\\examples\\L4_python\\demo2_pandas_csv.light",
+  "light-merge\\examples\\advanced.light",
+  "light-merge\\examples\\basic.light",
+  "light-merge\\examples\\hello.light",
+  "light-merge\\examples\\modules\\main.light",
+  "light-merge\\examples\\modules\\math_utils.light",
+  "light-merge\\examples\\modules\\simple_export.light",
+  "light-merge\\examples\\modules\\string_utils.light",
+  "light-merge\\examples\\test_L070.light",
+  "lightharness\\examples\\test_R22_嵌入关键字冗余验证.light",
+  "lightharness\\src\\代理.light"
+ ],
+ "edge_changed": [
+  "行为",
+  "末位行为",
+  "作为",
+  "成为",
+  "认为",
+  "为了",
+  "返回表",
+  "返回结果",
+  "尝试记录",
+  "尝试捕获"
+ ],
+ "control": "skipped(该串不依赖嵌入块)",
+ "verdict": "KEEP"
+}
