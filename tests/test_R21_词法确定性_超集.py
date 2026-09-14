@@ -3,9 +3,9 @@
 
 验证第21轮任务1（预扫描重构）的核心兼容性要求：**definitions 只增不减**——
 对全量 lightharness/examples/*.light，工作区版 `_scan_user_definitions` 的结果
-必须是 git HEAD^ 版（重构前，=第20轮d2857dd5）结果的超集。
+必须是 git d2857dd5 版（第20轮，预扫描重构前）（重构前，=第20轮d2857dd5）结果的超集。
 
-旧版加载方式：git archive HEAD^ src 提取到临时目录（保证 keywords/tokens 等依赖
+旧版加载方式：git archive d2857dd5 src 提取到临时目录（保证 keywords/tokens 等依赖
 模块齐备），子进程内加载并输出 JSON。
 """
 import io
@@ -58,7 +58,7 @@ def scan_result():
     )
     tmp = tempfile.mkdtemp(prefix="r21_superset_")
     try:
-        ar = subprocess.run(["git", "archive", "HEAD^", "src"], cwd=LM, capture_output=True)
+        ar = subprocess.run(["git", "archive", "d2857dd5", "src"], cwd=LM, capture_output=True)
         if ar.returncode != 0:
             pytest.skip("git archive HEAD 不可用")
         tar = os.path.join(tmp, "src.tar")
