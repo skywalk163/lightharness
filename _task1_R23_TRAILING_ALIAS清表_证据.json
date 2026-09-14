@@ -1,0 +1,41 @@
+{
+ "isolation": "memory-level: same source, ONLY _TRAILING_ALIAS_CLASS differs",
+ "baseline_rev_for_ancestor_note": "e99bdb8018c649fc8de959624145c18dec7d6c76",
+ "corpus_files": 826,
+ "real_corpus_files": 773,
+ "generated_corpus_files": 53,
+ "broken_trailing_alias": [
+  "己"
+ ],
+ "fixed_trailing_alias_class": [
+  "从",
+  "匹",
+  "否",
+  "宏",
+  "导",
+  "己",
+  "并",
+  "异",
+  "当",
+  "承",
+  "抛",
+  "捕",
+  "掷",
+  "父",
+  "现",
+  "终",
+  "若",
+  "设",
+  "跃",
+  "返",
+  "遍"
+ ],
+ "token_changed_real": 0,
+ "token_changed_generated": 1,
+ "changed_real_files": [],
+ "changed_generated_files": [
+  "light-merge\\bootstrap\\release\\stdlib\\系统接口.light"
+ ],
+ "token_changed_vs_ancestor_note": 6,
+ "verdict": "ALL_OK"
+}
