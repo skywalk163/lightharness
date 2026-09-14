@@ -1,0 +1,450 @@
+{
+ "base_entries": 52,
+ "truly_removable": [
+  "数",
+  "串",
+  "典",
+  "集",
+  "从",
+  "假",
+  "父",
+  "若",
+  "并",
+  "且",
+  "或",
+  "非",
+  "导",
+  "步",
+  "骤",
+  "序",
+  "否",
+  "匹",
+  "跃",
+  "现",
+  "等",
+  "异"
+ ],
+ "kept": [
+  "列",
+  "段",
+  "空",
+  "真",
+  "的",
+  "则",
+  "对",
+  "长",
+  "过",
+  "自",
+  "是",
+  "出",
+  "引",
+  "加",
+  "减",
+  "乘",
+  "除",
+  "类",
+  "模",
+  "接",
+  "试",
+  "跳",
+  "首",
+  "末",
+  "余",
+  "配",
+  "例",
+  "断",
+  "常",
+  "到"
+ ],
+ "baseline_failures": [
+  [
+   "F",
+   "tests/unit/test_lexer.py::TestLexer::test_number_prefix_still_split_when_rest_is_keyword"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer.py::TestLexer::test_simple_tokenize"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_compound_safe_alignment.py::TestPreservedSegmentations::test_自之X_仍是单B修好的样子"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_p0a_deterministic.py::TestP0A无空格表达式仍切分::test_成员与关系分隔符"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_p0a_deterministic.py::TestP0A无空格表达式仍切分::test_语句关键字词首切分"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_correctness_smoke"
+  ]
+ ],
+ "final_failures": [
+  [
+   "F",
+   "tests/unit/test_lexer.py::TestLexer::test_number_prefix_still_split_when_rest_is_keyword"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer.py::TestLexer::test_simple_tokenize"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_compound_safe_alignment.py::TestPreservedSegmentations::test_自之X_仍是单B修好的样子"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_p0a_deterministic.py::TestP0A无空格表达式仍切分::test_成员与关系分隔符"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_p0a_deterministic.py::TestP0A无空格表达式仍切分::test_语句关键字词首切分"
+  ],
+  [
+   "F",
+   "tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_correctness_smoke"
+  ]
+ ],
+ "final_matches_baseline": true,
+ "details": {
+  "数": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "列": {
+   "test_new_failures": [],
+   "real_source_changes": 12,
+   "removable": false
+  },
+  "串": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "典": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "集": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "从": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "段": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_control_group_unchanged"
+    ]
+   ],
+   "real_source_changes": 14,
+   "removable": false
+  },
+  "空": {
+   "test_new_failures": [
+    [
+     "F",
+     "tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_等于空那么"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "真": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "假": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "父": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "的": {
+   "test_new_failures": [],
+   "real_source_changes": 4,
+   "removable": false
+  },
+  "若": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "则": {
+   "test_new_failures": [],
+   "real_source_changes": 2,
+   "removable": false
+  },
+  "对": {
+   "test_new_failures": [
+    [
+     "F",
+     "tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_对于"
+    ],
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 7,
+   "removable": false
+  },
+  "长": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "过": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "自": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_control_group_unchanged"
+    ]
+   ],
+   "real_source_changes": 2,
+   "removable": false
+  },
+  "是": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_identifier_safe_module_print_merged_inside_word"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "并": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "且": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "或": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "非": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "出": {
+   "test_new_failures": [],
+   "real_source_changes": 2,
+   "removable": false
+  },
+  "导": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "引": {
+   "test_new_failures": [],
+   "real_source_changes": 9,
+   "removable": false
+  },
+  "加": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_arithmetic_operator_compound_words"
+    ]
+   ],
+   "real_source_changes": 2,
+   "removable": false
+  },
+  "减": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_arithmetic_operator_compound_words"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "乘": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "除": {
+   "test_new_failures": [
+    [
+     "F",
+     "tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_除类型错误"
+    ],
+    [
+     "F",
+     "tests/unit/test_lexer_compound_safe_alignment.py::TestPreservedSegmentations::test_去除空格仍是一个标识符"
+    ],
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_control_group_unchanged"
+    ],
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "步": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "骤": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "类": {
+   "test_new_failures": [],
+   "real_source_changes": 26,
+   "removable": false
+  },
+  "模": {
+   "test_new_failures": [],
+   "real_source_changes": 20,
+   "removable": false
+  },
+  "接": {
+   "test_new_failures": [],
+   "real_source_changes": 3,
+   "removable": false
+  },
+  "序": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "试": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "否": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "跳": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "首": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "末": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 1,
+   "removable": false
+  },
+  "余": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 0,
+   "removable": false
+  },
+  "配": {
+   "test_new_failures": [
+    [
+     "S",
+     "tests/unit/test_lexer.py::TestLexer::test_compound_safe_supplement_merges_words"
+    ]
+   ],
+   "real_source_changes": 2,
+   "removable": false
+  },
+  "匹": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "例": {
+   "test_new_failures": [],
+   "real_source_changes": 3,
+   "removable": false
+  },
+  "断": {
+   "test_new_failures": [],
+   "real_source_changes": 11,
+   "removable": false
+  },
+  "跃": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "现": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "等": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "异": {
+   "test_new_failures": [],
+   "real_source_changes": 0,
+   "removable": true
+  },
+  "常": {
+   "test_new_failures": [],
+   "real_source_changes": 108,
+   "removable": false
+  },
+  "到": {
+   "test_new_failures": [],
+   "real_source_changes": 1,
+   "removable": false
+  }
+ }
+}

@@ -1,0 +1,394 @@
+{
+ "corpus_files": 770,
+ "table_now": 52,
+ "redundant": [
+  "且",
+  "串",
+  "从",
+  "余",
+  "例",
+  "假",
+  "典",
+  "减",
+  "出",
+  "则",
+  "到",
+  "匹",
+  "否",
+  "导",
+  "常",
+  "并",
+  "序",
+  "异",
+  "引",
+  "或",
+  "接",
+  "数",
+  "是",
+  "末",
+  "步",
+  "父",
+  "现",
+  "真",
+  "空",
+  "等",
+  "若",
+  "试",
+  "跃",
+  "跳",
+  "过",
+  "长",
+  "除",
+  "集",
+  "非",
+  "首",
+  "骤"
+ ],
+ "guard": [
+  "乘",
+  "列",
+  "加",
+  "对",
+  "断",
+  "模",
+  "段",
+  "的",
+  "类",
+  "自",
+  "配"
+ ],
+ "redundant_count": 41,
+ "guard_count": 11,
+ "details": {
+  "且": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "串": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "乘": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\hello.light"
+   ],
+   "changed_count": 1
+  },
+  "从": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "余": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "例": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "假": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "典": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "减": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "出": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "列": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\Z阶段_可选类型系统\\Z2_泛型类型.light",
+    "light-merge\\examples\\Z阶段_可选类型系统\\Z4_函数类型标注.light",
+    "light-merge\\examples\\Z阶段_可选类型系统\\Z6_类型推断实战.light",
+    "light-merge\\examples\\Z阶段_可选类型系统\\Z8_综合实战.light"
+   ],
+   "changed_count": 4
+  },
+  "则": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "到": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "加": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\advanced.light",
+    "light-merge\\examples\\modules\\string_utils.light"
+   ],
+   "changed_count": 2
+  },
+  "匹": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "否": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "对": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\F阶段_标准库增强\\F3_光明侧三个增强模块示例.light",
+    "light-merge\\stdlib\\HTTP服务端.light",
+    "light-merge\\stdlib\\SSE.light",
+    "light-merge\\stdlib\\中文文本处理.light",
+    "light-merge\\stdlib\\分布式\\调度核心.light",
+    "lightharness\\examples\\test_L024.light"
+   ],
+   "changed_count": 6
+  },
+  "导": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "常": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "并": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "序": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "异": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "引": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "或": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "接": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "数": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "断": {
+   "redundant": false,
+   "changed_files": [
+    "lightharness\\examples\\test_L037.light",
+    "lightharness\\examples\\test_L087.light",
+    "lightharness\\examples\\test_一次性监听器.light",
+    "lightharness\\examples\\test_代理深化.light",
+    "lightharness\\examples\\test_原子写.light",
+    "lightharness\\examples\\test_子进程流式.light",
+    "lightharness\\examples\\test_客户端超时.light",
+    "lightharness\\examples\\test_工具统计.light",
+    "lightharness\\examples\\test_沙箱资源.light"
+   ],
+   "changed_count": 9
+  },
+  "是": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "末": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "模": {
+   "redundant": false,
+   "changed_files": [
+    "lightharness\\examples\\test_web路由.light",
+    "lightharness\\examples\\test_代理.light",
+    "lightharness\\examples\\test_代理深化.light",
+    "lightharness\\examples\\test_代理系统提示.light",
+    "lightharness\\examples\\test_修复_工具.light",
+    "lightharness\\examples\\test_压缩自动.light",
+    "lightharness\\examples\\test_子智能体.light",
+    "lightharness\\examples\\test_子智能体1.5.light",
+    "lightharness\\examples\\test_子智能体深化.light",
+    "lightharness\\examples\\test_并行.light",
+    "lightharness\\examples\\test_异步代理.light",
+    "lightharness\\examples\\test_溢出恢复.light",
+    "lightharness\\examples\\test_溢出重试深化.light",
+    "lightharness\\examples\\test_联调CLI.light",
+    "lightharness\\examples\\test_行为对照_代理循环.light",
+    "lightharness\\examples\\test_遥测.light",
+    "lightharness\\examples\\test_钩子.light",
+    "lightharness\\examples\\运行Web服务器.light",
+    "lightharness\\src\\协议深化.light",
+    "lightharness\\src\\总入口.light"
+   ],
+   "changed_count": 20
+  },
+  "步": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "段": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\games\\snake.light",
+    "light-merge\\examples\\snake_game\\主.light",
+    "light-merge\\stdlib\\re.light",
+    "light-merge\\stdlib\\网络请求.light",
+    "lightharness\\src\\工具.light",
+    "lightharness\\src\\持久化.light",
+    "lightharness\\src\\提示模板.light"
+   ],
+   "changed_count": 7
+  },
+  "父": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "现": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "的": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\E阶段_L3L4原生语法\\E4_L4_沙箱隔离验证.light",
+    "light-merge\\examples\\L1_baihua\\05_遍循环.light",
+    "light-merge\\examples\\L1_baihua\\06_列表.light",
+    "light-merge\\examples\\L1_baihua\\07_字典.light"
+   ],
+   "changed_count": 4
+  },
+  "真": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "空": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "等": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "类": {
+   "redundant": false,
+   "changed_files": [
+    "light-merge\\examples\\test_L068.light",
+    "lightharness\\examples\\test_L013.light"
+   ],
+   "changed_count": 2
+  },
+  "自": {
+   "redundant": false,
+   "changed_files": [
+    "lightharness\\src\\权限.light",
+    "lightharness\\src\\网页搜索.light"
+   ],
+   "changed_count": 2
+  },
+  "若": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "试": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "跃": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "跳": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "过": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "配": {
+   "redundant": false,
+   "changed_files": [
+    "lightharness\\examples\\test_L119.light",
+    "lightharness\\examples\\test_团队服务.light"
+   ],
+   "changed_count": 2
+  },
+  "长": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "除": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "集": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "非": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "首": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  },
+  "骤": {
+   "redundant": true,
+   "changed_files": [],
+   "changed_count": 0
+  }
+ }
+}
