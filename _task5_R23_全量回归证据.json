@@ -1,0 +1,122 @@
+{
+ "baseline_rev": "e99bdb8018c649fc8de959624145c18dec7d6c76",
+ "corpus_files": 829,
+ "real_corpus_files": 776,
+ "generated_corpus_files": 53,
+ "base_trailing_alias_merge": [
+  "己"
+ ],
+ "edit_trailing_alias_class": [
+  "从",
+  "匹",
+  "否",
+  "宏",
+  "导",
+  "己",
+  "并",
+  "异",
+  "当",
+  "承",
+  "抛",
+  "捕",
+  "掷",
+  "父",
+  "现",
+  "终",
+  "若",
+  "设",
+  "跃",
+  "返",
+  "遍"
+ ],
+ "base_ccw": 184,
+ "edit_ccw": 37,
+ "baseline_selfcheck": true,
+ "token_changed_real": 0,
+ "token_changed_generated": 6,
+ "changed_real_files": [],
+ "changed_generated_files": [
+  "light-merge\\bootstrap\\release\\stdlib\\外部命令.light",
+  "light-merge\\bootstrap\\release\\stdlib\\字符串工具.light",
+  "light-merge\\bootstrap\\release\\stdlib\\字符串常量.light",
+  "light-merge\\bootstrap\\release\\stdlib\\文件匹配.light",
+  "light-merge\\bootstrap\\release\\stdlib\\系统接口.light",
+  "light-merge\\bootstrap\\release\\stdlib\\编码解码.light"
+ ],
+ "oldpath_real_changes": 0,
+ "oldpath_generated_changes": 6,
+ "oldpath_real_files": [],
+ "time_base_s": 11.66,
+ "time_edit_s": 9.63,
+ "time_base_iters_s": [
+  15.64,
+  11.66,
+  8.24
+ ],
+ "time_edit_iters_s": [
+  13.44,
+  9.63,
+  6.77
+ ],
+ "perf_ok": true,
+ "core_cases_consistent": true,
+ "core_cases": {
+  "test_L084.light": {
+   "rc": 0,
+   "out": "test\n"
+  },
+  "test_L092.light": {
+   "rc": 0,
+   "out": "1\n"
+  },
+  "test_L119.light": {
+   "rc": 0,
+   "out": "1\ntest_L119 PASS\n"
+  },
+  "test_L120.light": {
+   "rc": 0,
+   "out": "测试错误\ntest_L120 PASS\n"
+  },
+  "test_L137.light": {
+   "rc": 0,
+   "out": "1\n"
+  },
+  "test_R21_L152家族嵌套形参.light": {
+   "rc": 0,
+   "out": "test_R21_L152家族嵌套形参 PASS\n"
+  },
+  "test_R21_L152嵌套段落形参.light": {
+   "rc": 0,
+   "out": "test_R21_L152嵌套段落形参 PASS\n"
+  },
+  "probe_己词尾并入.light": {
+   "rc": 0,
+   "gen_sha": "9d53dc5364045f2f5dd4415147ec4c2118a8e9ffeccdfa81f114a604ba0a2590",
+   "gen_len": 13454,
+   "err": ""
+  },
+  "probe_内建名迁移.light": {
+   "rc": 0,
+   "gen_sha": "17df02f171774cdf642c3fce0a1d384a00dfd3848acba8c7e99ece714de97163",
+   "gen_len": 13543,
+   "err": ""
+  }
+ },
+ "codegen_consistent": true,
+ "codegen": {
+  "probe_己词尾并入.light": {
+   "rc": 0,
+   "gen_sha": "9d53dc5364045f2f5dd4415147ec4c2118a8e9ffeccdfa81f114a604ba0a2590",
+   "gen_len": 13454,
+   "err": ""
+  },
+  "probe_内建名迁移.light": {
+   "rc": 0,
+   "gen_sha": "17df02f171774cdf642c3fce0a1d384a00dfd3848acba8c7e99ece714de97163",
+   "gen_len": 13543,
+   "err": ""
+  }
+ },
+ "lexer_sha_restored": "342bc6c4dece7758ba832283bb4b99e11518b2148756d2dc4b96966085b7612a",
+ "verdict": "ALL_OK"
+}
