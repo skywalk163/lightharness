@@ -1,20 +1,29 @@
-# test_L095.light —— L-095 最小复现：HMAC_SHA256 非标准实现
-# 缺陷：HMAC_SHA256 实为单轮 PBKDF2，密钥未走 ipad/opad，与标准 HMAC-SHA256 不一致。
-# 当前（修复前）：立红（对拍不一致）
-# 修复后：与 Python 标准库 hmac.new(key, msg, sha256) 输出一致（期望值离线预计算）
-# 期望值1 = hmac.new("密钥", "消息", sha256).hexdigest()
-# 期望值2 = hmac.new(b"key", b"The quick brown fox jumps over the lazy dog", sha256).hexdigest()
+# test_L095.light —— L-095 HMAC-SHA256 标准实现对拍（第20轮任务2 更新）
+# 缺陷：HMAC_SHA256 曾为单轮 PBKDF2，与标准 RFC 2104 不一致。
+# 修复：改为 Python 标准库 hmac.new(key, msg, hashlib.sha256)（RFC 2104 / RFC 4231 一致）。
+# 本用例：7 组对拍（标准用例 2 + 边界 5），期望值全部由 Python hmac 离线预计算。
+# 验收：rc=0（从 EXPECT_RED 移除）。
 
 从 哈希 导入 HMAC_SHA256
 
-设 结果甲 为 HMAC_SHA256("密钥", "消息")
-打印 结果甲
-如果 结果甲 != "51785c6051c3d60392c441ada800662e64a027761ff96d71237c51da0eb25020":
-    抛出 新建 错误("L-095 对拍失败: 消息/密钥 与标准 HMAC 不一致")
+段落 对拍 接收 实际, 期望, 标签:
+    如果 实际 != 期望:
+        抛出 新建 错误("L-095 对拍失败: " + 标签 + " 实际=" + 实际 + " 期望=" + 期望)
 
-设 结果乙 为 HMAC_SHA256("key", "The quick brown fox jumps over the lazy dog")
-打印 结果乙
-如果 结果乙 != "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8":
-    抛出 新建 错误("L-095 对拍失败: RFC 用例与标准 HMAC 不一致")
+# ---- 标准用例（第19轮修复验证）----
+对拍(HMAC_SHA256("密钥", "消息"), "51785c6051c3d60392c441ada800662e64a027761ff96d71237c51da0eb25020", "消息/密钥")
+对拍(HMAC_SHA256("key", "The quick brown fox jumps over the lazy dog"), "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8", "RFC经典用例")
+
+# ---- 边界用例（第20轮任务2 新增）----
+# 空密钥+空消息
+对拍(HMAC_SHA256("", ""), "b613679a0814d9ec772f95d778c35fc5ff1697c493715653c6c712144292c5ad", "空密钥空消息")
+# 空密钥+非空消息
+对拍(HMAC_SHA256("", "消息"), "41ecea812c250b68b001c3f2392c6468f74c491cc2a6cba5d36d2bbfe61104a0", "空密钥")
+# 非空密钥+空消息
+对拍(HMAC_SHA256("密钥", ""), "9cfdadd2b279a7fe32f8060cfdeebe268ba0f00107a7780cd62304e818bd7631", "空消息")
+# 长密钥（100字节 > 64字节块长，RFC 2104 要求先哈希密钥）
+对拍(HMAC_SHA256("kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk", "长密钥测试"), "67607baa8e6e0344ba7966ff3ce74c37427031b1cee165191d4b8ba680ed2513", "长密钥")
+# 中文密钥/消息（多字节 UTF-8 编码）
+对拍(HMAC_SHA256("中文密钥甲乙丙", "中文消息丁戊己"), "a19c812ead99e6cb449ba831a32733d2eace7a3b44aa7ac94c72784adf00501c", "中文密钥消息")
 
 打印 "test_L095 PASS"
