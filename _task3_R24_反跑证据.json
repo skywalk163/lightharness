@@ -1,0 +1,192 @@
+{
+ "baseline_rev": "ca5741a8a0e8572205652ebae3fd31fd5ba2a368",
+ "corpus_files": 834,
+ "cs_base": [
+  "乘",
+  "余",
+  "例",
+  "减",
+  "出",
+  "列",
+  "则",
+  "到",
+  "加",
+  "对",
+  "常",
+  "引",
+  "接",
+  "断",
+  "是",
+  "末",
+  "模",
+  "段",
+  "的",
+  "真",
+  "空",
+  "类",
+  "自",
+  "试",
+  "跳",
+  "过",
+  "配",
+  "长",
+  "除",
+  "首"
+ ],
+ "cs_edit": [
+  "乘",
+  "余",
+  "例",
+  "减",
+  "出",
+  "列",
+  "则",
+  "到",
+  "加",
+  "对",
+  "常",
+  "引",
+  "接",
+  "断",
+  "是",
+  "末",
+  "模",
+  "段",
+  "的",
+  "真",
+  "空",
+  "类",
+  "自",
+  "试",
+  "跳",
+  "过",
+  "配",
+  "长",
+  "除",
+  "首"
+ ],
+ "retained_13": "例出则常引接是末试跳过长首",
+ "p0a_compound_safe_removed": true,
+ "cr1_present": true,
+ "baseline_selfcheck": true,
+ "changed_real": [
+  "light-merge/examples/L2_wenyan/学生模块.light"
+ ],
+ "changed_generated": [
+  "light-merge/bootstrap/release/stdlib/CSV读写器.light",
+  "light-merge/bootstrap/release/stdlib/对象池缓存.light",
+  "light-merge/bootstrap/release/stdlib/文件系统.light",
+  "light-merge/bootstrap/release/stdlib/断言工具.light"
+ ],
+ "expected_real": [
+  "light-merge/examples/L2_wenyan/学生模块.light"
+ ],
+ "unexpected_changes": [],
+ "missing_changes": [],
+ "cr1_c1_base_drop13_broken": [
+  "例",
+  "出",
+  "则",
+  "常",
+  "引",
+  "接",
+  "是",
+  "末",
+  "试",
+  "跳",
+  "过",
+  "长",
+  "首"
+ ],
+ "cr1_c1_all_broken": true,
+ "cr1_c2_edit_drop13_kept": [
+  "例",
+  "出",
+  "则",
+  "常",
+  "引",
+  "接",
+  "是",
+  "末",
+  "试",
+  "跳",
+  "过",
+  "长",
+  "首"
+ ],
+ "cr1_c2_all_kept": true,
+ "free_names_ok": true,
+ "free_names": [
+  "去除空格",
+  "10的幂",
+  "索引",
+  "种类",
+  "阶乘",
+  "过滤",
+  "过程",
+  "引用",
+  "接口",
+  "例1"
+ ],
+ "stmt_initial": [
+  "长度",
+  "举例",
+  "首项",
+  "末尾",
+  "例子",
+  "常规",
+  "跳过",
+  "引用"
+ ],
+ "time_base_s": 6.31,
+ "time_edit_s": 5.92,
+ "perf_ok": true,
+ "core_cases": {
+  "test_L084.light": {
+   "rc": 0,
+   "sha": "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2"
+  },
+  "test_L092.light": {
+   "rc": 0,
+   "sha": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+  },
+  "test_L119.light": {
+   "rc": 0,
+   "sha": "b90c6987636d9f064bd84cb962b850a228457ffec2646a0327ae747990397702"
+  },
+  "test_L120.light": {
+   "rc": 0,
+   "sha": "1ed9d8c48186d1d5f00b9e2adfe48b92d98ec9fd169c427473298a9e9f2880d1"
+  },
+  "test_R21_L152家族嵌套形参.light": {
+   "rc": 0,
+   "sha": "dd29fb445b36a8af866757c5abe65f6e822cce4b81ed12c03b9c08f7de2b027e"
+  },
+  "test_R21_L152嵌套段落形参.light": {
+   "rc": 0,
+   "sha": "d601532b6da7a1afc3741e40050b07ab97e001ec35ac56bfb7327fe7876e4b44"
+  }
+ },
+ "core_cases_consistent": true,
+ "r24_cases": {
+  "test_R24_的递归修复.light": {
+   "rc": 0,
+   "tail": "test_R24_的递归修复 全部通过"
+  },
+  "test_R24_运算符单字守卫.light": {
+   "rc": 0,
+   "tail": "test_R24_运算符单字守卫 全部通过"
+  },
+  "test_R24_值字面量守卫.light": {
+   "rc": 0,
+   "tail": "test_R24_值字面量守卫 全部通过"
+  },
+  "test_R24_单字通用规则.light": {
+   "rc": 0,
+   "tail": "test_R24_单字通用规则 全部通过"
+  }
+ },
+ "r24_cases_all_green": true,
+ "lexer_sha_restored": "5cfbfa95b8da0d9e77eca1617cf2d497e967a7248c6ce26f726752c1af0e87c4",
+ "verdict": "ALL_OK"
+}
