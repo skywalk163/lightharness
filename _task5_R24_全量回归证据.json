@@ -1,0 +1,116 @@
+{
+ "baseline_rev": "ca5741a8a0e8572205652ebae3fd31fd5ba2a368",
+ "corpus_files": 834,
+ "real_corpus_files": 781,
+ "generated_corpus_files": 53,
+ "base_cs": 30,
+ "edit_cs": 30,
+ "base_ccw": 37,
+ "edit_ccw": 37,
+ "dead_code_P0A_COMPOUND_SAFE_removed": true,
+ "baseline_selfcheck": true,
+ "token_changed_real": 1,
+ "token_changed_generated": 4,
+ "changed_real_files": [
+  "light-merge\\examples\\L2_wenyan\\学生模块.light"
+ ],
+ "unexpected_real_files": [],
+ "changed_generated_files": [
+  "light-merge\\bootstrap\\release\\stdlib\\CSV读写器.light",
+  "light-merge\\bootstrap\\release\\stdlib\\对象池缓存.light",
+  "light-merge\\bootstrap\\release\\stdlib\\文件系统.light",
+  "light-merge\\bootstrap\\release\\stdlib\\断言工具.light"
+ ],
+ "free_names_count": 175,
+ "free_names_bad": [],
+ "contract_cases_count": 29,
+ "contract_cases_bad": [],
+ "contract_cases_consistent": true,
+ "stmt_cases_count": 11,
+ "stmt_cases_bad": [],
+ "oldpath_real_changes": 1,
+ "oldpath_generated_changes": 3,
+ "oldpath_real_files": [
+  "light-merge\\examples\\L2_wenyan\\学生模块.light"
+ ],
+ "time_base_s": 6.58,
+ "time_edit_s": 6.0,
+ "time_base_iters_s": [
+  8.47,
+  6.58,
+  5.82
+ ],
+ "time_edit_iters_s": [
+  7.62,
+  5.94,
+  6.0
+ ],
+ "perf_ok": true,
+ "core_cases_consistent": true,
+ "core_cases": {
+  "test_L084.light": {
+   "rc": 0,
+   "out": "test\n"
+  },
+  "test_L092.light": {
+   "rc": 0,
+   "out": "1\n"
+  },
+  "test_L119.light": {
+   "rc": 0,
+   "out": "1\ntest_L119 PASS\n"
+  },
+  "test_L120.light": {
+   "rc": 0,
+   "out": "测试错误\ntest_L120 PASS\n"
+  },
+  "test_R21_L152家族嵌套形参.light": {
+   "rc": 0,
+   "out": "test_R21_L152家族嵌套形参 PASS\n"
+  },
+  "test_R21_L152嵌套段落形参.light": {
+   "rc": 0,
+   "out": "test_R21_L152嵌套段落形参 PASS\n"
+  },
+  "probe_之成员访问.light": {
+   "rc": 0,
+   "gen_sha": "fa0be8020d81f0b3660d5b805ec34400590c4c8c0316e09bb3270ecb09a0e600",
+   "gen_len": 13541,
+   "err": ""
+  },
+  "probe_自由名保留.light": {
+   "rc": 0,
+   "gen_sha": "668c3de75d3cc6c1f942848e3e3815f0037ba8212e9ff9905c18463d5da0aa0f",
+   "gen_len": 13485,
+   "err": ""
+  }
+ },
+ "r24_new_cases_ok": true,
+ "r24_new_cases_bad": [],
+ "real_changed_compile_ab": {
+  "light-merge\\examples\\L2_wenyan\\学生模块.light": {
+   "base_rc": 0,
+   "base_err": "",
+   "edit_rc": 0,
+   "edit_err": ""
+  }
+ },
+ "real_changed_compile_not_worse": true,
+ "codegen_consistent": true,
+ "codegen": {
+  "probe_之成员访问.light": {
+   "rc": 0,
+   "gen_sha": "fa0be8020d81f0b3660d5b805ec34400590c4c8c0316e09bb3270ecb09a0e600",
+   "gen_len": 13541,
+   "err": ""
+  },
+  "probe_自由名保留.light": {
+   "rc": 0,
+   "gen_sha": "668c3de75d3cc6c1f942848e3e3815f0037ba8212e9ff9905c18463d5da0aa0f",
+   "gen_len": 13485,
+   "err": ""
+  }
+ },
+ "lexer_sha_restored": "5cfbfa95b8da0d9e77eca1617cf2d497e967a7248c6ce26f726752c1af0e87c4",
+ "verdict": "ALL_OK"
+}
