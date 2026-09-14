@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 任务1 反跑判据验证（词法嵌入最大匹配：去重占位/作用域匹配/删除属性/合并为 等）
 #
-# 判据 A（断裂必红）：把词法器回退到轮20起点（git HEAD，即不含任务1修复）→
+# 判据 A（断裂必红）：把词法器回退到轮20起点（R20_PREFIX=d2857dd5^，即不含任务1修复）→
 #          test_宿主上下文.light / test_宿主事件.light 必须 rc != 0（红）。
 #          这两个文件正是本轮要清零的临时例外①②，其红是「关键字前缀标识符被切碎」
 #          （典型 `设 合并为 {}` 无空格写法 → 合并为 被并入标识符、为 赋值关键字丢失 →
@@ -63,8 +63,15 @@ def _purge_pyc():
                         pass
 
 
+# R21 任务3 订正（2026-09-14）：本脚本原以「HEAD」为断裂态（回退到 HEAD 应复现红）。
+# 但第20轮修复已提交进 HEAD（d2857dd5），故 HEAD 已是**修复后**版本，判据A 恒假。
+# 断裂态改为钉住「第20轮修复的父提交」——d2857dd5^ == 49319306（第19轮），
+# 实测该版本跑 REGRESS_RED 两例确为红（rc=1），修复态为绿（rc=0），判据恢复有效。
+R20_PREFIX = 'd2857dd5^'   # 第20轮修复提交的父提交（= 第19轮 49319306）
+
+
 def _head_lexer():
-    return subprocess.run(['git', '-C', LIGHT, 'show', 'HEAD:src/lexer.py'],
+    return subprocess.run(['git', '-C', LIGHT, 'show', R20_PREFIX + ':src/lexer.py'],
                           capture_output=True, text=True).stdout
 
 
@@ -103,7 +110,7 @@ def main():
 
     ok = True
     try:
-        # ── 断裂：回退到 HEAD ──
+        # ── 断裂：回退到第20轮修复的父提交（R20_PREFIX）──
         head = _head_lexer()
         if not head.strip():
             print('FAIL: 无法取得 HEAD lexer')
