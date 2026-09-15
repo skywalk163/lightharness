@@ -19,14 +19,25 @@ def tok(src):
 # === 1. CCW表最终条数断言 ===
 
 def test_ccw_table_is_10():
-    """R29：CCW 37→10（删27条，保留10条真护栏）"""
-    assert len(_lx.COMMON_COMPOUND_WORDS) == 10
+    """R29：CCW 37→10（删27条，保留10条真护栏）
+
+    R30 更新（任务1/2/3）：CCW 10→1。R29 保留的 10 条中已有 9 条通用化移出：
+      · 任务1/2：位与/位异或/位或/位非/应当/除非 → `_P0A_HEAD_MERGE_PREFIX`
+      · 任务3  ：零除错误/幂次/记录类型 → `_r30_cn_num_head_merge` / skip_verb /
+                 `_P0A_MERGE_WHOLE`
+    现仅可能剩 `测试_生成问候语`（R30 任务4 负责），故上界判定。"""
+    assert _lx.COMMON_COMPOUND_WORDS <= {'测试_生成问候语'}
+    assert len(_lx.COMMON_COMPOUND_WORDS) <= 1
 
 def test_ccw_retained_entries():
-    """R29：保留10条真护栏清单"""
-    retained = {'位与', '位异或', '位或', '位非', '零除错误',
-                '应当', '除非', '测试_生成问候语', '幂次', '记录类型'}
-    assert set(_lx.COMMON_COMPOUND_WORDS) == retained
+    """R29：保留10条真护栏清单
+
+    R30 更新（任务1/2/3）：上述 10 条中 9 条已从 CCW 移除，但整词语义由通用规则
+    接住 —— 逐条 token 断言见本文件下方 `*_retained()` 用例（未随表删而放宽）
+    与 test_R30_零除幂次记录类型通用化_token.py。此处断言「9 条已清空」。"""
+    gone = {'位与', '位异或', '位或', '位非', '应当', '除非',
+            '零除错误', '幂次', '记录类型'}
+    assert not (gone & _lx.COMMON_COMPOUND_WORDS)
 
 # === 2. 保留10条真护栏的保护语义 ===
 

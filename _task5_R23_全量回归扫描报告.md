@@ -2,8 +2,16 @@
 
 > 日期：2026-09-14 ｜ 轮次：第23轮 任务5（P1）
 > 脚本：`lightharness/_antirun_r23_t5_全量回归扫描.py` → **ALL OK**
+> 　　　`lightharness/_r23_subset_ab.py`（全量失败子集 A/B）→ **ALL OK**
 > 证据：`lightharness/_task5_R23_全量回归证据.json`
+> 　　　`lightharness/_task5_R23_失败子集AB_证据.json`
 > 修改编译器源码：**无**（本任务只新增脚本与报告）
+>
+> **交付提交**：`light-merge` 分支 `main` 上的 **`ca5741a8`**
+> 「第23轮保护表通用化替代: 阶段A _TRAILING_ALIAS_MERGE清表(1→0…); 阶段B …; 阶段C CCW 184→37…」
+> —— 该提交含 `src/lexer.py` + `tests/unit/test_lexer_p0a_deterministic.py`（230+/240−），
+> 提交后 `git diff HEAD -- src/lexer.py` **为空**，即本报告验证的工作树状态 **≡ 已提交状态**
+> （`sha256` 前缀 `342bc6c4…` 两侧一致），A/B 基准 `e99bdb80` 即该提交的父提交。
 
 ---
 
@@ -19,6 +27,7 @@
 | 性能 | 基准中位 11.66s → 修复态中位 **9.63s**，**×1.210（更快 21%）** |
 | 核心用例（9 个） | 两侧 rc / stdout **逐字节一致**，全部 rc=0 |
 | codegen 产物（2 探针） | 两侧 sha256 **完全一致** |
+| light-merge 全量套件（本机 Windows 串行） | 8322 collected / **203 红**；失败子集基线 A/B → **新增回归 0**（§5.3） |
 | 判定 | **ALL OK** |
 
 ---
@@ -187,35 +196,93 @@ python -m pytest tests/unit -p no:cacheprovider -q --tb=line -k "lexer or 词法
 > 会被测试文件内 `sys.path.insert(0, src)` 阴影，永远测到基线（假阳）。
 > 插件：`C:\Users\skywalk\AppData\Local\Temp\r23_inject\_inject_baseline_lexer.py`。
 
-### 5.3 light-merge 全量套件
+### 5.3 light-merge 全量套件（本机 Windows · 串行）
 
 ```
-python -m pytest tests/ -p no:cacheprovider -q --tb=line
+python -X utf8 -m pytest tests/ -p no:cacheprovider -q --tb=no -rf --junitxml=<xml>
+→ collected=8322  failures=194  errors=9  skipped=116     （串行，约 60 min）
 ```
 
-本机为串行执行（本机**未装 pytest-xdist**，`-n` 不可用），套件含本地原生编译用例，耗时较长，
-**撰写本报告时仍在运行中**（>43 min）。结论不依赖它：
+本机**未装 pytest-xdist**，无法 `-n`，故耗时远高于门禁机。失败 203 条（194 failed + 9 errors）
+分布：`tests/e2e` 44、根目录 `tests/test_*` 23、`test_context_manager` 17、`test_stdlib_phase9` 16、
+`test_process_tree_light` 14、`test_agent_tools_light` 11、`tests/unit` 9 …
 
-- [B] 已证明**全语料 token 流逐文件逐字节一致** ⇒ 解析/代码生成/执行结果逻辑上不可能不同；
-- 5.2 已用基线 A/B 证明词法专项单测**零新增失败**；
-- 5.1 lightharness 552 项全绿。
+**⚠️ 本机全量的红不是判绿 oracle**（原因见 §5.4）。判绿改用 **失败子集 A/B**：
 
-**建议**：按项目惯例，全量套件在验证机 **192.168.0.88**（FreeBSD / 12 核 / 已装 xdist）上
-以 `-n 8` 复跑作为推 gitea 前的门禁。
+| 侧 | 重跑失败子集（203 条 nodeid，全部可重建） |
+|---|---|
+| C1 工作区 lexer | 190 failed + 9 errors = **199 红** |
+| B1 基线 lexer `e99bdb80`（`sys.modules` 注入，不改文件） | 190 failed + 9 errors = **199 红** |
+
+**候选新增回归 = 0 ⇒ ALL OK。**
+
+> **判据的逻辑完备性**：回归的定义是「**改动前能过、改动后变红**」的用例——这类用例
+> **必然落在当前失败集 F_cur（203 条）之内**。把 F_cur 全部拿去基线 lexer 下重跑：
+> 无一例出现「工作区红、基线绿」，即 F_cur ⊆ 基线失败集 ⇒ **零新增回归**。
+
+**4 条抖动**（原全量红、子集两侧皆绿，两侧表现完全一致）：
+`tests.unit.test_原生腿_R11B_中文工具::{test_中文分词_O0对拍, test_手机号校验_O0对拍, test_拼音转换_O0对拍, test_身份证校验_O0对拍}`
+—— 均为 O0 原生腿对拍（`SystemExit: 1`），单独跑即过、全量跑时因原生编译资源/临时目录竞争而红，
+与词法改动无关、两侧无差异。
+
+### 5.4 CI 的真实判绿口径（重要 —— 本机不能照抄）
+
+`gitea CI`（`.gitea/workflows/ci.yml`）最后一步**不是**「全量全绿」，而是：
+
+```
+python tools/ci/check_regression.py \
+  --junit .ci/non-e2e.xml --junit .ci/e2e.xml --junit .ci/light_soft.xml \
+  --baseline tests/ci_baseline_failures.txt \
+  --soft-classname 'tests.test_*' --soft-classname 'tests._test_*'
+```
+
+语义：**只拦「基线之外的新增打红」**；基线里已有、这次没红只提示（修好应刷新基线）。
+该仓库有 v7 收尾期存量欠账（`docs/v7_失败用例根因聚类工单.md`），故不要求全绿。
+
+**但基线是平台相关的**：当前 `tests/ci_baseline_failures.txt` 只有 **12 条、全部是
+`tests.e2e.test_e2e_chain`**，由 **FreeBSD runner** 生成（快照 `collected=1203`）。
+把本机 Windows 的 junit 拿它比：
+
+```
+[CI] 基线 12 条；新增打红 84 条；相比基线已转绿 8 条      → 退出码 1（假红）
+```
+
+84 条「新增」与 8 条「转绿」全部来自平台差异（原生编译 / HTTP / 沙箱 / 进程树等
+Windows 行为不同），**不是回归**。
+
+> 故本机自查**必须**用 §5.3 的**基线 lexer A/B**；**推 gitea 前仍以门禁机
+> 192.168.0.88（FreeBSD / `-n 8`，约 9 min）跑官方闸门为准**。
+
+### 5.5 词法相关失败的性质（说明项，非回归）
+
+失败集中 10 条与词法相关，A/B 已证明它们在基线 lexer 下**同样打红**：
+
+| 用例 | 失败信息 | 性质 |
+|---|---|---|
+| `tests.test_lexer::test_basic_keywords` | `Token(IDENTIFIER,'设甲为三')` 期望 `KEYWORD` | **P0-A 确定性切词的旧断言**（`deterministic=True` 自 R21 起已默认），根目录 `tests.test_*` 在 CI 属 `--soft-classname` **软豁免** |
+| `tests.test_lexer::test_multiple_keywords` | `assert '映射' in ['遍历']` | 同上 |
+| `tests.test_lexer::test_complex_expression` | `assert '设' in []` | 同上 |
+| `tests.unit.test_lexer*` 6 条 | 见 §5.2 | 第22轮已记录的**已知基线失败** |
+| `tests.unit.test_原生腿_R11B_中文工具::test_中文分词_O0对拍` | `SystemExit: 1` | 原生腿编译环境（见 §5.3 抖动） |
+
+**结论**：R23 未使任何用例由绿转红。
 
 ---
 
 ## 六、验证标准自查
 
-| 项 | 状态 |
-|---|---|
-| 无新增红用例 | ✅ |
-| token 序列零变化（真实源） | ✅ 0/776 |
-| codegen 输出不变 | ✅ |
-| 性能提升或持平 | ✅ ×1.210 |
-| 反跑 ALL OK | ✅ |
-| 未修改编译器源码 | ✅ |
-| 反跑 finally 恢复 + sha256 校验 + 外部写入检测 | ✅ |
+| 项 | 状态 | 证据 |
+|---|---|---|
+| 无新增红用例 | ✅ | 全量 203 红 → 基线 lexer A/B **0 新增**（§5.3） |
+| token 序列零变化（真实源） | ✅ 0/776 | [B] |
+| codegen 输出不变 | ✅ | [F] |
+| 性能提升或持平 | ✅ ×1.210 | [C] |
+| 反跑 ALL OK | ✅ | `_antirun_r23_t5_全量回归扫描.py` |
+| 未修改编译器源码 | ✅ | 本任务只新增脚本与报告 |
+| 反跑 finally 恢复 + sha256 校验 + 外部写入检测 | ✅ | — |
+| lightharness 全套件 | ✅ 552 passed | §5.1 |
+| light-merge 词法专项单测（基线 A/B） | ✅ 0 新增失败 | §5.2 |
+| light-merge 全量（本机） | ✅ 203 红全为既存（A/B 证明） | §5.3 / `_task5_R23_失败子集AB_证据.json` |
 
 ---
 
@@ -227,3 +294,10 @@ python -m pytest tests/ -p no:cacheprovider -q --tb=line
    消除该影响；语料数从 825 → 826 → 829 的动态增长属并行新增用例，非回归。
 3. **建议后轮追加删除 3 条条件中立 CCW 条目**（`低级关闭` / `正则匹配` / `环境枚举`），
    详见 `_task3_R23_CCW内建名迁移_交付报告.md` §4.2。
+4. **全量判绿的平台差异（§5.4）**：本机 Windows 全量与 FreeBSD 基线不可直接比较。
+   推 gitea 前请在 **192.168.0.88** 跑官方闸门 `tools/ci/check_regression.py`（`-n 8`，约 9 min）。
+5. **`tests.test_lexer::{test_basic_keywords, test_multiple_keywords, test_complex_expression}`
+   三条旧断言**（§5.5）：仍是 P0-A 之前的词法口径，属 `tests.test_*` 软豁免。建议后轮
+   按确定性切词口径改写，或明确标注为「历史口径存档」。
+6. **本机全量复跑工具已沉淀**：`_r23_subset_ab.py`（XML 采集 → 失败子集 → 基线 lexer A/B），
+   后续任何「改词法后要证零回归」的场景可直接复用（`--xml <全量 junit>`）。

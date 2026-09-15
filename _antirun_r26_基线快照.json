@@ -3376,5 +3376,9 @@
    "sha": "c6e8a866cfb7df0f45777d8f3df4345ac558b9c7fd89044fe10a32759a9ce759",
    "n": 2974
   }
- }
+ },
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ]
 }
