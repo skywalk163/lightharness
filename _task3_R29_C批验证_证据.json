@@ -1,0 +1,198 @@
+{
+ "c_batch": [
+  "测试_生成问候语",
+  "生成分析",
+  "生成问候语",
+  "最终答案",
+  "应当",
+  "当然",
+  "除非",
+  "当前",
+  "终点",
+  "开启调试"
+ ],
+ "corpus_files": 850,
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "测试_生成问候语": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 测试_生成问候语(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '测试_生成问候语') -> ('IDENTIFIER', '测试_')",
+      "@2 ('LPAREN', '(') -> ('IDENTIFIER', '生成问候语')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 测试_生成问候语 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '测试_生成问候语') -> ('IDENTIFIER', '测试_')",
+      "@5 ('RBRACKET', ']') -> ('IDENTIFIER', '生成问候语')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 测试_生成问候语 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '测试_生成问候语') -> ('IDENTIFIER', '测试_')",
+      "@2 ('KEYWORD', '那么') -> ('IDENTIFIER', '生成问候语')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "生成分析": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "生成问候语": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "最终答案": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "应当": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "设 x 为 [ 应当 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '应当') -> ('IDENTIFIER', '应')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '当')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 应当 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '应当') -> ('IDENTIFIER', '应')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '当')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "当然": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "除非": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 除非(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '除非') -> ('IDENTIFIER', '除')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '非')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 除非 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '除非') -> ('IDENTIFIER', '除')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '非')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 除非 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '除非') -> ('IDENTIFIER', '除')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '非')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "当前": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "终点": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "开启调试": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  }
+ }
+}
