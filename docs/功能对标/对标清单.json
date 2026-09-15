@@ -11,7 +11,7 @@
     "【第13轮 2026-09-13】新增 #86~#91：str-replace-editor / shell-env / goal-round-driver / session-log-deepseek / authorization / webhook-github 六域纯逻辑复刻；语言缺陷账 L-091~L-103；行为差异清单 R13-D 段。",
     "【第18轮 2026-09-13】新增 #116~#121：缺陷修复轮6个工具库（字典增强/数值兼容/错误增强/字符串增强/函数增强/词法安全），修复/绕法32个已登记语言缺陷；语言缺陷账追加修复状态标注；行为差异清单 R18-D 段。"
   ],
-  "版本": "覆盖记录至第24轮（阶段D单字通用化：之被吞缺陷修复+CR1规则+死代码清理+递归语义类别代数化，CS保持30条语义层非冗余）",
+  "版本": "覆盖记录至第25轮（CS词尾并入正面规则化+thinking微调数据集2200条）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -2259,6 +2259,24 @@
       "状态": "已完成",
       "完成轮次": "第24轮",
       "备注": "P1；任务2判据③逐条隔离中立验证：30条中仅6条语料冗余(是/首/余/减/空/除)，但任务3进一步验证这6条中余/减/空/除属运算符/值字面量守卫管辖的冗余，是/首语料冗余但语义非冗余(成员访问段首保护)。结论：CS保持30条，单字表与多字表本质不同——多字表大部分是上下文规则缺位的补丁，单字表80%是递归副作用语义的承重墙(词尾并入17条+词中并入6条+词首并入1条)，需更深度的递归语义规则化才能替代"
+    },
+    {
+      "编号": 142,
+      "功能": "阶段D（续）：CS词尾并入正面规则化（单字词尾并入从CS补集改为正面类别F=43字，CS退化为词首并入锚）",
+      "原版包": "CS词尾并入轮（第25轮）",
+      "光明模块": "light-merge/src/lexer.py _TRAILING_ALIAS_CLASS正面类别 + _P0A_SUFFIX_SPLIT_SINGLE单字排除集",
+      "状态": "已完成",
+      "完成轮次": "第25轮",
+      "备注": "P0；任务1把单字词尾并入从「对CS取补集（21字）」改为「正面类别F（43字，按五类语义排除推导）」，新增单字排除集_P0A_SUFFIX_SPLIT_SINGLE（五类共21字）。任务2对18字词尾并入逐条验证（G1语料+G2词首编译门+G3边界门三重判据），结论0字可删——CS表现退化为纯粹的「词首并入锚」，18字在词首位置去掉CS后全部浮出为KEYWORD（G2 100%失败）。CS表保持30条。全语料837文件token零变化，pytest 43 passed"
+    },
+    {
+      "编号": 143,
+      "功能": "光明语言代码段Thinking微调数据集制作（2200条，从lightharness项目抽取）",
+      "原版包": "CS词尾并入轮（第25轮）",
+      "光明模块": "lightharness/data/finetune/light_code_thinking_final.jsonl",
+      "状态": "已完成",
+      "完成轮次": "第25轮",
+      "备注": "P1；任务4从lightharness的stdlib(86文件)+src(152文件)+examples(352文件)抽取3032段代码，去重69段→2963，过滤→2500段（函数1733/方法420/模块314/异步33）。任务5为每段生成thinking推理链（功能分析→实现思路→语言特性→边界处理），平均401字，7种instruction类型（debug/optimize/review/improve/explanation/implementation/other），最终2200条。JSONL全量验证通过，含8字段（instruction/input/output/thinking/function_name/source_file/source_type/line_count）"
     }
   ]
 }
