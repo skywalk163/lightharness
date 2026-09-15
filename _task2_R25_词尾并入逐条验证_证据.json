@@ -1,0 +1,696 @@
+{
+ "candidates": "出列则到常引接断末的真类试跳过长配段",
+ "per_entry": {
+  "出": {
+   "head_word": "出错",
+   "tail_word": "标准输出",
+   "in_F": true,
+   "corpus_scanned": 692,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "出错"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "出"
+    ],
+    [
+     "IDENTIFIER",
+     "错"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 22.6
+  },
+  "列": {
+   "head_word": "列数",
+   "tail_word": "日期列",
+   "in_F": true,
+   "corpus_scanned": 521,
+   "corpus_changed": 6,
+   "corpus_changed_files": [
+    "light-merge/bootstrap/release/stdlib/FFI.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z2_泛型类型.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z4_函数类型标注.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z6_类型推断实战.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z8_综合实战.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "列数"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "列"
+    ],
+    [
+     "IDENTIFIER",
+     "数"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 20.7
+  },
+  "则": {
+   "head_word": "则例",
+   "tail_word": "规则",
+   "in_F": true,
+   "corpus_scanned": 351,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "则例"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "则"
+    ],
+    [
+     "KEYWORD",
+     "例"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 13.8
+  },
+  "到": {
+   "head_word": "到底",
+   "tail_word": "文件未找到",
+   "in_F": false,
+   "corpus_scanned": 303,
+   "corpus_changed": 1,
+   "corpus_changed_files": [
+    "light-merge/examples/password_manager/主.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": false,
+   "boundary_broken": [
+    "文件未找到"
+   ],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "到底"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "到"
+    ],
+    [
+     "IDENTIFIER",
+     "底"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 13.5
+  },
+  "常": {
+   "head_word": "常规",
+   "tail_word": "首异常",
+   "in_F": true,
+   "corpus_scanned": 325,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "常规"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "常"
+    ],
+    [
+     "IDENTIFIER",
+     "规"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 16.2
+  },
+  "引": {
+   "head_word": "引导",
+   "tail_word": "最后索引",
+   "in_F": true,
+   "corpus_scanned": 225,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "引导"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "引"
+    ],
+    [
+     "KEYWORD",
+     "导"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 15.6
+  },
+  "接": {
+   "head_word": "接受",
+   "tail_word": "符号链接",
+   "in_F": true,
+   "corpus_scanned": 712,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "接受"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "接"
+    ],
+    [
+     "IDENTIFIER",
+     "受"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 34.4
+  },
+  "断": {
+   "head_word": "断定",
+   "tail_word": "截断",
+   "in_F": true,
+   "corpus_scanned": 441,
+   "corpus_changed": 10,
+   "corpus_changed_files": [
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "lightharness/examples/test_L037.light",
+    "lightharness/examples/test_L087.light",
+    "lightharness/examples/test_一次性监听器.light",
+    "lightharness/examples/test_代理深化.light",
+    "lightharness/examples/test_原子写.light",
+    "lightharness/examples/test_子进程流式.light",
+    "lightharness/examples/test_客户端超时.light",
+    "lightharness/examples/test_工具统计.light",
+    "lightharness/examples/test_沙箱资源.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "断定"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "断"
+    ],
+    [
+     "IDENTIFIER",
+     "定"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 22.9
+  },
+  "末": {
+   "head_word": "末尾",
+   "tail_word": "月末",
+   "in_F": true,
+   "corpus_scanned": 145,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "末尾"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "末"
+    ],
+    [
+     "IDENTIFIER",
+     "尾"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 15.2
+  },
+  "的": {
+   "head_word": "的确",
+   "tail_word": "成绩的长度",
+   "in_F": true,
+   "corpus_scanned": 531,
+   "corpus_changed": 6,
+   "corpus_changed_files": [
+    "light-merge/examples/E阶段_L3L4原生语法/E4_L4_沙箱隔离验证.light",
+    "light-merge/examples/L1_baihua/05_遍循环.light",
+    "light-merge/examples/L1_baihua/06_列表.light",
+    "light-merge/examples/L1_baihua/07_字典.light",
+    "light-merge/examples/L2_wenyan/学生模块.light",
+    "lightharness/examples/test_R25_词尾并入正向.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "的确"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "的"
+    ],
+    [
+     "IDENTIFIER",
+     "确"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 29.0
+  },
+  "真": {
+   "head_word": "真值",
+   "tail_word": "标准输出失真",
+   "in_F": false,
+   "corpus_scanned": 532,
+   "corpus_changed": 1,
+   "corpus_changed_files": [
+    "light-merge/stdlib/进程树.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": false,
+   "boundary_broken": [
+    "标准输出失真"
+   ],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "真值"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "真"
+    ],
+    [
+     "IDENTIFIER",
+     "值"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 25.4
+  },
+  "类": {
+   "head_word": "类别",
+   "tail_word": "有界队列类",
+   "in_F": true,
+   "corpus_scanned": 430,
+   "corpus_changed": 3,
+   "corpus_changed_files": [
+    "light-merge/bootstrap/release/stdlib/装饰器.light",
+    "light-merge/examples/test_L068.light",
+    "lightharness/examples/test_L013.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "类别"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "类"
+    ],
+    [
+     "IDENTIFIER",
+     "别"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 17.4
+  },
+  "试": {
+   "head_word": "试用",
+   "tail_word": "测试",
+   "in_F": true,
+   "corpus_scanned": 496,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "试用"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "试"
+    ],
+    [
+     "IDENTIFIER",
+     "用"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 13.6
+  },
+  "跳": {
+   "head_word": "跳闸",
+   "tail_word": "最后心跳跳过",
+   "in_F": true,
+   "corpus_scanned": 183,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "跳闸"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "跳"
+    ],
+    [
+     "IDENTIFIER",
+     "闸"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 8.0
+  },
+  "过": {
+   "head_word": "过程",
+   "tail_word": "通过",
+   "in_F": true,
+   "corpus_scanned": 449,
+   "corpus_changed": 1,
+   "corpus_changed_files": [
+    "light-merge/bootstrap/release/stdlib/对象池缓存.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "过程"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "过"
+    ],
+    [
+     "IDENTIFIER",
+     "程"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 9.8
+  },
+  "长": {
+   "head_word": "长度",
+   "tail_word": "块长",
+   "in_F": true,
+   "corpus_scanned": 493,
+   "corpus_changed": 0,
+   "corpus_changed_files": [],
+   "gate_corpus": true,
+   "gate_head_compile": false,
+   "gate_boundary": true,
+   "boundary_broken": [],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "长度"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "长"
+    ],
+    [
+     "IDENTIFIER",
+     "度"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 11.4
+  },
+  "配": {
+   "head_word": "配给",
+   "tail_word": "配置项",
+   "in_F": true,
+   "corpus_scanned": 280,
+   "corpus_changed": 3,
+   "corpus_changed_files": [
+    "lightharness/examples/test_L119.light",
+    "lightharness/examples/test_R25_单字后缀规则_快速.light",
+    "lightharness/examples/test_团队服务.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": false,
+   "boundary_broken": [
+    "配[0]",
+    "配[键]",
+    "配置项"
+   ],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "配给"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "配"
+    ],
+    [
+     "IDENTIFIER",
+     "给"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 7.9
+  },
+  "段": {
+   "head_word": "段号",
+   "tail_word": "代码段",
+   "in_F": true,
+   "corpus_scanned": 756,
+   "corpus_changed": 15,
+   "corpus_changed_files": [
+    "light-merge/bootstrap/release/stdlib/临时文件.light",
+    "light-merge/bootstrap/release/stdlib/参数解析.light",
+    "light-merge/bootstrap/release/stdlib/外部命令.light",
+    "light-merge/bootstrap/release/stdlib/字符串常量.light",
+    "light-merge/bootstrap/release/stdlib/文件匹配.light",
+    "light-merge/bootstrap/release/stdlib/系统接口.light",
+    "light-merge/bootstrap/release/stdlib/集合工具.light",
+    "light-merge/examples/games/snake.light",
+    "light-merge/examples/snake_game/主.light",
+    "light-merge/stdlib/re.light",
+    "light-merge/stdlib/网络请求.light",
+    "lightharness/examples/test_R25_单字后缀规则_快速.light"
+   ],
+   "gate_corpus": false,
+   "gate_head_compile": false,
+   "gate_boundary": false,
+   "boundary_broken": [
+    "段[1]"
+   ],
+   "base_head_tokens": [
+    [
+     "IDENTIFIER",
+     "段号"
+    ]
+   ],
+   "drop_head_tokens": [
+    [
+     "KEYWORD",
+     "段"
+    ],
+    [
+     "IDENTIFIER",
+     "号"
+    ]
+   ],
+   "verdict": "保留",
+   "seconds": 14.8
+  }
+ },
+ "deletable": [],
+ "keep": [
+  "出",
+  "列",
+  "则",
+  "到",
+  "常",
+  "引",
+  "接",
+  "断",
+  "末",
+  "的",
+  "真",
+  "类",
+  "试",
+  "跳",
+  "过",
+  "长",
+  "配",
+  "段"
+ ],
+ "cs_before": [
+  "乘",
+  "余",
+  "例",
+  "减",
+  "出",
+  "列",
+  "则",
+  "到",
+  "加",
+  "对",
+  "常",
+  "引",
+  "接",
+  "断",
+  "是",
+  "末",
+  "模",
+  "段",
+  "的",
+  "真",
+  "空",
+  "类",
+  "自",
+  "试",
+  "跳",
+  "过",
+  "配",
+  "长",
+  "除",
+  "首"
+ ],
+ "cs_after_if_deleted": [
+  "乘",
+  "余",
+  "例",
+  "减",
+  "出",
+  "列",
+  "则",
+  "到",
+  "加",
+  "对",
+  "常",
+  "引",
+  "接",
+  "断",
+  "是",
+  "末",
+  "模",
+  "段",
+  "的",
+  "真",
+  "空",
+  "类",
+  "自",
+  "试",
+  "跳",
+  "过",
+  "配",
+  "长",
+  "除",
+  "首"
+ ],
+ "cs_size_before": 30,
+ "cs_size_after": 30,
+ "corpus_files": 836,
+ "method": "内存态 monkeypatch 模块级常量+类属性；G2 词法级等价编译门"
+}
