@@ -1,0 +1,182 @@
+{
+ "batch": "R32 任务1+2 OPERATOR_VERBS 19条",
+ "base_lexer_sha": "c7cf29ac8e0a",
+ "corpus_files": 857,
+ "verdicts": [
+  {
+   "item": "不大于",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 1
+  },
+  {
+   "item": "不小于",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 2
+  },
+  {
+   "item": "不等于",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 67
+  },
+  {
+   "item": "大于",
+   "verdict": "保留",
+   "g1_changed": 2,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 90
+  },
+  {
+   "item": "大于等于",
+   "verdict": "保留",
+   "g1_changed": 1,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 47
+  },
+  {
+   "item": "小于",
+   "verdict": "保留",
+   "g1_changed": 1,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 83
+  },
+  {
+   "item": "小于等于",
+   "verdict": "保留",
+   "g1_changed": 1,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 35
+  },
+  {
+   "item": "等于",
+   "verdict": "保留",
+   "g1_changed": 2,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 316
+  },
+  {
+   "item": "包含",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 1,
+   "g3_fail": 0,
+   "corpus_with_item": 332
+  },
+  {
+   "item": "乘",
+   "verdict": "保留",
+   "g1_changed": 2,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 85
+  },
+  {
+   "item": "乘以",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 20
+  },
+  {
+   "item": "减",
+   "verdict": "保留",
+   "g1_changed": 4,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 94
+  },
+  {
+   "item": "减去",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 33
+  },
+  {
+   "item": "加",
+   "verdict": "保留",
+   "g1_changed": 4,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 521
+  },
+  {
+   "item": "加上",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 166
+  },
+  {
+   "item": "除",
+   "verdict": "保留",
+   "g1_changed": 5,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 322
+  },
+  {
+   "item": "除以",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 2,
+   "corpus_with_item": 13
+  },
+  {
+   "item": "幂",
+   "verdict": "保留",
+   "g1_changed": 0,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 50
+  },
+  {
+   "item": "模",
+   "verdict": "保留",
+   "g1_changed": 6,
+   "g2_rc": 0,
+   "g3_fail": 1,
+   "corpus_with_item": 502
+  }
+ ],
+ "removable": [],
+ "kept": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "等于",
+  "包含",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "除",
+  "除以",
+  "幂",
+  "模"
+ ],
+ "lexer_changed": false
+}
