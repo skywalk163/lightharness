@@ -173,3 +173,53 @@
 - 任务5：递归简化+联动保护表评估+性能
 - 任务6：质量审查+docs回填
 - 收口提交：docs三件 + 质量审查报告 + 收口说明
+
+---
+
+## 十一、路M 合流补正（2026-09-15 11:12–11:41）
+
+### 11.1 收口已完成的提交（本会话核实）
+| 仓 | 提交 | 内容 |
+|---|---|---|
+| light-merge | `80f4125c` | 第26轮 CS 词首并入通用化（`src/lexer.py`，CS 30→16 + 词首正面规则 + 3 条自校验断言）；工作树 ≡ HEAD |
+| lightharness | `d8b937b` | 任务3：CS 表 30→16 逐条验证删除 |
+| lightharness | `9d10f33` | 任务4：边界测试套件 + 全量反跑 |
+| lightharness | `ace5cb9` | 任务5：递归简化评估 + 联动保护表评估 |
+| lightharness | `3397974` | 路M收口：docs 两件回填 + 质量审查报告 + 收口说明 |
+
+13 个 R26 交付物 + `_antirun_r26_t3/t4` + `_antirun_r26_基线快照.json` + `_taskM_第26轮收口说明.md` 均已入库。
+
+### 11.2 本次补正（`fadd436`）：修复「已提交态不一致」
+**问题**：HEAD 的 `tests/test_R24_的递归_token.py`（`test_compound_safe_table_is_30`）与
+`tests/test_R25_单字后缀_token.py::test_protection_table_shape`（`CS == 30`）仍断言旧值，
+而同一 HEAD 的编译器已 CS=16 ⇒ **已提交态测试跑不过**。（成因：收口在**工作树**跑绿后，
+`git add` 只带 R26 名额文件，漏带这两个 R24/R25 测试。）
+
+**修复**：
+1. `tests/test_R24_的递归_token.py`：`test_compound_safe_table_is_30` → `_is_16`；
+   `test_retained_single_chars_present` 改判「在 CS **或** 在 `_P0A_HEAD_MERGE_SINGLE`」。
+2. `tests/test_R25_单字后缀_token.py`：`test_protection_table_shape` CS=30 → 16；
+   18 候选字循环改判「在 CS **或** 在正面类别」；docstring 同步。
+3. `tests/test_R21_词法确定性_超集.py`：**tar 可移植性缺陷修复** —— 原
+   `subprocess.run(["tar","-xf",<绝对路径>,"-C",tmp])` 在 **Git-Bash 的 GNU tar 1.35** 下把
+   `C:/...` 当作远程主机规格（`tar: Cannot connect to C: resolve failed`）→ 2 ERROR；
+   改「相对名 `src.tar` + `cwd=tmp`」后 **GNU tar 与 Windows 自带 bsdtar 双通**（各 2 passed）。
+   不可用 `--force-local`：FreeBSD 门禁机的 bsdtar 不支持该选项。
+4. 清理并行 agent 遗留 scratch 探针 `examples/_probe_r26_kw.light` / `_probe_r26_op.light`（含非法 `设 己 为 5`，污染 `test_回归.py`）。
+
+### 11.3 终态全量 CI（`scripts/ci_test.py`）
+```
+pytest : 858 passed, 1 skipped          (rc=0)
+smoke  : 5/5 通过（会话/代理/工具/消息/流）
+汇总   : 全部通过
+```
+> 附：CI 前一轮的 2 个 ERROR 经定位是 **shell 环境差异**而非缺陷 —— `tar --version`
+> 在 Git-Bash 下为 GNU tar 1.35、在 Windows 控制台(System32)下为 bsdtar 3.5.2；
+> 任务书给的 CI 命令是 Windows 控制台态，修 11.2-3 后两种 shell 均全绿。
+
+### 11.4 遗留（非 R26，未动）
+`lightharness` 仍有 3 个 **R23 报告**为已跟踪-未提交状态
+（`_task1_R23_TRAILING_ALIAS清表_交付报告.md`、`_task3_R23_CCW内建名迁移_交付报告.md`、
+`_task5_R23_全量回归扫描报告.md`），配套证据 `_r23_subset_ab.py` + `_task5_R23_失败子集AB_证据.json`
+（2026-09-14）亦未跟踪 ⇒ 属 **09-14 的「R23 全量失败子集 A/B 证据补录」工作流**，与 R26 无关，
+本会话不擅自提交，交用户裁决。
