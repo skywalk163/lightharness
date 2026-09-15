@@ -1,0 +1,11 @@
+{
+ "lexer_sha": "c1c1d6cacd8e",
+ "ccw_count": 10,
+ "corpus_compared": 848,
+ "baseline_compare_zero_change": true,
+ "changed_files": [],
+ "current_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ]
+}

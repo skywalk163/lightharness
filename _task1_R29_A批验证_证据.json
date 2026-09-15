@@ -1,0 +1,235 @@
+{
+ "batch": "任务1（A批：位运算符+异步）",
+ "entries": [
+  "位与",
+  "位异或",
+  "位或",
+  "位非",
+  "异步写入文件",
+  "异步睡眠",
+  "异步读取文件",
+  "异步追加文件",
+  "并发等待"
+ ],
+ "corpus_files": 850,
+ "base_ccw_count": 24,
+ "lexer_sha": "f5500cec620a8741430f58401dd79f5acd7cdd16a26de6a61030791e175512a7",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "deletable": [
+  "异步写入文件",
+  "异步睡眠",
+  "异步读取文件",
+  "异步追加文件",
+  "并发等待"
+ ],
+ "kept": [
+  "位与",
+  "位异或",
+  "位或",
+  "位非"
+ ],
+ "evidence": {
+  "位与": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 位与(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '位与') -> ('IDENTIFIER', '位')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '与')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 位与 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '位与') -> ('IDENTIFIER', '位')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '与')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 位与 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '位与') -> ('IDENTIFIER', '位')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '与')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "位异或": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 位异或(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '位异或') -> ('IDENTIFIER', '位异')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '或')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 位异或 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '位异或') -> ('IDENTIFIER', '位异')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '或')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 位异或 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '位异或') -> ('IDENTIFIER', '位异')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '或')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "位或": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 位或(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '位或') -> ('IDENTIFIER', '位')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '或')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 位或 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '位或') -> ('IDENTIFIER', '位')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '或')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 位或 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '位或') -> ('IDENTIFIER', '位')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '或')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "位非": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 1,
+   "g2_rc_removed": 1,
+   "g2_pass": false,
+   "g3_fail": [
+    {
+     "form": "返回 位非(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '位非') -> ('IDENTIFIER', '位')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '非')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 位非 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '位非') -> ('IDENTIFIER', '位')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '非')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 位非 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '位非') -> ('IDENTIFIER', '位')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '非')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "异步写入文件": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "异步睡眠": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "异步读取文件": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "异步追加文件": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "并发等待": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  }
+ }
+}
