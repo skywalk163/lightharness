@@ -8,9 +8,10 @@ examples/test_R25_词尾并入正向.light 与 test_R25_词尾并入边界反向
   1) 17 条词尾并入（配/段 拆 2 字，逐字 18 个）正向：词尾单字并入后整词成 IDENTIFIER；
   2) 六类边界反向（值字面量 / 下标 / 控制流 / 范围 / 结构助词 / 运算符）：关键字不并入；
   3) 混合场景：同行多词尾并入、嵌套、列表元素、字典键；
-  4) 保护表形态：CS=30、F=43、到/真 ∉ F 但 ⊆ CS（与 _antirun_r25_t2 证据一致）。
+  4) 保护表形态：F=43、CS=16（R26 任务3 三重判据删 14 字）、到/真 ∉ F 但 ⊆ CS。
 
-与任务2 的关系：任务2 已用「词首编译门 G2」证明 18 字在词首位置均不可删（CS=30 不变）。
+与任务2 的关系：任务2 曾用「词首编译门 G2」证明 18 字在词首位置均不可删（CS=30 不变）；
+R26 任务1+2 实现「词首并入正面规则」后，该 G2 空洞由位置规则覆盖，故任务3 把这批字移出 CS。
 本文件在 token 层固化「词尾并入正确 + 边界形态不被破坏」两项不变量，作为回归护栏。
 """
 import os
@@ -136,14 +137,17 @@ def test_mixed_nested_and_list_and_dict():
 
 # ───────────────────────── 四、保护表形态（与任务2 证据一致） ─────────────────────────
 def test_protection_table_shape():
-    """任务1 后：词尾并入正面类别 F=43；CS=30（任务2 验证 18 词尾并入条目均不可删）。"""
-    assert len(Lexer.compound_safe_single_keywords) == 30
+    """任务1 后：词尾并入正面类别 F=43；【R26 任务3】CS 30→16（三重判据删除 14 字，
+    见 _task3_R26_CS表删除清单.md）。"""
+    import lexer as _lx
+    assert len(Lexer.compound_safe_single_keywords) == 16
     assert len(Lexer._TRAILING_ALIAS_CLASS) == 43
-    # 18 候选字全部仍在 CS（词首护栏，任务2 G2 全失败）
+    # R26：18 候选字若已移出 CS，必须由词首并入正面类别覆盖（词首并入语义不丢失）
     for c in CANDS:
-        assert c in Lexer.compound_safe_single_keywords, \
-            "%s 应在 CS（任务2 证明为词首护栏）" % c
-    # 到/真 不在 F（范围运算符 / 值字面量），但仍在 CS
+        assert (c in Lexer.compound_safe_single_keywords
+                or c in _lx._P0A_HEAD_MERGE_SINGLE), \
+            "%s 既不在 CS 也不在词首并入正面类别" % c
+    # 到/真 不在 F（范围运算符 / 值字面量），但仍在 CS（R26 保留）
     assert "到" not in Lexer._TRAILING_ALIAS_CLASS
     assert "真" not in Lexer._TRAILING_ALIAS_CLASS
     assert "到" in Lexer.compound_safe_single_keywords

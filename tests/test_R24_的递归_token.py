@@ -173,20 +173,28 @@ def test_free_names_not_split(src, expect):
     assert _kwfree(src) == expect
 
 
-# ── 6) 保护表形态与「13 条保留」审计结论（R24 任务3 联动）────────────────
+# ── 6) 保护表形态与「13 条保留」审计结论（R24 任务3 / R26 任务3 修正）──────
+# R24 审计把 13 条判为「语料冗余但语义非冗余」（空洞B：语句起始裸名，判为无法由位置规则覆盖）。
+# 【R26 任务3 修正】第26轮实现「词首并入正面规则」后，该空洞**已由位置规则覆盖**：
+#   `_P0A_HEAD_MERGE_SINGLE`（F − 单字语句关键字）在词首 + 后随汉字时并入标识符
+#   → 下面 `test_retained_chars_statement_initial_whole` 在新规则下仍全绿（位置规则确实覆盖了它）。
+#   故这批字（除语料载重的 `是`）从 CS 移除，CS 30 → 16。
 _RETAINED_13 = list("例出则常引接是末试跳过长首")
 
 
-def test_compound_safe_table_is_30():
-    """R24 任务3 审计结论：任务2 判为①冗余可删的 13 条**保留**（语料冗余但语义非冗余）。"""
+def test_compound_safe_table_is_16():
+    """R26 任务3：CS 三重判据（G1/G2/G3）后 30→16；保留项见 _task3_R26_CS表删除清单.md。"""
     import lexer as _lx
-    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 30
+    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 16
 
 
 @pytest.mark.parametrize("ch", _RETAINED_13)
 def test_retained_single_chars_present(ch):
+    """R24 时 13 条全在 CS；R26 后移出 CS 者必须由词首并入正面类别覆盖。"""
     import lexer as _lx
-    assert ch in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS
+    assert (ch in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS
+            or ch in _lx._P0A_HEAD_MERGE_SINGLE), \
+        "%s 既不在 CS 也不在词首并入正面类别" % ch
 
 
 @pytest.mark.parametrize("ch", _RETAINED_13)

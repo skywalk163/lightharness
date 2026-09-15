@@ -64,7 +64,10 @@ def scan_result():
         tar = os.path.join(tmp, "src.tar")
         with open(tar, "wb") as f:
             f.write(ar.stdout)
-        subprocess.run(["tar", "-xf", tar, "-C", tmp], check=True)
+        # 用相对名 + cwd 解包：绝对路径（C:\...）传给 GNU tar 会被当成远程主机
+        # 规格（`tar: Cannot connect to C: resolve failed`），Git-Bash 下必炸；
+        # Windows bsdtar 虽可接受绝对路径，但相对名对两者都成立，故统一用相对名。
+        subprocess.run(["tar", "-xf", "src.tar"], check=True, cwd=tmp)
         old = _scan_all(os.path.join(tmp, "src"), files)
         new = _scan_all(LM_SRC, files)
         return files, old, new
