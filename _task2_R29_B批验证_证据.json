@@ -1,0 +1,173 @@
+{
+ "batch": "任务2（B批：错误类型+设置）",
+ "entries": [
+  "导入错误",
+  "类型错误",
+  "零除错误",
+  "设指针",
+  "设指针值",
+  "设系统",
+  "设系统错误码",
+  "设置",
+  "设置数组",
+  "低级关闭"
+ ],
+ "corpus_files": 850,
+ "base_ccw_count": 24,
+ "lexer_sha": "f5500cec620a8741430f58401dd79f5acd7cdd16a26de6a61030791e175512a7",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "deletable": [
+  "导入错误",
+  "类型错误",
+  "设指针",
+  "设指针值",
+  "设系统",
+  "设系统错误码",
+  "设置",
+  "设置数组",
+  "低级关闭"
+ ],
+ "kept": [
+  "零除错误"
+ ],
+ "evidence": {
+  "导入错误": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "类型错误": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "零除错误": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 零除错误(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '零除错误') -> ('CHINESE_NUM', 0)",
+      "@2 ('LPAREN', '(') -> ('IDENTIFIER', '除错误')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 零除错误 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '零除错误') -> ('CHINESE_NUM', 0)",
+      "@5 ('RBRACKET', ']') -> ('IDENTIFIER', '除错误')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 零除错误 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '零除错误') -> ('CHINESE_NUM', 0)",
+      "@2 ('KEYWORD', '那么') -> ('IDENTIFIER', '除错误')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "设指针": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "设指针值": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "设系统": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "设系统错误码": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "设置": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "设置数组": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "低级关闭": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  }
+ }
+}
