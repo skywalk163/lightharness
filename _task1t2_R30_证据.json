@@ -1,0 +1,215 @@
+{
+ "lexer_sha": "96f63c114746",
+ "lexer_sha_end": "96f63c114746",
+ "sha_stable": true,
+ "ccw": [
+  "测试_生成问候语"
+ ],
+ "prefix": [
+  "位",
+  "应",
+  "除"
+ ],
+ "corpus_compared": 848,
+ "g1_zero_change": true,
+ "g1_changed_files": [],
+ "g1_skipped_base_err": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "g3": {
+  "位与": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  },
+  "位异或": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  },
+  "位或": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  },
+  "位非": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  },
+  "应当": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  },
+  "除非": {
+   "forms_merged": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false
+   ],
+   "str_ok": true,
+   "all_merged": true
+  }
+ },
+ "reverse": {
+  "位 独立": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "位"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "NUMBER",
+    1
+   ]
+  ],
+  "位 为 1": [
+   [
+    "IDENTIFIER",
+    "位"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "NUMBER",
+    1
+   ]
+  ],
+  "当 循环": [
+   [
+    "KEYWORD",
+    "当"
+   ],
+   [
+    "IDENTIFIER",
+    "x"
+   ],
+   [
+    "GREATER",
+    ">"
+   ],
+   [
+    "NUMBER",
+    0
+   ],
+   [
+    "COLON",
+    ":"
+   ],
+   [
+    "INDENT",
+    2
+   ],
+   [
+    "KEYWORD",
+    "返回"
+   ],
+   [
+    "NUMBER",
+    1
+   ],
+   [
+    "DEDENT",
+    0
+   ]
+  ],
+  "非 逻辑": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "y"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "KEYWORD",
+    "非"
+   ],
+   [
+    "KEYWORD",
+    "真"
+   ]
+  ],
+  "与 运算": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "z"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "IDENTIFIER",
+    "甲"
+   ],
+   [
+    "KEYWORD",
+    "与"
+   ],
+   [
+    "IDENTIFIER",
+    "乙"
+   ]
+  ]
+ },
+ "all_pass": true
+}
