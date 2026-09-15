@@ -1,0 +1,65 @@
+{
+ "round": "R31",
+ "scope": "任务1-3：_EMBED_MAX_MATCH_KEYWORDS 三条逐字三重判据验证",
+ "embed_before": [
+  "为",
+  "返回",
+  "尝试"
+ ],
+ "embed_after": [
+  "为",
+  "返回",
+  "尝试"
+ ],
+ "lexer_sha_before": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+ "lexer_sha_after": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+ "all_kept": true,
+ "verdicts": {
+  "为": {
+   "verdict": "保留",
+   "g1_changed_count": 23,
+   "g1_pass": false,
+   "g2_pass": true,
+   "g3_pass": false,
+   "g3_fail_count": 3,
+   "corpus_files": 856,
+   "corpus_with_char": 763,
+   "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+   "base_err_files": [
+    "light-merge/bootstrap/release/stdlib/集合.light",
+    "light-merge/examples/_test_nested_closure.light"
+   ]
+  },
+  "返回": {
+   "verdict": "保留",
+   "g1_changed_count": 20,
+   "g1_pass": false,
+   "g2_pass": true,
+   "g3_pass": false,
+   "g3_fail_count": 2,
+   "corpus_files": 856,
+   "corpus_with_char": 647,
+   "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+   "base_err_files": [
+    "light-merge/bootstrap/release/stdlib/集合.light",
+    "light-merge/examples/_test_nested_closure.light"
+   ]
+  },
+  "尝试": {
+   "verdict": "保留",
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": false,
+   "g3_fail_count": 3,
+   "corpus_files": 856,
+   "corpus_with_char": 239,
+   "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+   "base_err_files": [
+    "light-merge/bootstrap/release/stdlib/集合.light",
+    "light-merge/examples/_test_nested_closure.light"
+   ]
+  }
+ },
+ "conclusion": "三条均为真护栏，全部保留；_EMBED 表维持 3 条，lexer.py 零改动。"
+}
