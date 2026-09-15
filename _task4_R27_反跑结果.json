@@ -1,0 +1,26 @@
+{
+ "lexer_sha": "58d598e1e752ba7b0aeabfd550a90ddc2cca18ecd3b35cfb970d2afe4e00f662",
+ "cs_rest": [
+  "列",
+  "类"
+ ],
+ "corpus_files": 844,
+ "corpus_aggregate_fingerprint": "4dd267928ed917bdae6e443c2ba59c20893cd9aae475af82fa102b34cd07413e",
+ "boundary_tests": {
+  "examples/test_R27_词首并入正向.light": 0,
+  "examples/test_R27_词首并入反向.light": 0,
+  "examples/test_R27_词首并入混合.light": 0
+ },
+ "boundary_ok": true,
+ "pytest_passed": 113,
+ "pytest_failed": 0,
+ "token_error_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "baseline_compare_zero_change": true,
+ "baseline_changed_files": [],
+ "perf_avg_sec": 11.779,
+ "perf_median_sec": 12.593,
+ "seconds": 141.7
+}
