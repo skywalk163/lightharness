@@ -1,0 +1,52 @@
+{
+  "total_extracted": 3032,
+  "after_dedup": 2963,
+  "after_filter": 2500,
+  "source_counts": {
+    "stdlib": 357,
+    "src": 1672,
+    "examples": 471
+  },
+  "length_distribution": {
+    "<50": 2174,
+    "50-100": 151,
+    "100-200": 109,
+    "200-300": 66,
+    "300+": 0
+  },
+  "function_types": {
+    "module": 314,
+    "method": 420,
+    "async": 33,
+    "function": 1733
+  },
+  "skip_stats": {
+    "too_short": 0,
+    "too_long": 0,
+    "high_comment": 0,
+    "has_debug": 0,
+    "low_code": 4
+  },
+  "dup_count": 69,
+  "avg_lines": 29.7,
+  "file_stats": {
+    "stdlib": {
+      "files": 86,
+      "func_segments": 317,
+      "mod_segments": 47,
+      "skipped_test": 2
+    },
+    "src": {
+      "files": 152,
+      "func_segments": 2067,
+      "mod_segments": 85,
+      "skipped_test": 2
+    },
+    "examples": {
+      "files": 352,
+      "func_segments": 535,
+      "mod_segments": 195,
+      "skipped_test": 131
+    }
+  }
+}
