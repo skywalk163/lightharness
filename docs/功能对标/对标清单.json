@@ -11,7 +11,7 @@
     "【第13轮 2026-09-13】新增 #86~#91：str-replace-editor / shell-env / goal-round-driver / session-log-deepseek / authorization / webhook-github 六域纯逻辑复刻；语言缺陷账 L-091~L-103；行为差异清单 R13-D 段。",
     "【第18轮 2026-09-13】新增 #116~#121：缺陷修复轮6个工具库（字典增强/数值兼容/错误增强/字符串增强/函数增强/词法安全），修复/绕法32个已登记语言缺陷；语言缺陷账追加修复状态标注；行为差异清单 R18-D 段。"
   ],
-  "版本": "覆盖记录至第25轮（CS词尾并入正面规则化+thinking微调数据集2200条）",
+  "版本": "覆盖记录至第26轮（CS词首并入通用化，CS表30→16）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -2277,6 +2277,15 @@
       "状态": "已完成",
       "完成轮次": "第25轮",
       "备注": "P1；任务4从lightharness的stdlib(86文件)+src(152文件)+examples(352文件)抽取3032段代码，去重69段→2963，过滤→2500段（函数1733/方法420/模块314/异步33）。任务5为每段生成thinking推理链（功能分析→实现思路→语言特性→边界处理），平均401字，7种instruction类型（debug/optimize/review/improve/explanation/implementation/other），最终2200条。JSONL全量验证通过，含8字段（instruction/input/output/thinking/function_name/source_file/source_type/line_count）"
+    },
+    {
+      "编号": 144,
+      "功能": "阶段E：CS词首并入通用化（正面规则_P0A_HEAD_MERGE_SINGLE落地，CS表30→16）",
+      "原版包": "CS词首并入通用化轮（第26轮）",
+      "光明模块": "light-merge/src/lexer.py _P0A_HEAD_MERGE_SINGLE正面类别 + 第一层skip_verb词首并入规则 + 嵌入式扫描三处同步",
+      "状态": "已完成",
+      "完成轮次": "第26轮",
+      "备注": "P0；任务1+2实现词首并入正面规则（单字关键字在词首+后随汉字+非排除集→并入标识符），决定性站点在第一层skip_verb(:2553)而非_match_keyword(:1227，后者保留CS递归作配套保护)。_P0A_HEAD_MERGE_SINGLE=22字（F-_P0A_HEAD_SPLIT_SINGLE，排除集复用R25词尾排除集）。任务3 CS表30→16（删14字：余例出则常引接断末试跳过长首；保留16字：运算符5+值字面量2+特殊语义9）。任务4边界测试3个.light rc=0+pytest167passed。任务5递归/联动表评估全部保留。全语料843文件token零变化"
     }
   ]
 }
