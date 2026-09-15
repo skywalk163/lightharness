@@ -1,0 +1,260 @@
+{
+ "cs_final": [],
+ "cases": [
+  {
+   "src": "对于元素在序列:",
+   "desc": "列：词尾切出（无空格 for-in，断言工具.light:226 形态）",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "对"
+    ],
+    [
+     "KEYWORD",
+     "于"
+    ],
+    [
+     "IDENTIFIER",
+     "元素"
+    ],
+    [
+     "KEYWORD",
+     "在"
+    ],
+    [
+     "IDENTIFIER",
+     "序"
+    ],
+    [
+     "KEYWORD",
+     "列"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "元素 在 序列:",
+   "desc": "列：带空格 → 序列整词（词尾并入）",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "元素"
+    ],
+    [
+     "KEYWORD",
+     "在"
+    ],
+    [
+     "IDENTIFIER",
+     "序列"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "序列:",
+   "desc": "列：段首整词",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "序列"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "列数 为 3",
+   "desc": "列：词首并入",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "列数"
+    ],
+    [
+     "KEYWORD",
+     "为"
+    ],
+    [
+     "NUMBER",
+     3
+    ]
+   ]
+  },
+  {
+   "src": "序列 为 [1, 2]",
+   "desc": "列：词尾并入（非冒号）",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "序列"
+    ],
+    [
+     "KEYWORD",
+     "为"
+    ],
+    [
+     "LBRACKET",
+     "["
+    ],
+    [
+     "NUMBER",
+     1
+    ],
+    [
+     "COMMA",
+     ","
+    ],
+    [
+     "NUMBER",
+     2
+    ],
+    [
+     "RBRACKET",
+     "]"
+    ]
+   ]
+  },
+  {
+   "src": "类 独立类:",
+   "desc": "类：类声明词尾并入整词",
+   "pass": true,
+   "seq": [
+    [
+     "KEYWORD",
+     "类"
+    ],
+    [
+     "IDENTIFIER",
+     "独立类"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "类 名称:",
+   "desc": "类：独立关键字不受影响",
+   "pass": true,
+   "seq": [
+    [
+     "KEYWORD",
+     "类"
+    ],
+    [
+     "IDENTIFIER",
+     "名称"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "类别 为 \"int\"",
+   "desc": "类：词首并入",
+   "pass": true,
+   "seq": [
+    [
+     "IDENTIFIER",
+     "类别"
+    ],
+    [
+     "KEYWORD",
+     "为"
+    ],
+    [
+     "STRING",
+     "int"
+    ]
+   ]
+  },
+  {
+   "src": "类 子类 继承 基类:",
+   "desc": "类：继承形态",
+   "pass": true,
+   "seq": [
+    [
+     "KEYWORD",
+     "类"
+    ],
+    [
+     "IDENTIFIER",
+     "子类"
+    ],
+    [
+     "KEYWORD",
+     "继承"
+    ],
+    [
+     "IDENTIFIER",
+     "基类"
+    ],
+    [
+     "COLON",
+     ":"
+    ]
+   ]
+  },
+  {
+   "src": "设 x 为 新建 独立类()",
+   "desc": "类：使用处 词尾+`(` 整词（test_L013 打红形态）",
+   "pass": true,
+   "seq": [
+    [
+     "KEYWORD",
+     "设"
+    ],
+    [
+     "IDENTIFIER",
+     "x"
+    ],
+    [
+     "KEYWORD",
+     "为"
+    ],
+    [
+     "KEYWORD",
+     "新建"
+    ],
+    [
+     "IDENTIFIER",
+     "独立类"
+    ],
+    [
+     "LPAREN",
+     "("
+    ],
+    [
+     "RPAREN",
+     ")"
+    ]
+   ]
+  }
+ ],
+ "cases_all_pass": true,
+ "corpus_files": 850,
+ "compared": 839,
+ "zero_change": true,
+ "changed_files": [],
+ "current_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ]
+}
