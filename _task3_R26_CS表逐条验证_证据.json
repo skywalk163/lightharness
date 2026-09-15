@@ -1,0 +1,403 @@
+{
+ "cs_new": "乘减列到加对是模段的真空类自配除",
+ "cs30": "乘余例减出列则到加对常引接断是末模段的真空类自试跳过配长除首",
+ "head": "余例出列则对常引接断是末段的类自试跳过配长首",
+ "corpus": 843,
+ "result": {
+  "乘": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/examples/hello.light"
+   ],
+   "g2_line": "乘法 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '乘法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '乘'), ('IDENTIFIER', '法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "余": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "余数 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '余数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '余数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "例": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "例表 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '例表'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '例表'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "减": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/日期时间.light"
+   ],
+   "g2_line": "减法 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '减法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '减'), ('IDENTIFIER', '法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "出": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "出错 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '出错'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '出错'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "列": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/断言工具.light"
+   ],
+   "g2_line": "列数 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '列数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '列数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "则": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "则例 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '则例'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '则例'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "到": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/examples/password_manager/主.light"
+   ],
+   "g2_line": "到位 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '到位'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '到'), ('IDENTIFIER', '位'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "加": {
+   "g1_changed": 8,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/FFI.light",
+    "light-merge/bootstrap/release/stdlib/中文文本.light",
+    "light-merge/bootstrap/release/stdlib/加密.light",
+    "light-merge/bootstrap/release/stdlib/历法.light",
+    "light-merge/bootstrap/release/stdlib/排版.light",
+    "light-merge/bootstrap/release/stdlib/日期时间.light"
+   ],
+   "g2_line": "加法 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '加法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '加'), ('IDENTIFIER', '法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "对": {
+   "g1_changed": 4,
+   "g1_files": [
+    "light-merge/stdlib/HTTP服务端.light",
+    "light-merge/stdlib/SSE.light",
+    "light-merge/stdlib/中文文本处理.light",
+    "light-merge/stdlib/分布式/调度核心.light"
+   ],
+   "g2_line": "对立 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '对立'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '对立'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "常": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "常规 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '常规'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '常规'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "引": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "引导 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '引导'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '引导'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "接": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "接续 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '接续'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '接续'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "断": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "断裂 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '断裂'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '断裂'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "是": {
+   "g1_changed": 2,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/日期时间.light",
+    "light-merge/bootstrap/release/stdlib/时间管理.light"
+   ],
+   "g2_line": "是否 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '是否'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '是否'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "末": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "末项 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '末项'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '末项'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "模": {
+   "g1_changed": 29,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/JSON.light",
+    "light-merge/bootstrap/release/stdlib/加密.light",
+    "light-merge/bootstrap/release/stdlib/字符串处理.light",
+    "light-merge/bootstrap/release/stdlib/字符串工具.light",
+    "light-merge/bootstrap/release/stdlib/文件匹配.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light"
+   ],
+   "g2_line": "模组 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '模组'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '模'), ('IDENTIFIER', '组'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "段": {
+   "g1_changed": 9,
+   "g1_files": [
+    "light-merge/examples/games/snake.light",
+    "light-merge/examples/snake_game/主.light",
+    "light-merge/stdlib/re.light",
+    "light-merge/stdlib/网络请求.light",
+    "lightharness/examples/test_R25_单字后缀规则_快速.light",
+    "lightharness/examples/test_R25_词尾并入边界反向.light"
+   ],
+   "g2_line": "段数 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '段数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '段数'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [
+    "段[1]"
+   ],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "的": {
+   "g1_changed": 5,
+   "g1_files": [
+    "light-merge/examples/E阶段_L3L4原生语法/E4_L4_沙箱隔离验证.light",
+    "light-merge/examples/L1_baihua/05_遍循环.light",
+    "light-merge/examples/L1_baihua/06_列表.light",
+    "light-merge/examples/L1_baihua/07_字典.light",
+    "light-merge/examples/L2_wenyan/学生模块.light"
+   ],
+   "g2_line": "的确 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '的确'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '的确'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "真": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/stdlib/进程树.light"
+   ],
+   "g2_line": "真空 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '真空'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '真'), ('KEYWORD', '空'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "空": {
+   "g1_changed": 1,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/字符串常量.light"
+   ],
+   "g2_line": "空格 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '空格'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '空'), ('IDENTIFIER', '格'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "类": {
+   "g1_changed": 2,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/装饰器.light",
+    "lightharness/examples/test_L013.light"
+   ],
+   "g2_line": "类别 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '类别'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '类别'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "自": {
+   "g1_changed": 1,
+   "g1_files": [
+    "lightharness/src/权限.light"
+   ],
+   "g2_line": "自然 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '自然'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '自然'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "试": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "试探 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '试探'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '试探'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "跳": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "跳表 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '跳表'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '跳表'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "过": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "过载 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '过载'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '过载'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "配": {
+   "g1_changed": 4,
+   "g1_files": [
+    "lightharness/examples/test_L119.light",
+    "lightharness/examples/test_R25_单字后缀规则_快速.light",
+    "lightharness/examples/test_R25_词尾并入边界反向.light",
+    "lightharness/examples/test_团队服务.light"
+   ],
+   "g2_line": "配置 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '配置'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '配置'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [
+    "配[0]"
+   ],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "长": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "长度 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '长度'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '长度'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  },
+  "除": {
+   "g1_changed": 2,
+   "g1_files": [
+    "light-merge/bootstrap/release/stdlib/CSV读写器.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light"
+   ],
+   "g2_line": "除法 为 7",
+   "g2_ok": false,
+   "g2_base": "[('IDENTIFIER', '除法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('KEYWORD', '除'), ('IDENTIFIER', '法'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": false,
+   "in_new_cs": true
+  },
+  "首": {
+   "g1_changed": 0,
+   "g1_files": [],
+   "g2_line": "首项 为 7",
+   "g2_ok": true,
+   "g2_base": "[('IDENTIFIER', '首项'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g2_new": "[('IDENTIFIER', '首项'), ('KEYWORD', '为'), ('NUMBER', 7)]",
+   "g3_bad": [],
+   "deletable": true,
+   "in_new_cs": false
+  }
+ },
+ "seconds": 280.0
+}
