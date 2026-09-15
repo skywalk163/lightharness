@@ -1,0 +1,25 @@
+{
+ "corpus_files": 837,
+ "token_changed_count": 0,
+ "token_changed_files": [],
+ "token_regression_ok": true,
+ "core_rc_fix": {
+  "examples/test_L084.light": 0,
+  "examples/test_L092.light": 0,
+  "examples/test_L119.light": 0,
+  "examples/test_L120.light": 0,
+  "examples/test_R25_词尾并入正向.light": 0,
+  "examples/test_R25_词尾并入边界反向.light": 0
+ },
+ "core_rc_head": {
+  "examples/test_L084.light": 0,
+  "examples/test_L092.light": 0,
+  "examples/test_L119.light": 0,
+  "examples/test_L120.light": 0,
+  "examples/test_R25_词尾并入正向.light": 0,
+  "examples/test_R25_词尾并入边界反向.light": 0
+ },
+ "core_compile_changed": [],
+ "core_compile_ok": true,
+ "seconds": 38.5
+}
