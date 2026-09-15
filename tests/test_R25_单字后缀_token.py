@@ -138,9 +138,9 @@ def test_mixed_nested_and_list_and_dict():
 # ───────────────────────── 四、保护表形态（与任务2 证据一致） ─────────────────────────
 def test_protection_table_shape():
     """任务1 后：词尾并入正面类别 F=43；【R26 任务3】CS 30→16；
-    【R27 任务3】CS 16→2（A类DUAL 8字+B类6字移出，剩余列/类为真护栏）。"""
+    【R27 任务3】CS 16→2；【R28 任务3】CS 2→0（列/类移出，CS 表清零）。"""
     import lexer as _lx
-    assert len(Lexer.compound_safe_single_keywords) == 2
+    assert len(Lexer.compound_safe_single_keywords) == 0
     assert len(Lexer._TRAILING_ALIAS_CLASS) == 43
     # R26/R27：18 候选字若已移出 CS，必须由词首并入正面类别或 DUAL 类别覆盖
     for c in CANDS:

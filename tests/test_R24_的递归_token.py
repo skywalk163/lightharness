@@ -182,10 +182,10 @@ def test_free_names_not_split(src, expect):
 _RETAINED_13 = list("例出则常引接是末试跳过长首")
 
 
-def test_compound_safe_table_is_2():
-    """R26 任务3：CS 30→16；【R27 任务3】CS 16→2（A类DUAL 8字+B类6字移出，剩余列/类为真护栏）。"""
+def test_compound_safe_table_is_0():
+    """R26 任务3：CS 30→16；【R27 任务3】16→2；【R28 任务3】CS 2→0（列/类移出，CS 表清零）。"""
     import lexer as _lx
-    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 2
+    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
 
 
 @pytest.mark.parametrize("ch", _RETAINED_13)

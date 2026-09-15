@@ -382,13 +382,13 @@ class TestMixedScenarios:
 # 7. 保护表形态断言
 # ════════════════════════════════════════════════════════════════════
 class TestProtectionTableShape:
-    """保护表形态：CS 精简后 16 字，正面类别 22 字，净增量 14 字（R26 任务3 实测）。"""
+    """保护表形态：R27 后 CS 残部 2 字（列/类），正面类别 22 字，
+    DUAL 正面规则 8 字（R27 任务3 后口径；R26 时刻为 CS16/HM22/并集30）。"""
 
-    def test_CS_table_has_16_entries(self):
-        assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 16, (
-            'CS 表应为 16 字，实得 %d：%s'
-            % (len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS),
-               sorted(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS)))
+    def test_CS_table_cleared(self):
+        assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0, (
+            'R28 任务3 后 CS 表应清零，实得 %s'
+            % sorted(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS))
 
     def test_head_merge_class_exists(self):
         hm = lexer._P0A_HEAD_MERGE_SINGLE
@@ -400,17 +400,26 @@ class TestProtectionTableShape:
         assert hs is not None
         assert len(hs) == 42, '词首切分排除集应为 42 字，实得 %d' % len(hs)
 
-    def test_effective_head_merge_is_30(self):
-        union = lexer._COMPOUND_SAFE_SINGLE_KEYWORDS | lexer._P0A_HEAD_MERGE_SINGLE
+    def test_effective_head_merge_with_dual_is_30(self):
+        union = (lexer._COMPOUND_SAFE_SINGLE_KEYWORDS
+                 | lexer._P0A_HEAD_MERGE_SINGLE | lexer._P0A_HEAD_MERGE_DUAL)
         assert len(union) == 30, (
-            'CS ∪ 正面类别 应为 30 字（= 第25轮原 CS），实得 %d' % len(union))
-        assert set(union) == set(HEAD_MERGE_WORDS)
+            'CS ∪ HM ∪ DUAL 应为 30 字（= 第25轮原 CS），实得 %d' % len(union))
+        assert set(union) == set(HEAD_MERGE_WORDS) | set(
+            '乘减到加模真空除')
 
     def test_removed_14_covered_by_head_merge(self):
         removed = lexer._R26_CS_REMOVED
         assert len(removed) == 14, '任务3 移除的 CS 字应为 14 个'
         assert removed <= lexer._P0A_HEAD_MERGE_SINGLE, (
             '移除的 14 字必须全部由词首并入正面类别覆盖：%s'
+            % sorted(removed - lexer._P0A_HEAD_MERGE_SINGLE))
+
+    def test_r27_removed_6_covered_by_head_merge(self):
+        removed = lexer._R27_CS_REMOVED
+        assert len(removed) == 6, 'R27 任务3 移除的 B类 CS 字应为 6 个'
+        assert removed <= lexer._P0A_HEAD_MERGE_SINGLE, (
+            'R27 移除的 6 字必须全部由词首并入正面类别覆盖：%s'
             % sorted(removed - lexer._P0A_HEAD_MERGE_SINGLE))
 
     def test_head_merge_subset_of_trailing_class_F(self):
@@ -424,7 +433,7 @@ class TestProtectionTableShape:
     def test_class_attribute_still_exposed(self):
         """嵌入式扫描仍引用实例属性 compound_safe_single_keywords。"""
         lxr = Lexer('设 列数 为 3', deterministic=True)
-        assert len(lxr.compound_safe_single_keywords) == 16
+        assert len(lxr.compound_safe_single_keywords) == 0
 
     def test_stmt_head_single_is_21(self):
         assert len(lexer._R26_STMT_HEAD_SINGLE) == 21, (

@@ -229,8 +229,8 @@ class TestR26回归钉:
 # ============ 七、保护表形态断言（铁律） ============
 
 class Test保护表形态:
-    def test_CS表残部2字(self):
-        assert sorted(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == sorted(CS_REST)
+    def test_CS表清零(self):
+        assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
 
     def test_DUAL类别8字(self):
         assert sorted(lexer._P0A_HEAD_MERGE_DUAL) == sorted(A_DUAL)
@@ -244,9 +244,10 @@ class Test保护表形态:
         assert {'乘', '减', '加', '除', '模'} <= lexer.OPERATOR_VERBS
         assert {'到'} <= lexer.Lexer._P0A_NEVER_SPLIT
 
-    def test_HM净增量等于两轮移除集(self):
+    def test_HM净增量等于三轮移除集(self):
         net = lexer._P0A_HEAD_MERGE_SINGLE - lexer._COMPOUND_SAFE_SINGLE_KEYWORDS
-        removed = lexer._R26_CS_REMOVED | lexer._R27_CS_REMOVED
+        removed = (lexer._R26_CS_REMOVED | lexer._R27_CS_REMOVED
+                   | lexer._R28_CS_REMOVED)
         assert net == removed
 
     def test_HM含B类6字不含A类(self):
@@ -261,7 +262,7 @@ class Test保护表形态:
         # HM−CS==R26∪R27移除集）；此处显式重导入一次以确认幂等。
         import importlib
         importlib.reload(lexer)
-        assert sorted(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == sorted(CS_REST)
+        assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
 
 
 # ============ 八、全语料 token 零变化（对照 R26 基线快照，硬门槛） ============
