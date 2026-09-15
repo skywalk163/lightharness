@@ -182,19 +182,20 @@ def test_free_names_not_split(src, expect):
 _RETAINED_13 = list("例出则常引接是末试跳过长首")
 
 
-def test_compound_safe_table_is_16():
-    """R26 任务3：CS 三重判据（G1/G2/G3）后 30→16；保留项见 _task3_R26_CS表删除清单.md。"""
+def test_compound_safe_table_is_2():
+    """R26 任务3：CS 30→16；【R27 任务3】CS 16→2（A类DUAL 8字+B类6字移出，剩余列/类为真护栏）。"""
     import lexer as _lx
-    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 16
+    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 2
 
 
 @pytest.mark.parametrize("ch", _RETAINED_13)
 def test_retained_single_chars_present(ch):
-    """R24 时 13 条全在 CS；R26 后移出 CS 者必须由词首并入正面类别覆盖。"""
+    """R24 时 13 条全在 CS；R26/R27 后移出 CS 者必须由词首并入正面类别或 DUAL 类别覆盖。"""
     import lexer as _lx
     assert (ch in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS
-            or ch in _lx._P0A_HEAD_MERGE_SINGLE), \
-        "%s 既不在 CS 也不在词首并入正面类别" % ch
+            or ch in _lx._P0A_HEAD_MERGE_SINGLE
+            or ch in _lx._P0A_HEAD_MERGE_DUAL), \
+        "%s 既不在 CS 也不在词首并入正面类别/DUAL" % ch
 
 
 @pytest.mark.parametrize("ch", _RETAINED_13)
