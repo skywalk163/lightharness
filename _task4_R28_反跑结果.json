@@ -1,0 +1,18 @@
+{
+ "lexer_sha": "9957146a6ff3338241b08632657e2a78b79463eb29187b0368871d41b89abfdc",
+ "cs_final": [],
+ "corpus_files": 850,
+ "boundary_tests": {
+  "examples/test_R28_列词尾切出.light": 0,
+  "examples/test_R28_类声明词尾并入.light": 0,
+  "examples/test_R28_混合场景.light": 0
+ },
+ "boundary_ok": true,
+ "pytest_passed": 38,
+ "pytest_failed": 0,
+ "baseline_compare_zero_change": true,
+ "baseline_changed_files": [],
+ "perf_avg_sec": 9.201,
+ "perf_median_sec": 8.974,
+ "seconds": 156.6
+}
