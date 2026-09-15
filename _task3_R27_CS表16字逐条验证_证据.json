@@ -1,0 +1,199 @@
+{
+ "cs16": [
+  "乘",
+  "减",
+  "到",
+  "加",
+  "模",
+  "真",
+  "空",
+  "除",
+  "列",
+  "对",
+  "是",
+  "段",
+  "的",
+  "类",
+  "自",
+  "配"
+ ],
+ "corpus_files": 841,
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "乘": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "减": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "到": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "加": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "模": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "真": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "空": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "除": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "列": {
+   "g1_changed_files": {
+    "light-merge/bootstrap/release/stdlib/断言工具.light": [
+     "@1560 ('IDENTIFIER', '序') -> ('IDENTIFIER', '序列')",
+     "@1561 ('KEYWORD', '列') -> ('COLON', ':')",
+     "@1562 ('COLON', ':') -> ('INDENT', 8)"
+    ]
+   },
+   "g1_changed_count": 1,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": false,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "保留"
+  },
+  "对": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "是": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "段": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "的": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "类": {
+   "g1_changed_files": {
+    "lightharness/examples/test_L013.light": [
+     "@28 ('IDENTIFIER', '独立类') -> ('IDENTIFIER', '独立')",
+     "@29 ('COLON', ':') -> ('KEYWORD', '类')",
+     "@30 ('INDENT', 2) -> ('COLON', ':')"
+    ]
+   },
+   "g1_changed_count": 1,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": false,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "保留"
+  },
+  "自": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "配": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g2_fail": [],
+   "g3_fail": [],
+   "g1_pass": true,
+   "g2_pass": true,
+   "g3_pass": true,
+   "verdict": "可删"
+  }
+ }
+}
