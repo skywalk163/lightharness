@@ -1,0 +1,157 @@
+{
+ "d_batch": [
+  "函数对象",
+  "常量时间比较",
+  "幂次",
+  "枚举值",
+  "正则匹配",
+  "环境枚举",
+  "结构体值",
+  "记录类型"
+ ],
+ "corpus_files": 850,
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "函数对象": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "常量时间比较": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "幂次": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 幂次(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '幂次') -> ('KEYWORD', '幂')",
+      "@2 ('LPAREN', '(') -> ('IDENTIFIER', '次')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 幂次 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '幂次') -> ('KEYWORD', '幂')",
+      "@5 ('RBRACKET', ']') -> ('IDENTIFIER', '次')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 幂次 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '幂次') -> ('KEYWORD', '幂')",
+      "@2 ('KEYWORD', '那么') -> ('IDENTIFIER', '次')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  },
+  "枚举值": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "正则匹配": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "环境枚举": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "结构体值": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [],
+   "g3_pass": true,
+   "verdict": "可删"
+  },
+  "记录类型": {
+   "g1_changed_files": {},
+   "g1_changed_count": 0,
+   "g1_pass": true,
+   "g2_rc_base": 0,
+   "g2_rc_removed": 0,
+   "g2_pass": true,
+   "g3_fail": [
+    {
+     "form": "返回 记录类型(1)",
+     "diff": [
+      "@1 ('IDENTIFIER', '记录类型') -> ('IDENTIFIER', '记录')",
+      "@2 ('LPAREN', '(') -> ('KEYWORD', '类型')",
+      "@3 ('NUMBER', 1) -> ('LPAREN', '(')"
+     ]
+    },
+    {
+     "form": "设 x 为 [ 记录类型 ]",
+     "diff": [
+      "@4 ('IDENTIFIER', '记录类型') -> ('IDENTIFIER', '记录')",
+      "@5 ('RBRACKET', ']') -> ('KEYWORD', '类型')",
+      "@6 ('<END>', '') -> ('RBRACKET', ']')"
+     ]
+    },
+    {
+     "form": "如果 记录类型 那么 返回 1",
+     "diff": [
+      "@1 ('IDENTIFIER', '记录类型') -> ('IDENTIFIER', '记录')",
+      "@2 ('KEYWORD', '那么') -> ('KEYWORD', '类型')",
+      "@3 ('KEYWORD', '返回') -> ('KEYWORD', '那么')"
+     ]
+    }
+   ],
+   "g3_pass": false,
+   "verdict": "保留"
+  }
+ }
+}
