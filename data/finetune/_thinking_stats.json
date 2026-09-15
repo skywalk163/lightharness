@@ -1,0 +1,30 @@
+{
+  "input_count": 2500,
+  "generated_count": 2500,
+  "final_count": 2200,
+  "skipped_count": 21,
+  "avg_thinking_length": 401.1,
+  "thinking_length_range": [
+    367,
+    600
+  ],
+  "instruction_types": {
+    "other": 240,
+    "explanation": 415,
+    "debug": 417,
+    "optimize": 417,
+    "review": 416,
+    "improve": 416,
+    "implementation": 179
+  },
+  "source_distribution": {
+    "stdlib": 336,
+    "src": 1672,
+    "examples": 192
+  },
+  "thinking_length_dist": {
+    "300-400": 2078,
+    "500-600": 165,
+    "400-500": 257
+  }
+}
