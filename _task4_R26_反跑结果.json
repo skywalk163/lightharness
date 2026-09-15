@@ -1,0 +1,44 @@
+{
+ "lexer_sha": "2d18abe4b2c0e98f14d977bf2d53ccee6da3768447dabc73f77322c4f7f0e780",
+ "cs_len": 16,
+ "task1_head_merge_landed": true,
+ "task1_head_split_landed": true,
+ "corpus_files": 843,
+ "corpus_aggregate_fingerprint": "16a22b70c443f4231da14b591c38ce4d1d6306f159bd9d09beb07178f527ce3e",
+ "boundary_tests": {
+  "examples/test_R26_词首并入正向.light": 0,
+  "examples/test_R26_词首并入反向.light": 0,
+  "examples/test_R26_词首并入混合.light": 0
+ },
+ "boundary_ok": true,
+ "pytest_rc": 1,
+ "pytest_passed": 164,
+ "pytest_failed": 3,
+ "pytest_skipped": 1,
+ "pytest_errors": 0,
+ "token_error_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "baseline_compare": {
+  "changed_files": [],
+  "zero_change": true
+ },
+ "perf_timings_sec": [
+  7.626,
+  8.569,
+  9.537,
+  10.966,
+  11.863,
+  12.829,
+  13.498,
+  14.491,
+  14.982,
+  16.043
+ ],
+ "perf_avg_sec": 12.04,
+ "perf_median_sec": 12.829,
+ "r25_baseline_sec": 9.63,
+ "perf_delta_sec": 2.41,
+ "seconds": 131.7
+}
