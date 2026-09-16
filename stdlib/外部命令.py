@@ -288,7 +288,20 @@ def 等待进程(进程: subprocess.Popen, 超时: float = None) -> 命令结果
             标准错误=_智能解码(标准错误),
         )
     except subprocess.TimeoutExpired:
+        # 超时语义：kill + 返回 码=-1（用例按此判定「超时未成功」）。
+        #
+        # ⚠️ 只 kill() 不回收是不够的（第45轮实测 L-167）：
+        #   kill 之后进程进入「已终止但未回收」状态——POSIX 上成为僵尸占着
+        #   PID 表项，Windows 上管道读线程仍在跑且 Popen 析构时会抛
+        #   ResourceWarning；全量回归连跑数百个用例时，这些残留会累积并
+        #   抬高空闲系统负载，进而让**后续**用例的进程启动变慢——
+        #   test_子进程后台 偶发红（等待 5s 超时）就是这条链上的表现。
+        #   故 kill 后再 communicate() 一次：既回收僵尸，也排空管道。
         进程.kill()
+        try:
+            进程.communicate()
+        except Exception:  # noqa: BLE001 —— 回收失败不影响超时语义
+            pass
         return 命令结果(返回码=-1, 标准错误=f"进程超时（{超时}秒）")
 
 

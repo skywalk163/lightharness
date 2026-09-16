@@ -4,7 +4,7 @@
 
 R41 版只做「平台能力探测 + 4 个核心用例 rc 比对」。本轮升级为**回归门**：
 
-* 核心用例集扩充到 R41~R43 的真实链路样例（网络/文件/webhook/bash/LLM往返/agent循环）。
+* 核心用例集扩充到 R41~R45 的真实链路样例（网络/文件/webhook/bash/LLM往返/agent循环/影子变量告警/子进程）。
 * 新增 `--mode pytest`：两平台各跑全量 pytest，比对**失败用例集合**（而非仅 rc），
   避免「都非零退出但失败项不同」被误判为一致。
 * 远端执行复用 `scripts/同步0.82.py`（paramiko + 只读 /tmp 副本 + python 垫片），
@@ -51,6 +51,11 @@ CASES = [
     ("r42-toolchain", "examples/test_R42_真实工具链.light"),
     ("r43-llm-roundtrip", "examples/test_R43_真实LLM往返.light"),
     ("r43-agent-loop", "examples/test_R43_真实agent循环.light"),
+    # R45：影子变量告警载体（stderr 告警 + rc=0）、以及本轮加固的两个子进程用例
+    # （不再写死 python，改用运行器注入的 HARNESS_PY）
+    ("r45-shadow-warning", "examples/test_R45_影子变量告警.light"),
+    ("r45-subprocess-bg", "examples/test_子进程后台.light"),
+    ("r45-subprocess-code", "examples/test_子进程码.light"),
 ]
 
 FAILED_LINE = re.compile(r"^(FAILED|ERROR)\s+(\S+)")

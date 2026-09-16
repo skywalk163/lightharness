@@ -44,6 +44,11 @@ EXCLUDE_DIRS = {
 }
 EXCLUDE_SUFFIX = {".pyc", ".pyo", ".pyd", ".so", ".dylib"}
 
+# --with-git 时把 .git 一并带上：远端副本就成了真正的 git 工作树，
+# `tests/test_R21_词法确定性_超集.py` 里 `git archive HEAD` 才不会退化成 skip
+# （第45轮：0.82 已装 git 2.54.0，但 /tmp 副本此前没有 .git，2 条用例只能跳过）。
+INCLUDE_GIT = False
+
 
 # ---------------------------------------------------------------- 凭据
 def load_env() -> tuple[str, str]:
@@ -67,6 +72,10 @@ def load_env() -> tuple[str, str]:
 # ---------------------------------------------------------------- 打包
 def _should_skip(path: Path) -> bool:
     for part in path.parts:
+        if part == ".git":
+            if INCLUDE_GIT:
+                continue          # --with-git：保留 .git，其余排除照旧
+            return True
         if part in EXCLUDE_DIRS:
             return True
     if path.suffix in EXCLUDE_SUFFIX:
@@ -155,11 +164,14 @@ def ensure_shim(cli) -> None:
 
 # ---------------------------------------------------------------- 子命令
 def cmd_sync(args) -> int:
+    global INCLUDE_GIT
+    INCLUDE_GIT = getattr(args, "with_git", False)
     ts = time.strftime("%Y%m%d-%H%M%S")
     remote_dir = f"{REMOTE_BASE}/r44-{ts}"
     tar_path = ROOT / "_r44_sync.tar.gz"
 
-    print(f"[同步0.82] 打包中（排除 {sorted(EXCLUDE_DIRS)}）…")
+    print(f"[同步0.82] 打包中（排除 {sorted(EXCLUDE_DIRS)}"
+          f"{'，但包含 .git' if INCLUDE_GIT else ''}）…")
     t0 = time.time()
     n = build_tarball(tar_path)
     size_mb = tar_path.stat().st_size / 1024 / 1024
@@ -187,12 +199,24 @@ def cmd_sync(args) -> int:
             raise SystemExit(f"[同步0.82] 解压失败 rc={rc}")
         print(out.strip())
 
+        # --with-git：把副本标为 git 安全目录，并确认 HEAD 可用
+        # （否则 `git archive HEAD` 会因 dubious ownership 失败 → 用例退化成 skip）
+        if INCLUDE_GIT:
+            run_remote(cli, f"git config --global --add safe.directory {remote_dir}/lightharness",
+                       quiet=True)
+            rc, out = run_remote(cli, f"git -C {remote_dir}/lightharness rev-parse --short HEAD",
+                                 quiet=True)
+            print(f"[同步0.82] 远端 git HEAD = {out.strip() or '(不可用)'}")
+
         cnt = verify_examples(cli, remote_dir)
         print(f"[同步0.82] 远端 examples 数量 = {cnt}")
 
-        # 落一个指针文件，供后续任务复用同一副本
-        (ROOT / "lightharness" / "_r44_remote_dir.txt").write_text(remote_dir, encoding="utf-8")
-        print(f"[同步0.82] ✅ 完成：远程副本 {remote_dir}")
+        # 落一个指针文件，供后续任务复用同一副本（写到 reports/ 稳定位置，
+        # 避免像 R44 首轮那样写在仓库根的临时文件里被移档后导致 run/verify 失效）
+        ptr = ROOT / "lightharness" / "reports" / "同步0.82_远程目录.txt"
+        ptr.parent.mkdir(parents=True, exist_ok=True)
+        ptr.write_text(remote_dir, encoding="utf-8")
+        print(f"[同步0.82] ✅ 完成：远程副本 {remote_dir}（指针 {ptr.relative_to(ROOT)}）")
         return 0
     finally:
         cli.close()
@@ -207,15 +231,25 @@ def verify_examples(cli, remote_dir: str) -> int:
     return int(out.strip().split()[-1]) if rc == 0 else -1
 
 
+def local_examples_count() -> int:
+    """本机 examples/*.light 数量（远端校验的期望值，动态取以免新增用例后误判）。"""
+    d = ROOT / "lightharness" / "examples"
+    try:
+        return len([f for f in os.listdir(d) if f.endswith(".light")])
+    except OSError:
+        return 402
+
+
 def cmd_verify(args) -> int:
     cli = connect()
     try:
         rd = load_remote_dir()
         cnt = verify_examples(cli, rd)
-        print(f"[同步0.82] 副本 {rd} examples = {cnt}（本机 402）")
+        want = local_examples_count()
+        print(f"[同步0.82] 副本 {rd} examples = {cnt}（本机 {want}）")
         rc, out = run_remote(cli, f"cd {rd}/lightharness && uname -a && {PY} -V", quiet=True)
         print(out.strip())
-        return 0 if cnt == 402 else 1
+        return 0 if cnt == want else 1
     finally:
         cli.close()
 
@@ -236,18 +270,36 @@ def cmd_run(args) -> int:
 
 
 def load_remote_dir() -> str:
-    p = ROOT / "lightharness" / "_r44_remote_dir.txt"
-    if not p.exists():
-        raise SystemExit("[同步0.82] 未知远程副本路径，请先执行 sync")
-    return p.read_text(encoding="utf-8").strip()
+    """取最近一次 sync 的远程副本路径。
+
+    查找顺序（便于历史副本被清理/记录文件被移档时仍可用）：
+      1) 环境变量 R44_REMOTE_DIR（临时覆盖用）
+      2) reports/同步0.82_远程目录.txt（sync 写入的稳定位置）
+      3) 旧位置 lightharness/_r44_remote_dir.txt（R44 首轮遗留，可能已被移档）
+    """
+    env = os.environ.get("R44_REMOTE_DIR", "").strip()
+    if env:
+        return env
+    for rel in ("lightharness/reports/同步0.82_远程目录.txt",
+                "lightharness/_r44_remote_dir.txt"):
+        p = ROOT / rel
+        if p.exists():
+            v = p.read_text(encoding="utf-8").strip()
+            if v:
+                return v
+    raise SystemExit("[同步0.82] 未知远程副本路径，请先执行 sync（或用 R44_REMOTE_DIR 环境变量指定）")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="0.82 全量重同步与远程执行")
     sub = ap.add_subparsers(dest="sub", required=True)
 
-    sub.add_parser("sync", help="打包+上传+解压+校验").set_defaults(fn=cmd_sync)
     sub.add_parser("verify", help="校验远端副本").set_defaults(fn=cmd_verify)
+    p_sync = sub.add_parser("sync", help="打包+上传+解压+校验")
+    p_sync.add_argument("--with-git", action="store_true",
+                        help="连 .git 一起同步（远端副本成为真正的 git 工作树，"
+                             "使依赖 `git archive HEAD` 的用例真正跑起来而不是跳过）")
+    p_sync.set_defaults(fn=cmd_sync)
     p_run = sub.add_parser("run", help="远端执行命令")
     p_run.add_argument("cmd", nargs=argparse.REMAINDER)
     p_run.add_argument("--timeout", type=int, default=3000)

@@ -1,0 +1,380 @@
+{
+  "schema": 2,
+  "round": "R44",
+  "mode": "core",
+  "generated_at": "2026-09-17T04:50:18+0800",
+  "local_platform": {
+    "os": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.13.14",
+    "shell": "C:\\Windows\\system32\\cmd.exe",
+    "path_separator": "\\",
+    "line_separator": "'\\r\\n'",
+    "preferred_encoding": "utf-8",
+    "filesystem_encoding": "utf-8",
+    "socket_ipv6": true
+  },
+  "local": {
+    "cases": {
+      "cli": {
+        "rc": 0,
+        "elapsed_sec": 4.294,
+        "output_digest": "de1cac16a45557bb",
+        "output_lines": 6,
+        "tail": [
+          "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+          "未知命令: bogus",
+          "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+          "[跳过] run 缺省分支真实执行（当前环境存在 API 密钥，避免触发网络请求）",
+          "test_CLI命令面 PASS"
+        ]
+      },
+      "r39-system-prompt": {
+        "rc": 0,
+        "elapsed_sec": 1.999,
+        "output_digest": "bb325f35815ac1f8",
+        "output_lines": 21,
+        "tail": [
+          "OK #16-16c",
+          "OK #17",
+          "OK #18-18b",
+          "OK #19-19b",
+          "系统提示 判据通过：20 组"
+        ]
+      },
+      "r39-scope": {
+        "rc": 0,
+        "elapsed_sec": 2.081,
+        "output_digest": "c87cb2a3c2f881e6",
+        "output_lines": 13,
+        "tail": [
+          "OK #10-10i",
+          "OK #11-11h",
+          "OK #12-12d",
+          "OK #13-13c",
+          "作用域 判据通过：14 组"
+        ]
+      },
+      "r40-integration": {
+        "rc": 0,
+        "elapsed_sec": 2.488,
+        "output_digest": "1f6a5dcecbf7d575",
+        "output_lines": 22,
+        "tail": [
+          "OK #17",
+          "OK #18",
+          "5 集成点全通过：系统提示组装 | 作用域过滤 | 工具调用 | 子代理委派 | 中止恢复",
+          "--- 第40轮任务1 端到端互举链路集成 通过 ---",
+          "共 19 组"
+        ]
+      },
+      "r41-file-io": {
+        "rc": 0,
+        "elapsed_sec": 8.174,
+        "output_digest": "2359106f433216ed",
+        "output_lines": 1,
+        "tail": [
+          "任务1 全部断言通过（真实文件IO：写/读/编辑/目录/删除/原子写崩溃恢复/跨平台/沙箱护栏 全链 rc=0）"
+        ]
+      },
+      "r41-net-io": {
+        "rc": 0,
+        "elapsed_sec": 7.566,
+        "output_digest": "b0dc1048715c544d",
+        "output_lines": 1,
+        "tail": [
+          "任务2 全部断言通过（真实网络IO：loopback GET/POST 200；非loopback 令牌门禁 200/401；无token拒启动 rc=0）"
+        ]
+      },
+      "r42-fetch": {
+        "rc": 0,
+        "elapsed_sec": 4.376,
+        "output_digest": "c1b4ba630d14ccc4",
+        "output_lines": 1,
+        "tail": [
+          "任务1 全部断言通过（真实web-fetch：真GET 200 + Content-Type/分类；非法URL拒；公网沙箱拒；超时兜底 rc=0）"
+        ]
+      },
+      "r42-webhook": {
+        "rc": 0,
+        "elapsed_sec": 3.862,
+        "output_digest": "7a54a519add6820b",
+        "output_lines": 1,
+        "tail": [
+          "任务2 全部断言通过（真实webhook：好签名202派发/错签名401/非POST405/超大413/秘密空503；非loopback令牌门禁继承 rc=0）"
+        ]
+      },
+      "r42-bash-cross": {
+        "rc": 0,
+        "elapsed_sec": 2.388,
+        "output_digest": "ae58f374af455144",
+        "output_lines": 1,
+        "tail": [
+          "bash跨平台：is_windows=True shell=C:\\Windows\\system32\\cmd.exe echo真实执行OK cd逃逸护栏两平台生效 rc=0"
+        ]
+      },
+      "r42-toolchain": {
+        "rc": 0,
+        "elapsed_sec": 4.202,
+        "output_digest": "bf1b9beecd41d9b7",
+        "output_lines": 1,
+        "tail": [
+          "任务5 真实工具链：bash真实子进程+真实fetch出+真实webhook入验签 全链rc=0"
+        ]
+      },
+      "r43-llm-roundtrip": {
+        "rc": 0,
+        "elapsed_sec": 2.602,
+        "output_digest": "d23fa5af0ba06087",
+        "output_lines": 2,
+        "tail": [
+          "mock 服务端已起，端口=52528",
+          "任务1 全部断言通过（真实LLM往返：真POST+SSE解析+wire映射，rc=0）"
+        ]
+      },
+      "r43-agent-loop": {
+        "rc": 0,
+        "elapsed_sec": 5.776,
+        "output_digest": "2b20b8234d9f768c",
+        "output_lines": 6,
+        "tail": [
+          "轮2 调真实工具=bash 参数={\"命令\":\"echo 你好R43\"}",
+          "agent 循环完成：轮=3 bash输出含你好R43=True",
+          "B1 真实fetch=状态=405 体前40=",
+          "B2 真实文件读写回环通过",
+          "任务2 全部断言通过（真实agent循环：真LLM+真工具多轮，rc=0）"
+        ]
+      },
+      "r45-shadow-warning": {
+        "rc": 0,
+        "elapsed_sec": 1.654,
+        "output_digest": "c5b59131f287370b",
+        "output_lines": 2,
+        "tail": [
+          "test_R45_影子变量告警 PASS",
+          "⚠ 编译警告（L-166 影子变量）：第14行 段落『坏_写不回』内给『当前值』赋值，但模块级也存在同名变量且未在该段落内声明『全局 当前值。』。按作用域语义这里会新建**局部**变量，模块级的『当前值』不会被修改（L-165 即此类静默缺陷）。若要写回模块级变量，请在段落内加『全局 当前值。』；若本意就是局部变量，可忽略此告警。"
+        ]
+      },
+      "r45-subprocess-bg": {
+        "rc": 0,
+        "elapsed_sec": 9.218,
+        "output_digest": "043c70c608b66d09",
+        "output_lines": 1,
+        "tail": [
+          "test_子进程后台 PASS"
+        ]
+      },
+      "r45-subprocess-code": {
+        "rc": 0,
+        "elapsed_sec": 5.951,
+        "output_digest": "27ea8b4b1ab8b098",
+        "output_lines": 1,
+        "tail": [
+          "test_子进程码 PASS"
+        ]
+      }
+    },
+    "all_rc_zero": true
+  },
+  "remote": {
+    "cases": {
+      "cli": {
+        "rc": 0,
+        "elapsed_sec": 2.009,
+        "output_digest": "1e2f04351bb53544",
+        "output_lines": 8,
+        "tail": [
+          "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+          "错误: 未提供 API 密钥",
+          "请在项目根目录 .env 中配置 DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY，或设环境变量",
+          "示例: 设 HARNESS_MSG 为消息 + DEEPSEEK_API_KEY 为密钥 + python 运行.py examples/运行CLI.light",
+          "test_CLI命令面 PASS"
+        ]
+      },
+      "r39-system-prompt": {
+        "rc": 0,
+        "elapsed_sec": 0.805,
+        "output_digest": "bb325f35815ac1f8",
+        "output_lines": 21,
+        "tail": [
+          "OK #16-16c",
+          "OK #17",
+          "OK #18-18b",
+          "OK #19-19b",
+          "系统提示 判据通过：20 组"
+        ]
+      },
+      "r39-scope": {
+        "rc": 0,
+        "elapsed_sec": 0.807,
+        "output_digest": "c87cb2a3c2f881e6",
+        "output_lines": 13,
+        "tail": [
+          "OK #10-10i",
+          "OK #11-11h",
+          "OK #12-12d",
+          "OK #13-13c",
+          "作用域 判据通过：14 组"
+        ]
+      },
+      "r40-integration": {
+        "rc": 0,
+        "elapsed_sec": 1.207,
+        "output_digest": "1f6a5dcecbf7d575",
+        "output_lines": 22,
+        "tail": [
+          "OK #17",
+          "OK #18",
+          "5 集成点全通过：系统提示组装 | 作用域过滤 | 工具调用 | 子代理委派 | 中止恢复",
+          "--- 第40轮任务1 端到端互举链路集成 通过 ---",
+          "共 19 组"
+        ]
+      },
+      "r41-file-io": {
+        "rc": 0,
+        "elapsed_sec": 0.804,
+        "output_digest": "2359106f433216ed",
+        "output_lines": 1,
+        "tail": [
+          "任务1 全部断言通过（真实文件IO：写/读/编辑/目录/删除/原子写崩溃恢复/跨平台/沙箱护栏 全链 rc=0）"
+        ]
+      },
+      "r41-net-io": {
+        "rc": 0,
+        "elapsed_sec": 2.613,
+        "output_digest": "b0dc1048715c544d",
+        "output_lines": 1,
+        "tail": [
+          "任务2 全部断言通过（真实网络IO：loopback GET/POST 200；非loopback 令牌门禁 200/401；无token拒启动 rc=0）"
+        ]
+      },
+      "r42-fetch": {
+        "rc": 0,
+        "elapsed_sec": 2.814,
+        "output_digest": "c1b4ba630d14ccc4",
+        "output_lines": 1,
+        "tail": [
+          "任务1 全部断言通过（真实web-fetch：真GET 200 + Content-Type/分类；非法URL拒；公网沙箱拒；超时兜底 rc=0）"
+        ]
+      },
+      "r42-webhook": {
+        "rc": 0,
+        "elapsed_sec": 2.617,
+        "output_digest": "7a54a519add6820b",
+        "output_lines": 1,
+        "tail": [
+          "任务2 全部断言通过（真实webhook：好签名202派发/错签名401/非POST405/超大413/秘密空503；非loopback令牌门禁继承 rc=0）"
+        ]
+      },
+      "r42-bash-cross": {
+        "rc": 0,
+        "elapsed_sec": 0.807,
+        "output_digest": "f0603e6c4e0a7a87",
+        "output_lines": 1,
+        "tail": [
+          "bash跨平台：is_windows=False shell=/bin/sh echo真实执行OK cd逃逸护栏两平台生效 rc=0"
+        ]
+      },
+      "r42-toolchain": {
+        "rc": 0,
+        "elapsed_sec": 2.613,
+        "output_digest": "bf1b9beecd41d9b7",
+        "output_lines": 1,
+        "tail": [
+          "任务5 真实工具链：bash真实子进程+真实fetch出+真实webhook入验签 全链rc=0"
+        ]
+      },
+      "r43-llm-roundtrip": {
+        "rc": 0,
+        "elapsed_sec": 1.206,
+        "output_digest": "cadebecfe8fefd2d",
+        "output_lines": 2,
+        "tail": [
+          "mock 服务端已起，端口=13365",
+          "任务1 全部断言通过（真实LLM往返：真POST+SSE解析+wire映射，rc=0）"
+        ]
+      },
+      "r43-agent-loop": {
+        "rc": 0,
+        "elapsed_sec": 1.609,
+        "output_digest": "5837686308c13690",
+        "output_lines": 6,
+        "tail": [
+          "轮2 调真实工具=bash 参数={\"命令\":\"echo 你好R43\"}",
+          "agent 循环完成：轮=3 bash输出含你好R43=True",
+          "B1 真实fetch=状态=405 体前40=",
+          "B2 真实文件读写回环通过",
+          "任务2 全部断言通过（真实agent循环：真LLM+真工具多轮，rc=0）"
+        ]
+      },
+      "r45-shadow-warning": {
+        "rc": 0,
+        "elapsed_sec": 0.403,
+        "output_digest": "3e871d6fb107b05a",
+        "output_lines": 1,
+        "tail": [
+          "test_R45_影子变量告警 PASS"
+        ]
+      },
+      "r45-subprocess-bg": {
+        "rc": 0,
+        "elapsed_sec": 3.012,
+        "output_digest": "043c70c608b66d09",
+        "output_lines": 1,
+        "tail": [
+          "test_子进程后台 PASS"
+        ]
+      },
+      "r45-subprocess-code": {
+        "rc": 0,
+        "elapsed_sec": 0.606,
+        "output_digest": "27ea8b4b1ab8b098",
+        "output_lines": 1,
+        "tail": [
+          "test_子进程码 PASS"
+        ]
+      }
+    },
+    "all_rc_zero": true
+  },
+  "gate": {
+    "rc_equal": true,
+    "failures_equal": null,
+    "ok": true,
+    "local_rc": {
+      "cli": 0,
+      "r39-system-prompt": 0,
+      "r39-scope": 0,
+      "r40-integration": 0,
+      "r41-file-io": 0,
+      "r41-net-io": 0,
+      "r42-fetch": 0,
+      "r42-webhook": 0,
+      "r42-bash-cross": 0,
+      "r42-toolchain": 0,
+      "r43-llm-roundtrip": 0,
+      "r43-agent-loop": 0,
+      "r45-shadow-warning": 0,
+      "r45-subprocess-bg": 0,
+      "r45-subprocess-code": 0
+    },
+    "remote_rc": {
+      "cli": 0,
+      "r39-system-prompt": 0,
+      "r39-scope": 0,
+      "r40-integration": 0,
+      "r41-file-io": 0,
+      "r41-net-io": 0,
+      "r42-fetch": 0,
+      "r42-webhook": 0,
+      "r42-bash-cross": 0,
+      "r42-toolchain": 0,
+      "r43-llm-roundtrip": 0,
+      "r43-agent-loop": 0,
+      "r45-shadow-warning": 0,
+      "r45-subprocess-bg": 0,
+      "r45-subprocess-code": 0
+    }
+  }
+}

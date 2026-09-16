@@ -51,6 +51,11 @@ def main(argv=None):
     if len(argv) < 2 or argv[1] in ('-h', '--help'):
         print(__doc__)
         return 0
+    # 第45轮：把「当前解释器的绝对路径」注入环境，供 .light 用例里再 spawn
+    # 子解释器时使用（HARNESS_PY）。此前用例一律写死 `python`，依赖 PATH 上
+    # 恰好有这个名字：Windows 上可能是应用商店别名或压根没有，FreeBSD 上只有
+    # python3——全量回归里 test_子进程后台 偶发红就有这条成因。
+    os.environ.setdefault('HARNESS_PY', sys.executable)
     _setup_paths()
     entry = argv[1]
     if not os.path.isabs(entry):
