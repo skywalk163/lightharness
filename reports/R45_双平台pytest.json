@@ -1,0 +1,65 @@
+{
+  "round": 45,
+  "purpose": "第45轮任务1：0.82 git 复核 + 双平台全量回归基线",
+  "generated_at": "2026-09-17",
+  "remote": {
+    "host": "192.168.0.82",
+    "os": "FreeBSD 15.1",
+    "user": "ai",
+    "copy_mode": "/tmp 只读临时副本",
+    "git": {
+      "installed": true,
+      "path": "/usr/local/bin/git",
+      "version": "2.54.0",
+      "checked_by": "scripts/同步0.82.py run \"which git; git --version\"",
+      "note": "第44轮的 2 条 ERROR 来自 tests/test_R21_词法确定性_超集.py 依赖 `git archive HEAD`。只装 git 不够：/tmp 副本没有 .git 时该用例从 ERROR 退化为 SKIP，仍未被真正执行。故加 --with-git 连 .git 一起同步。"
+    }
+  },
+  "sync": {
+    "script": "scripts/同步0.82.py",
+    "new_flag": "--with-git",
+    "last_remote_dir": "/tmp/r44-20260917-043907",
+    "remote_git_head": "141aa2c",
+    "remote_examples": 403,
+    "tarball_mb": 172.0,
+    "upload_seconds": 10.8
+  },
+  "local_baseline": {
+    "platform": "Windows",
+    "python": "3.13.14",
+    "failed": 7,
+    "passed": 1238,
+    "skipped": 3,
+    "errors": 0,
+    "seconds": 927.79
+  },
+  "result": {
+    "platform": "FreeBSD 15.1 (0.82)",
+    "python": "3.11",
+    "failed": 7,
+    "passed": 1238,
+    "skipped": 3,
+    "errors": 0,
+    "seconds": 322.88
+  },
+  "failed_list_identical": true,
+  "failed_list": [
+    "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
+    "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged",
+    "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_deleted_return_code_still_merged",
+    "tests/test_回归.py::test_example_exit_code[test_R22_嵌入关键字吞并验证.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R26_词首并入反向.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R26_词首并入混合.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R27_词首并入反向.light]"
+  ],
+  "comparison_with_r44": {
+    "r44_local": "7 failed / 1232 passed / 3 skipped",
+    "r44_freebsd": "7 failed / 1230 passed / 3 skipped + 2 errors",
+    "r45_local": "7 failed / 1238 passed / 3 skipped",
+    "r45_freebsd": "7 failed / 1238 passed / 3 skipped + 0 errors",
+    "passed_delta": "+6（新增 1 个 example 用例 + 5 个 test_R45_L166影子变量告警 用例）",
+    "errors_delta": "-2（git 就位 + 副本带 .git，2 条从 ERROR→SKIP→PASS）",
+    "new_red_beyond_baseline": 0
+  },
+  "conclusion": "双平台失败/跳过/错误清单完全对齐（7/1238/3/0），失败清单逐条一致，基线外零新增红。耗时差（927s vs 323s）为机器性能差异，非功能差异。"
+}
