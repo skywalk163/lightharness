@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-09-16 15:18:36",
+  "light_merge_rev": "d8cf337d+dirty(src)",
+  "light_version": "7.0.0",
+  "roots": [
+    "src",
+    "stdlib",
+    "examples",
+    "tests"
+  ],
+  "scanned": 644,
+  "ok": 640,
+  "counts": {
+    "OK": 640,
+    "LEX": 0,
+    "PARSE": 4,
+    "READ": 0
+  },
+  "elapsed_sec": 37.34,
+  "failures": {
+    "examples/test_L101.light": {
+      "status": "PARSE",
+      "message": "ParseError: ┌─ 语法错误 │ 位置: 行 8, 列 8 │ 原因: 「回调」是保留关键字，不能直接作为语句开头。请检查语法是否正确，或参考光明语法文档。 │ 附近: '回调' └─",
+      "digest": "0eae615abf3e"
+    },
+    "examples/test_L143.light": {
+      "status": "PARSE",
+      "message": "ParseError: ┌─ 语法错误 │ 位置: 行 8, 列 8 │ 原因: 「作用域」是保留关键字，不能直接作为语句开头。请检查语法是否正确，或参考光明语法文档。 │ 附近: '作用域' └─",
+      "digest": "2703ab3901ea"
+    },
+    "examples/test_R22_嵌入关键字冗余验证.light": {
+      "status": "PARSE",
+      "message": "ParseError: ┌─ 语法错误 │ 位置: 行 19, 列 8 │ 原因: 期望'为'或'等于'，但得到 「了」 │ 附近: '了' └─",
+      "digest": "4f8e993ec762"
+    },
+    "examples/test_R26_词首并入混合.light": {
+      "status": "PARSE",
+      "message": "ParseError: ┌─ 语法错误 │ 原因: 发现 2 个语法错误（下面详列前 2 个，建议从第 1 个开始修）: 错误 1/2: ┌─ 语法错误 │ 位置: 行 59, 列 9 │ 原因: 期望 冒号「:」，但得到 关键字（附近: '返回'） │ 附近: '返回' │ 建议: 「返回」用于函数返回值，后面需要跟返回表达式。如：返回 甲 加 乙。 │ 教程: 30分钟入门光明.md 第3章「",
+      "digest": "c53b148b6623"
+    }
+  }
+}

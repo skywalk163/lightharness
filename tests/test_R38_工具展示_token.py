@@ -112,10 +112,13 @@ def test_导入仅为builtins层():
 
 def test_无对既有模块的反向引用():
     """扫描 src/ 下所有既有模块的 import 语句中是否出现「从 工具展示 导入」——
-    零，验证零侵入设计（消费者通过代理适配层接入，不反向 import）。"""
+    零，验证零侵入设计（消费者通过代理适配层接入，不反向 import）。
+    第40轮注：互举接线.light 是 R40 端到端装配层，设计职责就是接线
+    （显式 import 工具展示/系统提示/作用域等模块来串链路），不在此扫描范围；
+    本测试仍守护「业务/既有模块不反向 import 工具展示」。"""
     hits = []
     for p in glob.glob(os.path.join(SRC, '*.light')):
-        if os.path.basename(p) == '工具展示.light':
+        if os.path.basename(p) in ('工具展示.light', '互举接线.light'):
             continue
         text = open(p, encoding='utf-8-sig', errors='replace').read()
         if '从 工具展示 导入' in text:
