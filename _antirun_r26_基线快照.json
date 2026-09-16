@@ -2297,8 +2297,9 @@
    "n": 1425
   },
   "lightharness/examples/test_审批.light": {
-   "sha": "3440261634d178333f177a98d9ba219dcbb5845684c62fda66f3e007cc0de75a",
-   "n": 1309
+   "sha": "7c851316c821cfb53bf7f779cea9aae9d2ad2f091426404f8fa1484dbcbaa2f6",
+   "n": 1309,
+   "src_sha256": "3c8b97e42a658ce74ee607f490666d7bec70959e0d834ae4d8005f86f9aff04a"
   },
   "lightharness/examples/test_审批API.light": {
    "sha": "8e379b8da617962015882f5a6415e431ba2125d86683682eb6cbe72a7c8483ae",
@@ -3380,5 +3381,22 @@
  "base_err_files": [
   "light-merge/bootstrap/release/stdlib/集合.light",
   "light-merge/examples/_test_nested_closure.light"
+ ],
+ "_amendments": [
+  {
+   "rel": "lightharness/examples/test_审批.light",
+   "at": "2026-09-16 07:40:49",
+   "by": "第35轮路M收口",
+   "reason": "源文件于 e26ed3d（2026-09-15 20:02，第31轮T4 flaky 修复 time.time→time.monotonic）被编辑，晚于快照生成时刻 13:31 共 6.5 小时。经反跑实证：以当前 lexer 对旧内容(e26ed3d^) tokenize 的指纹与快照一致，token 数亦不变(1309)，属**源文件内容漂移**而非词法回归。",
+   "source_commit": "e26ed3d",
+   "source_commit_time": "2026-09-15 20:02",
+   "token_fp_old": "3440261634d178333f177a98d9ba219dcbb5845684c62fda66f3e007cc0de75a",
+   "token_fp_new": "7c851316c821cfb53bf7f779cea9aae9d2ad2f091426404f8fa1484dbcbaa2f6",
+   "token_count_old": 1309,
+   "token_count_new": 1309,
+   "src_sha256_old": "04fc304a33bc73c2636c228e59d4a4757fef24b6da027b53bcaf9751d6eb7257",
+   "src_sha256_new": "3c8b97e42a658ce74ee607f490666d7bec70959e0d834ae4d8005f86f9aff04a",
+   "note": "仅修订本条 per_file 指纹，未整体重生快照；aggregate_fingerprint 保持原值（不参与本测试的判据）。"
+  }
  ]
 }
