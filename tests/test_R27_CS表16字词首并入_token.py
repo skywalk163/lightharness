@@ -242,17 +242,26 @@ class Test保护表形态:
     def test_DUAL属于运算符_值字面量_范围(self):
         # A类来源：运算符（乘减加除模）+ 值字面量（真空）+ 范围（到）
         assert {'乘', '减', '加', '除', '模'} <= lexer.OPERATOR_VERBS
-        assert {'到'} <= lexer.Lexer._P0A_NEVER_SPLIT
+        # 【R35 修正】旧断言写 `{'到'} <= Lexer._P0A_NEVER_SPLIT`；
+        # R33 已把 NEVER_SPLIT 清零（4→0），`到` 不再属该表。
+        # `到` 的"范围"语义仍由 DUAL 类别承载，故改判 DUAL 成员资格。
+        assert '到' in lexer._P0A_HEAD_MERGE_DUAL
 
-    def test_HM净增量等于三轮移除集(self):
+    def test_HM净增量等于三轮移除集加R33三字(self):
         net = lexer._P0A_HEAD_MERGE_SINGLE - lexer._COMPOUND_SAFE_SINGLE_KEYWORDS
         removed = (lexer._R26_CS_REMOVED | lexer._R27_CS_REMOVED
                    | lexer._R28_CS_REMOVED)
-        assert net == removed
+        # 【R35 修正】R33 清零 _P0A_NEVER_SPLIT 后 步/至/到 一并进入 HM，
+        # 净增量 = 三轮 CS 移除集(22) ∪ {步,至,到} = 25。
+        assert net == removed | {'步', '至', '到'}
+        assert len(net) == 25
 
     def test_HM含B类6字不含A类(self):
         assert set(B_SIX) <= lexer._P0A_HEAD_MERGE_SINGLE
-        assert not (set(A_DUAL) & lexer._P0A_HEAD_MERGE_SINGLE)
+        # 【R35 修正】A 类中的 `到` 在 R33 后同时进入 HM（DUAL ∩ HM = {到}），
+        # 这是 R33 的有意结果（范围字在词首并入），故不相交判据排除 `到`。
+        assert not ((set(A_DUAL) - {'到'}) & lexer._P0A_HEAD_MERGE_SINGLE)
+        assert set(A_DUAL) & lexer._P0A_HEAD_MERGE_SINGLE == {'到'}
 
     def test_CS残部属于F(self):
         assert set(CS_REST) <= lexer.Lexer._TRAILING_ALIAS_CLASS

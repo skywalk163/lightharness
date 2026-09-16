@@ -138,20 +138,28 @@ def test_mixed_nested_and_list_and_dict():
 # ───────────────────────── 四、保护表形态（与任务2 证据一致） ─────────────────────────
 def test_protection_table_shape():
     """任务1 后：词尾并入正面类别 F=43；【R26 任务3】CS 30→16；
-    【R27 任务3】CS 16→2；【R28 任务3】CS 2→0（列/类移出，CS 表清零）。"""
+    【R27 任务3】CS 16→2；【R28 任务3】CS 2→0（列/类移出，CS 表清零）；
+    【R33】_P0A_NEVER_SPLIT 清零 ⇒ 步/至/到 进入 F，F 43→46。
+
+    【R35 修正】旧断言引用 `Lexer.compound_safe_single_keywords`（小写、无下划线
+    前缀的旧名），CS 表清零重构后该属性已不存在 ⇒ AttributeError 假红。
+    现统一走模块级 `_COMPOUND_SAFE_SINGLE_KEYWORDS`。"""
     import lexer as _lx
-    assert len(Lexer.compound_safe_single_keywords) == 0
-    assert len(Lexer._TRAILING_ALIAS_CLASS) == 43
+    assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
+    assert len(Lexer._TRAILING_ALIAS_CLASS) == 46
     # R26/R27：18 候选字若已移出 CS，必须由词首并入正面类别或 DUAL 类别覆盖
     for c in CANDS:
-        assert (c in Lexer.compound_safe_single_keywords
+        assert (c in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS
                 or c in _lx._P0A_HEAD_MERGE_SINGLE
                 or c in _lx._P0A_HEAD_MERGE_DUAL), \
             "%s 既不在 CS 也不在词首并入正面类别/DUAL" % c
     # 到/真 不在 F（范围运算符 / 值字面量），R27 后由 DUAL 类别覆盖（不在 CS）
-    assert "到" not in Lexer._TRAILING_ALIAS_CLASS
+    # 【R35 修正】R33 清零 _P0A_NEVER_SPLIT 后，`到` **已并入 F**（词尾并入类），
+    # 与 `真` 不同（真 仍在 F 外、仅属 DUAL）。二者同属 DUAL 这一点未变。
+    # 另：`Lexer.compound_safe_single_keywords` 旧名已不存在，改用模块级名。
+    assert "到" in Lexer._TRAILING_ALIAS_CLASS      # R33 后改判：在 F 内
     assert "真" not in Lexer._TRAILING_ALIAS_CLASS
     assert "到" in _lx._P0A_HEAD_MERGE_DUAL
     assert "真" in _lx._P0A_HEAD_MERGE_DUAL
-    assert "到" not in Lexer.compound_safe_single_keywords
-    assert "真" not in Lexer.compound_safe_single_keywords
+    assert "到" not in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS
+    assert "真" not in _lx._COMPOUND_SAFE_SINGLE_KEYWORDS

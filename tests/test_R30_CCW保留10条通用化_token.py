@@ -114,9 +114,12 @@ def test_tail_cut_table_still_1():
     """TAIL_CUT表仍为1字（列，R28设定，R30不受影响）"""
     assert _lx._P0A_TAIL_CUT_SINGLE == frozenset({'列'})
 
-def test_trailing_alias_class_still_43():
-    """F表仍为43字（R25设定，R30不受影响）"""
-    assert len(_lx.Lexer._TRAILING_ALIAS_CLASS) == 43
+def test_trailing_alias_class_now_46():
+    """F表：R25 设 43 字 → R33 清零 _P0A_NEVER_SPLIT 后 步/至/到 进入 ⇒ 46 字
+
+    【R35 修正】原断言 43 字，在 R33 后已成过期值（假红）。
+    （模 因已在 OPERATOR_VERBS 被排除，不进 F。）"""
+    assert len(_lx.Lexer._TRAILING_ALIAS_CLASS) == 46
 
 if __name__ == '__main__':
     import pytest

@@ -177,15 +177,17 @@ class Test保护表形态:
     def test_R28移除集(self):
         assert lexer._R28_CS_REMOVED == frozenset({'列', '类'})
 
-    def test_净增量恒等三轮移除集(self):
+    def test_净增量恒等三轮移除集加R33三字(self):
         removed = (lexer._R26_CS_REMOVED | lexer._R27_CS_REMOVED
                    | lexer._R28_CS_REMOVED)
+        # 【R35 修正】R33 清零 _P0A_NEVER_SPLIT 后 步/至/到 进入 HM
         assert lexer._P0A_HEAD_MERGE_SINGLE - \
-            lexer._COMPOUND_SAFE_SINGLE_KEYWORDS == removed
+            lexer._COMPOUND_SAFE_SINGLE_KEYWORDS == removed | {'步', '至', '到'}
 
     def test_DUAL与HM保持(self):
         assert len(lexer._P0A_HEAD_MERGE_DUAL) == 8
-        assert len(lexer._P0A_HEAD_MERGE_SINGLE) == 22
+        # 【R35 修正】R33 后 HM 22→25（步/至/到 进入）
+        assert len(lexer._P0A_HEAD_MERGE_SINGLE) == 25
 
     def test_列类属于词尾类别F(self):
         assert {'列', '类'} <= set(lexer.Lexer._TRAILING_ALIAS_CLASS)

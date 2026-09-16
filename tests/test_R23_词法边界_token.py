@@ -70,11 +70,35 @@ def test_word_start_statement_kw_split(src, kw, rest):
     assert _pairs(src) == [("KEYWORD", kw), ("IDENTIFIER", rest)]
 
 
-@pytest.mark.parametrize("src", ["异步读取文件", "并发等待", "低级关闭",
-                                 "常量时间比较", "创建任务", "首个完成"])
+# 【R35 修正】CCW 表已于 R30 清零（184→0）。本组原 6 例中 3 例不再整词：
+#   异步读取文件 → KEYWORD(异步) + IDENTIFIER(读取文件)
+#   并发等待     → KEYWORD(并) + IDENTIFIER(发) + KEYWORD(等待)
+#   常量时间比较 → KEYWORD(常量) + IDENTIFIER(时间比较)
+# 这是撤销逐词白名单的**已知语义代价**（全语料零命中 ⇒ R30 判零回归，但合成名
+# 整词能力确实丧失）。详见 _task6_R35_质量审查报告.md 发现 F-3。
+# 故拆为两组：仍整词的保留硬断言；已劈开的改为「记录现状」断言，使任何后续
+# 变化都可感知（而不是让整词断言静默地一直红着）。
+
+@pytest.mark.parametrize("src", ["低级关闭", "创建任务", "首个完成"])
 def test_ccw_builtin_names_whole(src):
-    """CCW 内建复合名整体成 IDENTIFIER（阶段C 契约：名字映射稳定）。"""
+    """CCW 撤销后仍整体成 IDENTIFIER 的内建复合名（契约未变）。"""
     assert _pairs(src) == [("IDENTIFIER", src)]
+
+
+@pytest.mark.parametrize("src,expected", [
+    ("异步读取文件",
+     [("KEYWORD", "异步"), ("IDENTIFIER", "读取文件")]),
+    ("并发等待",
+     [("KEYWORD", "并"), ("IDENTIFIER", "发"), ("KEYWORD", "等待")]),
+    ("常量时间比较",
+     [("KEYWORD", "常量"), ("IDENTIFIER", "时间比较")]),
+])
+def test_ccw_names_split_after_ccw_cleared(src, expected):
+    """R30 CCW 清零后这 3 个合成名按关键字切分——钉住现状，防无声恶化。
+
+    只钉"切成什么"，不钉"是否整词"；若将来某轮让它们重新整词，本断言会红，
+    提示需同步更新本文件（即变更可感知）。"""
+    assert _pairs(src) == expected
 
 
 # ---- 3) 嵌入运算符守卫 ----

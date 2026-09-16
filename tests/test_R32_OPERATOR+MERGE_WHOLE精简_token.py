@@ -30,15 +30,25 @@ def test_operator_verbs_retained_entries():
                 '幂', '模', '等于', '除', '除以'}
     assert set(_lx.OPERATOR_VERBS) == expected
 
-# === 2. _P0A_MERGE_WHOLE从10→3条断言 ===
+# === 2. _P0A_MERGE_WHOLE从10→3→2条断言 ===
 
-def test_merge_whole_now_3():
-    """R32：_P0A_MERGE_WHOLE从10→3条"""
-    assert len(L._P0A_MERGE_WHOLE) == 3
+def test_merge_whole_now_2():
+    """R32：10→3；R35：3→2（非空块 由通用规则 _P0A_UNARY_PREFIX_KW 接住后移除）"""
+    assert len(L._P0A_MERGE_WHOLE) == 2
 
 def test_merge_whole_retained_entries():
-    """R32：_P0A_MERGE_WHOLE保留3条清单"""
-    assert set(L._P0A_MERGE_WHOLE) == {'整理模型消息', '记录类型', '非空块'}
+    """R35 更新：保留 2 条清单（整理模型消息 / 记录类型）
+
+    R35 移除 非空块 —— 一元前缀运算符通用规则（无空格 `非X` 恒为复合名，
+    仅当余部是已声明名字时才是 `not X` 表达式）三重判据全通过后接住。
+    保留的 2 条经实证为**真护栏、不可通用化**（详见 _task1/_task3_R35_*.md）。"""
+    assert set(L._P0A_MERGE_WHOLE) == {'整理模型消息', '记录类型'}
+
+def test_merge_whole_r35_removed_entry():
+    """R35：非空块 已移除（由通用规则接住，非删除语义）"""
+    assert '非空块' not in L._P0A_MERGE_WHOLE
+    # 且通用规则确实生效：无空格 `非空块` 整词成 IDENTIFIER
+    assert '非空块' in tok('设 x 为 非空块')
 
 def test_merge_whole_deleted_entries():
     """R32：_P0A_MERGE_WHOLE已删除7条"""

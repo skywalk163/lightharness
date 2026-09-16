@@ -198,9 +198,11 @@ def test_cs_table_still_zero():
     """CS表仍为0（R28清零，R29不受影响）"""
     assert len(_lx._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
 
-def test_hm_table_still_22():
-    """HM表仍为22字（R26设定，R29不受影响）"""
-    assert len(_lx._P0A_HEAD_MERGE_SINGLE) == 22
+def test_hm_table_now_25():
+    """HM表：R26 设 22 字 → R33 清零 _P0A_NEVER_SPLIT 后 步/至/到 进入 ⇒ 25 字
+
+    【R35 修正】原断言 22 字，在 R33 后已成过期值（假红）。"""
+    assert len(_lx._P0A_HEAD_MERGE_SINGLE) == 25
 
 def test_dual_table_still_8():
     """DUAL表仍为8字（R27设定，R29不受影响）"""

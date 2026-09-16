@@ -382,8 +382,9 @@ class TestMixedScenarios:
 # 7. 保护表形态断言
 # ════════════════════════════════════════════════════════════════════
 class TestProtectionTableShape:
-    """保护表形态：R27 后 CS 残部 2 字（列/类），正面类别 22 字，
-    DUAL 正面规则 8 字（R27 任务3 后口径；R26 时刻为 CS16/HM22/并集30）。"""
+    """保护表形态：R27 后 CS 残部 2 字（列/类），【R28】CS 清零，
+    DUAL 正面规则 8 字；【R33】_P0A_NEVER_SPLIT 清零后 步/至/到 进入 F 与 HM
+    ⇒ HM 22→25、F 43→46、词首切分排除集 42→39、CS∪HM∪DUAL 30→32。"""
 
     def test_CS_table_cleared(self):
         assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0, (
@@ -393,20 +394,23 @@ class TestProtectionTableShape:
     def test_head_merge_class_exists(self):
         hm = lexer._P0A_HEAD_MERGE_SINGLE
         assert hm is not None
-        assert len(hm) == 22, '词首并入正面类别应为 22 字，实得 %d' % len(hm)
+        # R26 设 22 字；R33 清零 NEVER_SPLIT 后 步/至/到 进入 ⇒ 25
+        assert len(hm) == 25, '词首并入正面类别应为 25 字，实得 %d' % len(hm)
 
     def test_head_split_class_exists(self):
         hs = lexer._P0A_HEAD_SPLIT_SINGLE
         assert hs is not None
-        assert len(hs) == 42, '词首切分排除集应为 42 字，实得 %d' % len(hs)
+        # R26 设 42 字；R33 后 步/至/到 移出排除集 ⇒ 39
+        assert len(hs) == 39, '词首切分排除集应为 39 字，实得 %d' % len(hs)
 
-    def test_effective_head_merge_with_dual_is_30(self):
+    def test_effective_head_merge_with_dual_is_32(self):
         union = (lexer._COMPOUND_SAFE_SINGLE_KEYWORDS
                  | lexer._P0A_HEAD_MERGE_SINGLE | lexer._P0A_HEAD_MERGE_DUAL)
-        assert len(union) == 30, (
-            'CS ∪ HM ∪ DUAL 应为 30 字（= 第25轮原 CS），实得 %d' % len(union))
+        # R26 时刻 30 字；R33 后 步/至/到 进入 HM（到 原已在 DUAL）⇒ 32
+        assert len(union) == 32, (
+            'CS ∪ HM ∪ DUAL 应为 32 字，实得 %d' % len(union))
         assert set(union) == set(HEAD_MERGE_WORDS) | set(
-            '乘减到加模真空除')
+            '乘减到加模真空除') | set('步至到')
 
     def test_removed_14_covered_by_head_merge(self):
         removed = lexer._R26_CS_REMOVED
@@ -426,14 +430,22 @@ class TestProtectionTableShape:
         assert lexer._P0A_HEAD_MERGE_SINGLE <= set(lexer.Lexer._TRAILING_ALIAS_CLASS), (
             '词首并入正面类别 ⊆ R25 词尾类别 F')
 
-    def test_trailing_class_F_is_43(self):
-        assert len(lexer.Lexer._TRAILING_ALIAS_CLASS) == 43, (
-            'R25 词尾类别 F 应为 43 字，实得 %d' % len(lexer.Lexer._TRAILING_ALIAS_CLASS))
+    def test_trailing_class_F_is_46(self):
+        # R25 设 43 字；R33 清零 NEVER_SPLIT 后 步/至/到 进入 F ⇒ 46
+        # （模 因已在 OPERATOR_VERBS 被排除，不进 F）
+        assert len(lexer.Lexer._TRAILING_ALIAS_CLASS) == 46, (
+            'R25 词尾类别 F 应为 46 字，实得 %d'
+            % len(lexer.Lexer._TRAILING_ALIAS_CLASS))
 
     def test_class_attribute_still_exposed(self):
-        """嵌入式扫描仍引用实例属性 compound_safe_single_keywords。"""
+        """嵌入式扫描引用的是模块级 _COMPOUND_SAFE_SINGLE_KEYWORDS（R28 清零后为 0）。
+
+        【R35 修正】旧断言写的是实例属性 `compound_safe_single_keywords`（小写、
+        无下划线前缀），该名在 CS 表清零重构后已不存在 ⇒ AttributeError 假红。"""
         lxr = Lexer('设 列数 为 3', deterministic=True)
-        assert len(lxr.compound_safe_single_keywords) == 0
+        assert len(lexer._COMPOUND_SAFE_SINGLE_KEYWORDS) == 0
+        # 实例上不再暴露该名（CS 表清零后已改为模块级常量引用）
+        assert not hasattr(lxr, 'compound_safe_single_keywords')
 
     def test_stmt_head_single_is_21(self):
         assert len(lexer._R26_STMT_HEAD_SINGLE) == 21, (

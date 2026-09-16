@@ -123,9 +123,14 @@ def test_operator_verbs_still_19():
     """OPERATOR_VERBS仍为19条（R32确认为真护栏）"""
     assert len(_lx.OPERATOR_VERBS) == 19
 
-def test_merge_whole_still_3():
-    """_P0A_MERGE_WHOLE仍为3条（R32精简）"""
-    assert len(L._P0A_MERGE_WHOLE) == 3
+def test_merge_whole_now_2():
+    """_P0A_MERGE_WHOLE：R32 精简为 3 条 → R35 精简为 2 条（移除 非空块）"""
+    assert len(L._P0A_MERGE_WHOLE) == 2
+
+def test_hm_now_25():
+    """HM 词首并入类别：R26 设 22 字 → R33 清零 NEVER_SPLIT 后扩至 25 字
+    （步/至/到 进入 F/HM；模 经 OPERATOR_VERBS 排除不进）"""
+    assert len(_lx._P0A_HEAD_MERGE_SINGLE) == 25
 
 def test_dual_table_still_8():
     """DUAL表仍为8字"""
