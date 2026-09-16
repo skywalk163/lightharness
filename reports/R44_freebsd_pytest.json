@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "round": "R44",
+  "task": "任务2 0.82完整pytest回归",
+  "generated_at": "2026-09-16T23:29:44+08:00",
+  "remote": {
+    "host": "192.168.0.82",
+    "os": "FreeBSD",
+    "release": "15.1-STABLE",
+    "user": "ai",
+    "python": "/usr/local/bin/python3.11 (3.11.16)",
+    "pytest": "9.1.1 (用户级安装，R43 任务4 装上)",
+    "copy_dir": "/tmp/r44-20260916-232020",
+    "copy_mode": "全量重同步（非增量）",
+    "copy_size_mb": 97.4,
+    "examples_count_verified": 402,
+    "shim": "/tmp/r44-shim/python{,3} -> exec /usr/local/bin/python3.11 \"$@\"",
+    "env": {
+      "LIGHT_MERGE": "/tmp/r44-20260916-232020/light-merge",
+      "PATH_PREFIX": "/tmp/r44-shim"
+    },
+    "command": "cd /tmp/r44-20260916-232020/lightharness && LIGHT_MERGE=... PATH=/tmp/r44-shim:$PATH /usr/local/bin/python3.11 -m pytest tests/ -q -p no:cacheprovider --tb=no",
+    "read_only": true
+  },
+  "result": {
+    "failed": 7,
+    "passed": 1230,
+    "skipped": 3,
+    "errors": 2,
+    "warnings": 1,
+    "duration_sec": 338.03,
+    "exit_code": 1
+  },
+  "failures": [
+    "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
+    "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged",
+    "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_deleted_return_code_still_merged",
+    "tests/test_回归.py::test_example_exit_code[test_R22_嵌入关键字冗余验证.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R26_词首并入反向.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R26_词首并入混合.light]",
+    "tests/test_回归.py::test_example_exit_code[test_R27_词首并入反向.light]"
+  ],
+  "errors_detail": [
+    {
+      "id": "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+      "cause": "FileNotFoundError: [Errno 2] No such file or directory: 'git'",
+      "category": "环境缺失（0.82 未装 git）",
+      "is_code_defect": false
+    },
+    {
+      "id": "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
+      "cause": "FileNotFoundError: [Errno 2] No such file or directory: 'git'",
+      "category": "环境缺失（0.82 未装 git）",
+      "is_code_defect": false
+    }
+  ],
+  "local_baseline": {
+    "note": "本机 Windows，改 src 之前跑的基线（pytest tests/ -q）",
+    "failed": 8,
+    "passed": 1231,
+    "skipped": 3,
+    "duration_sec": 845.67,
+    "failures": [
+      "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
+      "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged",
+      "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_deleted_return_code_still_merged",
+      "tests/test_回归.py::test_example_exit_code[test_R22_嵌入关键字冗余验证.light]",
+      "tests/test_回归.py::test_example_exit_code[test_R26_词首并入反向.light]",
+      "tests/test_回归.py::test_example_exit_code[test_R26_词首并入混合.light]",
+      "tests/test_回归.py::test_example_exit_code[test_R27_词首并入反向.light]",
+      "tests/test_回归.py::test_example_exit_code[test_子进程后台.light]"
+    ]
+  },
+  "cross_platform_delta": {
+    "common_failures": 7,
+    "local_only": [
+      {
+        "id": "tests/test_回归.py::test_example_exit_code[test_子进程后台.light]",
+        "attribution": "本机 flaky：单独复跑 `python 运行.py examples/test_子进程后台.light` rc=0（PASS）；pytest 并发/时序下偶发红。属后台子进程时序敏感，非平台语义差异，不修（如实记录）"
+      }
+    ],
+    "remote_only": [
+      {
+        "id": "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+        "attribution": "0.82 未安装 git（FileNotFoundError）。环境缺失，非代码缺陷；不擅自安装 git。"
+      },
+      {
+        "id": "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
+        "attribution": "同上，0.82 未安装 git。"
+      }
+    ],
+    "new_platform_red_vs_r43": 0
+  },
+  "attribution_of_r43_400failed": {
+    "taskbook_premise": "任务书背景称 0.82 全量 pytest 400 failed 系「副本不全（/tmp/r41-* 是 R41 快照）」所致",
+    "r43_task4_record": "R43 任务4 报告记为「首轮全量 402 failed 系垫片初版损坏（参数被置空）所致，修复后即 7 failed」",
+    "r44_evidence": "本轮做全量重同步（97.4MB，远端 examples=402 与本机一致）+ 正确垫片（exec ... \"$@\"），实测 7 failed / 1230 passed，与 R43 修复垫片后完全一致（passed 多 1 为 R43 新增用例计数）",
+    "conclusion": "副本完整性不是 400 failed 的原因：R43 任务3 已做过一次全量同步（32.2MB）后才出现 402 failed，修垫片后即降到 7 failed；本轮第二次全量重同步（97.4MB）结果不变。⇒ 400/402 failed 应归因为 R43 首轮 python 垫片参数被置空（子进程拿到空参数），而非副本不全。任务书该前提未获证据支持，如实更正。",
+    "confidence": "高（两轮独立全量同步 + 同清单复现）"
+  }
+}
