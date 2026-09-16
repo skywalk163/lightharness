@@ -1,0 +1,45 @@
+# test_R42_bash跨平台.light —— 第42轮 任务3 验收（bash工具跨平台）
+#
+# 运行：cd lightharness && python 运行.py examples/test_R42_bash跨平台.light
+# 退出码 0 = 全部断言通过。
+#
+# bash工具(工具_bash.light)已是真实子进程(外部命令.执行命令+cd逃逸护栏+超时30s)。
+# 本用例只选 Windows cmd 与 POSIX sh 都认的命令(echo/cd)，验证两平台真实执行+护栏；
+# 平台特有命令(ls/dir/pwd)不跨平台，改由环境变量判定并记录平台，不在此断言。
+
+从 工具_bash 导入 bash处理
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 (实际 != 期望):
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 (条件 == 假):
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件为假")
+
+段落 主测试:
+  # 平台判定：Windows 有 COMSPEC；POSIX 有 SHELL
+  设 isWin 为 环境变量("COMSPEC", "") != ""
+  设 sh 为 环境变量("SHELL", 环境变量("COMSPEC", "未知"))
+
+  # 1. echo 跨平台都认：真实子进程执行，输出含 marker，退出码 0
+  设 r1 为 bash处理(["命令": "echo R42-bash-marker"])
+  断言真(r1["输出"].查找("R42-bash-marker") >= 0, "echo输出含marker")
+  断言相等(r1["退出码"], 0, "echo退出码0")
+
+  # 2. 简单命令真实执行：true(POSIX) 两平台语义一致——用 echo 再跑一次确认稳定性
+  设 r1b 为 bash处理(["命令": "echo cross-platform-ok"])
+  断言真(r1b["输出"].查找("cross-platform-ok") >= 0, "第二次echo稳定")
+
+  # 3. cd 逃逸护栏(两平台同一条正则)：cd .. 必须被拒，退出码 -1
+  设 r2 为 bash处理(["命令": "cd .. && pwd"])
+  断言相等(r2["退出码"], -1, "cd逃逸被拒(退出码-1)")
+  断言真(r2["错误"].查找("禁止") >= 0, "cd逃逸错误文案含禁止")
+
+  # 4. 绝对路径逃逸也被护栏拒
+  设 r3 为 bash处理(["命令": "cd /tmp"])
+  断言相等(r3["退出码"], -1, "绝对路径cd被拒")
+
+  打印("bash跨平台：is_windows=" + 转字符串(isWin) + " shell=" + sh + " echo真实执行OK cd逃逸护栏两平台生效 rc=0")
+
+主测试()

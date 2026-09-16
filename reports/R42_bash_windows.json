@@ -1,0 +1,18 @@
+{
+  "平台": "Windows",
+  "内核": "10",
+  "架构": "AMD64",
+  "python": "3.12.6",
+  "cwd": "G:\\dswork\\duan-light-merge",
+  "light_merge": "G:\\dswork\\duan-light-merge\\light-merge",
+  "code": "G:\\dswork\\duan-light-merge\\examples\\test_R42_bash跨平台.light",
+  "returncode": 2,
+  "elapsed": 0.051,
+  "stdout_tail": "",
+  "stderr_tail": "C:\\Users\\skywalk\\.box-agent\\box-agent-runtime\\runtime\\python\\python.exe: can't open file 'G:\\\\dswork\\\\duan-light-merge\\\\light-merge\\\\运行.py': [Errno 2] No such file or directory\n",
+  "checks": {
+    "parse_stdout_json": false,
+    "error": "IndexError('list index out of range')",
+    "all_pass": false
+  }
+}

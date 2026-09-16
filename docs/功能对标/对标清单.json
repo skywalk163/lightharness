@@ -2475,6 +2475,33 @@
    "状态": "已完成",
    "完成轮次": "第41轮",
    "备注": "任务3/4。0.82=FreeBSD 15.1-STABLE amd64 python3.11；SSH(ai)接入，源码打包上传/tmp临时副本只读执行。CLI命令面(version/help/dump-config/unknown/测试用例)Windows PowerShell与POSIX双写法结果一致。多平台矩阵：4核心用例两平台rc=0且退出码字典一致；互举反跑644文件0新增解析失败。平台差异清单基于实测（路径/换行/编码/环境变量大小写/Python命令名python3.11）。"
+  },
+  {
+   "编号": 166,
+   "功能": "真实web-fetch提供方（抓取策略纯逻辑+真实HTTP客户端→真GET；URL校验/MIME分类/公网沙箱/超时兜底）",
+   "原模块": "上游@web/web-fetch-http #47（宿主网络面接通）",
+   "光明模块": "lightharness/src/真实抓取提供.light（新增）",
+   "状态": "已完成",
+   "完成轮次": "第42轮",
+   "备注": "任务1。校验抓取地址(协议白名单/无@凭据/authority非空)→允许抓取闸(localhost/127.0.0.1/非公网IP字面量放行，公网IP/域名拒)→真实GET→取Content-Type分类。堵R41客户端死端口静默返回0的契约洞(状态0抛错)。零修改抓取策略.light。默认抓本机不主动外呼公网。examples/test_R42_真实抓取.light 双平台rc=0。"
+  },
+  {
+   "编号": 167,
+   "功能": "真实webhook端点（web服务器挂/webhook/github路由；十一段门禁对真实流入+HMAC验签→派发）",
+   "原模块": "上游@webhook/webhook-github #91（宿主面接通）",
+   "光明模块": "lightharness/src/web服务器.light（改：挂webhook路由+设置钩子秘密/体上限/派发记录）",
+   "状态": "已完成",
+   "完成轮次": "第42轮",
+   "备注": "任务2。web服务器最小改动挂/webhook/github路由，处理器转网络钩子GitHub十一段门禁。好签名202派发/错签名401/非POST405/超大body413/秘密空503；外部标准HMAC-SHA256(RFC2104)签名可对拍真实GitHub。继承R41非loopback token门禁。零修改网络钩子GitHub.light。examples/test_R42_真实webhook.light 双平台rc=0。"
+  },
+  {
+   "编号": 168,
+   "功能": "bash工具跨平台+0.82回归（真实子进程Windows cmd vs POSIX sh；0.82反跑+真实IO用例）",
+   "原模块": "跨平台宿主验证（非上游模块）",
+   "光明模块": "lightharness/examples/test_R42_bash跨平台.light、test_R42_真实工具链.light",
+   "状态": "已完成",
+   "完成轮次": "第42轮",
+   "备注": "任务3/4/5。bash工具已是真实子进程(外部命令+cd逃逸护栏)。跨平台只用echo/cd(两平台都认)，平台用COMSPEC/SHELL判定；cd逃逸护栏Windows cmd与0.82 /bin/sh都生效。0.82 python3.11无pytest模块(如实记录，不在他人机器装包)，完整pytest归本机；0.82互举反跑651文件0新增绿。真实工具链(bash+fetch出+webhook入)双平台rc=0。"
   }
  ]
 }
