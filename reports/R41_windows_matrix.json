@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "generated_at": "2026-09-16T18:04:05+0800",
+  "root": "G:\\dswork\\duan-light-merge\\lightharness",
+  "platform": {
+    "os": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.12.6",
+    "shell": "C:\\Windows\\system32\\cmd.exe",
+    "path_separator": "\\",
+    "line_separator": "'\\r\\n'",
+    "preferred_encoding": "utf-8",
+    "filesystem_encoding": "utf-8",
+    "socket_ipv6": true,
+    "env_case_sensitive_observed": false
+  },
+  "cases": [
+    {
+      "name": "cli",
+      "rc": 0,
+      "elapsed_sec": 2.64,
+      "output_digest": "de1cac16a45557bb",
+      "output_lines": 6,
+      "tail": [
+        "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+        "未知命令: bogus",
+        "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+        "[跳过] run 缺省分支真实执行（当前环境存在 API 密钥，避免触发网络请求）",
+        "test_CLI命令面 PASS"
+      ]
+    },
+    {
+      "name": "r39-system-prompt",
+      "rc": 0,
+      "elapsed_sec": 1.204,
+      "output_digest": "bb325f35815ac1f8",
+      "output_lines": 21,
+      "tail": [
+        "OK #16-16c",
+        "OK #17",
+        "OK #18-18b",
+        "OK #19-19b",
+        "系统提示 判据通过：20 组"
+      ]
+    },
+    {
+      "name": "r39-scope",
+      "rc": 0,
+      "elapsed_sec": 1.313,
+      "output_digest": "c87cb2a3c2f881e6",
+      "output_lines": 13,
+      "tail": [
+        "OK #10-10i",
+        "OK #11-11h",
+        "OK #12-12d",
+        "OK #13-13c",
+        "作用域 判据通过：14 组"
+      ]
+    },
+    {
+      "name": "r40-integration",
+      "rc": 0,
+      "elapsed_sec": 1.812,
+      "output_digest": "1f6a5dcecbf7d575",
+      "output_lines": 22,
+      "tail": [
+        "OK #17",
+        "OK #18",
+        "5 集成点全通过：系统提示组装 | 作用域过滤 | 工具调用 | 子代理委派 | 中止恢复",
+        "--- 第40轮任务1 端到端互举链路集成 通过 ---",
+        "共 19 组"
+      ]
+    }
+  ],
+  "ok": true,
+  "comparison": {
+    "rc_equal": true,
+    "local": {
+      "cli": 0,
+      "r39-system-prompt": 0,
+      "r39-scope": 0,
+      "r40-integration": 0
+    },
+    "other": {
+      "cli": 0,
+      "r39-system-prompt": 0,
+      "r39-scope": 0,
+      "r40-integration": 0
+    }
+  }
+}

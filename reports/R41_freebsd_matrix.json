@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "generated_at": "2026-09-16T18:01:10+0000",
+  "root": "/tmp/r41-1789552701/lightharness",
+  "platform": {
+    "os": "FreeBSD",
+    "release": "15.1-STABLE",
+    "machine": "amd64",
+    "python": "3.11.16",
+    "shell": "/bin/sh",
+    "path_separator": "/",
+    "line_separator": "'\\n'",
+    "preferred_encoding": "UTF-8",
+    "filesystem_encoding": "utf-8",
+    "socket_ipv6": true,
+    "env_case_sensitive_observed": true
+  },
+  "cases": [
+    {
+      "name": "cli",
+      "rc": 0,
+      "elapsed_sec": 2.13,
+      "output_digest": "1e2f04351bb53544",
+      "output_lines": 8,
+      "tail": [
+        "help 提示: 设 HARNESS_CMD 为 help 查看命令列表（run / dump-config / version / help）",
+        "错误: 未提供 API 密钥",
+        "请在项目根目录 .env 中配置 DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY，或设环境变量",
+        "示例: 设 HARNESS_MSG 为消息 + DEEPSEEK_API_KEY 为密钥 + python 运行.py examples/运行CLI.light",
+        "test_CLI命令面 PASS"
+      ]
+    },
+    {
+      "name": "r39-system-prompt",
+      "rc": 0,
+      "elapsed_sec": 0.754,
+      "output_digest": "bb325f35815ac1f8",
+      "output_lines": 21,
+      "tail": [
+        "OK #16-16c",
+        "OK #17",
+        "OK #18-18b",
+        "OK #19-19b",
+        "系统提示 判据通过：20 组"
+      ]
+    },
+    {
+      "name": "r39-scope",
+      "rc": 0,
+      "elapsed_sec": 0.841,
+      "output_digest": "c87cb2a3c2f881e6",
+      "output_lines": 13,
+      "tail": [
+        "OK #10-10i",
+        "OK #11-11h",
+        "OK #12-12d",
+        "OK #13-13c",
+        "作用域 判据通过：14 组"
+      ]
+    },
+    {
+      "name": "r40-integration",
+      "rc": 0,
+      "elapsed_sec": 1.308,
+      "output_digest": "1f6a5dcecbf7d575",
+      "output_lines": 22,
+      "tail": [
+        "OK #17",
+        "OK #18",
+        "5 集成点全通过：系统提示组装 | 作用域过滤 | 工具调用 | 子代理委派 | 中止恢复",
+        "--- 第40轮任务1 端到端互举链路集成 通过 ---",
+        "共 19 组"
+      ]
+    }
+  ],
+  "ok": true
+}

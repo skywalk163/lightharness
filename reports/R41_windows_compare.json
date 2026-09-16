@@ -1,0 +1,6 @@
+PASS cli rc=0 2.640s
+PASS r39-system-prompt rc=0 1.204s
+PASS r39-scope rc=0 1.313s
+PASS r40-integration rc=0 1.812s
+COMPARE PASS
+JSON G:\dswork\duan-light-merge\lightharness\reports\R41_windows_matrix.json
