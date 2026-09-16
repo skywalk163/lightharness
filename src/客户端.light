@@ -31,11 +31,21 @@
   返回 ["种类": "error", "失败": ["消息": "模型停止: " + 原因, "代码": 原因.转大写()]]
 
 # ---- 映射 wire 用量 → 不相交计数 ----
-# wire: { "prompt_tokens", "completion_tokens", "prompt_cache_hit_tokens"?, "completion_tokens_details"?: { "reasoning_tokens"? } }
+# wire: { "prompt_tokens", "completion_tokens", "prompt_cache_hit_tokens"?, "prompt_cache_miss_tokens"?,
+#         "prompt_tokens_details"?: { "cached_tokens"? }, "completion_tokens_details"?: { "reasoning_tokens"? } }
+# R47 分桶对齐上游 mapUsage（translate.ts:55-68）+ TokenUsage.cacheWriteTokens：
+#   缓存读 = prompt_tokens_details.cached_tokens ?? prompt_cache_hit_tokens；
+#   缓存写 = prompt_cache_miss_tokens（DeepSeek 口径：命中 + 未命中 = prompt_tokens）；
+#   输入   = prompt_tokens - 缓存读（上游把缓存命中折进 prompt 总数，须减出才是不相交桶）。
 段落 翻译用量 接收 用量:
   设 缓存读 为 0
-  如果 用量.包含("prompt_cache_hit_tokens"):
+  如果 用量.包含("prompt_tokens_details") 且 用量["prompt_tokens_details"].包含("cached_tokens") 且 用量["prompt_tokens_details"]["cached_tokens"] != 空:
+    设 缓存读 为 用量["prompt_tokens_details"]["cached_tokens"]
+  否则如果 用量.包含("prompt_cache_hit_tokens"):
     设 缓存读 为 用量["prompt_cache_hit_tokens"]
+  设 缓存写 为 空
+  如果 用量.包含("prompt_cache_miss_tokens") 且 用量["prompt_cache_miss_tokens"] != 空:
+    设 缓存写 为 用量["prompt_cache_miss_tokens"]
   设 推理 为 空
   如果 用量.包含("completion_tokens_details") 且 用量["completion_tokens_details"].包含("reasoning_tokens"):
     设 推理 为 用量["completion_tokens_details"]["reasoning_tokens"]
@@ -46,7 +56,7 @@
   设 总计 为 用量["prompt_tokens"] + 用量["completion_tokens"]
   如果 缓存读 == 0:
     设 缓存读 为 空
-  设 结果 为 造用量(输入, 输出, 缓存读, 推理)
+  设 结果 为 造用量(输入, 输出, 缓存读, 推理, 缓存写)
   结果["totalTokens"] 为 总计
   返回 结果
 
