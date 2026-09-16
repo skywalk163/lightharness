@@ -2502,6 +2502,33 @@
    "状态": "已完成",
    "完成轮次": "第42轮",
    "备注": "任务3/4/5。bash工具已是真实子进程(外部命令+cd逃逸护栏)。跨平台只用echo/cd(两平台都认)，平台用COMSPEC/SHELL判定；cd逃逸护栏Windows cmd与0.82 /bin/sh都生效。0.82 python3.11无pytest模块(如实记录，不在他人机器装包)，完整pytest归本机；0.82互举反跑651文件0新增绿。真实工具链(bash+fetch出+webhook入)双平台rc=0。"
+  },
+  {
+   "编号": 169,
+   "功能": "真实LLM往返（客户端.light真POST+SSE解析+wire映射→本机mock大模型服务器）",
+   "原模块": "上游@llm/llm-deepseek（传输层真实化）",
+   "光明模块": "lightharness/examples/test_R43_真实LLM往返.light",
+   "状态": "已完成",
+   "完成轮次": "第43轮",
+   "备注": "任务1。客户端.light(HTTPPost真实出网+SSE解析+wire完成原因/用量映射)真POST本机mock大模型服务器(真实HTTP服务端)。零修改客户端.light/mock大模型服务器.light。阻塞客户端丢OS线程+主协程异步睡眠轮询。双平台rc=0。"
+  },
+  {
+   "编号": 170,
+   "功能": "真实agent循环（R40互举接线换真实LLM客户端，工具真调bash/fetch/文件多轮）",
+   "原模块": "agent-loop（大脑+手都接真）",
+   "光明模块": "lightharness/examples/test_R43_真实agent循环.light",
+   "状态": "已完成",
+   "完成轮次": "第43轮",
+   "备注": "任务2。LLM回文本→回工具调用→真调bash(echo)/真实fetch/真实文件读写→工具结果回LLM→最终文本，多轮全真实不退放。mock行为队列脚本化保确定性。零修改互举接线.light。登记L-162(mock处理器形状)/L-163(bash装配契约)/L-164(状态字面值)。双平台rc=0。"
+  },
+  {
+   "编号": 171,
+   "功能": "真实文件IO深化+0.82 pytest（行级diff/读头字节/PNG嗅探；0.82装pytest9.1.1）",
+   "原模块": "#92 read-image/diff面 + 跨平台回归",
+   "光明模块": "lightharness/examples/test_R43_真实文件深化.light",
+   "状态": "已完成",
+   "完成轮次": "第43轮",
+   "备注": "任务4/5。真实两文件行级diff(LCS)+读头字节+PNG签名字节表嗅探，双平台rc=0。0.82 pytest 9.1.1装上但全量400failed——根因R41以来副本增量不全(FileNotFoundError)非代码缺陷，干净对比需全量重同步留用户。真实链路用例0.82全绿。"
   }
  ]
 }
