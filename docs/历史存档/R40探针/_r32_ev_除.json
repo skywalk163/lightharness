@@ -1,0 +1,97 @@
+{
+ "item": "除",
+ "corpus_files": 857,
+ "corpus_with_item": 322,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "除",
+  "g1_changed_files": {
+   "light-merge/bootstrap/release/stdlib/字符串常量.light": [
+    "@168 ('IDENTIFIER', '去') -> ('IDENTIFIER', '去除两端空白')",
+    "@169 ('KEYWORD', '除') -> ('IDENTIFIER', '去除左端空白')",
+    "@170 ('IDENTIFIER', '两端空白') -> ('LPAREN', '(')"
+   ],
+   "light-merge/bootstrap/release/stdlib/日志系统增强.light": [
+    "@404 ('IDENTIFIER', '排') -> ('IDENTIFIER', '排除关键词')",
+    "@405 ('KEYWORD', '除') -> ('EQUALS', '=')",
+    "@406 ('IDENTIFIER', '关键词') -> ('IDENTIFIER', '无')"
+   ],
+   "light-merge/bootstrap/release/stdlib/系统接口.light": [
+    "@46 ('IDENTIFIER', '删') -> ('IDENTIFIER', '删除环境变量')",
+    "@47 ('KEYWORD', '除') -> ('IDENTIFIER', '环境变量存')",
+    "@48 ('IDENTIFIER', '环境变量') -> ('KEYWORD', '在')"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@82 ('KEYWORD', '除') -> ('IDENTIFIER', '除乙')",
+    "@83 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@84 ('COMMA', ',') -> ('NUMBER', 0.75)"
+   ],
+   "lightharness/src/重复提醒.light": [
+    "@576 ('IDENTIFIER', '排') -> ('IDENTIFIER', '排除名单')",
+    "@577 ('KEYWORD', '除') -> ('KEYWORD', '等于')",
+    "@578 ('IDENTIFIER', '名单') -> ('LBRACKET', '[')"
+   ]
+  },
+  "g1_changed_count": 5,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲除乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲除乙')",
+     "@1 ('KEYWORD', '除') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

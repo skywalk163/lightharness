@@ -1,0 +1,8 @@
+corpus files: 770
+Traceback (most recent call last):
+  File "G:\dswork\duan-light-merge\lightharness\_probe_corpus.py", line 23, in <module>
+    L.Lexer(src).tokenize()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "G:\dswork/duan-light-merge/light-merge/src\lexer.py", line 1122, in tokenize
+    raise LexerError(f"未知字符: '{source[i]}' (0x{ord(source[i]):04X})", line, col)
+lexer.LexerError: 词法错误 (行1, 列1): 未知字符: '﻿' (0xFEFF)

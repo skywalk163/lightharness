@@ -1,0 +1,96 @@
+################ _antirun_t1_词法核心.py ################
+【A 判据】L-084 PASS  OK
+【A 判据】L-092 PASS  OK
+【A 判据】L-137 PASS  OK
+【A 判据】3 用例全绿  OK
+【B 判据】边界用例 PASS  OK（独立 为/返回 仍作关键字；为了/行为/作为/成为/认为 作整体标识符）
+【C 判据】L-084 变异后立红  OK（证明本轮修复必要）
+【C 判据】L-092 变异后仍绿  OK（既有复合词硬化独立保护，作回归用例）
+【C 判据】L-137 变异后仍绿  OK（既有复合词硬化独立保护，作回归用例）
+【恢复校验】sha256 一致  OK（e56b119e4814c6ca78168129af6b7fa99535c509f000f4ce200754c495887adf）
+【恢复后】3 用例全绿  OK
+ANTIRUN T1 ALL OK
+EXIT=0
+################ _antirun_t2_词法扩展.py ################
+PASS A=修复后绿 (test_L119 rc=0, test_L120 rc=0)
+PASS B=边界 配 情况: 配仍为KEYWORD
+PASS B=边界 打印 真 真仍为KEYWORD
+PASS B=边界 设 配 为 配仍为KEYWORD
+PASS B=边界 错误甲 整体IDENTIFIER
+PASS 变异后立红 (rc=1（期望非0）)
+PASS 字节级恢复 (e56b119e4814)
+PASS C1=变异 配 compound-safe 登记删除 -> test_L119 红
+PASS 变异后立红 (rc=1（期望非0）)
+PASS 字节级恢复 (e56b119e4814)
+PASS C2=变异 _TRAILING_ALIAS_MERGE 移除 己 -> test_L120 红
+PASS 终态字节级校验 (sha256 e56b119e4814)
+=== 第19轮 任务2 反跑判据（词法扩展 L-119/L-120）===
+ALL OK
+EXIT=0
+################ _antirun_t3_保留字内置映射.py ################
+【A 判据】L-087 PASS  OK（用户变量遮蔽内置映射，输出 /tmp）
+【A 判据】L-101 明确提示  OK（rc!=0，报'回调是保留关键字'）
+【A 判据】L-143 明确提示  OK（rc!=0，报'作用域是保留关键字'）
+【B 判据】B1 回退真实 cwd  OK（内置映射未被破坏）
+【B 判据】B2 前缀整体标识符  OK（回调处理器/作用域表 作整体标识符）
+【C 判据】L-087 变异后立红  OK（断言 当前目录==/tmp 失败 → 证明遮蔽必要）
+【恢复校验】sha256 一致  OK（eb3b1eeed1bc9cf980238afa75246e3380bf4b8ff188b95caa57c7740acbd596）
+【恢复后】L-087 PASS  OK
+ANTIRUN T3 ALL OK
+EXIT=0
+################ _antirun_t4_字符串哈希.py ################
+PASS A=修复后绿 (test_L086 rc=0, test_L095 rc=0)
+PASS B=边界 {甲} 仍为插值
+PASS B=边界 {1,4} 不触发插值
+PASS B=边界 {甲:.2f} 格式插值不受影响
+PASS 变异后立红 (examples\test_L086.light rc=1，期望非0)
+PASS 字节级恢复 (parser_expr.py sha256 c7ef0ac1539d)
+PASS C1=变异 {数字,数字} 字面量规则破坏 -> test_L086 红
+PASS 变异后立红 (examples\test_L095.light rc=1，期望非0)
+PASS 字节级恢复 (哈希.py sha256 95fb05d962be)
+PASS C2=变异 HMAC 改回单轮PBKDF2 -> test_L095 红
+PASS 终态双份哈希.py 一致校验
+=== 第19轮 任务4 反跑判据（字符串与哈希 L-086/L-095）===
+ALL OK
+EXIT=0
+################ _antirun_t5_异常模块.py ################
+[safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED] {"count":50,"threshold":50,"scope":"turn","targets":["G:\\dswork\\duan-light-merge\\lightharness\\examples\\_tmp_t5_uncaught.light"],"targetCount":1}
+【A 判据】未捕获跨模块异常位置块指向 载体模块.light:6  OK（片段=返回 1 除以 分母）
+【B 判据】单模块未捕获异常仍正确归因于自身  OK（无跨模块误伤）
+【C 判据】变异后位置块回退入口（不再含 载体模块.light:6）  OK（证明修复必要）
+【恢复校验】sha256 一致  OK（225cd2b5b18645936d93b83171fd021444d7826ced8c6e84de8adf46c4789ab4）
+EXIT=1
+################ _antirun_t6_字典函数_D批次.py ################
+PASS A=修复后绿 test_L096 (rc=0)
+PASS A=D批次验收用例状态符合标注 (L068~L074)
+PASS B=边界 对象.键 发射 _light_attr_get
+PASS B=边界 己.标识 为 发射 _light_attr_set
+PASS B=边界 赋值左值不走 _light_attr_get
+PASS B=边界 方法调用保持原生发射
+PASS 变异后 rc=1（期望 1）
+PASS 字节级恢复 (sha256 eb3b1eeed1bc)
+PASS C1=变异 属性访问改回直通 -> test_L096 红
+PASS 变异后 rc=1（期望 1）
+PASS 字节级恢复 (sha256 eb3b1eeed1bc)
+PASS C2=变异 属性赋值拦截删除 -> test_会话 红
+=== 第19轮 任务6 反跑判据（字典与函数 L-096 + D批次验收）===
+ALL OK
+EXIT=0
+################ _antirun_r20_t1_词法关键字前缀.py ################
+判据A PASS: 断裂态 test_宿主上下文.light 红 (rc=1)
+判据A PASS: 断裂态 test_宿主事件.light 红 (rc=1)
+判据B PASS: 修复态 test_宿主上下文.light 绿 (rc=0)
+判据B PASS: 修复态 test_宿主事件.light 绿 (rc=0)
+判据C PASS: 正向控制 test_R20_关键字前缀标识符.light 绿 (rc=0)
+判据C PASS: 词法探针过（甲加乙切分 / 合并为切出为 / 返回真独立）
+ALL OK
+EXIT=0
+################ _antirun_r20_t2_HMAC标准实现.py ################
+PASS A1=test_L095.light 7 组对拍 rc=0 (rc=0)
+PASS A2=两份哈希.py 7 组对拍逐一致
+PASS B=其他哈希函数不受影响 (MD5/SHA1/SHA256/SHA512/Base64)
+PASS 变异后立红 (test_L095 rc=1，期望非0)
+PASS 字节级恢复且双份一致 (sha256 95fb05d962be)
+=== 第20轮 任务2 反跑判据（HMAC RFC 2104 标准实现）===
+ALL OK
+EXIT=0

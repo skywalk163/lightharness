@@ -1,0 +1,1106 @@
+{
+ "FFI禁用调试": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "FFI获取日志": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "FFI调试": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "FFI错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "std": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "一次性": {
+  "iso_neutral": true,
+  "standalone": 14,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "三合一": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "乘客": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "乘法": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "乘积": {
+  "iso_neutral": true,
+  "standalone": 4,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "乘除": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "二进制": {
+  "iso_neutral": true,
+  "standalone": 12,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "二选一": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "伽马函数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "位与": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "位取反": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "位域获取": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "位域设置": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "位异或": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "②其它映射"
+ },
+ "位或": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "位非": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "低级关闭": {
+  "iso_neutral": false,
+  "standalone": 3,
+  "corpus_neutral": false,
+  "cat": "①builtin_map"
+ },
+ "低级写": {
+  "iso_neutral": true,
+  "standalone": 3,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "低级打开": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "低级读": {
+  "iso_neutral": true,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "余切": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "余弦": {
+  "iso_neutral": true,
+  "standalone": 13,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "倍数": {
+  "iso_neutral": true,
+  "standalone": 8,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "值列表": {
+  "iso_neutral": true,
+  "standalone": 12,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "值错误": {
+  "iso_neutral": true,
+  "standalone": 46,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "停止迭代": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "元素列表": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "八进制": {
+  "iso_neutral": true,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "内存错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "减少": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "减弱": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "减速": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "函数": {
+  "iso_neutral": true,
+  "standalone": 73,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "函数对象": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "分配内存": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "创建任务": {
+  "iso_neutral": true,
+  "standalone": 22,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "创建函数指针": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "创建回调": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "创建数组": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "创建类型别名": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "初值": {
+  "iso_neutral": true,
+  "standalone": 11,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "加入": {
+  "iso_neutral": true,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "加减": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "加强": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "加快": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "十六进制": {
+  "iso_neutral": true,
+  "standalone": 27,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "十进制": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "千分位": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "协": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "协方差": {
+  "iso_neutral": true,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "历史记录": {
+  "iso_neutral": true,
+  "standalone": 3,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "压缩模": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "去除": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "参数列表": {
+  "iso_neutral": true,
+  "standalone": 32,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "反余弦": {
+  "iso_neutral": true,
+  "standalone": 5,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "反正切": {
+  "iso_neutral": true,
+  "standalone": 10,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "反正切2": {
+  "iso_neutral": true,
+  "standalone": 6,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "反正弦": {
+  "iso_neutral": true,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "取地址": {
+  "iso_neutral": true,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "右移": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "各加": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "名称列表": {
+  "iso_neutral": true,
+  "standalone": 3,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "向上取整": {
+  "iso_neutral": true,
+  "standalone": 13,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "向下取整": {
+  "iso_neutral": true,
+  "standalone": 18,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "四舍五入": {
+  "iso_neutral": true,
+  "standalone": 23,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "均值": {
+  "iso_neutral": true,
+  "standalone": 36,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "外部错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "定义宏": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "导入错误": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "②其它映射"
+ },
+ "属性错误": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "左移": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "常数": {
+  "iso_neutral": true,
+  "standalone": 10,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "常量时间比较": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "①builtin_map"
+ },
+ "幂次": {
+  "iso_neutral": false,
+  "standalone": 4,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "平方根": {
+  "iso_neutral": true,
+  "standalone": 28,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "年级当量": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "并发等待": {
+  "iso_neutral": false,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "库路径": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "应当": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "开启调试": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "异步写入文件": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "异步睡眠": {
+  "iso_neutral": false,
+  "standalone": 37,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "异步读取文件": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "异步追加文件": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "当前": {
+  "iso_neutral": false,
+  "standalone": 692,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "当然": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "循环迭代": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "总人数": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "总次数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "总资产增长": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "指针偏移": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "按值传递": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "推迟": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "收缩": {
+  "iso_neutral": true,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "教育年龄": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "数字列表": {
+  "iso_neutral": true,
+  "standalone": 12,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "数据聚合函数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "文件列表": {
+  "iso_neutral": true,
+  "standalone": 21,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "文件错误": {
+  "iso_neutral": true,
+  "standalone": 20,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "文本前缀": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "断言错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "方差": {
+  "iso_neutral": true,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "方差和": {
+  "iso_neutral": true,
+  "standalone": 8,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期一": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期三": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期二": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期五": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期六": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期四": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "星期日": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "是空": {
+  "iso_neutral": true,
+  "standalone": 57,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "最大公约数": {
+  "iso_neutral": true,
+  "standalone": 3,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "最小公倍数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "最终答案": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "最长公共子序列": {
+  "iso_neutral": true,
+  "standalone": 5,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "期值": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "枚举值": {
+  "iso_neutral": false,
+  "standalone": 3,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "标准差": {
+  "iso_neutral": true,
+  "standalone": 13,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "模式": {
+  "iso_neutral": true,
+  "standalone": 536,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "正则匹配": {
+  "iso_neutral": false,
+  "standalone": 8,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "注册回调": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "注销回调": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "测试_生成问候语": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "清除": {
+  "iso_neutral": true,
+  "standalone": 11,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "溢出错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "状态码错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "环境枚举": {
+  "iso_neutral": false,
+  "standalone": 3,
+  "corpus_neutral": false,
+  "cat": "①builtin_map"
+ },
+ "环节1": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "环节2": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "生成分析": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "生成问候语": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "百分位": {
+  "iso_neutral": true,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "百分比格式": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "目标函数": {
+  "iso_neutral": true,
+  "standalone": 14,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "社会福利": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "类型错误": {
+  "iso_neutral": false,
+  "standalone": 5,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "系统错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "系统错误码": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "索引错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "终点": {
+  "iso_neutral": false,
+  "standalone": 73,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "结构体值": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "编译正则表达式": {
+  "iso_neutral": true,
+  "standalone": 5,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "获取回调": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "获取宏": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "行列表": {
+  "iso_neutral": true,
+  "standalone": 50,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "解引用": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "记录列表": {
+  "iso_neutral": true,
+  "standalone": 31,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "记录类型": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "③无映射"
+ },
+ "记录调用": {
+  "iso_neutral": true,
+  "standalone": 4,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "设指针": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "设指针值": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "设系统": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "设系统错误码": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "设置": {
+  "iso_neutral": false,
+  "standalone": 49,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "设置数组": {
+  "iso_neutral": false,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "误差函数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "贝塔函数": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "财务配股价格": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "跨平台库": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "输入文本": {
+  "iso_neutral": true,
+  "standalone": 12,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "过滤模": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "运行时错误": {
+  "iso_neutral": true,
+  "standalone": 71,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "迭代停止": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "追加": {
+  "iso_neutral": true,
+  "standalone": 1179,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "追踪内存": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "递归错误": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "配置文件路径": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "释放内存": {
+  "iso_neutral": true,
+  "standalone": 1,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "键列表": {
+  "iso_neutral": true,
+  "standalone": 8,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "键错误": {
+  "iso_neutral": true,
+  "standalone": 10,
+  "corpus_neutral": true,
+  "cat": "②其它映射"
+ },
+ "限时": {
+  "iso_neutral": true,
+  "standalone": 13,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "除法": {
+  "iso_neutral": true,
+  "standalone": 5,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "除非": {
+  "iso_neutral": false,
+  "standalone": 2,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "随机整数": {
+  "iso_neutral": true,
+  "standalone": 19,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "随机浮点": {
+  "iso_neutral": true,
+  "standalone": 7,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "随机选择": {
+  "iso_neutral": true,
+  "standalone": 15,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ },
+ "零除错误": {
+  "iso_neutral": false,
+  "standalone": 0,
+  "corpus_neutral": false,
+  "cat": "②其它映射"
+ },
+ "项目列表": {
+  "iso_neutral": true,
+  "standalone": 0,
+  "corpus_neutral": true,
+  "cat": "③无映射"
+ },
+ "首个完成": {
+  "iso_neutral": true,
+  "standalone": 4,
+  "corpus_neutral": true,
+  "cat": "①builtin_map"
+ }
+}

@@ -1,0 +1,186 @@
+{
+ "srcdir": "C:\\Users\\skywalk\\AppData\\Local\\Temp\\r30v2_cur_xdat9nz3/src",
+ "ccw": [
+  "测试_生成问候语"
+ ],
+ "prefix": [
+  "位",
+  "应",
+  "除"
+ ],
+ "compared": 848,
+ "changed": [],
+ "g1_zero": true,
+ "skipped_base_err": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "g3": {
+  "位与": {
+   "设 位与 为 7": true,
+   "位与(1, 2)": true,
+   "返回 位与(1)": true,
+   "设 x 为 [ 位与 ]": true,
+   "如果 位与 那么 返回 1": true,
+   "段落 位与 接收 a:\n  返回 a": true
+  },
+  "位异或": {
+   "位异或(1, 2)": true,
+   "设 位异或 为 7": true,
+   "返回 位异或(1)": true
+  },
+  "位或": {
+   "位或(1, 2)": true,
+   "设 位或 为 7": true
+  },
+  "位非": {
+   "位非(1)": true,
+   "设 位非 为 7": true
+  },
+  "应当": {
+   "应当(1)": true,
+   "如果 应当 那么:\n  返回 1": true,
+   "设 应当 为 7": true,
+   "返回 应当(1)": true
+  },
+  "除非": {
+   "除非(1)": true,
+   "除非 条件:\n  返回 1": false,
+   "设 除非 为 7": true,
+   "返回 除非(1)": true,
+   "如果 除非 那么 返回 1": true
+  }
+ },
+ "rev": {
+  "位独立": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "位"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "NUMBER",
+    1
+   ]
+  ],
+  "当循环": [
+   [
+    "KEYWORD",
+    "当"
+   ],
+   [
+    "IDENTIFIER",
+    "x"
+   ],
+   [
+    "GREATER",
+    ">"
+   ],
+   [
+    "NUMBER",
+    0
+   ],
+   [
+    "COLON",
+    ":"
+   ],
+   [
+    "INDENT",
+    2
+   ],
+   [
+    "KEYWORD",
+    "返回"
+   ],
+   [
+    "NUMBER",
+    1
+   ],
+   [
+    "DEDENT",
+    0
+   ]
+  ],
+  "非逻辑": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "y"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "KEYWORD",
+    "非"
+   ],
+   [
+    "KEYWORD",
+    "真"
+   ]
+  ],
+  "与运算": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "z"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "IDENTIFIER",
+    "甲"
+   ],
+   [
+    "KEYWORD",
+    "与"
+   ],
+   [
+    "IDENTIFIER",
+    "乙"
+   ]
+  ],
+  "除法": [
+   [
+    "KEYWORD",
+    "设"
+   ],
+   [
+    "IDENTIFIER",
+    "q"
+   ],
+   [
+    "KEYWORD",
+    "为"
+   ],
+   [
+    "IDENTIFIER",
+    "甲"
+   ],
+   [
+    "KEYWORD",
+    "除"
+   ],
+   [
+    "IDENTIFIER",
+    "乙"
+   ]
+  ]
+ }
+}

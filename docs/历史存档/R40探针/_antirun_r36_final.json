@@ -1,0 +1,5 @@
+{
+  "files": 676,
+  "diffs": 0,
+  "note": "R36 预计算常量 _OPERATOR_KEYWORDS_NO_UNARY_PREFIX 与 内联集合差语义等价，全量 token 零变化"
+}

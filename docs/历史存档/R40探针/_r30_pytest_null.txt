@@ -1,0 +1,13 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+__________________ TestNullSafetyBasic.test_null_declaration __________________
+tests\_test_null_safety.py:46: in test_null_declaration
+    self.assertIsNotNone(sym, "'值' 变量应被定义")
+E   AssertionError: unexpectedly None : '值' 变量应被定义
+============================ slowest 15 durations =============================
+0.05s call     tests/_test_null_safety.py::TestNullSafetyBasic::test_null_declaration
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ===========================
+FAILED tests/_test_null_safety.py::TestNullSafetyBasic::test_null_declaration
+1 failed in 1.51s

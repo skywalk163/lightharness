@@ -1,0 +1,102 @@
+{
+ "item": "模",
+ "corpus_files": 857,
+ "corpus_with_item": 502,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "模",
+  "g1_changed_files": {
+   "light-merge/bootstrap/release/stdlib/临时文件.light": [
+    "@18 ('IDENTIFIER', '文本') -> ('IDENTIFIER', '文本模式')",
+    "@19 ('KEYWORD', '模') -> ('RPAREN', ')')",
+    "@20 ('IDENTIFIER', '式') -> ('MINUS', '-')"
+   ],
+   "light-merge/bootstrap/release/stdlib/文件匹配.light": [
+    "@9 ('IDENTIFIER', '提供文件路径') -> ('IDENTIFIER', '提供文件路径模式匹配功能')",
+    "@10 ('KEYWORD', '模') -> ('PERIOD', '。')",
+    "@11 ('IDENTIFIER', '式匹配功能') -> ('KEYWORD', '导出')"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@92 ('KEYWORD', '模') -> ('IDENTIFIER', '模乙')",
+    "@93 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@94 ('COMMA', ',') -> ('NUMBER', 3)"
+   ],
+   "lightharness/src/e2b客户端.light": [
+    "@27 ('IDENTIFIER', '本地') -> ('IDENTIFIER', '本地模拟')",
+    "@28 ('KEYWORD', '模') -> ('KEYWORD', '等于')",
+    "@29 ('IDENTIFIER', '拟') -> ('KEYWORD', '真')"
+   ],
+   "lightharness/src/子智能体.light": [
+    "@80 ('IDENTIFIER', '目录') -> ('IDENTIFIER', '目录模式')",
+    "@81 ('KEYWORD', '模') -> ('KEYWORD', '等于')",
+    "@82 ('IDENTIFIER', '式') -> ('STRING', 'one-shot')"
+   ],
+   "lightharness/src/权限.light": [
+    "@211 ('IDENTIFIER', '危险') -> ('IDENTIFIER', '危险模式')",
+    "@212 ('KEYWORD', '模') -> ('KEYWORD', '等于')",
+    "@213 ('IDENTIFIER', '式') -> ('KEYWORD', '空')"
+   ]
+  },
+  "g1_changed_count": 6,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲模乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲模乙')",
+     "@1 ('KEYWORD', '模') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

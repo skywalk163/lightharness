@@ -1,0 +1,121 @@
+{
+ "lexer_sha": "f5500cec620a8741430f58401dd79f5acd7cdd16a26de6a61030791e175512a7",
+ "A": {
+  "位与": {
+   "hits": 2,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "位异或": {
+   "hits": 0,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "位或": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "位非": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "异步写入文件": {
+   "hits": 0,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "异步睡眠": {
+   "hits": 15,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "异步读取文件": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "异步追加文件": {
+   "hits": 0,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "并发等待": {
+   "hits": 7,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  }
+ },
+ "B": {
+  "导入错误": {
+   "hits": 0,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "类型错误": {
+   "hits": 10,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "零除错误": {
+   "hits": 0,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设指针": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设指针值": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设系统": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设系统错误码": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设置": {
+   "hits": 153,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "设置数组": {
+   "hits": 1,
+   "changed_files": [],
+   "iso_token_changed": true,
+   "g1_pass": true
+  },
+  "低级关闭": {
+   "hits": 5,
+   "changed_files": [],
+   "iso_token_changed": false,
+   "g1_pass": true
+  }
+ }
+}

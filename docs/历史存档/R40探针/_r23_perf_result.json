@@ -1,0 +1,7 @@
+{
+ "corpus": 769,
+ "runs": 3,
+ "baseline_s": 9.505,
+ "current_s": 9.37,
+ "delta_pct": -1.43
+}

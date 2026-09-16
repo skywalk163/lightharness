@@ -1,0 +1,7 @@
+语料 .light 文件：764  TAM：1 条  CCW：184 条
+[A] 基线自检（两次 dump 一致）  PASS
+[B] 补回 9+32 条已删条目 -> 语料 token 变化 0 文件  PASS（删除对全语料零影响）
+[C1] 正向控制：删 `己` 后 test_L120.light token 变化  PASS
+[C2] 正向控制：清空 CCW 后语料 token 变化 5 文件（应 >0）  PASS
+[D] L-120 关联验证：test_L120.light 编译运行 rc=0  PASS
+ALL OK

@@ -1,0 +1,24 @@
+语料 .light 文件：824
+断裂态基准提交：e99bdb8018c6（第22轮保护表深度精简: IDENTIFIER_SAFE_KEYWORDS 17→5(删12); _COMPOUND_S）
+工作区 lexer.py sha256：1104bc590bf9cccd
+基准 _TRAILING_ALIAS_MERGE：1 条 ['己']
+修复态 _TRAILING_ALIAS_CLASS：27 条
+基准 CCW：184 条  →  修复态 CCW：37 条
+[A] 基线自检（两侧各两次 dump 一致）  PASS
+[B] 真实源 token 变化 0 文件（生成产物树漂移 4）  PASS（零回归）
+      生成树漂移: light-merge\bootstrap\release\stdlib\CSV读写器.light
+      生成树漂移: light-merge\bootstrap\release\stdlib\断言工具.light
+      生成树漂移: light-merge\bootstrap\release\stdlib\日期时间.light
+      生成树漂移: light-merge\bootstrap\release\stdlib\系统接口.light
+[C] 性能：基准中位 7.29s vs 修复态中位 6.97s  ×1.045  PASS
+[D] OLD 路径(deterministic=False) 真实源变化 0（遗留模式，不门控）｜生成树 0
+      [还原校验] src/lexer.py sha256 = 1104bc590bf9cccd  OK
+      [E] 差异: probe_己词尾并入.light
+      [E] 差异: probe_内建名迁移.light
+[E] 核心用例（9 个）编译运行 rc/stdout 两侧一致  FAIL
+[F] codegen 产物（2 个探针，src 后端）两侧逐字节一致  PASS
+      probe_己词尾并入.light: sha=9d53dc5364045f2f len=13454
+      probe_内建名迁移.light: sha=17df02f171774cdf len=13543
+判定： REGRESS
+FAILED
+RC=1

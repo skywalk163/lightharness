@@ -1,0 +1,92 @@
+{
+ "item": "减",
+ "corpus_files": 857,
+ "corpus_with_item": 94,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "减",
+  "g1_changed_files": {
+   "light-merge/examples/advanced.light": [
+    "@36 ('KEYWORD', '减') -> ('IDENTIFIER', '减一')",
+    "@37 ('CHINESE_NUM', 1) -> ('RPAREN', ')')",
+    "@38 ('RPAREN', ')') -> ('IDENTIFIER', '加斐波那契')"
+   ],
+   "light-merge/examples/basic.light": [
+    "@91 ('IDENTIFIER', '数') -> ('IDENTIFIER', '数减1')",
+    "@92 ('KEYWORD', '减') -> ('RPAREN', ')')",
+    "@93 ('NUMBER', 1) -> ('DEDENT', 0)"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@61 ('KEYWORD', '减') -> ('IDENTIFIER', '减乙')",
+    "@62 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@63 ('COMMA', ',') -> ('MINUS', '-')"
+   ],
+   "lightharness/examples/test_R25_词尾并入边界反向.light": [
+    "@260 ('KEYWORD', '减') -> ('IDENTIFIER', '减右')",
+    "@261 ('IDENTIFIER', '右') -> ('IDENTIFIER', '断言相等')",
+    "@262 ('IDENTIFIER', '断言相等') -> ('LPAREN', '(')"
+   ]
+  },
+  "g1_changed_count": 4,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲减乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲减乙')",
+     "@1 ('KEYWORD', '减') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

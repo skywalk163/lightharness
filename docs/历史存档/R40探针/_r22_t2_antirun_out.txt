@@ -1,0 +1,6 @@
+语料 .light 文件：764  精简后主表：5 条
+[A] 基线自检（两次 dump 一致）  PASS
+[B] 补回 12 条已删条目 -> 语料 token 变化 0 文件  PASS（删除对全语料零影响）
+[C] 正向控制：删 `函数` 后依赖文件 token 变化  PASS
+[D] 单测契约（我的标准库 词中合并）sig=[('IDENTIFIER', '我的标准库')]  PASS
+ALL OK

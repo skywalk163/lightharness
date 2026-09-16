@@ -1,0 +1,92 @@
+{
+ "item": "加",
+ "corpus_files": 857,
+ "corpus_with_item": 521,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "加",
+  "g1_changed_files": {
+   "light-merge/examples/basic.light": [
+    "@53 ('IDENTIFIER', '加法') -> ('IDENTIFIER', '加法接收甲')",
+    "@54 ('IDENTIFIER', '接收甲') -> ('COMMA', '，')",
+    "@55 ('COMMA', '，') -> ('IDENTIFIER', '乙')"
+   ],
+   "lightharness/examples/test_R20_关键字前缀标识符.light": [
+    "@628 ('KEYWORD', '加') -> ('IDENTIFIER', '加乙')",
+    "@629 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@630 ('COMMA', ',') -> ('NUMBER', 30)"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@51 ('KEYWORD', '加') -> ('IDENTIFIER', '加乙')",
+    "@52 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@53 ('COMMA', ',') -> ('NUMBER', 7)"
+   ],
+   "lightharness/examples/test_R25_词尾并入边界反向.light": [
+    "@246 ('KEYWORD', '加') -> ('IDENTIFIER', '加右')",
+    "@247 ('IDENTIFIER', '右') -> ('IDENTIFIER', '断言相等')",
+    "@248 ('IDENTIFIER', '断言相等') -> ('LPAREN', '(')"
+   ]
+  },
+  "g1_changed_count": 4,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲加乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲加乙')",
+     "@1 ('KEYWORD', '加') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

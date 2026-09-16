@@ -1,0 +1,10 @@
+{
+ "g1_ok": true,
+ "g1_changed": [],
+ "g3_ok": true,
+ "mutation_ok": true,
+ "merge_whole": [
+  "整理模型消息",
+  "记录类型"
+ ]
+}

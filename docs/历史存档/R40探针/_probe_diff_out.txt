@@ -1,0 +1,48 @@
+SRC: '行为'
+  WITH   : [('IDENTIFIER', '行为'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '行'), ('KEYWORD', '为'), ('EOF', None)]
+
+SRC: '末位行为'
+  WITH   : [('IDENTIFIER', '末位行为'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '末位行'), ('KEYWORD', '为'), ('EOF', None)]
+
+SRC: '返回表'
+  WITH   : [('IDENTIFIER', '返回表'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '返回'), ('IDENTIFIER', '表'), ('EOF', None)]
+
+SRC: '尝试记录'
+  WITH   : [('IDENTIFIER', '尝试记录'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '尝试'), ('IDENTIFIER', '记录'), ('EOF', None)]
+
+SRC: '作为'
+  WITH   : [('IDENTIFIER', '作为'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '作'), ('KEYWORD', '为'), ('EOF', None)]
+
+SRC: '成为'
+  WITH   : [('IDENTIFIER', '成为'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '成'), ('KEYWORD', '为'), ('EOF', None)]
+
+SRC: '认为'
+  WITH   : [('IDENTIFIER', '认为'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '认'), ('KEYWORD', '为'), ('EOF', None)]
+
+SRC: '为了'
+  WITH   : [('IDENTIFIER', '为了'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '为'), ('IDENTIFIER', '了'), ('EOF', None)]
+
+SRC: '设 甲 为 空'
+  WITH   : [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('KEYWORD', '空'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('KEYWORD', '空'), ('EOF', None)]
+
+SRC: '设 合并为 {}'
+  WITH   : [('KEYWORD', '设'), ('IDENTIFIER', '合并'), ('KEYWORD', '为'), ('LBRACE', '{'), ('RBRACE', '}'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '设'), ('IDENTIFIER', '合并'), ('KEYWORD', '为'), ('LBRACE', '{'), ('RBRACE', '}'), ('EOF', None)]
+
+SRC: '断言为真(条件)'
+  WITH   : [('IDENTIFIER', '断言为真'), ('LPAREN', '('), ('IDENTIFIER', '条件'), ('RPAREN', ')'), ('EOF', None)]
+  WITHOUT: [('IDENTIFIER', '断言为真'), ('LPAREN', '('), ('IDENTIFIER', '条件'), ('RPAREN', ')'), ('EOF', None)]
+
+SRC: '段落 断言为真 接收:'
+  WITH   : [('KEYWORD', '段落'), ('IDENTIFIER', '断言为真'), ('KEYWORD', '接收'), ('COLON', ':'), ('EOF', None)]
+  WITHOUT: [('KEYWORD', '段落'), ('IDENTIFIER', '断言为真'), ('KEYWORD', '接收'), ('COLON', ':'), ('EOF', None)]
+

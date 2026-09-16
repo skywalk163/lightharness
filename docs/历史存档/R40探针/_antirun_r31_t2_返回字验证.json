@@ -1,0 +1,147 @@
+{
+ "char": "返回",
+ "corpus_files": 856,
+ "corpus_with_char": 647,
+ "base_embed": [
+  "为",
+  "尝试",
+  "返回"
+ ],
+ "reduced_embed": [
+  "为",
+  "尝试"
+ ],
+ "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "char": "返回",
+  "g1_changed_files": {
+   "light-merge/bootstrap/release/stdlib/CSV读写器.light": [
+    "@268 ('IDENTIFIER', '返回结果') -> ('KEYWORD', '返回')",
+    "@269 ('DEDENT', 0) -> ('IDENTIFIER', '结果')",
+    "@270 ('IDENTIFIER', 'def字典转') -> ('DEDENT', 0)"
+   ],
+   "light-merge/bootstrap/release/stdlib/JSON.light": [
+    "@318 ('IDENTIFIER', '返回结果') -> ('KEYWORD', '返回')",
+    "@319 ('DEDENT', 8) -> ('IDENTIFIER', '结果')",
+    "@320 ('IDENTIFIER', 'elif') -> ('DEDENT', 8)"
+   ],
+   "light-merge/bootstrap/release/stdlib/字符串处理.light": [
+    "@18 ('IDENTIFIER', '返回模板') -> ('KEYWORD', '返回')",
+    "@19 ('DOT', '.') -> ('IDENTIFIER', '模板')",
+    "@20 ('IDENTIFIER', 'format') -> ('DOT', '.')"
+   ],
+   "light-merge/bootstrap/release/stdlib/字符串工具.light": [
+    "@6 ('IDENTIFIER', '返回文本') -> ('KEYWORD', '返回')",
+    "@7 ('DOT', '.') -> ('IDENTIFIER', '文本')",
+    "@8 ('IDENTIFIER', '转大写') -> ('DOT', '.')"
+   ],
+   "light-merge/bootstrap/release/stdlib/数学.light": [
+    "@292 ('IDENTIFIER', '返回底数') -> ('KEYWORD', '返回')",
+    "@293 ('STAR', '*') -> ('IDENTIFIER', '底数')",
+    "@295 ('IDENTIFIER', '指数') -> ('STAR', '*')"
+   ],
+   "light-merge/bootstrap/release/stdlib/文件系统.light": [
+    "@29 ('IDENTIFIER', '返回文件') -> ('KEYWORD', '返回')",
+    "@30 ('DOT', '.') -> ('IDENTIFIER', '文件')",
+    "@31 ('IDENTIFIER', 'read') -> ('DOT', '.')"
+   ],
+   "light-merge/bootstrap/release/stdlib/日期时间.light": [
+    "@54 ('IDENTIFIER', '返回日期时间') -> ('KEYWORD', '返回')",
+    "@55 ('DOT', '.') -> ('IDENTIFIER', '日期时间')",
+    "@56 ('IDENTIFIER', '_从日期时间') -> ('DOT', '.')"
+   ],
+   "light-merge/bootstrap/release/stdlib/时间管理.light": [
+    "@171 ('IDENTIFIER', '返回当前时间') -> ('KEYWORD', '返回')",
+    "@172 ('DEDENT', 4) -> ('IDENTIFIER', '当前时间')",
+    "@173 ('IDENTIFIER', 'def获取记录') -> ('DEDENT', 4)"
+   ],
+   "light-merge/bootstrap/release/stdlib/正则表达式.light": [
+    "@91 ('IDENTIFIER', '返回结果') -> ('KEYWORD', '返回')",
+    "@92 ('DOT', '.') -> ('IDENTIFIER', '结果')",
+    "@93 ('IDENTIFIER', '获取分组') -> ('DOT', '.')"
+   ],
+   "light-merge/bootstrap/release/stdlib/编码解码.light": [
+    "@410 ('IDENTIFIER', '返回结果') -> ('KEYWORD', '返回')",
+    "@411 ('DEDENT', 0) -> ('IDENTIFIER', '结果')",
+    "@412 ('IDENTIFIER', 'defHTML实体解码') -> ('DEDENT', 0)"
+   ],
+   "light-merge/bootstrap/release/stdlib/装饰器.light": [
+    "@69 ('IDENTIFIER', '返回包装器') -> ('KEYWORD', '返回')",
+    "@70 ('DEDENT', 4) -> ('IDENTIFIER', '包装器')",
+    "@71 ('IDENTIFIER', '返回装饰器') -> ('DEDENT', 4)"
+   ],
+   "light-merge/bootstrap/release/stdlib/集合工具.light": [
+    "@15 ('IDENTIFIER', '访问不存在的键时返回默认值') -> ('IDENTIFIER', '访问不存')",
+    "@16 ('IDENTIFIER', '有序字典') -> ('KEYWORD', '在')",
+    "@17 ('MINUS', '-') -> ('IDENTIFIER', '的键时返回默认值')"
+   ],
+   "light-merge/examples/advanced.light": [
+    "@31 ('IDENTIFIER', '如果数小于等于二那么返回一') -> ('KEYWORD', '如果')",
+    "@32 ('PERIOD', '。') -> ('IDENTIFIER', '数')",
+    "@33 ('IDENTIFIER', '返回斐波那契') -> ('KEYWORD', '小于等于')"
+   ],
+   "light-merge/examples/basic.light": [
+    "@59 ('IDENTIFIER', '返回甲加乙') -> ('KEYWORD', '返回')",
+    "@60 ('DEDENT', 0) -> ('IDENTIFIER', '甲')",
+    "@61 ('IDENTIFIER', '设和为加法') -> ('KEYWORD', '加')"
+   ],
+   "light-merge/examples/modules/math_utils.light": [
+    "@18 ('IDENTIFIER', '返回数乘数') -> ('KEYWORD', '返回')",
+    "@19 ('PERIOD', '。') -> ('IDENTIFIER', '数')",
+    "@20 ('DEDENT', 0) -> ('KEYWORD', '乘')"
+   ],
+   "light-merge/examples/modules/simple_export.light": [
+    "@14 ('IDENTIFIER', '返回数乘数') -> ('KEYWORD', '返回')",
+    "@15 ('PERIOD', '。') -> ('IDENTIFIER', '数')",
+    "@16 ('DEDENT', 0) -> ('KEYWORD', '乘')"
+   ],
+   "light-merge/examples/modules/string_utils.light": [
+    "@16 ('IDENTIFIER', '返回文本1') -> ('KEYWORD', '返回')",
+    "@17 ('IDENTIFIER', '加文本2') -> ('IDENTIFIER', '文本1')",
+    "@18 ('PERIOD', '。') -> ('IDENTIFIER', '加文本2')"
+   ],
+   "light-merge/examples/test_L070.light": [
+    "@17 ('IDENTIFIER', '返回选项') -> ('KEYWORD', '返回')",
+    "@18 ('DEDENT', 0) -> ('IDENTIFIER', '选项')",
+    "@19 ('KEYWORD', '段落') -> ('DEDENT', 0)"
+   ],
+   "lightharness/examples/test_R26_词首并入反向.light": [
+    "@183 ('IDENTIFIER', '测试返回语句') -> ('IDENTIFIER', '测试')",
+    "@184 ('COLON', ':') -> ('IDENTIFIER', '返回语句')",
+    "@185 ('INDENT', 4) -> ('COLON', ':')"
+   ],
+   "lightharness/examples/test_R26_词首并入混合.light": [
+    "@200 ('IDENTIFIER', '测试真的与返回') -> ('IDENTIFIER', '测试真的与')",
+    "@201 ('COLON', ':') -> ('KEYWORD', '返回')",
+    "@202 ('INDENT', 4) -> ('COLON', ':')"
+   ]
+  },
+  "g1_changed_count": 20,
+  "g1_pass": false,
+  "g2_rc_base": 0,
+  "g2_rc_removed": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "返回表",
+    "diff": [
+     "@0 ('IDENTIFIER', '返回表') -> ('KEYWORD', '返回')",
+     "@1 ('<END>', '') -> ('IDENTIFIER', '表')"
+    ]
+   },
+   {
+    "form": "返回值",
+    "diff": [
+     "@0 ('IDENTIFIER', '返回值') -> ('KEYWORD', '返回')",
+     "@1 ('<END>', '') -> ('IDENTIFIER', '值')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

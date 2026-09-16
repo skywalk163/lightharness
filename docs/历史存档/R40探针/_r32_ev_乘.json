@@ -1,0 +1,82 @@
+{
+ "item": "乘",
+ "corpus_files": 857,
+ "corpus_with_item": 85,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "乘",
+  "g1_changed_files": {
+   "light-merge/tests/final_test.light": [
+    "@54 ('IDENTIFIER', '阶') -> ('IDENTIFIER', '阶乘五')",
+    "@55 ('KEYWORD', '乘') -> ('KEYWORD', '等于')",
+    "@56 ('CHINESE_NUM', 5) -> ('PERIOD', '。')"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@72 ('KEYWORD', '乘') -> ('IDENTIFIER', '乘乙')",
+    "@73 ('IDENTIFIER', '乙') -> ('COMMA', ',')",
+    "@74 ('COMMA', ',') -> ('NUMBER', 12)"
+   ]
+  },
+  "g1_changed_count": 2,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲乘乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲乘乙')",
+     "@1 ('KEYWORD', '乘') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

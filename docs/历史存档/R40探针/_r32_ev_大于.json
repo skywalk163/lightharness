@@ -1,0 +1,89 @@
+{
+ "item": "大于",
+ "corpus_files": 857,
+ "corpus_with_item": 90,
+ "base_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "reduced_ov": [
+  "不大于",
+  "不小于",
+  "不等于",
+  "乘",
+  "乘以",
+  "减",
+  "减去",
+  "加",
+  "加上",
+  "包含",
+  "大于等于",
+  "小于",
+  "小于等于",
+  "幂",
+  "模",
+  "等于",
+  "除",
+  "除以"
+ ],
+ "lexer_sha": "c7cf29ac8e0adc7381cd8bf6d761bffff888d529884fc9f8f4376b8aa3da9d4c",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "item": "大于",
+  "g1_changed_files": {
+   "light-merge/bootstrap/release/stdlib/断言工具.light": [
+    "@328 ('IDENTIFIER', '断言') -> ('IDENTIFIER', '断言大于')",
+    "@329 ('KEYWORD', '大于') -> ('LPAREN', '(')",
+    "@330 ('LPAREN', '(') -> ('IDENTIFIER', '实际值')"
+   ],
+   "light-merge/examples/basic.light": [
+    "@35 ('KEYWORD', '大于') -> ('IDENTIFIER', '大于乙')",
+    "@36 ('IDENTIFIER', '乙') -> ('COLON', '：')",
+    "@37 ('COLON', '：') -> ('INDENT', 2)"
+   ]
+  },
+  "g1_changed_count": 2,
+  "g1_pass": false,
+  "g2_rc": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "甲大于乙",
+    "diff": [
+     "@0 ('IDENTIFIER', '甲') -> ('IDENTIFIER', '甲大于乙')",
+     "@1 ('KEYWORD', '大于') -> ('<END>', '')",
+     "@2 ('IDENTIFIER', '乙') -> ('<END>', '')"
+    ]
+   },
+   {
+    "form": "大于号",
+    "diff": [
+     "@0 ('KEYWORD', '大于') -> ('IDENTIFIER', '大于号')",
+     "@1 ('IDENTIFIER', '号') -> ('<END>', '')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

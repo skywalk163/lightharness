@@ -1,0 +1,24 @@
+FAILED tests/test_R23_词法边界_token.py::test_ccw_builtin_names_whole[\u5f02\u6b65\u8bfb\u53d6\u6587\u4ef6]
+FAILED tests/test_R23_词法边界_token.py::test_ccw_builtin_names_whole[\u5e76\u53d1\u7b49\u5f85]
+FAILED tests/test_R23_词法边界_token.py::test_ccw_builtin_names_whole[\u5e38\u91cf\u65f6\u95f4\u6bd4\u8f83]
+FAILED tests/test_R25_单字后缀_token.py::test_protection_table_shape - Attrib...
+FAILED tests/test_R26_词首并入_token.py::TestProtectionTableShape::test_head_merge_class_exists
+FAILED tests/test_R26_词首并入_token.py::TestProtectionTableShape::test_head_split_class_exists
+FAILED tests/test_R26_词首并入_token.py::TestProtectionTableShape::test_effective_head_merge_with_dual_is_30
+FAILED tests/test_R26_词首并入_token.py::TestProtectionTableShape::test_trailing_class_F_is_43
+FAILED tests/test_R26_词首并入_token.py::TestProtectionTableShape::test_class_attribute_still_exposed
+FAILED tests/test_R27_CS表16字词首并入_token.py::Test保护表形态::test_DUAL属于运算符_值字面量_范围
+FAILED tests/test_R27_CS表16字词首并入_token.py::Test保护表形态::test_HM净增量等于三轮移除集
+FAILED tests/test_R27_CS表16字词首并入_token.py::Test保护表形态::test_HM含B类6字不含A类
+FAILED tests/test_R27_CS表16字词首并入_token.py::TestCorpusZeroTokenChange::test_fingerprint_unchanged
+FAILED tests/test_R28_CS表2字词尾上下文_token.py::Test保护表形态::test_净增量恒等三轮移除集
+FAILED tests/test_R28_CS表2字词尾上下文_token.py::Test保护表形态::test_DUAL与HM保持
+FAILED tests/test_R28_CS表2字词尾上下文_token.py::TestCorpusZeroTokenChange::test_fingerprint_unchanged
+FAILED tests/test_R29_CCW表分批精简_token.py::test_hm_table_still_22 - Assert...
+FAILED tests/test_R30_CCW保留10条通用化_token.py::test_trailing_alias_class_still_43
+FAILED tests/test_R30_零除幂次记录类型通用化_token.py::test_merge_whole_has_record_type
+FAILED tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_now_2
+FAILED tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_retained_entries
+FAILED tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_r35_removed_entry
+FAILED tests/test_R33_NEVER_SPLIT精简_token.py::test_merge_whole_now_2 - Asse...
+23 failed, 760 passed, 1 skipped, 1 warning in 33.49s

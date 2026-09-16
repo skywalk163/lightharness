@@ -1,0 +1,30 @@
+语料 .light 文件：824
+基准 _COMPOUND_SAFE_SINGLE_KEYWORDS：52 条
+精简后 _COMPOUND_SAFE_SINGLE_KEYWORDS：26 条
+基准 _EMBED_MAX_MATCH_KEYWORDS：['为', '尝试', '返回']
+精简后 _EMBED_MAX_MATCH_KEYWORDS：['为', '尝试', '返回']
+[A] 基准基线自检（确定性）  PASS  （基准各轮 [16.6, 18.7, 16.1]s / 精简各轮 [18.3, 18.2, 14.3]s）
+[B] 精简后 vs 基准 token 变化  11 文件  (PASS（零回归）)  （基准中位 16.6s / 精简中位 18.2s）
+      真实源变化：0  |  生成产物树漂移：11
+      生成产物树漂移（可接受，不在测试断言路径）:
+        - light-merge\bootstrap\release\stdlib\CSV读写器.light
+        - light-merge\bootstrap\release\stdlib\外部命令.light
+        - light-merge\bootstrap\release\stdlib\字符串常量.light
+        - light-merge\bootstrap\release\stdlib\数据结构.light
+        - light-merge\bootstrap\release\stdlib\文件匹配.light
+        - light-merge\bootstrap\release\stdlib\断言工具.light
+        - light-merge\bootstrap\release\stdlib\日志系统增强.light
+        - light-merge\bootstrap\release\stdlib\日期时间.light
+        - light-merge\bootstrap\release\stdlib\时间管理.light
+        - light-merge\bootstrap\release\stdlib\系统接口.light
+        - light-merge\bootstrap\release\stdlib\装饰器.light
+[C] 性能：基准中位 16.6s vs 精简中位 18.2s  (持平/下降(噪声内) ×0.92)
+[D] OLD 路径(deterministic=False) 真实源 token 变化：6  （遗留模式，不门控判定）| 生成树漂移 14
+      OLD路径真实源变化: lightharness\examples\_repro_L084.light
+      OLD路径真实源变化: lightharness\examples\test_R20_词法边界综合.light
+      OLD路径真实源变化: lightharness\examples\test_R21_块内设名.light
+      OLD路径真实源变化: lightharness\examples\test_子智能体1.5.light
+      OLD路径真实源变化: lightharness\src\代理.light
+      OLD路径真实源变化: lightharness\src\子智能体.light
+判定： ALL_OK
+ALL OK

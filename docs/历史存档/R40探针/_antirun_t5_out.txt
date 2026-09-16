@@ -1,0 +1,19 @@
+语料 .light 文件：824
+基准 _COMPOUND_SAFE_SINGLE_KEYWORDS：52 条
+精简后 _COMPOUND_SAFE_SINGLE_KEYWORDS：24 条
+基准 _EMBED_MAX_MATCH_KEYWORDS：['为', '尝试', '返回']
+精简后 _EMBED_MAX_MATCH_KEYWORDS：['为', '尝试', '返回']
+[A] 基准基线自检（两次一致）  PASS  （18.1s / 18.4s）
+[B] 精简后 vs 基准 token 变化  9 文件  FAIL  （18.5s）
+      变化: light-merge\bootstrap\release\stdlib\CSV读写器.light
+      变化: light-merge\bootstrap\release\stdlib\字符串常量.light
+      变化: light-merge\bootstrap\release\stdlib\数据结构.light
+      变化: light-merge\bootstrap\release\stdlib\断言工具.light
+      变化: light-merge\bootstrap\release\stdlib\日志系统增强.light
+      变化: light-merge\bootstrap\release\stdlib\日期时间.light
+      变化: light-merge\bootstrap\release\stdlib\时间管理.light
+      变化: light-merge\bootstrap\release\stdlib\系统接口.light
+      变化: light-merge\bootstrap\release\stdlib\装饰器.light
+[C] 性能：基准 18.1s vs 精简 18.5s  (下降 ×0.98)
+判定： REGRESS
+FAILED

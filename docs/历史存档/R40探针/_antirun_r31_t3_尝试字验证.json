@@ -1,0 +1,53 @@
+{
+ "char": "尝试",
+ "corpus_files": 856,
+ "corpus_with_char": 239,
+ "base_embed": [
+  "为",
+  "尝试",
+  "返回"
+ ],
+ "reduced_embed": [
+  "为",
+  "返回"
+ ],
+ "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "char": "尝试",
+  "g1_changed_files": {},
+  "g1_changed_count": 0,
+  "g1_pass": true,
+  "g2_rc_base": 0,
+  "g2_rc_removed": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "尝试记录",
+    "diff": [
+     "@0 ('IDENTIFIER', '尝试记录') -> ('KEYWORD', '尝试')",
+     "@1 ('<END>', '') -> ('IDENTIFIER', '记录')"
+    ]
+   },
+   {
+    "form": "尝试次数",
+    "diff": [
+     "@0 ('IDENTIFIER', '尝试次数') -> ('KEYWORD', '尝试')",
+     "@1 ('<END>', '') -> ('IDENTIFIER', '次数')"
+    ]
+   },
+   {
+    "form": "尝试错误",
+    "diff": [
+     "@0 ('IDENTIFIER', '尝试错误') -> ('KEYWORD', '尝试')",
+     "@1 ('<END>', '') -> ('IDENTIFIER', '错误')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}

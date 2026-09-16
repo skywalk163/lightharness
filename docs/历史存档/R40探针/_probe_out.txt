@@ -1,0 +1,5 @@
+import OK, Lexer= <class 'lexer.Lexer'>
+deterministic default test:
+[('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('IDENTIFIER', '数组'), ('NEWLINE', '\n'), ('KEYWORD', '打印'), ('IDENTIFIER', '甲'), ('EOF', None)]
+examples corpus: 494
+tokenized 494 files in 8.32 s

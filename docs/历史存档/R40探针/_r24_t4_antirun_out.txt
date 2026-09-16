@@ -1,0 +1,5 @@
+[A] 基线自检（773 文件两次 dump 一致）  PASS
+[B] 断裂态(HEAD) vs 修复态(合并态) -> token 变化 1 文件，超预期 0 文件  PASS（变化均为任务1 的修复预期）
+[C] 递归语义正向控制（16 形态：之切分/副作用回报/双栖单字/值字面量/TAM）  PASS
+[D] 断言有效性（篡改字面量 -> import AssertionError）  PASS
+ALL OK

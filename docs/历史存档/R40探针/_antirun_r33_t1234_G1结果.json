@@ -1,0 +1,33 @@
+{
+ "base_ns": [
+  "到",
+  "模",
+  "步",
+  "至"
+ ],
+ "removable": [
+  "模",
+  "步",
+  "至",
+  "到"
+ ],
+ "keepers": [],
+ "detail": {
+  "模": {
+   "changed": [],
+   "new_err": []
+  },
+  "步": {
+   "changed": [],
+   "new_err": []
+  },
+  "至": {
+   "changed": [],
+   "new_err": []
+  },
+  "到": {
+   "changed": [],
+   "new_err": []
+  }
+ }
+}

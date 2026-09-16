@@ -1,0 +1,215 @@
+{
+ "corpus": 840,
+ "cs": "乘余例减出列则到加对常引接断是末模段的真空类自试跳过配长除首",
+ "result": {
+  "乘": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/examples/hello.light"
+   ]
+  },
+  "余": {
+   "changed_count": 0,
+   "files": []
+  },
+  "例": {
+   "changed_count": 0,
+   "files": []
+  },
+  "减": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/日期时间.light"
+   ]
+  },
+  "出": {
+   "changed_count": 0,
+   "files": []
+  },
+  "列": {
+   "changed_count": 6,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/FFI.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z2_泛型类型.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z4_函数类型标注.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z6_类型推断实战.light",
+    "light-merge/examples/Z阶段_可选类型系统/Z8_综合实战.light"
+   ]
+  },
+  "则": {
+   "changed_count": 0,
+   "files": []
+  },
+  "到": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/examples/password_manager/主.light"
+   ]
+  },
+  "加": {
+   "changed_count": 8,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/FFI.light",
+    "light-merge/bootstrap/release/stdlib/中文文本.light",
+    "light-merge/bootstrap/release/stdlib/加密.light",
+    "light-merge/bootstrap/release/stdlib/历法.light",
+    "light-merge/bootstrap/release/stdlib/排版.light",
+    "light-merge/bootstrap/release/stdlib/日期时间.light",
+    "light-merge/examples/advanced.light",
+    "light-merge/examples/modules/string_utils.light"
+   ]
+  },
+  "对": {
+   "changed_count": 12,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/CSV读写器.light",
+    "light-merge/bootstrap/release/stdlib/字符串工具.light",
+    "light-merge/bootstrap/release/stdlib/对象池缓存.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "light-merge/bootstrap/release/stdlib/日志系统增强.light",
+    "light-merge/bootstrap/release/stdlib/编码解码.light",
+    "light-merge/examples/F阶段_标准库增强/F3_光明侧三个增强模块示例.light",
+    "light-merge/stdlib/HTTP服务端.light"
+   ]
+  },
+  "常": {
+   "changed_count": 0,
+   "files": []
+  },
+  "引": {
+   "changed_count": 0,
+   "files": []
+  },
+  "接": {
+   "changed_count": 0,
+   "files": []
+  },
+  "断": {
+   "changed_count": 10,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "lightharness/examples/test_L037.light",
+    "lightharness/examples/test_L087.light",
+    "lightharness/examples/test_一次性监听器.light",
+    "lightharness/examples/test_代理深化.light",
+    "lightharness/examples/test_原子写.light",
+    "lightharness/examples/test_子进程流式.light",
+    "lightharness/examples/test_客户端超时.light"
+   ]
+  },
+  "是": {
+   "changed_count": 3,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/日期时间.light",
+    "light-merge/bootstrap/release/stdlib/时间管理.light",
+    "light-merge/bootstrap/release/stdlib/系统接口.light"
+   ]
+  },
+  "末": {
+   "changed_count": 0,
+   "files": []
+  },
+  "模": {
+   "changed_count": 29,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/JSON.light",
+    "light-merge/bootstrap/release/stdlib/加密.light",
+    "light-merge/bootstrap/release/stdlib/字符串处理.light",
+    "light-merge/bootstrap/release/stdlib/字符串工具.light",
+    "light-merge/bootstrap/release/stdlib/文件匹配.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light",
+    "light-merge/bootstrap/release/stdlib/正则表达式.light",
+    "lightharness/examples/test_web路由.light"
+   ]
+  },
+  "段": {
+   "changed_count": 16,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/临时文件.light",
+    "light-merge/bootstrap/release/stdlib/参数解析.light",
+    "light-merge/bootstrap/release/stdlib/外部命令.light",
+    "light-merge/bootstrap/release/stdlib/字符串常量.light",
+    "light-merge/bootstrap/release/stdlib/文件匹配.light",
+    "light-merge/bootstrap/release/stdlib/系统接口.light",
+    "light-merge/bootstrap/release/stdlib/集合工具.light",
+    "light-merge/examples/games/snake.light"
+   ]
+  },
+  "的": {
+   "changed_count": 5,
+   "files": [
+    "light-merge/examples/E阶段_L3L4原生语法/E4_L4_沙箱隔离验证.light",
+    "light-merge/examples/L1_baihua/05_遍循环.light",
+    "light-merge/examples/L1_baihua/06_列表.light",
+    "light-merge/examples/L1_baihua/07_字典.light",
+    "light-merge/examples/L2_wenyan/学生模块.light"
+   ]
+  },
+  "真": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/stdlib/进程树.light"
+   ]
+  },
+  "空": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/字符串常量.light"
+   ]
+  },
+  "类": {
+   "changed_count": 3,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/装饰器.light",
+    "light-merge/examples/test_L068.light",
+    "lightharness/examples/test_L013.light"
+   ]
+  },
+  "自": {
+   "changed_count": 2,
+   "files": [
+    "lightharness/src/权限.light",
+    "lightharness/src/网页搜索.light"
+   ]
+  },
+  "试": {
+   "changed_count": 0,
+   "files": []
+  },
+  "跳": {
+   "changed_count": 0,
+   "files": []
+  },
+  "过": {
+   "changed_count": 1,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/对象池缓存.light"
+   ]
+  },
+  "配": {
+   "changed_count": 4,
+   "files": [
+    "lightharness/examples/test_L119.light",
+    "lightharness/examples/test_R25_单字后缀规则_快速.light",
+    "lightharness/examples/test_R25_词尾并入边界反向.light",
+    "lightharness/examples/test_团队服务.light"
+   ]
+  },
+  "长": {
+   "changed_count": 0,
+   "files": []
+  },
+  "除": {
+   "changed_count": 2,
+   "files": [
+    "light-merge/bootstrap/release/stdlib/CSV读写器.light",
+    "light-merge/bootstrap/release/stdlib/断言工具.light"
+   ]
+  },
+  "首": {
+   "changed_count": 0,
+   "files": []
+  }
+ }
+}

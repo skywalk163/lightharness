@@ -1,0 +1,23 @@
+语料 .light 文件：770
+当前 _EMBED_MAX_MATCH_KEYWORDS：['为', '尝试', '返回']
+[A] 基线自检（两次 dump 一致）  PASS
+[B] 置空 _EMBED_MAX_MATCH_KEYWORDS → 语料 token 变化 17 文件  FAIL
+      变化: G:/dswork/duan-light-merge/light-merge/examples\L1_baihua\05_遍循环.light
+      变化: G:/dswork/duan-light-merge/light-merge/examples\L1_baihua\07_字典.light
+      变化: G:/dswork/duan-light-merge/light-merge/examples\L1_baihua\08_函数.light
+      变化: G:/dswork/duan-light-merge/light-merge/examples\L1_baihua\09_异常.light
+      变化: G:/dswork/duan-light-merge/light-merge/examples\L3_domain\all_in_one_L3_demo.light
+[C] 边界用例（18 条）token 序列不变  变化 10 条  FAIL
+      [C-变化] '行为'
+      [C-变化] '末位行为'
+      [C-变化] '作为'
+      [C-变化] '成为'
+      [C-变化] '认为'
+      [C-变化] '为了'
+      [C-变化] '返回表'
+      [C-变化] '返回结果'
+      [C-变化] '尝试记录'
+      [C-变化] '尝试捕获'
+[D] 正向控制卫生检查：skipped(该串不依赖嵌入块)
+判定： KEEP
+FAILED

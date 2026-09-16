@@ -1,0 +1,24 @@
+{
+ "all_ok": true,
+ "detail": [
+  "PASS 自之X: '自之姓名' -> [('KEYWORD', '自'), ('KEYWORD', '之'), ('IDENTIFIER', '姓名')]",
+  "PASS 数列之长度: '数列之长度' -> [('IDENTIFIER', '数列'), ('KEYWORD', '之'), ('IDENTIFIER', '长度')]",
+  "PASS 块长之块长表: '遍历 块长 之 块长表' -> [('KEYWORD', '遍历'), ('IDENTIFIER', '块长'), ('KEYWORD', '之'), ('IDENTIFIER', '块长表')]",
+  "PASS 去除空格: '去除空格' -> [('IDENTIFIER', '去除空格')]",
+  "PASS 10的幂: '10的幂' -> [('NUMBER', 10), ('IDENTIFIER', '的幂')]",
+  "PASS 种类: '种类' -> [('IDENTIFIER', '种类')]",
+  "PASS 索引: '索引' -> [('IDENTIFIER', '索引')]",
+  "PASS 阶乘: '阶乘' -> [('IDENTIFIER', '阶乘')]",
+  "PASS 乘阶乘: 'n乘阶乘(n)' -> [('IDENTIFIER', 'n'), ('IDENTIFIER', '乘阶乘'), ('LPAREN', '('), ('IDENTIFIER', 'n'), ('RPAREN', ')')]",
+  "PASS 加斐波那契: '1加斐波那契(数)' -> [('NUMBER', 1), ('IDENTIFIER', '加斐波那契'), ('LPAREN', '('), ('IDENTIFIER', '数'), ('RPAREN', ')')]",
+  "PASS 甲加乙: '甲加乙' -> [('IDENTIFIER', '甲'), ('KEYWORD', '加'), ('IDENTIFIER', '乙')]",
+  "PASS 甲乘乙: '甲乘乙' -> [('IDENTIFIER', '甲'), ('KEYWORD', '乘'), ('IDENTIFIER', '乙')]",
+  "PASS 加法: '加法(1,2)' -> [('IDENTIFIER', '加法'), ('LPAREN', '('), ('NUMBER', 1), ('COMMA', ','), ('NUMBER', 2), ('RPAREN', ')')]",
+  "PASS 标准输出失真: '标准输出失真' -> [('IDENTIFIER', '标准输出失真')]",
+  "PASS 错误己: '错误己' -> [('IDENTIFIER', '错误己')]",
+  "PASS 自己: '自己' -> [('IDENTIFIER', '自己')]",
+  "PASS 返回真: '返回 真' -> [('KEYWORD', '返回'), ('KEYWORD', '真')]",
+  "PASS 为空: '设 甲 为 空' -> [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('KEYWORD', '空')]",
+  "PASS 甲之: '甲之' -> [('IDENTIFIER','甲'),('KEYWORD','之')]（甲非递归源字，之 直接成KEYWORD）"
+ ]
+}

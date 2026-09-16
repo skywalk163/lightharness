@@ -1,0 +1,7 @@
+判据A PASS: 断裂态 test_宿主上下文.light 红 (rc=1)
+判据A PASS: 断裂态 test_宿主事件.light 红 (rc=1)
+判据B FAIL: 修复态 test_宿主上下文.light 应绿，实际 rc=1
+判据B PASS: 修复态 test_宿主事件.light 绿 (rc=0)
+判据C PASS: 正向控制 test_R20_关键字前缀标识符.light 绿 (rc=0)
+判据C FAIL: 词法探针未过（合法语法被误并）: ([('IDENTIFIER', '甲'), ('KEYWORD', '加'), ('IDENTIFIER', '乙')], [('KEYWORD', '设'), ('IDENTIFIER', '合并为'), ('LBRACE', '{'), ('RBRACE', '}')], [('KEYWORD', '返回'), ('KEYWORD', '真')])
+HAS FAIL

@@ -1,0 +1,3439 @@
+{
+ "module": "lexer",
+ "per_file": {
+  "light-merge/bootstrap/bootstrap_level3.light": {
+   "sha": "84bc6a0f75f6da2b0dc4cc6c8c54c64f8a6ebc344396c64071e5af53b9c35e12",
+   "n": 6617
+  },
+  "light-merge/bootstrap/bootstrap_level4.light": {
+   "sha": "566dbe7c8c4a38c28a6a15a77f972eac4163fdab17c65207eaf6909243f95662",
+   "n": 8559
+  },
+  "light-merge/bootstrap/bootstrap_level5.light": {
+   "sha": "d75425b82ceec2228a3906b094e0d289961f42147fc4e78ffa7d9586a096c04c",
+   "n": 10874
+  },
+  "light-merge/bootstrap/bootstrap_level5_backup.light": {
+   "sha": "eb492b8f8b695a033f3240624315c7d1049f57da282386a4e7b745a5a45d7e36",
+   "n": 11810
+  },
+  "light-merge/bootstrap/bootstrap_level6.light": {
+   "sha": "ff4317f83889a7f703358efc1fc9ce8b7159fc7a9ef23ee47eae849b08c383f6",
+   "n": 10055
+  },
+  "light-merge/bootstrap/bootstrap_merged.light": {
+   "sha": "f98c4cfe281fba04e7e36dd961a7faa6060e05751b213af1985a891c9ba1c7de",
+   "n": 11387
+  },
+  "light-merge/bootstrap/bootstrap_v3.light": {
+   "sha": "9a367fd747b06928644325f753606a71d46413f3cb20e73ee2925f2813da3b37",
+   "n": 17861
+  },
+  "light-merge/bootstrap/codegen.light": {
+   "sha": "735d246120a98bdb7eeb25a43bbd640b0b54abe63d8f9310c910f75fc5ea9ca7",
+   "n": 4354
+  },
+  "light-merge/bootstrap/compiler.light": {
+   "sha": "5259c116f0987b8163fac959eb5b74517a24a8048f219c9cf8b24f123600fb9d",
+   "n": 59
+  },
+  "light-merge/bootstrap/lexer.light": {
+   "sha": "9656ac0aa5f48de5ab56d867e82c20c849d6e15b55c52449858cd035aa3e2324",
+   "n": 2438
+  },
+  "light-merge/bootstrap/light_ast.light": {
+   "sha": "938ec922dea823ca1349362ade94b4b96234441543625ff491543079b97b8618",
+   "n": 1225
+  },
+  "light-merge/bootstrap/main.light": {
+   "sha": "a4d8710942801f37f72b7293b800cc869753b5ace1f84c3a4f3cf40c711b2e89",
+   "n": 22
+  },
+  "light-merge/bootstrap/parser.light": {
+   "sha": "8105443d2389818b3df3f28149dee7edb593e7869ca532636a722beef6a060b4",
+   "n": 9386
+  },
+  "light-merge/bootstrap/release/bootstrap_v3.light": {
+   "sha": "179b4664f347b6dcb4479d45900f675c083511d9075f3f41d4f5a46045f14f22",
+   "n": 17861
+  },
+  "light-merge/bootstrap/release/stdlib/CSV读写器.light": {
+   "sha": "df706bd78ec050f86fc48b2568fb0f7e74796fa423b966044975944e2487affa",
+   "n": 1739
+  },
+  "light-merge/bootstrap/release/stdlib/FFI.light": {
+   "sha": "3f968df8e39d9e256c3f18877ca2780caead778b45adb2afc72bf467b6147ac6",
+   "n": 296
+  },
+  "light-merge/bootstrap/release/stdlib/JSON.light": {
+   "sha": "5658412064375e3b2c70cea66c403ce270f41037cf5c80291e5b598cc29e4aca",
+   "n": 1082
+  },
+  "light-merge/bootstrap/release/stdlib/中文文本.light": {
+   "sha": "cacefbd3d715fbf286d24cecd2579694f3e46344b736adf5b0bc8b41812d90b7",
+   "n": 262
+  },
+  "light-merge/bootstrap/release/stdlib/临时文件.light": {
+   "sha": "8ed96b0e054e968cfdfab1da6006e5c35e86b3d00adcabbcc2e4987eb0d73f8e",
+   "n": 66
+  },
+  "light-merge/bootstrap/release/stdlib/列表工具.light": {
+   "sha": "e1ff46a0b16d50500c4f5c85736069f4041e4fb34b300f13f6214b343529dd03",
+   "n": 597
+  },
+  "light-merge/bootstrap/release/stdlib/加密.light": {
+   "sha": "b2911178172501f640b717bd7f82e00b7d9842f7db75f2ca71711b767f715899",
+   "n": 394
+  },
+  "light-merge/bootstrap/release/stdlib/历法.light": {
+   "sha": "718349f2a1d262db1f89aed33c235b8355834347ecf5b4b61d300a8c162b2742",
+   "n": 329
+  },
+  "light-merge/bootstrap/release/stdlib/参数解析.light": {
+   "sha": "296e33bcf4745d23183ef827c5aae086295e5c9c68ae821733a6ddec6d22741e",
+   "n": 110
+  },
+  "light-merge/bootstrap/release/stdlib/哈希.light": {
+   "sha": "45482bf97b39efed80fd58f2eee51742c93fb51e8f3b407f8becda74aadeb671",
+   "n": 17
+  },
+  "light-merge/bootstrap/release/stdlib/外部命令.light": {
+   "sha": "2d42e4cde6cbb791c28c2ca68dcf61fe06353416e36a44b46dc1fdc7b7700a34",
+   "n": 94
+  },
+  "light-merge/bootstrap/release/stdlib/字符串处理.light": {
+   "sha": "f856aa9715d0349ca0ba84b86df3023161677a8fbb7847d623fbb2d56e5c09b0",
+   "n": 776
+  },
+  "light-merge/bootstrap/release/stdlib/字符串工具.light": {
+   "sha": "078f739c2e3ef2d8443ec84226b98d21c03f83bb86dfdeb6b9e9e1a87e721c2c",
+   "n": 1458
+  },
+  "light-merge/bootstrap/release/stdlib/字符串常量.light": {
+   "sha": "ac3c60370e0e152fd3c2117df90f386b6e6b1b77ba7e3e0c3ad6cce4e1f45c13",
+   "n": 338
+  },
+  "light-merge/bootstrap/release/stdlib/对象池缓存.light": {
+   "sha": "4714ced62f4d15a619f6b222153c4a765693ab5d50cc85cdc7522c561f004392",
+   "n": 1338
+  },
+  "light-merge/bootstrap/release/stdlib/排版.light": {
+   "sha": "074be28286fa68fe53cff825afaa6c703d62300958e2f9eb439be3a5c268fac7",
+   "n": 123
+  },
+  "light-merge/bootstrap/release/stdlib/数学.light": {
+   "sha": "1a1f831d4eb6dea56e0bb160bf918b99852bdf16a53277953c14e68fcf201f50",
+   "n": 611
+  },
+  "light-merge/bootstrap/release/stdlib/数据结构.light": {
+   "sha": "8ea67e39cfc371fef70db74523a02d2bffb548783326f6394c75dd097383ef55",
+   "n": 2289
+  },
+  "light-merge/bootstrap/release/stdlib/文件匹配.light": {
+   "sha": "04142078efca433d9e5327797061329f3cce3360905ce35853677a9fd3c36bb2",
+   "n": 95
+  },
+  "light-merge/bootstrap/release/stdlib/文件系统.light": {
+   "sha": "137287ab6e27dbffcef736a108eeb9c262f5e7d6ecf115991fc5af88491d5728",
+   "n": 801
+  },
+  "light-merge/bootstrap/release/stdlib/断言工具.light": {
+   "sha": "8e40b724ea2faf8f51281d4ccf38df292d7a140591698bbb0b6f34cedcd4df2c",
+   "n": 2254
+  },
+  "light-merge/bootstrap/release/stdlib/日志系统增强.light": {
+   "sha": "4d878e8ae0cdbc56362e097b26f7447e2abb0138545b0aa4590d352edc346d1e",
+   "n": 1507
+  },
+  "light-merge/bootstrap/release/stdlib/日期时间.light": {
+   "sha": "ed264a2a7b3463915a2ff86a811c13b825d0539cd7a9b6f8d336fb5c897181cd",
+   "n": 2184
+  },
+  "light-merge/bootstrap/release/stdlib/时间管理.light": {
+   "sha": "b0077ec5eee4a4314def1aae7a33b3ce02afdf8aa224e68e8711bace2886c5a4",
+   "n": 846
+  },
+  "light-merge/bootstrap/release/stdlib/正则表达式.light": {
+   "sha": "8346f34d4049dec137038b9e14f6cabe0b38f49affff730a1dcd4a233efa181a",
+   "n": 972
+  },
+  "light-merge/bootstrap/release/stdlib/系统接口.light": {
+   "sha": "616619343e9bab16d1d4084550d7cb92dbaef587fff3fbb6ac1a6a0bf16d12bd",
+   "n": 378
+  },
+  "light-merge/bootstrap/release/stdlib/编码.light": {
+   "sha": "d9adb2dabd08c339bbdd16cac6172220d47aec2507463a5d07d11cd8881ae626",
+   "n": 19
+  },
+  "light-merge/bootstrap/release/stdlib/编码解码.light": {
+   "sha": "0d11cc85109fb0fa481d9581bb457edbd306acba2f299bb15147939cbfff854b",
+   "n": 495
+  },
+  "light-merge/bootstrap/release/stdlib/装饰器.light": {
+   "sha": "62ee070157c5aac13f517cd13a537cb39d633c57937a6caad929f4bea3d1830e",
+   "n": 650
+  },
+  "light-merge/bootstrap/release/stdlib/集合.light": {
+   "sha": "943fba5e4dabc31427726befb4c2971ea34454cb5e324f393d39097797540139",
+   "n": 1
+  },
+  "light-merge/bootstrap/release/stdlib/集合工具.light": {
+   "sha": "f8ec56587d71f75cb1ed3cd82751f31b9aa03ba6b68e75db4fa8ab913ce976ce",
+   "n": 98
+  },
+  "light-merge/bootstrap/release/stdlib/集合操作.light": {
+   "sha": "554d84eb51f3baccc96cd57b8953470bee13347660c055961547f5e89913c875",
+   "n": 19
+  },
+  "light-merge/bootstrap/test_if_chain.light": {
+   "sha": "74f3da67cde1123ba1d428e94c41e8743ae79b82dbfd23cade8bc22cc4c6ba1b",
+   "n": 64
+  },
+  "light-merge/bootstrap/test_modules/math_utils.light": {
+   "sha": "fec325d84cda97fa31b2f29d0f4d5fb6210bd0cc22f994b6691bb06aca27bd64",
+   "n": 54
+  },
+  "light-merge/bootstrap/test_modules/nested/deep.light": {
+   "sha": "6594ea92fdcc5ebdeca31a64c048cecd44919f0c2dc49c05ab504fbb8106e184",
+   "n": 11
+  },
+  "light-merge/bootstrap/test_modules/string_utils.light": {
+   "sha": "93de504a70ec29c341b9a0a1ff586a3cc90a5a759b80a6530cf11098b20f1827",
+   "n": 42
+  },
+  "light-merge/bootstrap/test_nested_if.light": {
+   "sha": "4743d52cf50c45602826886138f2959cac57912bf6ec0288679df6568148fbbe",
+   "n": 79
+  },
+  "light-merge/bootstrap/test_simple.light": {
+   "sha": "7f369c0f14653268eb62b7548a32de25d97ca4b4bfefe5698bfd6c0329389e3a",
+   "n": 6
+  },
+  "light-merge/bootstrap/token.light": {
+   "sha": "94069f8af539d53a34dcf8c21109181526489efd0e3a2ea1d0dd6dd90744f131",
+   "n": 487
+  },
+  "light-merge/examples/E阶段_L3L4原生语法/E1_L3_SQL原生.light": {
+   "sha": "d68b54e587f72a64c5b379051c83b6d8295b5a105f018716153433d5747b13b3",
+   "n": 141
+  },
+  "light-merge/examples/E阶段_L3L4原生语法/E2_L3_模式正则原生.light": {
+   "sha": "8de75d6d9a80e59960aca33fa9e53ee39993bf390ee3b2d6f36ae25bf2c65c6d",
+   "n": 145
+  },
+  "light-merge/examples/E阶段_L3L4原生语法/E3_L3_公式数学原生.light": {
+   "sha": "d7dfe673b7732d4a887159f53845bfa88ca6ccdcafdde989632f5b57c781bd69",
+   "n": 127
+  },
+  "light-merge/examples/E阶段_L3L4原生语法/E4_L4_沙箱隔离验证.light": {
+   "sha": "fdd65dc19ff4f97d6cacca2d2f8d03e605499918800074887430f27bdc0f1e10",
+   "n": 148
+  },
+  "light-merge/examples/F阶段_标准库增强/F3_光明侧三个增强模块示例.light": {
+   "sha": "ab84625f2b9936490871fffde38c8a693a1d7ba880484e25f161f4fa3d121bb2",
+   "n": 551
+  },
+  "light-merge/examples/J阶段_L4_C_Go_MoonBit/J1_C_快速求和.light": {
+   "sha": "d2097771a8f44f17de845708a1754b89b2b4cc76a69ecf9e3d2d377c1eb56463",
+   "n": 51
+  },
+  "light-merge/examples/J阶段_L4_C_Go_MoonBit/J2_Go_斐波那契.light": {
+   "sha": "163905887f0bfccb32accefb20d65912852ca5db83b1c47bd081e8cbeb392367",
+   "n": 51
+  },
+  "light-merge/examples/J阶段_L4_C_Go_MoonBit/J3_MoonBit_快速排序.light": {
+   "sha": "f796e8b721755b377578e16b4e8e968030c5545c4a5fe86e9c6ad11bf255bbfc",
+   "n": 27
+  },
+  "light-merge/examples/L0_core/01_印_输出.light": {
+   "sha": "febd581081e303f71c46e2c8c6f0ee1d0ba285e2d3fae0489323e8bcad149b43",
+   "n": 32
+  },
+  "light-merge/examples/L0_core/02_设_变量.light": {
+   "sha": "d7f976b66a63dc36c612d11d73f1675e4c7d47484d27e0027d109a551f92e66b",
+   "n": 81
+  },
+  "light-merge/examples/L0_core/03_若_条件判断.light": {
+   "sha": "0da4fdb40ef4ad42f753a309d97c4498e8541ec1134727a0755ef26d750de653",
+   "n": 112
+  },
+  "light-merge/examples/L0_core/04_遍_循环.light": {
+   "sha": "4c67b05d57f8d2881567316357e93fa40fc86cfd30d051fd5cfceb9b1bdba8cd",
+   "n": 97
+  },
+  "light-merge/examples/L0_core/05_段_函数定义.light": {
+   "sha": "f13e2dcd04c236623372dda05273e98346e078d33e7b2f7896b0e9e988e30ee4",
+   "n": 102
+  },
+  "light-merge/examples/L0_core/06_类_面向对象.light": {
+   "sha": "3dc4f7c7876b110a59ccf85aae7fbf2cbb2e4303bc59748ac94db9bec64b9108",
+   "n": 116
+  },
+  "light-merge/examples/L0_core/07_试_异常处理.light": {
+   "sha": "cfe609640a5102553f1acdbe5d6da7a5ca1ffd22a6177c067a4dc52fbd04cc18",
+   "n": 99
+  },
+  "light-merge/examples/L0_core/08_列_列表操作.light": {
+   "sha": "2fd0cc8245f8c9f0d2706926e6a6b440f6f37df790e500c0822de71971e970ed",
+   "n": 136
+  },
+  "light-merge/examples/L0_core/09_匹配_模式匹配.light": {
+   "sha": "2839e2bb8d4f2f66e3d21bd200f8cfd6445c235db63bbd1c31a34529e0e176de",
+   "n": 84
+  },
+  "light-merge/examples/L0_core/10_导_模块导入.light": {
+   "sha": "c5e01694770638570327dc649c34e64ce96372aa6b4fa0d44d255f7daa772069",
+   "n": 72
+  },
+  "light-merge/examples/L1_baihua/01_打印.light": {
+   "sha": "e4879482252f6a544af8b738273148ae32be1da0ecff28fa73677232f169d7b7",
+   "n": 36
+  },
+  "light-merge/examples/L1_baihua/02_计算.light": {
+   "sha": "9c92546f0fa7c4c3fc0d8ca2fabe46e7f3d49e3ae7508f6f43c388546756e582",
+   "n": 99
+  },
+  "light-merge/examples/L1_baihua/03_如果否则.light": {
+   "sha": "0d902ef23b6eb0cbf53829f56bbb7aef814484a46c5f71d775670c385a58c5ee",
+   "n": 122
+  },
+  "light-merge/examples/L1_baihua/04_当循环.light": {
+   "sha": "ce688d1e655624ad08c87e2433b8a085ed2f2bb9092e7d45767c0144224cb272",
+   "n": 129
+  },
+  "light-merge/examples/L1_baihua/05_遍循环.light": {
+   "sha": "789e3a3f54eaec1c4ae34afb2262ef09fc7a57c2edba4460608989bd46b1569f",
+   "n": 153
+  },
+  "light-merge/examples/L1_baihua/06_列表.light": {
+   "sha": "a1c05f59ea542d7c01636e1bbcd94051be63f08a967a5f64177a59212da22a4b",
+   "n": 153
+  },
+  "light-merge/examples/L1_baihua/07_字典.light": {
+   "sha": "df79112fa2dddd1546bc5729753ddf33826212160c850973064155380b08fe96",
+   "n": 153
+  },
+  "light-merge/examples/L1_baihua/08_函数.light": {
+   "sha": "9ff8eb6d82912b54dba970b41cd2f95a7235051ebc958e3f85daf20fb3b6d8f8",
+   "n": 161
+  },
+  "light-merge/examples/L1_baihua/09_异常.light": {
+   "sha": "bf4770920992a1c6920c431f66550e7e7b0bdeed0ccab0009fe74e0ce8221afb",
+   "n": 139
+  },
+  "light-merge/examples/L1_baihua/10_引Python画笑脸.light": {
+   "sha": "46a5defb8167206bbeabf0a849f1468683ddbec12c2debcb53b377fd72ca33ac",
+   "n": 21
+  },
+  "light-merge/examples/L2_wenyan/主程序.light": {
+   "sha": "3ff10f778a26d9bd414a16cd69e36f482e1f4fc733522acbc5a2a3cd19084806",
+   "n": 367
+  },
+  "light-merge/examples/L2_wenyan/学生模块.light": {
+   "sha": "0a104978839bbda09f3f4b810919c48bdb6c4b6f449fdde1e75bf4ea928f7ea7",
+   "n": 326
+  },
+  "light-merge/examples/L3_domain/all_in_one_L3_demo.light": {
+   "sha": "1120100891974c3f095e7d0a65537056ba9808f6f9e751a6271622d29704fb1b",
+   "n": 277
+  },
+  "light-merge/examples/L3_domain/demo1_sql.light": {
+   "sha": "12fdb77985cb4be14ff5167901977c7ceb78fa5102dd16d95157ed2c7cbbdc94",
+   "n": 171
+  },
+  "light-merge/examples/L3_domain/demo2_regex.light": {
+   "sha": "27a48f5f82ff3e7d7164ff7aeb5e4d5fdfde91a88bbf773c01742138f6fb00c5",
+   "n": 117
+  },
+  "light-merge/examples/L3_domain/demo3_math.light": {
+   "sha": "64194d63f75b02cb097586b993b1855dc1c913f1da1c0310396d18aa761a2de5",
+   "n": 136
+  },
+  "light-merge/examples/L3_domain/demo4_echarts.light": {
+   "sha": "8f2744b671da26ba8118a3a79d580931cfeaf45f22a7a2204cbe163a5b38dd64",
+   "n": 411
+  },
+  "light-merge/examples/L3_domain/demo5_markdown.light": {
+   "sha": "51a5372ff8265b915e12baa355e6f584c4c7667641938affc3142b6039a16481",
+   "n": 264
+  },
+  "light-merge/examples/L4_python/all_in_one_demo.light": {
+   "sha": "dd73989472c9e398c3d68dedc99f2363982bb7cec1c223bdd3267bfeb4053609",
+   "n": 152
+  },
+  "light-merge/examples/L4_python/demo1_numpy_mean.light": {
+   "sha": "9d7e2a5398f98a89fead6a91326d913dc5356025318ea374ae8f193f1729b780",
+   "n": 46
+  },
+  "light-merge/examples/L4_python/demo2_pandas_csv.light": {
+   "sha": "57ffd810ce9339e89b1f15eff6c0ae392e49b3830e0c0fb72e48ab99a009252f",
+   "n": 64
+  },
+  "light-merge/examples/L4_python/demo3_matplotlib_plot.light": {
+   "sha": "abdd471427011624a8a545160290b54cb22c6ca4cebb5e5963bbc2191c64f9ab",
+   "n": 80
+  },
+  "light-merge/examples/L4_python/demo4_requests_http.light": {
+   "sha": "858c4c5bcf4c0d28eb277104514fa909a0ad9f9e4d9ab2715c82f887a0d74844",
+   "n": 74
+  },
+  "light-merge/examples/L4_python/demo5_sklearn_iris.light": {
+   "sha": "03cc74720a262bfff319f258e04a98f27e8ff25ec01891bbb2e7d9230fd1af79",
+   "n": 55
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z1_基本类型标注.light": {
+   "sha": "37a7862cd12613ef0c547b248ca39162abef50be04b52ede4afe8438b1c49307",
+   "n": 81
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z2_泛型类型.light": {
+   "sha": "5267a9e806198fc34d82065f867660bb792c158b2e9a7e2a68462930dfa55e91",
+   "n": 196
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z3_联合类型与可选类型.light": {
+   "sha": "c92908d1decdf57254f76c2ab56b2f5272480b28762196a498bf62a82aaeb698",
+   "n": 122
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z4_函数类型标注.light": {
+   "sha": "7e00aa0bf762d321bf146fe12039d5e82cf5481f642bd1f009b52510138d4d66",
+   "n": 285
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z5_分级类型检查.light": {
+   "sha": "c9e6a3c8706f75de75b38976b52528f8f7002e27c54fb95399f8c98644c7376c",
+   "n": 110
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z6_类型推断实战.light": {
+   "sha": "4abbb501c5bca321577c826f3bf220bee26560ba5b15593b828ece7c4d92f5c3",
+   "n": 580
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z7_类与接口类型标注.light": {
+   "sha": "c662ba519066861abe74532c960aa0cc610fb0d19dd1c90bc2f0f8fdaa72e398",
+   "n": 300
+  },
+  "light-merge/examples/Z阶段_可选类型系统/Z8_综合实战.light": {
+   "sha": "9d7171733b2a2cc5b72958a47b5b85c11184f1b4bd1943053041b300470bdf01",
+   "n": 769
+  },
+  "light-merge/examples/_test_nested_closure.light": {
+   "sha": "943fba5e4dabc31427726befb4c2971ea34454cb5e324f393d39097797540139",
+   "n": 1
+  },
+  "light-merge/examples/advanced.light": {
+   "sha": "a179cbce98af2fdd80ebba4c089ed8d8a225d5a906245bb1073dc72690d76765",
+   "n": 186
+  },
+  "light-merge/examples/algorithms/data_structures.light": {
+   "sha": "5f309cb4ebd41c47997d0d65591987ccabbef75f67e1174fd8b5b52cb0818a7d",
+   "n": 2633
+  },
+  "light-merge/examples/algorithms/sorting.light": {
+   "sha": "0a2f7e70e3b6d5e432d1c35df1f003f0ee664be3976c6fc0c5ef13c23e5fd668",
+   "n": 2119
+  },
+  "light-merge/examples/algorithms_lib/主.light": {
+   "sha": "27f92723788f66be2a1bbff34924cf1d46305134f9a2cad0822df4691d1bf0c1",
+   "n": 5710
+  },
+  "light-merge/examples/basic.light": {
+   "sha": "305801f3ec59661048ab3d1054af236b0d57b33855550c5e37566b47a5b82697",
+   "n": 131
+  },
+  "light-merge/examples/blog_app/main.light": {
+   "sha": "ab5d4f425c10c74d0bbaad41f573c6893181096420d1323ae80978544a3afa65",
+   "n": 767
+  },
+  "light-merge/examples/blog_system/主.light": {
+   "sha": "3dc865e18978e74dd1a74c0d24ddee6089eccee4ba1af8f0835d5e2e8acf20e4",
+   "n": 1157
+  },
+  "light-merge/examples/bootstrap_eval.light": {
+   "sha": "3dcd7cdffab0cfd19e2c8351cbcb2f8458c3a75584c275281a007fb659bdac25",
+   "n": 412
+  },
+  "light-merge/examples/bootstrap_lexer.light": {
+   "sha": "027eabb489cf960f3768e1f021d9b005dcef4d504e382dcdd998fe0215cffb79",
+   "n": 361
+  },
+  "light-merge/examples/calculator.light": {
+   "sha": "6e20c85ec0353655e02883f5bc67280a873e8fec05fd4fe44a9416f3a9fd05c2",
+   "n": 141
+  },
+  "light-merge/examples/calculator_app/主.light": {
+   "sha": "33e084084896e40f55d9b8da90b723d3d816942a45ee915a817e22bb114087cb",
+   "n": 292
+  },
+  "light-merge/examples/chat_bot/主.light": {
+   "sha": "72bbfd6a11c850665ed76e717a9ced95d1aa025fce3e01937bed6ae5f1cda0fb",
+   "n": 596
+  },
+  "light-merge/examples/class_access_control.light": {
+   "sha": "0f4ea296ddb6db88ef83599927b6d9803356ae9742491f5a7baba8e784dd291f",
+   "n": 175
+  },
+  "light-merge/examples/class_complete.light": {
+   "sha": "58d648f02344bb02a10dc72869d1aedd463d397e1e9e4e37b5c025b1f5f62ba7",
+   "n": 250
+  },
+  "light-merge/examples/class_example.light": {
+   "sha": "b81507cdedb16091b41e86a671a94e2d18529d3b3e9ef8d658ab8c8d50a623db",
+   "n": 64
+  },
+  "light-merge/examples/class_static.light": {
+   "sha": "8cb2a659e1ab9f3fa032382c8ce1c8569c7add64786f7042e1ab1e4fc14d443b",
+   "n": 156
+  },
+  "light-merge/examples/cli_tool/file_organizer.light": {
+   "sha": "ae9190520ae0a5402a83e6ba603eb4e4fd76a54ffd255c39cc478f7e1823309a",
+   "n": 2363
+  },
+  "light-merge/examples/data_cleaner/主程序.light": {
+   "sha": "6d4bceb542bc9e481f16728debb75244c1cbb29e3b1ec4d15feb8c7f813de6cd",
+   "n": 1891
+  },
+  "light-merge/examples/data_cleaner/分析器.light": {
+   "sha": "586e98e83c547fe59eb3f5c9e8ec98603659eab8c3fe792821ab790adcbdf3f4",
+   "n": 2075
+  },
+  "light-merge/examples/data_cleaner/清洗器.light": {
+   "sha": "dffe7799e0415eb5312cbcf3a119d9e113b895ebb1bdc1715b01d25d5937fe3f",
+   "n": 1706
+  },
+  "light-merge/examples/data_cleaner/转换器.light": {
+   "sha": "d714c08621a23e07945b5079771eba68f67894c29a38276597723fd1cd38744e",
+   "n": 1590
+  },
+  "light-merge/examples/data_pipeline/pipeline.light": {
+   "sha": "3ad47d2db0cf4e952d4619a4ebac8a9d000263ef305b1b9182d09f2b06bd910f",
+   "n": 2479
+  },
+  "light-merge/examples/data_pipeline_enhanced/主.light": {
+   "sha": "a0c96e828b1ad0fb6554f3889d822d53e52ece1c451bc905fb1b753bf7b47741",
+   "n": 2154
+  },
+  "light-merge/examples/data_visualization/主.light": {
+   "sha": "9510e5de14a4bb66c76c70665f209a4aefc1bc82faca7d63be8c0f143cc8bd38",
+   "n": 384
+  },
+  "light-merge/examples/ffi_comprehensive.light": {
+   "sha": "588edca424d20e2aff0eb59c6d916b507250d02e754194f20959cc032d5bcc49",
+   "n": 96
+  },
+  "light-merge/examples/ffi_math.light": {
+   "sha": "0a1d012f7e6343af6ffaa86c43ee4bcdf810666587261a6b8e4b550e5ad4db9a",
+   "n": 273
+  },
+  "light-merge/examples/ffi_system.light": {
+   "sha": "02295c2cb20f9b182fc6f858a6abb0f158a0ccd67b1fa0237e996ae378f1625a",
+   "n": 61
+  },
+  "light-merge/examples/file_search/主.light": {
+   "sha": "0d7c306e47a7e504dc867c3c2a7878e9ec0409126389142b917eaff238238071",
+   "n": 254
+  },
+  "light-merge/examples/file_tools/batch_rename/主.light": {
+   "sha": "b8ac7ff043871095456091664c61a0f91c7ceaab47ac43740a26596375ccf46f",
+   "n": 706
+  },
+  "light-merge/examples/games/guess_number.light": {
+   "sha": "3cdba219512a8db5beff13cc65c9795993634575090f3133c7ed31831893b7c4",
+   "n": 207
+  },
+  "light-merge/examples/games/guess_number/主.light": {
+   "sha": "a354aed3ed7110fa86b664d80860e5951d8dda07f0af8867e75b394548c76f25",
+   "n": 758
+  },
+  "light-merge/examples/games/snake.light": {
+   "sha": "ac74580a1896f40cd310aeebaeef191ecff5955e84324b741fa02146758bc0f3",
+   "n": 1008
+  },
+  "light-merge/examples/hanoi.light": {
+   "sha": "54913e5d7d19941e7004de165e62c3cdbb2dd614a17822c38867afa91dc98464",
+   "n": 100
+  },
+  "light-merge/examples/harness/LLM通道.light": {
+   "sha": "900cf24fe497ab4f5d25b37182b0c6cb515f71d1d6c5bb3f85dbf9dbb5e843b5",
+   "n": 1048
+  },
+  "light-merge/examples/harness/M2_流式对话.light": {
+   "sha": "1c476be7549b013ebfc9a6bd513b6435016b07e103e408cbf3fe5c6ab5e3fdcc",
+   "n": 333
+  },
+  "light-merge/examples/harness/主程序.light": {
+   "sha": "080f76b4f575bed2070b13be74ddda3d3c3ba03a25e9e6781024604637c68802",
+   "n": 418
+  },
+  "light-merge/examples/harness/打分.light": {
+   "sha": "c3d49f602ce2bd95eedf696447a2d5fcc95ecdcdf48659276646bf46a478b5a1",
+   "n": 727
+  },
+  "light-merge/examples/harness/真实通道.light": {
+   "sha": "624f7caa9001f99e7ef176ea2aef657fd979dbb24489d66764ad9ebf3d819082",
+   "n": 120
+  },
+  "light-merge/examples/harness/编排.light": {
+   "sha": "b718cd36777db3280feb8f9dbe76bb476611a04e554de522b45f102a23e0be2f",
+   "n": 546
+  },
+  "light-merge/examples/harness/行流.light": {
+   "sha": "de416968a4e1ac7c990d9d3464d8a830902aedbbffff14c47af6bf16d55d819b",
+   "n": 126
+  },
+  "light-merge/examples/harness/评测驱动.light": {
+   "sha": "db7a563269bf1b593dd79c652dc724b8f4296c602210d9f6cddc2fed27293d50",
+   "n": 4349
+  },
+  "light-merge/examples/harness/错误分类.light": {
+   "sha": "923f652961cab3e8799dfd76ae9d69c74459f780490e2ac5fb51b468adbbd61f",
+   "n": 530
+  },
+  "light-merge/examples/hello.light": {
+   "sha": "2b4eeb9aa566b6a2f9cca6f5135740e12c88f47c979994943f180060d6eb6ca6",
+   "n": 64
+  },
+  "light-merge/examples/kids/draw_shapes.light": {
+   "sha": "d6a0c46cd73aac0cf697128cd224bc43e803b38b3ea6bc27892110583a6fa632",
+   "n": 867
+  },
+  "light-merge/examples/kids/number_game.light": {
+   "sha": "c1046924ea6c409bd0da4088f2ab22989fab4236534d1f20982190410bdd6488",
+   "n": 623
+  },
+  "light-merge/examples/kids/story_generator.light": {
+   "sha": "a65fa169f631224664aa108bd7e5b12052f0ef97bbb253626340e8ea354fcc0e",
+   "n": 871
+  },
+  "light-merge/examples/markdown_editor/主.light": {
+   "sha": "f043e5dc3ff19cd1283e52bc6e85c0eae6e6b6830f35f317fe0b0ece16b7e9c5",
+   "n": 958
+  },
+  "light-merge/examples/module_demo.light": {
+   "sha": "28ec5c561ec23897823ecf20b0ae64a3ae2828e7b6fa0843c5e5e03b2c58dcbb",
+   "n": 145
+  },
+  "light-merge/examples/modules/main.light": {
+   "sha": "2ca2a4240060a692d7dd572854d445c3e00c3daec1efd9d093f62c3ac76cef9b",
+   "n": 53
+  },
+  "light-merge/examples/modules/math_utils.light": {
+   "sha": "97b2e35c65a9b109f14bd656e9ccc803487a5f2ca3dd64a4f990af2423c8418c",
+   "n": 37
+  },
+  "light-merge/examples/modules/simple_export.light": {
+   "sha": "d9e533f9b7a93ce302ef706caf39bebfad275c139823f93a9924a6ff3294c304",
+   "n": 19
+  },
+  "light-merge/examples/modules/string_utils.light": {
+   "sha": "2d2bdbb4979f778a05655b4d7673880311a0d702c3f66a3f1931a8ef971362d9",
+   "n": 22
+  },
+  "light-merge/examples/my_first.light": {
+   "sha": "62a35faa4d7d85c9ecb90d0542b5c085072e8b871d84125cef5508ccebe235c7",
+   "n": 91
+  },
+  "light-merge/examples/password_manager/主.light": {
+   "sha": "f1fcff1ca2088aa549797aa327e0721b4b91218c0f772043d1b1886da8f05ace",
+   "n": 1059
+  },
+  "light-merge/examples/snake_game/主.light": {
+   "sha": "d5df38df0e1991a6d9f5e185a40bd8f8262ef0a61da992fba48c38f4c6006248",
+   "n": 1409
+  },
+  "light-merge/examples/student_management.light": {
+   "sha": "94eeb83e54b686c1c88ffb5a511d5c9d4a847a6985cb7f9732dd2e7969359aed",
+   "n": 236
+  },
+  "light-merge/examples/test_L051.light": {
+   "sha": "d922af6e4876a3cd6166d3d97b4dc916497231275687265210f1d4e11bb17434",
+   "n": 58
+  },
+  "light-merge/examples/test_L052.light": {
+   "sha": "800d5079c338c717a65c74a4ce7925d044dc7a4f6f88cfdd47502966d430ea1e",
+   "n": 24
+  },
+  "light-merge/examples/test_L056.light": {
+   "sha": "2cc4e2c653f6505db6eec7f6c5813b7109db651a2ea73c5f160b60eb3e1639c4",
+   "n": 65
+  },
+  "light-merge/examples/test_L068.light": {
+   "sha": "2819fdc4a1703d2dd66f95d2d06ec372e9f334f4236032ac5c747b701f3c7e62",
+   "n": 83
+  },
+  "light-merge/examples/test_L069.light": {
+   "sha": "5c95ba5a28e6ea59e8f1d6b2fd6e11132450cfa0ff87b002513488b85bc433a7",
+   "n": 121
+  },
+  "light-merge/examples/test_L070.light": {
+   "sha": "ba7f84a6b84ec6f08bf80a6b4b00fc7c43c267f900b5a84b1668fdebaa87f1b6",
+   "n": 127
+  },
+  "light-merge/examples/test_L071.light": {
+   "sha": "e2d51ba61a2fa840a2eae6b02ce177901b9f4355d40ad06ebba8c270526dcf08",
+   "n": 86
+  },
+  "light-merge/examples/test_L072.light": {
+   "sha": "5a198d28b40c2b36af9501ac49f7448be7b1b598bf95bc5c6fc37335cfcd3614",
+   "n": 519
+  },
+  "light-merge/examples/test_L073.light": {
+   "sha": "7c96c00a3c9deb4137b7f1c523341c580cb1a30e6cab439dcd1f5052d0294b9b",
+   "n": 43
+  },
+  "light-merge/examples/test_L074.light": {
+   "sha": "1dab595b469a7a55ea1a44ed79a1fbe8dd9b1ef0e86410a40ba0944107cd10cf",
+   "n": 118
+  },
+  "light-merge/examples/test_L075.light": {
+   "sha": "58a065266e05b50cd3ea0a38ca1e429bed460f8845f7bf3e6fd0e200cc16d8ab",
+   "n": 39
+  },
+  "light-merge/examples/test_L076.light": {
+   "sha": "26339bb1f31261a1cf127db46199194a45fa3b26db200dfaa310e82d1a90113c",
+   "n": 29
+  },
+  "light-merge/examples/test_L077.light": {
+   "sha": "dbabf0b95163fa6ce6d11895352c4d8887efb7e62898a811f9063a2b590483ee",
+   "n": 77
+  },
+  "light-merge/examples/test_bubble.light": {
+   "sha": "2a6c78e0d2cb6ba86892e4dd10af8992ff968c23ab88dc49f13eb56de1fb84f0",
+   "n": 153
+  },
+  "light-merge/examples/test_fib.light": {
+   "sha": "7065d0521197e1f9ab9aeba577312da46e0a0ca83b2a33678e3c5daba844e091",
+   "n": 54
+  },
+  "light-merge/examples/test_fib_src.light": {
+   "sha": "7065d0521197e1f9ab9aeba577312da46e0a0ca83b2a33678e3c5daba844e091",
+   "n": 54
+  },
+  "light-merge/examples/test_hello.light": {
+   "sha": "cb5d77a6e895703198601d02961770ccfa627f2335a9424390124c6ab3f69b97",
+   "n": 44
+  },
+  "light-merge/examples/test_hello_src.light": {
+   "sha": "cb5d77a6e895703198601d02961770ccfa627f2335a9424390124c6ab3f69b97",
+   "n": 44
+  },
+  "light-merge/examples/test_para.light": {
+   "sha": "8adfe5d09e6e5b20aea7bba70b8121b284d6cca731ddd6699968d5e8d647896a",
+   "n": 44
+  },
+  "light-merge/examples/test_turing.light": {
+   "sha": "fc96b4e4f6ed3f7dbe5715f02f7934a388482846ecc20ecb6d88bd38eac160a4",
+   "n": 325
+  },
+  "light-merge/examples/text_stats/主.light": {
+   "sha": "9e3dcaa285a098abd2fa68a6d07b41037aeeb560b021decae78fb396cb9eeaf9",
+   "n": 283
+  },
+  "light-merge/examples/todo_app/main.light": {
+   "sha": "886e7b3e0243c33bcac8bb99af4ed0020d02e54e5113a3a0bd8be59d63069b74",
+   "n": 797
+  },
+  "light-merge/examples/todo_cli/主.light": {
+   "sha": "b7ba3fc8434b3f7891c9cd002e5c6ad3a3926fa24a9897ebc61043dfee05b948",
+   "n": 1192
+  },
+  "light-merge/examples/type_annotation_demo.light": {
+   "sha": "496a74835e7121b8293f2cc7a2f8fcd4ad356bb03b66fe00f68316d0d61d46e9",
+   "n": 240
+  },
+  "light-merge/examples/typed_demo.light": {
+   "sha": "050aff86bffd6030047e56c2c5f9bba37e2849e70f13d09eaa2324ea5ff4ffe3",
+   "n": 81
+  },
+  "light-merge/examples/weather_app/config.light": {
+   "sha": "39b2b7bd5edacf3f916040c6d516a87ebda6bfbb31d251e6eb8c84dd3c521894",
+   "n": 8
+  },
+  "light-merge/examples/weather_app/main.light": {
+   "sha": "57bd43b2cecc7534cff4aa6ee533cb8888df6cae353c83cbbba11c21343c79d4",
+   "n": 234
+  },
+  "light-merge/examples/weather_app/utils.light": {
+   "sha": "6b1d97daef410589153fb195518fd02e22900691634374a0a0b32fc82e14e7e8",
+   "n": 58
+  },
+  "light-merge/examples/web_api/todo_api/主.light": {
+   "sha": "546ddc6cd8aeda045bded03d39f497c5e282951384baddb8a4f7b60fd05b7fe5",
+   "n": 1335
+  },
+  "light-merge/examples/web_crawler/crawler.light": {
+   "sha": "117016969db66687ca8af573e7d35863a1d9251c7da33989ae7defe62f6cc490",
+   "n": 1475
+  },
+  "light-merge/examples/web_crawler/主.light": {
+   "sha": "e1bc193e999e3ad377496c1d76773cf4fb5116fa47a674723c34f26eb3ec5eba",
+   "n": 1594
+  },
+  "light-merge/src/templates/data_analysis/主.light": {
+   "sha": "1fb6e1add175e56a671a8347cfc21da0732ebd35de344614afc00932825eb5fb",
+   "n": 185
+  },
+  "light-merge/src/templates/data_analysis/分析.light": {
+   "sha": "e7a115e9b081166a0c7e373939c361edfd7669dfda0e27a88b6bc590b2140e4a",
+   "n": 808
+  },
+  "light-merge/src/templates/student_management/主.light": {
+   "sha": "188bac7354a759bdf4a1e675ceda830ba06328d5bedb632e40dce790f51c3aa3",
+   "n": 202
+  },
+  "light-merge/src/templates/student_management/学生管理.light": {
+   "sha": "f55ce0db60edd3cb3d5518299084507b50d9c1141ede0eed727ad7d9f7ef827a",
+   "n": 120
+  },
+  "light-merge/src/templates/student_management/成绩管理.light": {
+   "sha": "bd29cd41d103e7caad03a4e9d9e52f39bfab82cd44d949829bf6c02e1833e1f7",
+   "n": 229
+  },
+  "light-merge/src/templates/web_service/主.light": {
+   "sha": "0edab4f707b02df330a4665fc273abeb25aa05e906d8629e4a8477815c3e2369",
+   "n": 121
+  },
+  "light-merge/src/templates/web_service/路由.light": {
+   "sha": "a19d76bdc60f5e1b38ebb7559224cb5bf424ce541a70fd47e241288f817f3e27",
+   "n": 137
+  },
+  "light-merge/stdlib/Base64.light": {
+   "sha": "f6220c7f5344657d8cd75606460822573a475f1f11257b50d6a712e05be92d77",
+   "n": 2083
+  },
+  "light-merge/stdlib/CSV.light": {
+   "sha": "f74ead4409394f864afe5a4d581b4f1459a59ecd76412b5fc193efd27f71a51c",
+   "n": 48
+  },
+  "light-merge/stdlib/CSV读写器.light": {
+   "sha": "5c0b2d1fee863c8d89f77a8131c364d5a0d72a0b455f7c9687e2a734581681dc",
+   "n": 43
+  },
+  "light-merge/stdlib/FFI.light": {
+   "sha": "80c1b737b7c2574ad58ca1d467ad7478e2ef91d7a8903fafc6b0a8928aaaf48d",
+   "n": 86
+  },
+  "light-merge/stdlib/FFI增强.light": {
+   "sha": "715207a2512ba51f8a23de10c64184a3e4ccefd14e54d543a62dda18ff4252c3",
+   "n": 9
+  },
+  "light-merge/stdlib/HTTP.light": {
+   "sha": "d2756c5c4dad0644c8008070f45720d7bbf8b7c189e9b6c41e504877025225a6",
+   "n": 42
+  },
+  "light-merge/stdlib/HTTP服务端.light": {
+   "sha": "928549455cad74e334d86de212efd5ddae4a9fd04444d57475b9792a31442e39",
+   "n": 2526
+  },
+  "light-merge/stdlib/JSON.light": {
+   "sha": "c233d394e0671d00a2614817728d986ee98fcb6b754080e2baf42d1322c5cee9",
+   "n": 966
+  },
+  "light-merge/stdlib/JSONL.light": {
+   "sha": "8802a46704e2a4da7df7b6a6db6916ae497500140c4b9dd67ece803bc0ab51db",
+   "n": 272
+  },
+  "light-merge/stdlib/JSON核心.light": {
+   "sha": "a4c23e38f83321ce3388e6c7a0a31aa283b9c6b28fae045acbf2678ab42730cb",
+   "n": 2550
+  },
+  "light-merge/stdlib/JSON编解码.light": {
+   "sha": "15ecef11fb278366a26d8ffc616cf069e4a77372971283a667bf8291d0a60a07",
+   "n": 1518
+  },
+  "light-merge/stdlib/SSE.light": {
+   "sha": "c78041aad719689da4d66dbd6a490b010cbd0ee0c66126a8caea8f66c37cd466",
+   "n": 768
+  },
+  "light-merge/stdlib/XML.light": {
+   "sha": "76501b8427c601f84f997612391752fb1c936dbbd30570144134350a44660f97",
+   "n": 60
+  },
+  "light-merge/stdlib/inspect.light": {
+   "sha": "65383298df62c4a8634de812b6c1974d3894dd4f28c7a268b378febbab20599e",
+   "n": 43
+  },
+  "light-merge/stdlib/re.light": {
+   "sha": "4f21faef04812b6c94baa8fff759658fd3282cf6293004be33d4e5de504772d2",
+   "n": 7964
+  },
+  "light-merge/stdlib/sys.light": {
+   "sha": "9c8f1d1c8ecf100c034195c0538eaee6cf9515de70e4e0311d07afbdfea6ae1a",
+   "n": 124
+  },
+  "light-merge/stdlib/time.light": {
+   "sha": "448e1147b88e7773382d7d03a2699a7a00e983111fc8d46743f0998b1383143d",
+   "n": 340
+  },
+  "light-merge/stdlib/uuid工具.light": {
+   "sha": "8685aa3c3eee48357c835cd4f2036d798060dea60964d874e722a854f671bf1b",
+   "n": 1236
+  },
+  "light-merge/stdlib/中国传统节日.light": {
+   "sha": "efb5d1f1132a16af8d8e63c273bfa99993a1476661578863be8bec9900c6e7e7",
+   "n": 1471
+  },
+  "light-merge/stdlib/中国行政区划.light": {
+   "sha": "1287238ba2df5cd1853ee52eac984e3b0fecece2d3386b99bc237e9c087b3de0",
+   "n": 5282
+  },
+  "light-merge/stdlib/中文NLP.light": {
+   "sha": "250f45d8513a5675875d1c0ec9abb7c45b6fb3af57c5a95932c4fb2125a0d52d",
+   "n": 54
+  },
+  "light-merge/stdlib/中文分词.light": {
+   "sha": "9ecd991af5bf4039b9170996a90b5f6e8763174df6d80107ca0086e488289854",
+   "n": 1717
+  },
+  "light-merge/stdlib/中文数字转换.light": {
+   "sha": "6e8a203524838f0ede9d53ca39fddbd769376b78656a2ee158e5370875c09f32",
+   "n": 1362
+  },
+  "light-merge/stdlib/中文文本.light": {
+   "sha": "b9fcb9f8a82baab7d6641d326cc61c9d1a6befab17edab2d51745d67406dc557",
+   "n": 20
+  },
+  "light-merge/stdlib/中文文本处理.light": {
+   "sha": "fca479c62d94269dea1274dce7f01917fc77b1355cfbadd25f476094f28ae1e7",
+   "n": 1310
+  },
+  "light-merge/stdlib/中文编码.light": {
+   "sha": "d830a52b6867575868daa089fb673cfd6292d659951f347dc4748990eb099131",
+   "n": 1917
+  },
+  "light-merge/stdlib/临时文件.light": {
+   "sha": "d880daa44d7c0dc27d66cd23166ae9f126167b16fe77409b4374cc438e9f1956",
+   "n": 16
+  },
+  "light-merge/stdlib/事件总线.light": {
+   "sha": "3f54faa0e197915dd53b6e7f9da02a957486be71b8acc4f86731f561b6da396a",
+   "n": 1083
+  },
+  "light-merge/stdlib/代理工具集.light": {
+   "sha": "553b3314cbbd0082c93d45192c0a1be19125c7933f59cf05510480e14e220cf0",
+   "n": 3852
+  },
+  "light-merge/stdlib/代理循环.light": {
+   "sha": "2dd40b6d8b6a3d4791f8b4bf6e14363a1d2eea5329915e904cd7d0bfee6bd0cf",
+   "n": 3868
+  },
+  "light-merge/stdlib/伪终端.light": {
+   "sha": "be97f882d6d3dec92c7a772f11a68240d487968a60e33673e9d13d34be19161b",
+   "n": 3436
+  },
+  "light-merge/stdlib/信号.light": {
+   "sha": "390337c2539af4d917eaa163ce6e02102604f8688bfe64a61da9824ba9744510",
+   "n": 27
+  },
+  "light-merge/stdlib/内置核心列表.light": {
+   "sha": "ae28ef97add2705948814f98c27d5c7668643fe715315bf80eaab6d0d05494a1",
+   "n": 405
+  },
+  "light-merge/stdlib/内置核心判型.light": {
+   "sha": "179f7475b929f588b1f2313e9d9318b21761e10b4fc50a2f185320f85a850578",
+   "n": 259
+  },
+  "light-merge/stdlib/内置核心字典.light": {
+   "sha": "f51ed48f52c4660637076a06f3417e5250f162c22928cc2a8187f1ac93c0dd73",
+   "n": 149
+  },
+  "light-merge/stdlib/内置核心字符串.light": {
+   "sha": "bb5909f04093d01fdcb1df33a47052a0c9a487c407ee0bc7bf16bf62a8b15e22",
+   "n": 351
+  },
+  "light-merge/stdlib/内置核心路径.light": {
+   "sha": "ad9fbb479c4ea5d82c65eda464690a0b2dbd7410d4c7450d9d1312ae56db6b06",
+   "n": 402
+  },
+  "light-merge/stdlib/内置核心转换.light": {
+   "sha": "9bf1d3f6aa030e3180af3a707ebf5d074128d42b0491a59b98818747bafac419",
+   "n": 182
+  },
+  "light-merge/stdlib/农历.light": {
+   "sha": "f355f85c9b2d5b5f23b592c2511f83192997783638d716849663c8c3592c4057",
+   "n": 9602
+  },
+  "light-merge/stdlib/分布式/主控.light": {
+   "sha": "5c50bfe15531a2d33d9dd92350db47e584c89937a18a2c6a66d8dda7dde9ddb2",
+   "n": 106
+  },
+  "light-merge/stdlib/分布式/节点.light": {
+   "sha": "7301eff1d7ae4b2e2304985a811cdb054edcc0f8bec25a6c02c18d9942edef26",
+   "n": 94
+  },
+  "light-merge/stdlib/分布式/节点核心.light": {
+   "sha": "f79ac0d74a83970a9490e170f28c4b55b0e462b1d3d01f0da27f5040c370e126",
+   "n": 1005
+  },
+  "light-merge/stdlib/分布式/调度核心.light": {
+   "sha": "c1464b677248e61b93654c6a9192b7ff16fec7ac8420467164a02ef452bc5d04",
+   "n": 2248
+  },
+  "light-merge/stdlib/分词.light": {
+   "sha": "eaeb8dca332204f27f09d53a05cb5783d46c22b4d64aec3dac874beabdce490c",
+   "n": 15
+  },
+  "light-merge/stdlib/列表工具.light": {
+   "sha": "02b6e7a379fd8741e5767570b1578c7a6d6b80e560967951381883354b1542e9",
+   "n": 1206
+  },
+  "light-merge/stdlib/加密.light": {
+   "sha": "c19e9f340246bcd9ebfa410859c908eb5618cc3e3affc2c180124c10b3ef0e4f",
+   "n": 45
+  },
+  "light-merge/stdlib/历法.light": {
+   "sha": "ec3b629da06f61b88ab1c3c1996247b25790d6db7f650114cc02e9f6d624f55f",
+   "n": 21
+  },
+  "light-merge/stdlib/参数解析.light": {
+   "sha": "a3830ed0562af3b7663f2af7c20ab67eaefcc006abd676ec26e47a875f17c5ad",
+   "n": 2029
+  },
+  "light-merge/stdlib/向量.light": {
+   "sha": "8973b443ca5711c2f5bec87f9fe1880005c31445c061b442fda444b5ff4695a5",
+   "n": 2020
+  },
+  "light-merge/stdlib/哈希.light": {
+   "sha": "aef4afa5ce46099f7fb8a68b26638b3cf5966197881d50b64cec3508cfd7f7c0",
+   "n": 230
+  },
+  "light-merge/stdlib/图像处理基础.light": {
+   "sha": "a0cd4db7c3146072c5ba4db97efc37121eefbbc9a2a6d19fc30b43f2e63e5a1b",
+   "n": 910
+  },
+  "light-merge/stdlib/复数.light": {
+   "sha": "847350ae7f57d67a7b2cc405256958d52dd69efb54cb6466f4a883c35879a5ad",
+   "n": 745
+  },
+  "light-merge/stdlib/外部命令.light": {
+   "sha": "4e1928c89a4927900aae89ba3bd18eb10dc34bad81f2d93d299dcedae041a532",
+   "n": 12
+  },
+  "light-merge/stdlib/大模型客户端.light": {
+   "sha": "8237fbae9ad91efcceafde5a0ae223ceffc6a93d71c68635ed649a647c6cfb18",
+   "n": 1957
+  },
+  "light-merge/stdlib/字符串处理.light": {
+   "sha": "d27f1b78cd28d65b1ac1e37f481e004d9bdd122d77296e2cf6ee9827e058cbe7",
+   "n": 122
+  },
+  "light-merge/stdlib/字符串工具.light": {
+   "sha": "f325ca93f6b44b7f5520d3cc699f0b04fdd5aa7ea2577952d7d048cd1957fbe9",
+   "n": 4327
+  },
+  "light-merge/stdlib/字符串工具轻量.light": {
+   "sha": "29b8fd5e7f5808a20f5795354313700662317bfc50f22a0b46f32ba0b9fdcb55",
+   "n": 1002
+  },
+  "light-merge/stdlib/字符串常量.light": {
+   "sha": "bf1718dcbf2086c15acd2173789c2d9a3bec42570c62d2d6f6e78d00654e1b11",
+   "n": 1619
+  },
+  "light-merge/stdlib/对象池缓存.light": {
+   "sha": "409bfadb6b73f11bf849bf64441dc654c41af0d52d5ce879420dad2753dbead7",
+   "n": 1215
+  },
+  "light-merge/stdlib/并发.light": {
+   "sha": "1082c0131eecde85fe8b88e4b0253889db8b17019ebc59560658c21691dd4fb8",
+   "n": 985
+  },
+  "light-merge/stdlib/度量.light": {
+   "sha": "70c86c20c5ba8b49553c6ad9d3ef595fd4290b5ab91c4d3a1693c25c5d8fb2cd",
+   "n": 692
+  },
+  "light-merge/stdlib/性能.light": {
+   "sha": "638b5b30fb21a941d6ed8a0920fbdf520ebd87eae475c5a4433827a4732c6c34",
+   "n": 30
+  },
+  "light-merge/stdlib/手机号校验.light": {
+   "sha": "1c3e4369c5132de4f2c10e06a0986e5ce2c0eae0526bfa7a4cda9f2f3dc11a77",
+   "n": 1100
+  },
+  "light-merge/stdlib/拼音转换.light": {
+   "sha": "86286cdccf8c6b37f0fa800440b5c7437dde954824d321acdaf6f842708606ae",
+   "n": 31255
+  },
+  "light-merge/stdlib/排序.light": {
+   "sha": "097c02df6e72f5126c50a3fc8734c128a988e958ddb8820d02a72a03b07b11e8",
+   "n": 1018
+  },
+  "light-merge/stdlib/排版.light": {
+   "sha": "734fd143bedc2ae0e5f0688f7259e024d38a1851fe5282364fc5e97567611e19",
+   "n": 11
+  },
+  "light-merge/stdlib/插件.light": {
+   "sha": "a37abdff743f6e3b70127dd5c272739ba62df1a7ca394f05af1724a27006e595",
+   "n": 1259
+  },
+  "light-merge/stdlib/操作系统.light": {
+   "sha": "219ce8b7398f22bc59ba7ee9d8392a45e7ed049742d31f37c32ab71432f03833",
+   "n": 145
+  },
+  "light-merge/stdlib/数学.light": {
+   "sha": "b27a73475dfdce6afc1f0495150346dfba3c77abb87601fb44f18a7fd785c3f5",
+   "n": 1526
+  },
+  "light-merge/stdlib/数据结构.light": {
+   "sha": "b8b5a4a41cfc1616c442d5d69d6071c98b11065ea90a063b4be9fc8bf26b96c9",
+   "n": 3424
+  },
+  "light-merge/stdlib/数据结构轻量.light": {
+   "sha": "b6799f2baa0a350d6dd6a016f96e39e267afd050b94cd8fd438fb1ed3f70ced1",
+   "n": 1035
+  },
+  "light-merge/stdlib/数据验证.light": {
+   "sha": "53f66d2dbd3719897cfc8cd3b7fd33d6bac91bc3e451b2c78ca9bb36b14e6504",
+   "n": 2116
+  },
+  "light-merge/stdlib/文件匹配.light": {
+   "sha": "06ac4b16543e37b2310507a3afb34493596d1d336a0569f197728ee2a0bec261",
+   "n": 13
+  },
+  "light-merge/stdlib/文件流.light": {
+   "sha": "08481ff52f24c0f3d9a09c83ddb959bf1612845f4d4ae1b7b3784325c34252db",
+   "n": 227
+  },
+  "light-merge/stdlib/文件系统.light": {
+   "sha": "e3ed5eefb6e96d259ed09936a2138f32f4b5ded10c5254b3c904442ff04c29db",
+   "n": 422
+  },
+  "light-merge/stdlib/断言工具.light": {
+   "sha": "540141c0bba424f516f5d325365cdc767036618aad0658d3d9b67518f08ee804",
+   "n": 1615
+  },
+  "light-merge/stdlib/断言工具轻量.light": {
+   "sha": "46540633bf113ca912d48b2e026428e0b159b515019774166065aceca9a1874f",
+   "n": 333
+  },
+  "light-merge/stdlib/日志.light": {
+   "sha": "dcd454006fc713d288f0d0401132c043279d863dfd08c2a23dbc62f667ef16fb",
+   "n": 27
+  },
+  "light-merge/stdlib/日志系统增强.light": {
+   "sha": "2d2e8f0877299b861e9271b88b443862d05b2210bbd294dc82b69fb8d4f5d107",
+   "n": 76
+  },
+  "light-merge/stdlib/日期时间.light": {
+   "sha": "6db6b1dd4af317494ba0eb67a24c2543a06f1c8a2c6256acbc8d3befddcf1779",
+   "n": 126
+  },
+  "light-merge/stdlib/日期时间轻量.light": {
+   "sha": "d1dc598cae51e2ea56f960ca0ef240a7ac91142e41f459001a7e0263c316971a",
+   "n": 323
+  },
+  "light-merge/stdlib/时间管理.light": {
+   "sha": "825983627bb76b8e26f6e2f1dc8de2a25b52ef49037dfe35f23f3023ae33833d",
+   "n": 541
+  },
+  "light-merge/stdlib/格式化.light": {
+   "sha": "f72ee0d81ee4ec92b65df2387515afab1b86042a83e57f96af411901f02c5472",
+   "n": 1662
+  },
+  "light-merge/stdlib/模式校验.light": {
+   "sha": "b8bff0ea6d9ce90f2cb8a2b3aac7ee794c9c4ec2c2a2809cb559347865bf9077",
+   "n": 1658
+  },
+  "light-merge/stdlib/模板.light": {
+   "sha": "3f71dd84ae0bebe8e2c5b9efef2c6dd70d61464946f6b2b5dcd10f7131dae389",
+   "n": 771
+  },
+  "light-merge/stdlib/正则表达式.light": {
+   "sha": "9b382dc7d7b23bdbe571bc4de48204c7c278090e73f679062845b28538f52d04",
+   "n": 1208
+  },
+  "light-merge/stdlib/流式.light": {
+   "sha": "87715324c6dc4cdfbabc1dd33f71cffe2a0e796c9c635522af0ffd12b2cb271d",
+   "n": 2674
+  },
+  "light-merge/stdlib/测试.light": {
+   "sha": "217741146a3eaee8417d1e5be74d2ab1dcfa48ef7850fb1743cd6250169e7cf8",
+   "n": 24
+  },
+  "light-merge/stdlib/环境.light": {
+   "sha": "2fdda9bcd8a85181843832b4bd2f35fad02fe41ba0cf7cb395b26ddcbb5b4965",
+   "n": 69
+  },
+  "light-merge/stdlib/系统接口.light": {
+   "sha": "0a1c33637ad03cebd10da5396e7792b065cd9c6f7e5c8097572d6c7ef682d3c5",
+   "n": 85
+  },
+  "light-merge/stdlib/线程.light": {
+   "sha": "623ff70ca9d14086f578fbc987d05e09b91500351910ca3af18e5ba382d2c586",
+   "n": 30
+  },
+  "light-merge/stdlib/统计.light": {
+   "sha": "1fd4e17a37c452dd31fa4da07c4ffd353dae06065cc3e80b5401847b7ddf2861",
+   "n": 1852
+  },
+  "light-merge/stdlib/缓存.light": {
+   "sha": "60d6331c45586ce874fd198e3cc8f4dfc8bb08a0c81dd349520d8a685eaf1f0c",
+   "n": 1121
+  },
+  "light-merge/stdlib/编码.light": {
+   "sha": "9e415a279aeddbb2c15171a2eb5087727858f459cd2fa69ce1b060692ebb0ef3",
+   "n": 815
+  },
+  "light-merge/stdlib/编码解码.light": {
+   "sha": "c3c34b28aa1aae1f18557dda40481340914bf267026f49d3ce4ed770c4bd8971",
+   "n": 3563
+  },
+  "light-merge/stdlib/网络.light": {
+   "sha": "ad9cecdac7b6f5c4f969ec18079345232aaf63233f7ad942e18e08defa603e1b",
+   "n": 60
+  },
+  "light-merge/stdlib/网络请求.light": {
+   "sha": "f1a2dc6a6b59a005a1138c185c7ed0e3625a613603abfda04a8614455159c1b6",
+   "n": 3782
+  },
+  "light-merge/stdlib/装饰器.light": {
+   "sha": "8e7cdcfc8c0da61e6f03af4acdad139acc1be4acc5020ce1737c77514a6a6987",
+   "n": 21
+  },
+  "light-merge/stdlib/路径护栏.light": {
+   "sha": "35d72a68a6bdbeef1556631333c4ca750c59875d008707292db71b4cfd80344c",
+   "n": 1769
+  },
+  "light-merge/stdlib/路径运算.light": {
+   "sha": "c37193584d82a39a3008abbbca60c736643971bed4a9260b1029ff7f91b13072",
+   "n": 455
+  },
+  "light-merge/stdlib/身份证校验.light": {
+   "sha": "6c57cb5e22d8493254e35ec31bb53020deaf928e16b7c974eb2279d465467fdc",
+   "n": 1594
+  },
+  "light-merge/stdlib/进度条.light": {
+   "sha": "45b95d0a6da73200621cae3226a29acd875d2f7942fabf04fdc73b453dec0bc3",
+   "n": 1011
+  },
+  "light-merge/stdlib/进程.light": {
+   "sha": "29b511068aaf3deaee3e1d59e7382b9817753896a4c03254f80c03125d629e3b",
+   "n": 33
+  },
+  "light-merge/stdlib/进程树.light": {
+   "sha": "650aaa16df28266930f0cc87a0955e4231e1d54fa7ee4fc7f8d3923ee5557848",
+   "n": 3822
+  },
+  "light-merge/stdlib/选择器.light": {
+   "sha": "816f651c7365da6f8c46bb4e68bd2f096ca8c51698eb5bd5e63953fdad5e6918",
+   "n": 655
+  },
+  "light-merge/stdlib/配置.light": {
+   "sha": "8d3582f77f5f5eab49142fd5921e67afa5a8712159957b98e4cc27bf7000f18d",
+   "n": 33
+  },
+  "light-merge/stdlib/重试.light": {
+   "sha": "e7b159d72f27deb46734ec69a51decb2ac473cf3482e46c17f5aac4963cbfd55",
+   "n": 166
+  },
+  "light-merge/stdlib/随机.light": {
+   "sha": "ab6d3de0e085064d4400e36bc989a644150e999ce8b2cc678d85efde19cf96b3",
+   "n": 1710
+  },
+  "light-merge/stdlib/集合.light": {
+   "sha": "fac9adecd352068ff4d6f5b03be7aa4939e8da9a1078dbbddf76e31bbbf8b199",
+   "n": 2434
+  },
+  "light-merge/stdlib/集合工具.light": {
+   "sha": "a9a20743e09272c999df9c1ff5c3da6ef40e0cb6e8e89a7271a401bfab07920c",
+   "n": 642
+  },
+  "light-merge/stdlib/集合操作.light": {
+   "sha": "087aaa75a69ac22f9e25ad777beb8c44f5429467c620461af42ebbb7ab1cc2f0",
+   "n": 1388
+  },
+  "light-merge/stdlib/颜色.light": {
+   "sha": "03343c6a8ddb88dfaf39723ff8f0198238e1c5ed448678cfaf6e3d4dbe7de1fc",
+   "n": 2442
+  },
+  "light-merge/stdlib/高级文件.light": {
+   "sha": "a18a229d593e1804c6ba71ce190b0cfdf68ee5e292772517b6e99ac69094f676",
+   "n": 822
+  },
+  "light-merge/tests/archive/test_simple.light": {
+   "sha": "0c19310b5e800b149eee8bd1fdc1fac4fe4e72f3c8c0da903909cfb679789878",
+   "n": 32
+  },
+  "light-merge/tests/archive/test_small.light": {
+   "sha": "e8d17231173b9d50d94c47aa5613bc98b202bc9e92e98d1ae23b4ad0ca8befe2",
+   "n": 2
+  },
+  "light-merge/tests/final_test.light": {
+   "sha": "6d0e646905b70fb88ea7bbc60aeceda11474102887a5e783b8df7d66684daf73",
+   "n": 68
+  },
+  "light-merge/tests/level9_project/主.light": {
+   "sha": "f8e0b3f96d91e54029396b58fc8c92f20b5207fcea8da3d793e6255d22fcb066",
+   "n": 86
+  },
+  "light-merge/tests/test_class_advanced.light": {
+   "sha": "917f75f0c52584e285e4d1649a583957b014e66211b3a3fad294be3bbce76902",
+   "n": 139
+  },
+  "light-merge/tests/test_comprehensive_v2.light": {
+   "sha": "375ffc12c893ccea775df06c8b183a9bc215f87aa68f77b0604b25b392e0a4b0",
+   "n": 288
+  },
+  "light-merge/tests/test_hashfs.light": {
+   "sha": "1692a9f7d4711699e9cf6954b5dc3c2ba058665fbd5612dfbb833812c763e9c6",
+   "n": 193
+  },
+  "light-merge/tests/test_helloworld_v31.light": {
+   "sha": "39c828aa4a9f785e0bd62e9337977c7549773a9485f6da56602c6d50f48ea5fc",
+   "n": 114
+  },
+  "light-merge/tests/test_iface.light": {
+   "sha": "7c3b68b1347f3b8ccd1447889403974146effb5231709a92510c08c18db558d7",
+   "n": 37
+  },
+  "light-merge/tests/test_level8_llvm.light": {
+   "sha": "585ac2cf0748ad9dccb6d9f85e455efb6a768a9dd4e54699b3bf022f26953a3e",
+   "n": 355
+  },
+  "light-merge/tests/test_level9_modules.light": {
+   "sha": "b6e8e907c476b5c3b3672984a6e3734469722945a1b90c111678783a66e1d9db",
+   "n": 179
+  },
+  "light-merge/tests/test_minimal.light": {
+   "sha": "b7d767cb9f4ed05a1724b5f8452d43386bf20725c476a9220491b55fbcabae66",
+   "n": 13
+  },
+  "light-merge/tests/test_multimodule.light": {
+   "sha": "c3f64e713de0dd8e6727d02db43c2c256d7253987f23381aee6d3804c4b4e83c",
+   "n": 75
+  },
+  "light-merge/tests/test_multimodule_simple.light": {
+   "sha": "4dde1543b98826bc12e1f8a10d23508a87994047d58bb7cd39b1b14198e8b59d",
+   "n": 50
+  },
+  "light-merge/tests/test_segment.light": {
+   "sha": "4108ceadd30bc2f764988a0ceafbffffaa24caaf97a3227af1c160d230a17d97",
+   "n": 27
+  },
+  "light-merge/tests/test_self.light": {
+   "sha": "f924249e8a3f3014b28992622f9596a68f43e208b71d2baf84c739be63ed7c54",
+   "n": 23
+  },
+  "light-merge/tests/test_simple.light": {
+   "sha": "df280149c274ba165c47bb82d8dfcd98492830286190c4753daa7bee468969b4",
+   "n": 114
+  },
+  "light-merge/tests/test_while.light": {
+   "sha": "865134edfd7bdd01500b38fc5ab1f2aef42d72d37fa5292e28223cfab82ed85e",
+   "n": 27
+  },
+  "lightharness/examples/_helper_L004.light": {
+   "sha": "c75132855c5b8d0705c90d195a57d3f866bce960ae076a921bc2fa882b2dfd25",
+   "n": 40
+  },
+  "lightharness/examples/_helper_L007b.light": {
+   "sha": "30de0983174ac6b6307e432db0b48279794b3fec223f07da54d2822142c09e46",
+   "n": 69
+  },
+  "lightharness/examples/_import_test/数据.light": {
+   "sha": "6bb7db7a3c355161df531d1b372d15dbee67abe64c7b8ec6e9dc36fa58d1ea66",
+   "n": 7
+  },
+  "lightharness/examples/_repro_L066.light": {
+   "sha": "9f20b72fba9a5d901507e5f4eb2d973283692ee09cc8ae07862e081f4285549e",
+   "n": 99
+  },
+  "lightharness/examples/_repro_L079.light": {
+   "sha": "8aa5ebcdfaeb105e058988b8b266f11f3acee9c681f5e732b20704cb90edf808",
+   "n": 234
+  },
+  "lightharness/examples/_repro_L080.light": {
+   "sha": "c85c1efc7e81b7042a975b52d33c4b0f508124a9e78f187f007318b02515a834",
+   "n": 78
+  },
+  "lightharness/examples/_repro_L081.light": {
+   "sha": "572994a00a4a702faab8dc6fd12056d713c43f063aa6567f773e0770bb75ae05",
+   "n": 52
+  },
+  "lightharness/examples/_repro_L082.light": {
+   "sha": "f072362b50165ade5fff16788422de7cbc388b8649000569772757872f22d453",
+   "n": 130
+  },
+  "lightharness/examples/_repro_L083.light": {
+   "sha": "b2ae4ddd1977f7ae976a04b2ac555cd07aa4ebde73acf9faa387c0a35569b737",
+   "n": 103
+  },
+  "lightharness/examples/_repro_L084.light": {
+   "sha": "28d7b3483f4052c1e1b72ba2d70c5063a073df90d7baf13c31d0d87d1ed2ba61",
+   "n": 57
+  },
+  "lightharness/examples/_repro_L085.light": {
+   "sha": "52c3cad33ff6b63f4f1a771f3068dad31f700b4983149c1133a38727dd90b6b0",
+   "n": 67
+  },
+  "lightharness/examples/_repro_L086.light": {
+   "sha": "c7152fdf1f1062422923a4d231b0836d009f4e6d9059a1cbe2f4c097e58ece06",
+   "n": 79
+  },
+  "lightharness/examples/_repro_L087.light": {
+   "sha": "dfafba879c1fd19c459e1e7fa7c3ae44f54693eb43e06facce439dc7f0da6a64",
+   "n": 51
+  },
+  "lightharness/examples/_repro_L088.light": {
+   "sha": "522793a1c28cfa3830499f506bab428252cc998b9a39cb799f37fdc88968a020",
+   "n": 96
+  },
+  "lightharness/examples/_repro_L089.light": {
+   "sha": "8b84f829b52fd3a851b5e6b3d868430e913a6452736cd335d7af4a0041f57fa7",
+   "n": 86
+  },
+  "lightharness/examples/_repro_L090.light": {
+   "sha": "1ad2b92bbe44e8892ce78d10012af795c3a09875df891136db7f7ae6750ff91d",
+   "n": 66
+  },
+  "lightharness/examples/_repro_L091.light": {
+   "sha": "69a89cb4e43f4534887b4617b1108353f1af260df5b4f41d477c1004c61c1053",
+   "n": 114
+  },
+  "lightharness/examples/_repro_L092.light": {
+   "sha": "41efaba1dab34b6548f8cca4d29d41fc8527c572d9245091ca954488a8286114",
+   "n": 97
+  },
+  "lightharness/examples/_repro_L093.light": {
+   "sha": "fe4177be519d22c5b72bf329887c837db8a75cd1552763835b1b072a512a21de",
+   "n": 226
+  },
+  "lightharness/examples/_repro_L095.light": {
+   "sha": "75c6dbb87b75380b790894760ea064e500303429c08e7b5bbfc7883f9cdd6570",
+   "n": 286
+  },
+  "lightharness/examples/_repro_L116.light": {
+   "sha": "3e257f9fe82b8cb8f4c80f04dc3ea8fc56b5a6e385bb0f9775dc78e5c9fa5fa2",
+   "n": 162
+  },
+  "lightharness/examples/_repro_L119.light": {
+   "sha": "7ccb19f65fd80e6333594764cdadfeaacc7aeb8324c35c056a81f9a30f6221da",
+   "n": 74
+  },
+  "lightharness/examples/_repro_L120.light": {
+   "sha": "bf78d81def70fa5dbfdec1a6e7a5f83bdc7c7966f815e8af0aab874b2426eb4e",
+   "n": 90
+  },
+  "lightharness/examples/_repro_L123.light": {
+   "sha": "ceaf3382ae2a0389a0adc5143f2fa7a8db2a3cbf6fae2d6f4acf23209e99e519",
+   "n": 116
+  },
+  "lightharness/examples/_repro_L125.light": {
+   "sha": "602830b66ff9949020f5e482a6435b813c86bd64cdf78d26fe1092652d7084aa",
+   "n": 101
+  },
+  "lightharness/examples/_repro_L127.light": {
+   "sha": "3ed48ae22056df9ae1cd025c83a8b0549b38c6045d276a16bf38c947e18790a1",
+   "n": 174
+  },
+  "lightharness/examples/_repro_L129.light": {
+   "sha": "5197ede77129d1ad23d26ee70e0c2e8a46e7fd59fc433e8235df02dc223b0052",
+   "n": 225
+  },
+  "lightharness/examples/_repro_L131.light": {
+   "sha": "f4ade03eb0d62cce03ac3333ef89b84642a8c8fcf3f045f0630fd493c8b1410b",
+   "n": 83
+  },
+  "lightharness/examples/_repro_L133.light": {
+   "sha": "b5ae449c667ec9b51556fb50224c2037a286e304209d624a89a2b96c07f5897f",
+   "n": 120
+  },
+  "lightharness/examples/_repro_L135.light": {
+   "sha": "baa6a77802b8d8d7f499672428a1d28ae395da96b0c923a91e4b3404978e61a5",
+   "n": 239
+  },
+  "lightharness/examples/_repro_L137.light": {
+   "sha": "3e64bac3d8a1c9962e0dd1e353f7a2f896862a952e90e7facf8097fdbe9ffa0f",
+   "n": 94
+  },
+  "lightharness/examples/_repro_L143.light": {
+   "sha": "ac1c44315169fa076e317bc2962227c88c4a6b2ba8f043be53789e5454dd9ce4",
+   "n": 89
+  },
+  "lightharness/examples/_taskM_integration_r17.light": {
+   "sha": "49e0172dd376c606700cc84787693546745e7926f83b8b22739c120038f8f112",
+   "n": 567
+  },
+  "lightharness/examples/_taskM_integration_r18.light": {
+   "sha": "407cd2df9941baf0970cb7d7336921e61b07df3e6222fe71be1ef24c4c020834",
+   "n": 1359
+  },
+  "lightharness/examples/test_CLI命令面.light": {
+   "sha": "fcb848bd373daa6fece2942973093c22ee6d917e53a9fae1746e55e64144de48",
+   "n": 552
+  },
+  "lightharness/examples/test_IP安全校验.light": {
+   "sha": "9d0fdea3d75888ba54b476adbd6064ac643add7c9e2825616676f83972811f47",
+   "n": 457
+  },
+  "lightharness/examples/test_JSONRPC传输.light": {
+   "sha": "d14721ab609a8b376e90cf533d0733ce724383f318eb9f9ef241e475eb8fb33c",
+   "n": 1218
+  },
+  "lightharness/examples/test_L001.light": {
+   "sha": "afa79da6cf5a39ca4044d3192257c75655be38039689b519b63c968c6ee32cec",
+   "n": 77
+  },
+  "lightharness/examples/test_L002.light": {
+   "sha": "bdda61b1fec7538b6dd06f57f2d37f78dade2311c43757acd31bf03fa8592951",
+   "n": 92
+  },
+  "lightharness/examples/test_L003.light": {
+   "sha": "43db354b72ddece0e42e7b6f56af2022e7eee9e48a43a3cf70e859fef0378461",
+   "n": 151
+  },
+  "lightharness/examples/test_L004.light": {
+   "sha": "6d80a3fbb826debbfc8d77c0dbd7cb5467a5d5962404a25511799b4311356afb",
+   "n": 106
+  },
+  "lightharness/examples/test_L005.light": {
+   "sha": "1ebc0482877bca275afb8ddf8772dba0180f9c57bdae055df51da62c08f0b92d",
+   "n": 150
+  },
+  "lightharness/examples/test_L006.light": {
+   "sha": "3e5c2dd923de257c0b39b02a37e780cc556e7c02713b08863583c6ced6256116",
+   "n": 98
+  },
+  "lightharness/examples/test_L007.light": {
+   "sha": "ad11828bc50bc0c24f3a8865ee1180a8ea12b77af8994e3e0a9593e25311f104",
+   "n": 160
+  },
+  "lightharness/examples/test_L007b.light": {
+   "sha": "ae4f605573b35ae3d30590f4298c19be0ba2c999ea887e6fbdc4a9ff35958d90",
+   "n": 148
+  },
+  "lightharness/examples/test_L007c.light": {
+   "sha": "dc6b02fa2611c96fd8ae390418c008c6928ceab82b2ee09192dbd85160e4f190",
+   "n": 165
+  },
+  "lightharness/examples/test_L008.light": {
+   "sha": "ac0aaf2f5babd76dced3df3219d3c1b363a73f55c47f0cd6294a141a11662a84",
+   "n": 88
+  },
+  "lightharness/examples/test_L009.light": {
+   "sha": "3ed2ccbb99855e4613982d75d0e736bb0fd5e1ba178c1bbb023305d2452f7e28",
+   "n": 12
+  },
+  "lightharness/examples/test_L010.light": {
+   "sha": "6f9224c8322cb2fa21f3b322d1c1af3b966d9734aeca9119d400421f9476f90d",
+   "n": 88
+  },
+  "lightharness/examples/test_L011.light": {
+   "sha": "f4db55c0737f43e7410041b9a5f7312169946b54acd74742a7b29355720f6622",
+   "n": 118
+  },
+  "lightharness/examples/test_L012.light": {
+   "sha": "f755b371d660e15943891168001cc06fa669560e76b5cabd1340cead4f1c12a5",
+   "n": 115
+  },
+  "lightharness/examples/test_L013.light": {
+   "sha": "d314b9d1a5767d11cd8511725fd97f719608b89945b041c4274f6735f44ea758",
+   "n": 188
+  },
+  "lightharness/examples/test_L013语义.light": {
+   "sha": "319b1c9456307017b19cb8e85d74c36e0951a3706a0834f75132b29955510e86",
+   "n": 138
+  },
+  "lightharness/examples/test_L014.light": {
+   "sha": "81f8290f15736a26e66455ff0a1b5ded867c329a709d977bcac00c40d12b3eb4",
+   "n": 103
+  },
+  "lightharness/examples/test_L015.light": {
+   "sha": "10254e49f250c232a17714735662d0785f64e1575ca118128dea495a9c6eff01",
+   "n": 75
+  },
+  "lightharness/examples/test_L016.light": {
+   "sha": "8b3f90ba73176586fbe9b6e88aa46c4a4e258e77326db014c03f56cbe1cdd3c4",
+   "n": 120
+  },
+  "lightharness/examples/test_L018.light": {
+   "sha": "be334afc629f5180e01bfad246da5b7609453aac4cc2e8ca260ad94bf2bc662d",
+   "n": 141
+  },
+  "lightharness/examples/test_L019.light": {
+   "sha": "d534f11bc13e14080d74f37d5299fe0fbb6ebebb02b593d38ff715a6661c89ce",
+   "n": 111
+  },
+  "lightharness/examples/test_L020.light": {
+   "sha": "27be0fad159196364b0b977b925265623fdae0f55f92cfd83e71690e22f273c1",
+   "n": 126
+  },
+  "lightharness/examples/test_L021.light": {
+   "sha": "4c9b137757a7f1d21f619f6aab0091493e7383ba9aacfa9fdca36f07969e4a73",
+   "n": 188
+  },
+  "lightharness/examples/test_L022.light": {
+   "sha": "f5d9ba0f3b475eb0fa721ca020d947aaf422b9f2f858c0c5b49f45b2bbf2e1cb",
+   "n": 266
+  },
+  "lightharness/examples/test_L023.light": {
+   "sha": "a9d4abbc03a2aba1ac9d1e6e10ec885e5c420ab74d12cb6d464cdd54c6ad989a",
+   "n": 165
+  },
+  "lightharness/examples/test_L024.light": {
+   "sha": "ecf1d690fe7e8754636845e468dd51640b18e74e71aaca30411e18468fb5439b",
+   "n": 207
+  },
+  "lightharness/examples/test_L025b.light": {
+   "sha": "e86ef32a40ea3304017d21eb054d3108dd6f946f8e91e5e54671d0aedbc90e0f",
+   "n": 146
+  },
+  "lightharness/examples/test_L026.light": {
+   "sha": "499bf57743c45cf6a6a85c2a737d3c47d6e79384ac53431569e37a912fdba5df",
+   "n": 149
+  },
+  "lightharness/examples/test_L027.light": {
+   "sha": "b2d7a3b27a8f798c023a8013d7538ec706dfcd709e1a7bf94894284b9f800ebb",
+   "n": 275
+  },
+  "lightharness/examples/test_L028.light": {
+   "sha": "2894fcdfef183b259b83fb2090baf89a9f7e56df275e7a7a7a7270996f3f4d2c",
+   "n": 94
+  },
+  "lightharness/examples/test_L029.light": {
+   "sha": "70287286b8c8aed10f20e40c77028fba3a25fb76ddcf14a5a27233807fa8701d",
+   "n": 109
+  },
+  "lightharness/examples/test_L030.light": {
+   "sha": "2ac85623919c681418320c871da953e50e520431a3320b648f313ac7fb0079b9",
+   "n": 139
+  },
+  "lightharness/examples/test_L031.light": {
+   "sha": "2aadc5ae767fcddac83df4dd9d72c36f606d19bc124105b2442224dd7054675d",
+   "n": 123
+  },
+  "lightharness/examples/test_L032.light": {
+   "sha": "e47e66f5a6bb847e23670519365accb99527ee4059c1c21b422f684789e98bc2",
+   "n": 137
+  },
+  "lightharness/examples/test_L033.light": {
+   "sha": "80b9bbb334a346369c9438fd4252dde5f96e08d80837488f43db402c9b78a2be",
+   "n": 143
+  },
+  "lightharness/examples/test_L034.light": {
+   "sha": "50087dc7c9cea370d1c137e0e572b18ede55bd34685d886d0279285de0a6f811",
+   "n": 118
+  },
+  "lightharness/examples/test_L036.light": {
+   "sha": "7a6010c78b0811f39e93aa4f9a21547915c413ea06cc9d5f8fc750555707835d",
+   "n": 266
+  },
+  "lightharness/examples/test_L037.light": {
+   "sha": "157d029257f3a6fdafa0c337c54389e25a26171dff46a43cdb07fa535dad8465",
+   "n": 141
+  },
+  "lightharness/examples/test_L038.light": {
+   "sha": "aa9b6e78d433557aca63df3b4c4481f4f269946a3be8ab3a200bfe3a837dee0b",
+   "n": 193
+  },
+  "lightharness/examples/test_L039.light": {
+   "sha": "0809f6adaae9b20c901a3ad19bd4ae720f79259b247d9b3d37c14a77f4220860",
+   "n": 321
+  },
+  "lightharness/examples/test_L040.light": {
+   "sha": "41faa664fd2887d0964612222d90cb0536e8bac1dbddc5cb30dfdf1834154cb7",
+   "n": 131
+  },
+  "lightharness/examples/test_L043.light": {
+   "sha": "fbeb817df416efe524436cc142d12ad60b51791951bce8407a2fd4486a2051dd",
+   "n": 152
+  },
+  "lightharness/examples/test_L044.light": {
+   "sha": "3c9dcd770d0ac6da747bb064aa88b8d24e72b183be4f466986dc4d0473c3eef5",
+   "n": 102
+  },
+  "lightharness/examples/test_L045.light": {
+   "sha": "a0fd66f393668fb422112f3667b464fc5fa57b844f0c192def1ffebb888070be",
+   "n": 51
+  },
+  "lightharness/examples/test_L048.light": {
+   "sha": "e9dc4a2dde26b15c3c6e74c5ebe57aac375295af9c08cace446bfaee7409b69d",
+   "n": 160
+  },
+  "lightharness/examples/test_L049.light": {
+   "sha": "2b8ff69641bfc38118a72c1b70b314a7f52106d605006d1de2c352daa84e62fb",
+   "n": 284
+  },
+  "lightharness/examples/test_L050.light": {
+   "sha": "1f71cf051891d68fad42433f96a48806a6baeac910f433897b3ef29a0642e9fb",
+   "n": 330
+  },
+  "lightharness/examples/test_L055.light": {
+   "sha": "24a02ddf87d850192b6e359fe3d817da61f1e28d94768e8aa11f4bc936e2a604",
+   "n": 241
+  },
+  "lightharness/examples/test_L058.light": {
+   "sha": "4f0fc1c57f8dc1e31bf9f6ff14aee8d7f8cf9d035ff5033ba3c5512d63c4e980",
+   "n": 227
+  },
+  "lightharness/examples/test_L066.light": {
+   "sha": "c3ea211f90c744f6a2a5132c6a9f0f0de1bd0dd02157cf14e51bcdfa63c97940",
+   "n": 133
+  },
+  "lightharness/examples/test_L068.light": {
+   "sha": "6702af38d4be38efaa2c05f6880335d89edc371efecc38f20cc85f44ef836639",
+   "n": 54
+  },
+  "lightharness/examples/test_L069.light": {
+   "sha": "7d77c9874fa0a8fb687cdff8caf7492f3a00255c0a875ec6a67f1d9770f317e7",
+   "n": 28
+  },
+  "lightharness/examples/test_L070.light": {
+   "sha": "fb3afa1b20d7672a0853761d0dd31f720513272a77f45e3268a378209725135e",
+   "n": 32
+  },
+  "lightharness/examples/test_L071.light": {
+   "sha": "864d2f44beb1b3d6ca14d936167c91ee0ea2bda042ad7250a2b3be2e63c9bbac",
+   "n": 50
+  },
+  "lightharness/examples/test_L072.light": {
+   "sha": "26f662c6cecd42ccc57ab193b18daae89985d4919affb31484510f703086a00d",
+   "n": 19
+  },
+  "lightharness/examples/test_L073.light": {
+   "sha": "0a91b54ceeab63fd9de7ce1a15feee8588458098b77906a72ed78d245fc078df",
+   "n": 55
+  },
+  "lightharness/examples/test_L074.light": {
+   "sha": "d27de77c1cc91061a19cce531e581e499270fd03620423a81fa3d11cb0175932",
+   "n": 74
+  },
+  "lightharness/examples/test_L084.light": {
+   "sha": "9acfdd1019fbeb8a5656a96a374ef5f419c6228ee7262a17db4a8ed655c31bda",
+   "n": 11
+  },
+  "lightharness/examples/test_L086.light": {
+   "sha": "e2adb50a0ef5f1d22c5474b80a9eb91c0484b54a2e6070c59539e44c7b142081",
+   "n": 8
+  },
+  "lightharness/examples/test_L087.light": {
+   "sha": "720a9395a8c57b8533d231a305db74a8a62f5ade79854e89f459723107bc5d4e",
+   "n": 17
+  },
+  "lightharness/examples/test_L092.light": {
+   "sha": "1675c451915bcce4ba3e5a605b59733f9053bf9283ebe43cea0db42af2833cdb",
+   "n": 19
+  },
+  "lightharness/examples/test_L093.light": {
+   "sha": "5af5559efdc21c7ea87041ed8bbf031fa1cfd6a05d85e9378685005a7194daf2",
+   "n": 175
+  },
+  "lightharness/examples/test_L095.light": {
+   "sha": "558753451b5dc9f860259f2104283108cdbacd42f0cbae31c624118fbcaef8c9",
+   "n": 131
+  },
+  "lightharness/examples/test_L096.light": {
+   "sha": "21a9e9321caa8f936d4da3eaa6299aae044cdacc0020ea10689c5f28d6a08a4c",
+   "n": 22
+  },
+  "lightharness/examples/test_L097.light": {
+   "sha": "6197ba4497452ba6e7b6f81787e6cb255800848b178c8d674877899f168eaa92",
+   "n": 33
+  },
+  "lightharness/examples/test_L101.light": {
+   "sha": "5d080dab998426629cbe80a7e6f6046802a39351f256490a5a5232dd652d3d72",
+   "n": 11
+  },
+  "lightharness/examples/test_L119.light": {
+   "sha": "23f6dd14cd83ad9fc589ff35b2a51fb8ae562a80c2d45d9cf1ae5dd10317d265",
+   "n": 15
+  },
+  "lightharness/examples/test_L120.light": {
+   "sha": "894de70d6a7af7117e9c0d1908ea583660200d57882b48aae6eb9058215cceb2",
+   "n": 31
+  },
+  "lightharness/examples/test_L137.light": {
+   "sha": "952729db4244035d752e3b93e5db01eedbc87b6edfd0bd698d0aca37234e2728",
+   "n": 21
+  },
+  "lightharness/examples/test_L143.light": {
+   "sha": "d6ce663f3996873f763521948851fa005f7a917bb89d3134adb910a704ad31f2",
+   "n": 12
+  },
+  "lightharness/examples/test_L缺陷清单.light": {
+   "sha": "913055a51109b7cacb7e524a76f4f23ce47ecee5e7bd6411b313f3d40a409a55",
+   "n": 46
+  },
+  "lightharness/examples/test_R20_关键字前缀标识符.light": {
+   "sha": "1a55649e7fa9447b7800b74f9f9e387868558bf7906501ef6cb0bb418289970c",
+   "n": 652
+  },
+  "lightharness/examples/test_R20_词法边界综合.light": {
+   "sha": "6540576f74be9b67a11f47ebd7e81113d2b542944b732bba1b7890898af86988",
+   "n": 2103
+  },
+  "lightharness/examples/test_R21_L152家族嵌套形参.light": {
+   "sha": "adaa2d2661422a2114f801cb2ee3cbb547614f0259f2dd9f0e8d61f4e0ba6d6b",
+   "n": 590
+  },
+  "lightharness/examples/test_R21_L152嵌套段落形参.light": {
+   "sha": "e305ec86c4ff71a25b035f1e5d19b7ef81f47502c81cdc8d6175a9b0f37a3121",
+   "n": 303
+  },
+  "lightharness/examples/test_R21_上下文敏感切词.light": {
+   "sha": "7dca96590b66ee5453f9c9618e8d2c51e476c843eae9eb0ec746828abf639763",
+   "n": 379
+  },
+  "lightharness/examples/test_R21_块内设名.light": {
+   "sha": "082dbf9f9b9b1c09042b99374d63377c02d30fcc3bbce6862e93270b0127957f",
+   "n": 165
+  },
+  "lightharness/examples/test_R21_表达式上下文.light": {
+   "sha": "40723cf24eddcea580a8b0f14184890dee74c42d05c9874f886df1825cf90f31",
+   "n": 259
+  },
+  "lightharness/examples/test_R21_语句起始关键字.light": {
+   "sha": "f14875ef1ebdff7e0fa3853e978f1099653d7411daf6c6695b0a26f6efaaa2e9",
+   "n": 219
+  },
+  "lightharness/examples/test_R21_边界混合运算符.light": {
+   "sha": "36779da13213d8ae3afb268bf882577d615e86ede0048e39771fb6aa354cf1f8",
+   "n": 240
+  },
+  "lightharness/examples/test_R22_嵌入关键字冗余验证.light": {
+   "sha": "0baf893281564fe36dfbbd8870a95fe88740c581c8351f41b6300dd04ea47f13",
+   "n": 53
+  },
+  "lightharness/examples/test_R23_CCW内建名.light": {
+   "sha": "1945074f1126ac6573e2bd6d11ffabec5b984833916a204b205ab6106b95f245",
+   "n": 202
+  },
+  "lightharness/examples/test_R23_IDENTIFIER_SAFE后缀位置.light": {
+   "sha": "f76c53090a343de9798a5f2365995c665251eaca2463853535b2b557f0b35c2b",
+   "n": 316
+  },
+  "lightharness/examples/test_R23_合法语法不误并.light": {
+   "sha": "7d63fcb447aed07b3b5432447b7249ba51462ed1cf1b271efbc9128175ae0cc1",
+   "n": 290
+  },
+  "lightharness/examples/test_R23_己词尾并入.light": {
+   "sha": "e21c231fad7a98800e995c57daf0a9074a611afc9399a78e1a2fc898c90989be",
+   "n": 151
+  },
+  "lightharness/examples/test_R23_边界混合场景.light": {
+   "sha": "47a8d228561a2c3db20211f4741a99d5fc4ca27834337585503c450d08a6ceb4",
+   "n": 309
+  },
+  "lightharness/examples/test_R24_值字面量守卫.light": {
+   "sha": "af76da4baf7d303d8ceece089fa99c22b292339dee56d6a91baed37290aaafb8",
+   "n": 239
+  },
+  "lightharness/examples/test_R24_单字通用规则.light": {
+   "sha": "f06878217175fb4862d8849712183804869ef4d5dba062160163a133d65b6428",
+   "n": 348
+  },
+  "lightharness/examples/test_R24_的递归修复.light": {
+   "sha": "32fa4174cdd6fd7c16a23c8b6b9b4fb8375bb4b45fc506d607da9afaa7dceff8",
+   "n": 310
+  },
+  "lightharness/examples/test_R24_运算符单字守卫.light": {
+   "sha": "0904aacc66bb2d1c31234bbea82ec2dab89007822d086fe001b698f70851ebea",
+   "n": 289
+  },
+  "lightharness/examples/test_R24_递归语义规则化.light": {
+   "sha": "115bfeeb4a0dca8253ae5c05d05110b0f7f52fb97b48350ddd53ab425215a7d2",
+   "n": 238
+  },
+  "lightharness/examples/test_R25_单字后缀规则_快速.light": {
+   "sha": "62eba980139f7681d6b00c0a2094aa6951222b0093f09dae3dbf6f5248523b73",
+   "n": 552
+  },
+  "lightharness/examples/test_R25_词尾并入正向.light": {
+   "sha": "90ee7b34aaff558df682f24a63f69bfc0efd40c20798f57178dfc05461af1698",
+   "n": 584
+  },
+  "lightharness/examples/test_R25_词尾并入边界反向.light": {
+   "sha": "987ac36aebfda95f1b7f9a8e1e27e04a62a626205960bc282486d71eee2c619e",
+   "n": 272
+  },
+  "lightharness/examples/test_R26_词首并入_快速.light": {
+   "sha": "6a1eed54244e29e9a4359450a8b69d82eca14145dcc15adbc1c78243c5fad9c3",
+   "n": 640
+  },
+  "lightharness/examples/test_R26_词首并入反向.light": {
+   "sha": "ba81ca46dd2f54e14aa5a7283fcc1cef9b23c950e6574d0d7fac4169523c9190",
+   "n": 523
+  },
+  "lightharness/examples/test_R26_词首并入正向.light": {
+   "sha": "6946d4aa7984a35c4e2d488eb2a598e3f50159a0633a09955b96359c5b46504e",
+   "n": 832
+  },
+  "lightharness/examples/test_R26_词首并入混合.light": {
+   "sha": "15a4cd78bdde4857a77494a30ca9b8ebb6b8be6ae18bcf58b93b5e40d95b0103",
+   "n": 434
+  },
+  "lightharness/examples/test_R27_任务1_2_词首并入.light": {
+   "sha": "f3a0e787209801aad7a331c7b96ef8ba3ef572cb2f66d3a75631f05a06dc3594",
+   "n": 285
+  },
+  "lightharness/examples/test_R27_词首并入反向.light": {
+   "sha": "835d5740a3e0d6d663a15ba2a09fe5874b61695b98f1e6bd7a8a5e24bfab4b98",
+   "n": 380
+  },
+  "lightharness/examples/test_R27_词首并入正向.light": {
+   "sha": "2ce63fc96770f7484bf599d28c33dbdbdc8ef17d67017e04dc4f852f2175d3da",
+   "n": 496
+  },
+  "lightharness/examples/test_R27_词首并入混合.light": {
+   "sha": "f1bd0e9171cc366d4cbd1cddbf27ca08db272c1580e7e63ad8244b3f540a83a1",
+   "n": 385
+  },
+  "lightharness/examples/test_R28_列词尾切出.light": {
+   "sha": "e0544e58f67520e9915bfada21dbea5d7170324d2ad57c1d00bbe0c271a7284d",
+   "n": 207
+  },
+  "lightharness/examples/test_R28_列词尾切出_快速.light": {
+   "sha": "1a02d2bff8de2680b219ba73de996b7909e5ef5689790bd8b6a07b9163f33d02",
+   "n": 77
+  },
+  "lightharness/examples/test_R28_混合场景.light": {
+   "sha": "c1ed4926c018598a4142bab55ef0f8e0797258abfe19d9b296790ed85fe654e6",
+   "n": 277
+  },
+  "lightharness/examples/test_R28_类声明词尾并入.light": {
+   "sha": "06e50adaa244e089ffd2c8edb0ab8c69fa214035d21e9182bd6396e6f323b628",
+   "n": 266
+  },
+  "lightharness/examples/test_R28_类声明词尾并入_快速.light": {
+   "sha": "8c418fff17cfa81bf5704e05db3ca740ae2a082ffe973f8e49ac63ae8c01b576",
+   "n": 106
+  },
+  "lightharness/examples/test_R29_CCW精简边界.light": {
+   "sha": "e21e64472646d17d9ad20d5b1f63449421de396b2c74fcdc8afd651322a48277",
+   "n": 209
+  },
+  "lightharness/examples/test_R30_CCW通用化边界.light": {
+   "sha": "1786316328e46447a93aa4563867b41c19971fbb3d11eaa3c17fc9d374a25476",
+   "n": 101
+  },
+  "lightharness/examples/test_R30_位运算符通用化_快速.light": {
+   "sha": "264fd0c1b0717a96f3d7978797397a4a30f798df0087b513361a3de84d7f9a15",
+   "n": 196
+  },
+  "lightharness/examples/test_R30_应当除非通用化_快速.light": {
+   "sha": "88c70227fc06c7206fdf3a34199c203c63d180666269af76b14115e614998d94",
+   "n": 139
+  },
+  "lightharness/examples/test_R30_测试生成问候语通用化_快速.light": {
+   "sha": "e3d0071384d3e828ff8abe27658fb6df887a6cd15858a7be4cbee548f37b49ed",
+   "n": 71
+  },
+  "lightharness/examples/test_R30_零除幂次记录类型通用化_快速.light": {
+   "sha": "fe2549eb11cbb02ba0173f722a2cdc268c4e83a5d1c1348777ebcbe793eefe97",
+   "n": 185
+  },
+  "lightharness/examples/test_R32_MERGE_WHOLE精简边界.light": {
+   "sha": "d18442f70f8b42c56499909c3aff05454fdbdc0a8970557efccbb2d5b13e06f1",
+   "n": 210
+  },
+  "lightharness/examples/test_SSE.light": {
+   "sha": "21243f500e5bce73e6b47895797077cbba289dae48568968bc590bf8433dd4c7",
+   "n": 316
+  },
+  "lightharness/examples/test_UTF8解码器.light": {
+   "sha": "d3f0078a80d9daada7b173fe963e97c0a8d8f465bb1d8f068bee23e3d257f6a9",
+   "n": 482
+  },
+  "lightharness/examples/test_acp内容.light": {
+   "sha": "cae70c78744b1233c8305ed621c8e6713fdbc94eb6e08e0ffa4386d57d56d3b2",
+   "n": 755
+  },
+  "lightharness/examples/test_acp转码.light": {
+   "sha": "0f95846e3c799ead495af584cf26574d5f9bba93274a8fad75c9119de453e7f5",
+   "n": 157
+  },
+  "lightharness/examples/test_agentE5钩子.light": {
+   "sha": "74942edcdc2c135d39e4a897233b30ec8051f89c40f89c588269108266e259bf",
+   "n": 685
+  },
+  "lightharness/examples/test_agent工具调用.light": {
+   "sha": "fbf3e7dfe269bd1b72f0e785254eb65da4ff827c254bcb932b8acc33176900cf",
+   "n": 727
+  },
+  "lightharness/examples/test_bash渲染.light": {
+   "sha": "773f075776f885b6aa65f06b3b2cd37a1dca06cca758ca38d07a720c290bbd5b",
+   "n": 978
+  },
+  "lightharness/examples/test_cli深化.light": {
+   "sha": "0acc09d575d8d7bc7264d8fcd5062a8732aaaaed60aecbfff2296a743c7053cb",
+   "n": 438
+  },
+  "lightharness/examples/test_e2b.light": {
+   "sha": "fd96ed34047d769aca89d233a3312247a4434a1b392c425b321d20378ffbf77b",
+   "n": 480
+  },
+  "lightharness/examples/test_e2b深化.light": {
+   "sha": "7a1116062f961142a4e0aaf012734a1186045c5fc0b4226db58c56c994726468",
+   "n": 426
+  },
+  "lightharness/examples/test_e2b配套.light": {
+   "sha": "2dd02d65b28013eadef0f43a69497ba6cd86e980d5ad11798de0b4b4544363c3",
+   "n": 3343
+  },
+  "lightharness/examples/test_mcp.light": {
+   "sha": "deb98d3bf38ec85628f56b99f46f1a0ddc0d372ec6a8898fa7eee2cab2101843",
+   "n": 343
+  },
+  "lightharness/examples/test_mcp_http.light": {
+   "sha": "894431d77e65ef39ba5c72f0ed782b60a415f39ab8ff6a2851c986357ea7debb",
+   "n": 335
+  },
+  "lightharness/examples/test_mock大模型服务器.light": {
+   "sha": "edd1285648f371e4f45a260e6657aef42e193ca6851b23a90ac75d8289238424",
+   "n": 1718
+  },
+  "lightharness/examples/test_tmux上下文.light": {
+   "sha": "7f3b35a5bbf56a5be159e102eb67cde0b4ad318ccc5447bbe8419da60e24b6cd",
+   "n": 670
+  },
+  "lightharness/examples/test_webhook会话.light": {
+   "sha": "1b5488c2eff56baf01e7384177d51916376cc6c6255ae59d76b3bf4fc130286a",
+   "n": 6801
+  },
+  "lightharness/examples/test_web服务器E5.light": {
+   "sha": "8129c04aa0ab3a94c0c80c0df618774d24e83a87d0663890567aec7f6ace32a7",
+   "n": 334
+  },
+  "lightharness/examples/test_web路由.light": {
+   "sha": "d98e5166d9ea9a936a547fbc4cc51218eab956378fd175cc7ebeba82ea474fc4",
+   "n": 1189
+  },
+  "lightharness/examples/test_一次性监听器.light": {
+   "sha": "7d7ac8554f42734748e06391fc0de1a9b91c471a07c5416c70bcc742c3e35647",
+   "n": 380
+  },
+  "lightharness/examples/test_主目录路径.light": {
+   "sha": "784ecbb0eed3f1c5d81809ad473ae63a91e61258745d26ec464361dff6051837",
+   "n": 327
+  },
+  "lightharness/examples/test_事件.light": {
+   "sha": "1813a4acb7fec93167a5f7d5540cd87f4d40f88867a28ab179f50b3e5194a78b",
+   "n": 447
+  },
+  "lightharness/examples/test_事件表.light": {
+   "sha": "d8422271e99131866ec8a6da6c6a2565dd2ad73de55559cde8d01e4af2d7707c",
+   "n": 79
+  },
+  "lightharness/examples/test_二分1.light": {
+   "sha": "687b951619ebec045a022ee30701341de274679930b712b5c2f9b02968372136",
+   "n": 92
+  },
+  "lightharness/examples/test_二分2.light": {
+   "sha": "95ad86b5aa9c1e548212d66af327243b3908c5778e5c7bc0b3429c0c5601a51e",
+   "n": 269
+  },
+  "lightharness/examples/test_二分3.light": {
+   "sha": "fb0cc8acd442d2da11e9eb9c4199302c3e200c5eda362173ccfc1851375aa0b2",
+   "n": 122
+  },
+  "lightharness/examples/test_交互命令.light": {
+   "sha": "4dd8d1a5e256bf650ac3f17870b2210ceb74ab5b6810f105540854f1fc8526fd",
+   "n": 2015
+  },
+  "lightharness/examples/test_交付.light": {
+   "sha": "2cae24939aff8642f92b61bc8dff35fcec6e2fb947c98497dc5df6c2b2a20e47",
+   "n": 1919
+  },
+  "lightharness/examples/test_代理.light": {
+   "sha": "92f2f1bedcfb63b61301d835d3b023393465ec5109cb0909c2c3ddee80918dd2",
+   "n": 609
+  },
+  "lightharness/examples/test_代理团队.light": {
+   "sha": "5dbd665ca403abf39ee59a0b8de8f119bbbd786bec6c33e77de9dbd42aa6d1b7",
+   "n": 3570
+  },
+  "lightharness/examples/test_代理深化.light": {
+   "sha": "83dd46801531ff5efb7a6529cbcc71754d4025d440df7d6328c77f9efb6b8468",
+   "n": 742
+  },
+  "lightharness/examples/test_代理策略.light": {
+   "sha": "c21c08f4580c799bbfb00cc2a2a35cb341f4662d7cb2edd6458b2a823caa8763",
+   "n": 1136
+  },
+  "lightharness/examples/test_代理系统提示.light": {
+   "sha": "3e71e972eb1669b4590ba05a06cf5f95dc5b54ff687e454e01fe7736f972cf7d",
+   "n": 1460
+  },
+  "lightharness/examples/test_代码运行时.light": {
+   "sha": "3f36ede31a227cf57dad97718b6586b9912baf4b1e9b789387191d6689a5b4ae",
+   "n": 421
+  },
+  "lightharness/examples/test_代码运行时协议.light": {
+   "sha": "2b872566c1fcf10283a8e20b49c6bbf61d3325dd34ea1b4d6de76a43de1391f2",
+   "n": 1589
+  },
+  "lightharness/examples/test_代码运行时深化.light": {
+   "sha": "80386b602441693a295f169a32a5c39647c67639dc64ccb9b8f09fe0bb45702e",
+   "n": 421
+  },
+  "lightharness/examples/test_令牌估算.light": {
+   "sha": "2ec14acfbd16f233371c29288410efd1fd10d3b40688e1aca94b4e087f0e73a7",
+   "n": 584
+  },
+  "lightharness/examples/test_令牌估算1.5.light": {
+   "sha": "9dd0aad52d4208c87f07228b430f755ae2478d83136f39a0b71608a7aa8aec9f",
+   "n": 666
+  },
+  "lightharness/examples/test_令牌计量.light": {
+   "sha": "c8f8b128adc39ce2586ca6634cb5fb48a33fb11677cbc1113beb2942c9d7632a",
+   "n": 930
+  },
+  "lightharness/examples/test_任务系统.light": {
+   "sha": "837b710a5fedfffbf281cd95e3de45d23d1c95973297fd20746fc492739bbec0",
+   "n": 4474
+  },
+  "lightharness/examples/test_会话.light": {
+   "sha": "96b6a7d80ce8bf1720823574edf30c2face6d11a36794a440fc9d36b8a0e2a64",
+   "n": 543
+  },
+  "lightharness/examples/test_会话V3迁移.light": {
+   "sha": "6ff66fd44aab077d03535dff5d25d61dfc0e186d6b61f2fc9337db62cb3c61a0",
+   "n": 899
+  },
+  "lightharness/examples/test_会话冷读.light": {
+   "sha": "ca3905d1ebac73d348bb3fd828adb86f8ae517ab5eff469a7d814b52f77562a1",
+   "n": 792
+  },
+  "lightharness/examples/test_会话存储.light": {
+   "sha": "d0d178d96e005415aa8bce6f2fcb102a42330fa51a063aeff41b4130def43b97",
+   "n": 1815
+  },
+  "lightharness/examples/test_会话引用.light": {
+   "sha": "f360367a9b2aaa2f7a12e170c597429f2914322b89ce461865180b43d69b2128",
+   "n": 426
+  },
+  "lightharness/examples/test_会话引用深化.light": {
+   "sha": "9916972e7af13101e3b7e8ef6e433d9929cf9dba18816817a47bcc4b369066f4",
+   "n": 2002
+  },
+  "lightharness/examples/test_会话持久化JSONL.light": {
+   "sha": "89d80594b20d48582cba60e97c73f490a44856a7743a7e8e510d600d8a2b597d",
+   "n": 1682
+  },
+  "lightharness/examples/test_会话控制类型.light": {
+   "sha": "52fba5ef4b75219c7eeb5527cc3bd88a65d927ac195b3ab31f5f3254ee22660a",
+   "n": 1736
+  },
+  "lightharness/examples/test_会话日志增量.light": {
+   "sha": "40c38681e9c51399e5c405af8edb7da1a3e590f32732afb30f1a1009efd44ead",
+   "n": 2296
+  },
+  "lightharness/examples/test_会话查询1.5.light": {
+   "sha": "cb490b1ee18e9d229ab55d937bd3624d892ae82d2cf3c703f8c48f5df582014e",
+   "n": 1719
+  },
+  "lightharness/examples/test_会话查询过滤.light": {
+   "sha": "ba567433655ab3257ebdec1ecc349ef6a24cca1f3d2b27ebc51ca7ddfa055b8a",
+   "n": 864
+  },
+  "lightharness/examples/test_会话标题.light": {
+   "sha": "6c1c8f5fc39764b98c459d2472cd3f642937236ae282787f79e931acae7861ee",
+   "n": 589
+  },
+  "lightharness/examples/test_会话标题族.light": {
+   "sha": "f286d343a5106ebc74e7ac1401442ff01b311d3398f6238b9b3eda7e2aa87f73",
+   "n": 3361
+  },
+  "lightharness/examples/test_会话格式.light": {
+   "sha": "1f9eba4579a2b495974dc0be241b997d03944aa8260fb9dbbaa1e4938c71d92a",
+   "n": 1137
+  },
+  "lightharness/examples/test_会话格式冒烟.light": {
+   "sha": "d34fb31d0925a03f4aa6824a0e4d8fb8b416a0b2473d9372e00181b706d1b2fb",
+   "n": 253
+  },
+  "lightharness/examples/test_会话深化.light": {
+   "sha": "d890582b8c9795e2906891f53034470de80282f4edb88eb84b91b98255368380",
+   "n": 615
+  },
+  "lightharness/examples/test_会话轮次大纲.light": {
+   "sha": "c078d37f3dfbac5f69cf9dea2c708e8b5a1615f59f4a953a8c91d2b938ae8cc0",
+   "n": 805
+  },
+  "lightharness/examples/test_修复_LLM.light": {
+   "sha": "2f56f58e1ae371201035f3e5903b0f590b7560e5b84b7e572bd06b39d3d3c904",
+   "n": 706
+  },
+  "lightharness/examples/test_修复_repair.light": {
+   "sha": "07becac1eb1ddc1ee106399b0568828b97a220de1d25ebd0b625ad165d59fcd4",
+   "n": 1879
+  },
+  "lightharness/examples/test_修复_repair接入.light": {
+   "sha": "463111235cc980666a1a945792fca0e2dc5e448b8a02e591a8455c7151354bd4",
+   "n": 502
+  },
+  "lightharness/examples/test_修复_会话.light": {
+   "sha": "7c4891f0f863159ff988a4c62d2e11f1838e2f275903e565ef902d3c21a2f756",
+   "n": 748
+  },
+  "lightharness/examples/test_修复_子智能体预设.light": {
+   "sha": "5b37da94e92a639f219ddeb25249a76185e09adeb6fd7a3d4733f44115dc5bb5",
+   "n": 693
+  },
+  "lightharness/examples/test_修复_工具.light": {
+   "sha": "67afd21cade4e821a8c082726aacfba8c4deb69ff61d08b1a09a383699266ea2",
+   "n": 1027
+  },
+  "lightharness/examples/test_修复_拷贝.light": {
+   "sha": "93fd36a93f7e9c8f3b16926791c93301cc355bba0350c3a7c639e12452484a12",
+   "n": 334
+  },
+  "lightharness/examples/test_入口默认模型.light": {
+   "sha": "2483038689253a9b6b4f6ee891ea794314583f6e92afcd1648a1ec8082ae0bd1",
+   "n": 483
+  },
+  "lightharness/examples/test_凭据.light": {
+   "sha": "85e36388d672d52b5b6ab1d896af544880e55f6b0525d459c0ed13e8efaf01bf",
+   "n": 606
+  },
+  "lightharness/examples/test_函数增强.light": {
+   "sha": "2e9d2b0a1d71113a60ffff1cf4bf4dfa6a1b8fc52f65e904da359cab3e1c6455",
+   "n": 962
+  },
+  "lightharness/examples/test_前缀.light": {
+   "sha": "f5603e98e150e2c71ef81494a258d44e439a3d16d05d7502fa13529a28f49940",
+   "n": 176
+  },
+  "lightharness/examples/test_协议深化.light": {
+   "sha": "07d81281f7f09c18df5ba691dc48c5efd3a01538432c898cccfed0be5693528e",
+   "n": 4568
+  },
+  "lightharness/examples/test_压缩.light": {
+   "sha": "c021e5d05e619e74c8a57d39f55695f2e37ca736e3047771193e101b80c47d4a",
+   "n": 325
+  },
+  "lightharness/examples/test_压缩E5.light": {
+   "sha": "37518fb5c4e1961a680a39538568bc45d6a03dcbe95ab33d14a2cfb5047126ce",
+   "n": 1057
+  },
+  "lightharness/examples/test_压缩自动.light": {
+   "sha": "c8b8c8a16558d51b0bf9c135b5ae9180a261d346fe60ef8be322485b1281e1a1",
+   "n": 719
+  },
+  "lightharness/examples/test_压缩配套.light": {
+   "sha": "321278195790a8bf55d38c8dcfb7a5b3636bcffeb85aab3185b603dc9044f980",
+   "n": 2815
+  },
+  "lightharness/examples/test_原子写.light": {
+   "sha": "f24d1ac047c7ab6b483c4a973451e21114762148c73cf4f3eed11ff1037416d4",
+   "n": 248
+  },
+  "lightharness/examples/test_反馈.light": {
+   "sha": "aa4946edc8bc8581513dfafc6544d8e17ff7aff0d27e9bcff6d5d18ac0f149ea",
+   "n": 1080
+  },
+  "lightharness/examples/test_启动环境.light": {
+   "sha": "18a185e62328241fbf21af4fefd13cdad961a5b3682b4297f7329b942bf8bd35",
+   "n": 685
+  },
+  "lightharness/examples/test_启动配置.light": {
+   "sha": "18216356eb57f5585955cb47e224551b3b27b554a399d76a8b4ae4abad27c984",
+   "n": 1308
+  },
+  "lightharness/examples/test_团队事件v2.light": {
+   "sha": "3f736acb2e1496cf74f840ce2cdfad3d8703644faa5203b3db9a5c78c99eb2ab",
+   "n": 1188
+  },
+  "lightharness/examples/test_团队依赖图.light": {
+   "sha": "e3ea77a3dc9dfca00c7363dfbf579987c507794dbde8586a93480f71804a5809",
+   "n": 2454
+  },
+  "lightharness/examples/test_团队工具.light": {
+   "sha": "67dcd234aa5961b23c2186de121e2b22f5d9cdbef80aacce4431b455124ee9a5",
+   "n": 1367
+  },
+  "lightharness/examples/test_团队折叠.light": {
+   "sha": "0da8b9378458e16f9fef3420c6798af93d8061782fbdd828d04dd6bf12051e77",
+   "n": 4580
+  },
+  "lightharness/examples/test_团队日志.light": {
+   "sha": "4629216610f1b193c343f0d2ac0279fb3d78fce7d11b1d24720ea8ae85222525",
+   "n": 2476
+  },
+  "lightharness/examples/test_团队服务.light": {
+   "sha": "4d4dc6c6e1b767cfa8ceb13c38ffc3631776e26908d3e6f89486ae263440deee",
+   "n": 10831
+  },
+  "lightharness/examples/test_团队服务1.5.light": {
+   "sha": "6e5ea5bcf6ecf428d291a68022b074ddb41fe0f885ca39942305aa91b4299666",
+   "n": 3010
+  },
+  "lightharness/examples/test_团队看板.light": {
+   "sha": "0c5d05dd965b36b90bd461e40aede24767b916b19dc61c70c18015750f3ce06c",
+   "n": 3007
+  },
+  "lightharness/examples/test_团队花名册.light": {
+   "sha": "50083b4bca3c9a7d92b9cabd9ce3c5612c24c46ff6279fbf251812c8eacc62b8",
+   "n": 10001
+  },
+  "lightharness/examples/test_外壳环境.light": {
+   "sha": "1c1db0234e2aa3a4daf84a38616088429023f9deb1dde0657ab4e453bdb5dd37",
+   "n": 1816
+  },
+  "lightharness/examples/test_外壳退出解析.light": {
+   "sha": "a6aba42a01b9cdbac65f35cf4783fa7460bbca5714487266cbbb9b4c75205fbd",
+   "n": 307
+  },
+  "lightharness/examples/test_大模型回放.light": {
+   "sha": "cc06a9d631e97612776a4d08764220862b85950e0cabd7e36b0b0fa6561272c4",
+   "n": 2663
+  },
+  "lightharness/examples/test_子代理核心.light": {
+   "sha": "d1de07c58b8343a483ee8071576758c99904dbb90d8434b79eb028db7bed63d8",
+   "n": 2936
+  },
+  "lightharness/examples/test_子代理续传.light": {
+   "sha": "53ca1c15a072087530cb3a3c6481d2ebeefa182ad463f5302b393166e64aacd3",
+   "n": 2192
+  },
+  "lightharness/examples/test_子智能体.light": {
+   "sha": "c8323a1b22fccca84e403a1fa8b3dda720e8302b7c5d9eb6a0ebad604d72a83c",
+   "n": 718
+  },
+  "lightharness/examples/test_子智能体1.5.light": {
+   "sha": "2cc102df703f66aad8d00a0ea394047ff2e3acdafad915b73ce24bcc1a81f00b",
+   "n": 1914
+  },
+  "lightharness/examples/test_子智能体深化.light": {
+   "sha": "1b7034b3f41be0f7e332fce5b55bfa70f903c9211cc5ee33d65d53296a4e1942",
+   "n": 641
+  },
+  "lightharness/examples/test_子进程.light": {
+   "sha": "4dec2dcca436cc6d797f8f016d46cd2cabb11f269a43f0089fc5158e312350f2",
+   "n": 124
+  },
+  "lightharness/examples/test_子进程后台.light": {
+   "sha": "8e46d188cd3247e4e7e711001373acb56c04879e7d615ea4d5c3415c9afd2e3a",
+   "n": 163
+  },
+  "lightharness/examples/test_子进程流式.light": {
+   "sha": "55262be640c3d06fea8ea6d277b9ea2546f1dc5958816498df2da779af0a2b6f",
+   "n": 182
+  },
+  "lightharness/examples/test_子进程深化.light": {
+   "sha": "0cc10930bf50f7a0d0d203140c17296dc770ddf7245c26441868062006ebb54d",
+   "n": 217
+  },
+  "lightharness/examples/test_子进程码.light": {
+   "sha": "5f68a6e39a42b7f5a13b246d6d084ee48e89841ec53ec729c14509249143259b",
+   "n": 112
+  },
+  "lightharness/examples/test_字典.light": {
+   "sha": "912444e30eb8900a8d4f6a5dbce03f7e2d99472c5cf102e4dccb1935f6acbb03",
+   "n": 104
+  },
+  "lightharness/examples/test_字典增强.light": {
+   "sha": "73acf9ef6cf01b99023e9f881bab236e21d9a20565c8a2c011413da1d5120de9",
+   "n": 1186
+  },
+  "lightharness/examples/test_字符串增强.light": {
+   "sha": "e598eb4def68e90c37295193bfce5a80a7d0cd22d934fb9d22f954056dbb5faa",
+   "n": 1019
+  },
+  "lightharness/examples/test_字符串替换编辑器.light": {
+   "sha": "c8efb504e439034db3aa9ef0f468593d850be1b4c73fcae00f84d8334c6f766e",
+   "n": 2811
+  },
+  "lightharness/examples/test_存储域.light": {
+   "sha": "bff2f22584b9b913f1833f567f800754761ac7cf27ba87f7980bdef3be0ccec4",
+   "n": 1553
+  },
+  "lightharness/examples/test_存储核心.light": {
+   "sha": "7c3b0186127865cac6411e961f7e79dc24994325f7dcc97514a036d267f1ee87",
+   "n": 2270
+  },
+  "lightharness/examples/test_存储深化.light": {
+   "sha": "94f73078a890ebb6cc61274dc9e5310cfaeb57869b9d9ec1550593a91f9bbb7f",
+   "n": 352
+  },
+  "lightharness/examples/test_安全策略.light": {
+   "sha": "9026d2e9abb8d2ab235dcb3f050503047f2d6d5b63df18e201c4542c53754610",
+   "n": 1643
+  },
+  "lightharness/examples/test_定时.light": {
+   "sha": "bf5c67f0623ee05b83d1905182cb2da24ec56c29a13fbbdc818f71eb2825af4f",
+   "n": 1425
+  },
+  "lightharness/examples/test_审批.light": {
+   "sha": "7c851316c821cfb53bf7f779cea9aae9d2ad2f091426404f8fa1484dbcbaa2f6",
+   "n": 1309
+  },
+  "lightharness/examples/test_审批API.light": {
+   "sha": "8e379b8da617962015882f5a6415e431ba2125d86683682eb6cbe72a7c8483ae",
+   "n": 885
+  },
+  "lightharness/examples/test_审批对照.light": {
+   "sha": "117d2e08277162bb4999528b4a572a72902a0a759dcc13a6dd19016c546e17ec",
+   "n": 1362
+  },
+  "lightharness/examples/test_审批深化.light": {
+   "sha": "1d890002e66032deac759511598e77cb92182d481e2c2e478b95270db758f4d5",
+   "n": 391
+  },
+  "lightharness/examples/test_审批钩.light": {
+   "sha": "aefac7112b0556ba17cff4c50fec0917dda840936696d1f04335ff273d1ffff7",
+   "n": 1457
+  },
+  "lightharness/examples/test_客户端.light": {
+   "sha": "e5d3243a87e1845869130f2fa046e317d8a79c1c1dbcf43c9db8f266a4c77fc5",
+   "n": 556
+  },
+  "lightharness/examples/test_客户端深化.light": {
+   "sha": "9907c9c42a7cfd77f77d9e32d3f4714e00d4435b75bfb0fb5876fe8a84fe86ef",
+   "n": 314
+  },
+  "lightharness/examples/test_客户端超时.light": {
+   "sha": "4e0b10b63fc64b5d3e45d7acfc19de0271ca33dfee53624f41e953da56493b48",
+   "n": 184
+  },
+  "lightharness/examples/test_宿主IO.light": {
+   "sha": "7bea582bb2f1529a67cc986e2bbc02126bb064428339e9419f8f226ce561d2a5",
+   "n": 1123
+  },
+  "lightharness/examples/test_宿主上下文.light": {
+   "sha": "fa37957a8ea96a81ddea74528e2b56bb0b6f4d78097e23954003236b623f9a9e",
+   "n": 1301
+  },
+  "lightharness/examples/test_宿主事件.light": {
+   "sha": "f9ce3021ff9cc56c03a92703385de218be3d3a85c58202cd401830c33a98aa3a",
+   "n": 1505
+  },
+  "lightharness/examples/test_宿主工具.light": {
+   "sha": "252fbead363df49e2279497ee4f22ca99cb1bd1e0a4fd078a0906ebd3fad4732",
+   "n": 1348
+  },
+  "lightharness/examples/test_宿主运行时.light": {
+   "sha": "1c70315b60066a91ef2d072d4f498bb2e7c6399d0bda3f4ad7212b42d82a1a77",
+   "n": 1730
+  },
+  "lightharness/examples/test_宿主配置.light": {
+   "sha": "e44b940198568e4b288db7b8d756fd3a5fc25775995e941edf8412cdce1086c9",
+   "n": 1281
+  },
+  "lightharness/examples/test_小域类型.light": {
+   "sha": "2e2c612bbe0e7e31d8e42e699fe6261975e21bae400a48535a56a7723e5e6137",
+   "n": 1396
+  },
+  "lightharness/examples/test_局部事件.light": {
+   "sha": "f2630323c77e28034badfcb7519ed35be43c836cce901c778558bce1a53e5ced",
+   "n": 111
+  },
+  "lightharness/examples/test_局部事件2.light": {
+   "sha": "42e9a5d7eb37bcbbe454154a602117f45831285e52cf4a6210faa876d85d5494",
+   "n": 111
+  },
+  "lightharness/examples/test_工作区.light": {
+   "sha": "8c545cb4f573c8696af72357292c9452fd8532f33b12a76fea71f1c0460c75b4",
+   "n": 1526
+  },
+  "lightharness/examples/test_工作流报告.light": {
+   "sha": "86e9441dabb4cd93eb3c3bdb0927fb4fc3bda0b485d99318a4a352f4c8020e0e",
+   "n": 1120
+  },
+  "lightharness/examples/test_工作流结果渲染.light": {
+   "sha": "7da23fc48dbe92d1a9ebe8079c081be77bd2bc434a1b40894ad85c23bafbb4ad",
+   "n": 313
+  },
+  "lightharness/examples/test_工作流错误.light": {
+   "sha": "a8b617548d588220ff87a81a3bc092ad422936caeebb264620690b202fcf2092",
+   "n": 317
+  },
+  "lightharness/examples/test_工具.light": {
+   "sha": "e8b454d3042b754dc0f0abb799712ee73e86b2a99bed90a66b7e03f3bc38c2aa",
+   "n": 496
+  },
+  "lightharness/examples/test_工具_小工具.light": {
+   "sha": "be7116a042edbc3c0d80bcdceba6a11f5e5a52631e1d21af2a3415f16aa9f865",
+   "n": 1191
+  },
+  "lightharness/examples/test_工具深.light": {
+   "sha": "4850ec691ffee48564a6586419f70aa7beadf82d31d85bb55f961b3f5bd138ff",
+   "n": 1435
+  },
+  "lightharness/examples/test_工具深化.light": {
+   "sha": "52c916c901b6e23c91b9ba6803eaed56794e195999f84e1e4a98cf8b25119b47",
+   "n": 450
+  },
+  "lightharness/examples/test_工具系统.light": {
+   "sha": "46d914f75ae346f852efb3e3dc89f4ec0a530b3650ff1893490a8cc60b4ff3af",
+   "n": 554
+  },
+  "lightharness/examples/test_工具统计.light": {
+   "sha": "c74968b7ba96e7d060b52501d783b455fbf42b4a88625d88b6a4a62474e1012f",
+   "n": 358
+  },
+  "lightharness/examples/test_并行.light": {
+   "sha": "3283427febe97fb27db2fd274bec878673e4f3b7a9a6feb67a4acd7e6a1a4b31",
+   "n": 717
+  },
+  "lightharness/examples/test_异步代理.light": {
+   "sha": "68bf41c26b6a1c42c8ef40a96c0fc7612069c01da14e12f417c8c1dfe488fd8a",
+   "n": 1597
+  },
+  "lightharness/examples/test_待办.light": {
+   "sha": "ff0881825e552aa001036ddb9ef05e1965d9e8d55fa444a36fc989071232b6b6",
+   "n": 872
+  },
+  "lightharness/examples/test_总入口.light": {
+   "sha": "34bd7c15fa0c7a1d11890dbfe65800c1c5a21d30c5d1376d35ee047ad4152694",
+   "n": 117
+  },
+  "lightharness/examples/test_技能清单.light": {
+   "sha": "816787de722b0c38c15e8167043fe33994b836617d22fb9d5bdf4e573ef44f65",
+   "n": 1743
+  },
+  "lightharness/examples/test_抓取策略.light": {
+   "sha": "76a10c400c293ca36fe8c6f40c23eec5bdc923c5d81f1ee1ba1e3abb3a247ab0",
+   "n": 716
+  },
+  "lightharness/examples/test_持久化.light": {
+   "sha": "a86bc9769471614de7997e800e8ffd6680339a17ff6fb5d123b6eca62522f4f3",
+   "n": 305
+  },
+  "lightharness/examples/test_持久化增量.light": {
+   "sha": "496d9ef6c0c0cdfcefac8528c8d8c735e58f67cbe75e9025b3729e2fc213085f",
+   "n": 408
+  },
+  "lightharness/examples/test_授权链.light": {
+   "sha": "bfb1e70228849ac91dca8e2327cc04a9a59b299191fafd13f16bd919bf56236c",
+   "n": 1926
+  },
+  "lightharness/examples/test_控制器类型.light": {
+   "sha": "e3c2d0a8f41fd5e86035091165d2d37f08f65414901d8e5a5cfdfadcd4697f08",
+   "n": 3200
+  },
+  "lightharness/examples/test_推理工具.light": {
+   "sha": "1ae7faa5375ca3af7acdffa0e00c48f75f985eac793ec477df55377f4f4bbed6",
+   "n": 2614
+  },
+  "lightharness/examples/test_提示模板.light": {
+   "sha": "cf87608e477298bd047721b770d5c21d3eb1f7886f96790c30bd39b4f63ebcf3",
+   "n": 758
+  },
+  "lightharness/examples/test_搜索提供商.light": {
+   "sha": "e32a248aa525c83e270c39b71263f398a3b18cdcdaf8e4b30ae9b9a74b9a15b1",
+   "n": 3173
+  },
+  "lightharness/examples/test_数值兼容.light": {
+   "sha": "6e8ca066d11def666c1159de2745af57c2c3ea801e6ac75ffd4d583d2a453d0c",
+   "n": 849
+  },
+  "lightharness/examples/test_文件.light": {
+   "sha": "df182b7a16270096bf8f9beffc8f40325810524f4cfac83ef14b5649e3a2a176",
+   "n": 193
+  },
+  "lightharness/examples/test_文件引用.light": {
+   "sha": "eb96543687133f8ab7cf4f0124c081ccf586d1f8a6be3b91d5ee2354a2376910",
+   "n": 553
+  },
+  "lightharness/examples/test_文件深.light": {
+   "sha": "3c74ca3e8ef9f718551dc7f261a4043e5d35bac71ed69255ef7196bbdc569e4e",
+   "n": 911
+  },
+  "lightharness/examples/test_文件深化.light": {
+   "sha": "bd3cb1dbc22c5609d3effc5cb32363e8b7ed59d85e0b33b44972d632e603a593",
+   "n": 214
+  },
+  "lightharness/examples/test_文件系统工具.light": {
+   "sha": "364ab8878deff70a727f2f725c4d65607c9d8b20e815a06a03bbb7fb7a87ad5d",
+   "n": 2455
+  },
+  "lightharness/examples/test_时间上下文.light": {
+   "sha": "c355fcc4dde0100a85ebc416ed730dbedd21c18680c7f223ab6bcb80a9e1d23f",
+   "n": 970
+  },
+  "lightharness/examples/test_智能体指令.light": {
+   "sha": "864973a83ca543d3846a6cae881d204eba8f5006a3729c13946f10d5b9ae38e4",
+   "n": 1367
+  },
+  "lightharness/examples/test_最小复现.light": {
+   "sha": "8b97d872a0c2c3c4874cd88c4bc463b4c27604644aad398f9357c5fc2d3973ec",
+   "n": 110
+  },
+  "lightharness/examples/test_最小复现2.light": {
+   "sha": "c3a2fe504ae917ef3788e30d5b7c7f8a396480bc9976fba4b2a256986f22ee4c",
+   "n": 147
+  },
+  "lightharness/examples/test_权限.light": {
+   "sha": "1f54849d6a7e16f33c38a204e9d0afac58106c7a884c891480a8494c485ddfdd",
+   "n": 1047
+  },
+  "lightharness/examples/test_构造.light": {
+   "sha": "76d64895deaa701f48bbacaefa0c51ea49ffcd9d5979d7a9f47a6fac18da348d",
+   "n": 142
+  },
+  "lightharness/examples/test_查询工具.light": {
+   "sha": "f4b50bfbef1b98dfa45af4f71566a68bedd1ef12439b5e493aa0041fdbd97b9d",
+   "n": 1530
+  },
+  "lightharness/examples/test_检查点策略.light": {
+   "sha": "cd41f78b24aec8dec20377cb59ff8fde808cde28e48946251a33980ffb90b737",
+   "n": 504
+  },
+  "lightharness/examples/test_模型目录.light": {
+   "sha": "34dfd9b2383974ea4f20cd0b71bb0cc836ce6403da41ca65cda74da320378b8d",
+   "n": 186
+  },
+  "lightharness/examples/test_沙箱.light": {
+   "sha": "d012b6be764c6f51ce135ae1373754c81e3be33e82079b0bea923b535dc3dbdf",
+   "n": 297
+  },
+  "lightharness/examples/test_沙箱深化.light": {
+   "sha": "7ecccb109904950b5b5dbe7229eeb14affcf964a353fe3c206fac8266a25c413",
+   "n": 301
+  },
+  "lightharness/examples/test_沙箱资源.light": {
+   "sha": "93efe046eb0b961b12e10428d484473cbda06e9c67d29f265274b9fb2d05483e",
+   "n": 386
+  },
+  "lightharness/examples/test_流.light": {
+   "sha": "999ee13acfdf79ad978b365a020f620ccc31beed981c0caf01e73f2664fe6570",
+   "n": 650
+  },
+  "lightharness/examples/test_流深化.light": {
+   "sha": "b0708205298dea5d9984a4a7f665f8311215530fc1b91738ba0300787aa68c0b",
+   "n": 366
+  },
+  "lightharness/examples/test_消息.light": {
+   "sha": "acc86ea95bceb27c927cb026e76c447d08413f0979e5ac78b9f2a589decf62f3",
+   "n": 144
+  },
+  "lightharness/examples/test_消息_System.light": {
+   "sha": "e238ad10e9eee0c71488b13ec34f29fc503e11d3f8a7bb12a3eacc87c6dd64ef",
+   "n": 363
+  },
+  "lightharness/examples/test_消息深化.light": {
+   "sha": "9d77baade4c4b0b9195316fe800287c299e831bbc3d7e33d71717b1d3e66221e",
+   "n": 361
+  },
+  "lightharness/examples/test_溢出.light": {
+   "sha": "8f3f9eb74f241a0a19f1816ffeb86b0170a663e64c41e7bf07af5c154a2b91b9",
+   "n": 670
+  },
+  "lightharness/examples/test_溢出恢复.light": {
+   "sha": "f152ef0e04826936e211d3d2b64008295132d57cd016e4974758c96094bbfd67",
+   "n": 401
+  },
+  "lightharness/examples/test_溢出重试深化.light": {
+   "sha": "c2e53d6fae34fdc074d1efc6d76595a7210af6d9c35616769847e42507f9f6cd",
+   "n": 1409
+  },
+  "lightharness/examples/test_目标恢复守卫.light": {
+   "sha": "b339aaf1d743364171126efaba08520d1291029b7cdae07eea56fa77ba939419",
+   "n": 433
+  },
+  "lightharness/examples/test_目标恢复激活.light": {
+   "sha": "11abbb5db07c6355a79157aeb06be347b75ee380954a060f2b896adabad0e460",
+   "n": 2007
+  },
+  "lightharness/examples/test_目标折叠.light": {
+   "sha": "43d187b4e4eabd159ee0e7d81532b267700975e67f5b48df029536288b9c4455",
+   "n": 857
+  },
+  "lightharness/examples/test_目标轮驱动.light": {
+   "sha": "346f8bbdda69324af3d035790508ee21f3ea619cc823747336ae25de636ebb0f",
+   "n": 1933
+  },
+  "lightharness/examples/test_空表.light": {
+   "sha": "104731878029d21faa91b4c4860ad90647b52dc7302cd138d68bbf8a972059c4",
+   "n": 108
+  },
+  "lightharness/examples/test_类型注册.light": {
+   "sha": "5c4e1c04b570c8e193e9fed425019dc3ee1974659236d40c8345ed921188de4a",
+   "n": 1437
+  },
+  "lightharness/examples/test_类型系统.light": {
+   "sha": "fdd08f233f81e49a4592959c964671c59393c9c381b951d2f37d53f3c9ad2520",
+   "n": 3609
+  },
+  "lightharness/examples/test_精确复现.light": {
+   "sha": "1bf8255db4ce0788acb7ef68c18f3a63fb09d331a19a91ce6d596be31ad48b96",
+   "n": 118
+  },
+  "lightharness/examples/test_终端.light": {
+   "sha": "cef5fed75854dd132c4049c273d3aba75ca850dbde55359ca5d9525e01a44da1",
+   "n": 551
+  },
+  "lightharness/examples/test_终端PTY.light": {
+   "sha": "786f1b30e4a2ddb6e51923277e144b8cc607a4b7570d87ece4d38b0b3b5b27a6",
+   "n": 540
+  },
+  "lightharness/examples/test_绕法A.light": {
+   "sha": "16a975eecb9e5ef627a3fd4e639bf2cc9cc81492b6f13560c31fc7db0ac4a9fa",
+   "n": 82
+  },
+  "lightharness/examples/test_绕法B.light": {
+   "sha": "8a2ec1f77f2ea7abb8d2da618e37d310009cf326a6a24e8a31e07f25e2f2b330",
+   "n": 114
+  },
+  "lightharness/examples/test_绕法C.light": {
+   "sha": "eb9af7a16797b1dc3ea003f17311745baf43f67f5c86bc68f7c3fe61dca5cb3d",
+   "n": 94
+  },
+  "lightharness/examples/test_网关协议.light": {
+   "sha": "39e0cc96f5dd7ae980226b67c241b5ca3a12af669bfd61e114d1fcc1d206c315",
+   "n": 1506
+  },
+  "lightharness/examples/test_网络钩子GitHub.light": {
+   "sha": "dbf505e6b2a0ed0775975b6aceca1ab196a8682a147360ce18eb5a2900190c66",
+   "n": 2354
+  },
+  "lightharness/examples/test_网页搜索.light": {
+   "sha": "0ca94cd2b5ed021f4aa3d82b83ce5b6f62738dddb0c73965ecb0984eeff2c9f3",
+   "n": 2030
+  },
+  "lightharness/examples/test_联调CLI.light": {
+   "sha": "163299a3e4fd83e1edde9455702e6ed4ce586376882c0a98362c5df34052feec",
+   "n": 708
+  },
+  "lightharness/examples/test_行为对照_LLM.light": {
+   "sha": "dd5d0ab75843a7308baca90f16e5bc97fcf8b84230d933bc4deaa1882e87ea0a",
+   "n": 1972
+  },
+  "lightharness/examples/test_行为对照_代理循环.light": {
+   "sha": "cc7ac4df6b04de23b3e9cd0263fd4431a91d37965fbbacf9adebdc907f3c0899",
+   "n": 2966
+  },
+  "lightharness/examples/test_行为对照_会话持久化.light": {
+   "sha": "70a971935b5e924aaf04f3223bed1cd22a430d392e9fdc3215c50c5d949e5374",
+   "n": 1694
+  },
+  "lightharness/examples/test_行为对照_工具子智能体.light": {
+   "sha": "0ed338eb2dacae4b65b274fd87b6777c57d343bd2b2cbdae07d4ece8830f9eae",
+   "n": 2347
+  },
+  "lightharness/examples/test_计划模式.light": {
+   "sha": "f82e9547e654ae40b52543054a6e7bb09ae3a9571149c9859d2d9516d6df1377",
+   "n": 1276
+  },
+  "lightharness/examples/test_认证.light": {
+   "sha": "e82d669f0ce4693ddd825e77ef22eea05d256220c2a2ce3b6d7b7a6e470960ba",
+   "n": 379
+  },
+  "lightharness/examples/test_设置.light": {
+   "sha": "e7ed98a1c5e1d4da3c37ebab57bab8b101191cb9b8ff5a7c563f146b9286e89d",
+   "n": 728
+  },
+  "lightharness/examples/test_词法安全.light": {
+   "sha": "96ea54fa01087d9a788a6fa6904750271052d84f1aba73833300398e4a368f35",
+   "n": 737
+  },
+  "lightharness/examples/test_语言服务器.light": {
+   "sha": "e66ce0dda454e457422af50f0cd9f656d945cc279ad02c0f6f56b92ee672fde1",
+   "n": 2047
+  },
+  "lightharness/examples/test_调度深化.light": {
+   "sha": "35360ff84d4698a4a4ffa1137d040711dc775dafd647ae8ad3aef65c0b49c7d9",
+   "n": 2748
+  },
+  "lightharness/examples/test_超时策略.light": {
+   "sha": "9c1def5d035d692190ecc9346542e13d6e209545c747832584925c2e48f7e41b",
+   "n": 963
+  },
+  "lightharness/examples/test_路径规则.light": {
+   "sha": "75266dd725bab63f543085ddf40b83be821f4ab2da144f8ab57b74000d261dff",
+   "n": 1887
+  },
+  "lightharness/examples/test_远端总线.light": {
+   "sha": "f5704d8c6bcd1fd5fac8cefc5e670a578dec179f30653695fc45352db5375a0c",
+   "n": 2803
+  },
+  "lightharness/examples/test_远端白名单.light": {
+   "sha": "9ea19d48401465b8c609030c0fdcc5c31879f6668f3fb1b4ace1f501e46c4348",
+   "n": 381
+  },
+  "lightharness/examples/test_追加方法.light": {
+   "sha": "c635f67bde27c82499453c7c8fb2884296775835939d9fd67adb87429745b622",
+   "n": 166
+  },
+  "lightharness/examples/test_追加方法2.light": {
+   "sha": "394142828f123632ae92da1274a400dde03dcb37ad8122922bd6f0a22cd98360",
+   "n": 122
+  },
+  "lightharness/examples/test_遥测.light": {
+   "sha": "426336590fadb804b58108055667771537d72dbc5296b43e89e2cf9e823be9c9",
+   "n": 707
+  },
+  "lightharness/examples/test_遥测深化.light": {
+   "sha": "18d0239edfe1c23641d9df40aaa4e92c24c51610f4de7794e5af6e346b90e200",
+   "n": 1376
+  },
+  "lightharness/examples/test_重复提醒.light": {
+   "sha": "76ee0449e34f550c99379dac63dea6be91b6aec68d94d05acb5b02789d2d5b76",
+   "n": 1323
+  },
+  "lightharness/examples/test_钩子.light": {
+   "sha": "d0a930c70322a82b96206c96e91e532a9114f2469c097100c0eacb4ee31f5228",
+   "n": 801
+  },
+  "lightharness/examples/test_钩子协议.light": {
+   "sha": "1796fae8282ba8d0ef58c87e63d9913c94b5f03ffb9e1ccf31e27078a70aa4ec",
+   "n": 4261
+  },
+  "lightharness/examples/test_钩子深化.light": {
+   "sha": "fb4254c7cfb5d7eb13bf7a991cbded09c20485d86a3f2ef87759a5396d48ea0d",
+   "n": 318
+  },
+  "lightharness/examples/test_错误增强.light": {
+   "sha": "99ec3956b2b466ccc4aa6de5ef03aabaf194538d2a3bcbf59547b93ab72c09b5",
+   "n": 748
+  },
+  "lightharness/examples/test_闭包嵌套.light": {
+   "sha": "ed19e2093cea4136c4df4754f96562fa13910cdeffc17b423bcc0876ebce4996",
+   "n": 495
+  },
+  "lightharness/examples/test_附件_通用文件.light": {
+   "sha": "7c29adc612f4ec3cf96f305480c7289986f066401528dd4d862d0cc638012cd6",
+   "n": 627
+  },
+  "lightharness/examples/test_附件准入.light": {
+   "sha": "1a8210e4f1dc74742de197bdd4a39078c8212036dbe00b911c6a6a679d403108",
+   "n": 876
+  },
+  "lightharness/examples/test_附件准入1.5.light": {
+   "sha": "9ca0f1445e8cdab13e5266f875acb5f50bca629f1e8bc2fc3fadb2fbc4740d64",
+   "n": 890
+  },
+  "lightharness/examples/test_附件反馈.light": {
+   "sha": "f326dfdf01d268d14ee7971d6e428ab71027efb5a97f95eb9c3bf4945377766f",
+   "n": 3012
+  },
+  "lightharness/examples/test_预设.light": {
+   "sha": "117d3864144d8ed0190f458b5c76328ac72f9585419c2889e3abc78c193bc118",
+   "n": 2738
+  },
+  "lightharness/examples/test_预设深化.light": {
+   "sha": "93736cc1b307aec85f013d3281c3363f799821f10d7cb178317a064e88f56eac",
+   "n": 2863
+  },
+  "lightharness/examples/冒烟.light": {
+   "sha": "1263f6a409404e771c34bc2651213807a64fa746add424abd7bdc6d023125b97",
+   "n": 70
+  },
+  "lightharness/examples/异步样例.light": {
+   "sha": "94ee991593ef5f1f4bae5ab04dd9eb3f8e3eebaa13d7194a032336eff0a9d4a6",
+   "n": 7
+  },
+  "lightharness/examples/载体模块.light": {
+   "sha": "3d4561a9b1d5cdb1de81b672b4bb40f0ddb4ed4056d89240217dc2ea99f4d53a",
+   "n": 14
+  },
+  "lightharness/examples/运行CLI.light": {
+   "sha": "300d52490a3765a36b072a4d9a372cc9f1d8f16df3583101644d9e76b9f2939d",
+   "n": 7
+  },
+  "lightharness/examples/运行Web服务器.light": {
+   "sha": "b151941f76b19df8d8f0b27999ff49c4de137ea841819e252600e2c41521bc34",
+   "n": 1130
+  },
+  "lightharness/src/JSONRPC传输.light": {
+   "sha": "16c77e391ce50aa10de42ce0ec5dbdb414e88220e31b1931b6047c0a9283b8b6",
+   "n": 974
+  },
+  "lightharness/src/_probeL090丙.light": {
+   "sha": "27096d17b009568cdc7cc7feb398173cf923dcfbe58aa20d3dd8919da0af3ab2",
+   "n": 42
+  },
+  "lightharness/src/_probeL090甲.light": {
+   "sha": "bea398d24c2404d883b60482b8fe9120af8864cfff053c3a134b5e3a3368fbde",
+   "n": 15
+  },
+  "lightharness/src/acp内容.light": {
+   "sha": "cdc0a799bab16ca51de05ec6211d80a3cce80439b36494006b9fe9f4a7ea3457",
+   "n": 696
+  },
+  "lightharness/src/acp转码.light": {
+   "sha": "1a88aeb12ce4e257b8433bff68d6b7f28690860eb97fe408f82af21f4813a3d5",
+   "n": 58
+  },
+  "lightharness/src/agent.light": {
+   "sha": "c3a320238c2cd81bb1e9fb4584c6eb37a3ca3c884cc0029f4722a0a690d2d246",
+   "n": 1093
+  },
+  "lightharness/src/bash渲染.light": {
+   "sha": "33fc6453071fd276c1b0ba4e5e78b58ba9bf1aba6c56cdb062167c924d75b93e",
+   "n": 728
+  },
+  "lightharness/src/e2b客户端.light": {
+   "sha": "5ed0f219e1e0bcf1c84a23ea9746bc40dd2ade34d0da51a5ed398986393ae5d7",
+   "n": 908
+  },
+  "lightharness/src/e2b配套.light": {
+   "sha": "33e3e25c858f160ec4a27292a98d93276f939256d07c52a866fe0c75e62a08f4",
+   "n": 2583
+  },
+  "lightharness/src/mcp客户端.light": {
+   "sha": "d05f86b7dd76390f61b57d0fbfd07c00c97c8999b2bdc01c1b8d7f7d6265b4f8",
+   "n": 3000
+  },
+  "lightharness/src/mock大模型服务器.light": {
+   "sha": "f11c07674cfac04debacfe57856b433f47fb3eb1c786e8b53dd5b8f9262d6578",
+   "n": 2604
+  },
+  "lightharness/src/tmux上下文.light": {
+   "sha": "7d92a6114895cf8ed62b12327e4dd56ce855f5dca3f2b2f7f907f3f41aa4b07f",
+   "n": 355
+  },
+  "lightharness/src/webhook会话.light": {
+   "sha": "40f2453e0cbe62b0096cf46a5f4fd03e1c72449a5e4ab34d3c8e0ba58a240af4",
+   "n": 4626
+  },
+  "lightharness/src/web服务器.light": {
+   "sha": "90d849188cfa1449addefa7df6d79f743ad7cd5eba50fc5f9d285e752201d9b4",
+   "n": 5660
+  },
+  "lightharness/src/中止.light": {
+   "sha": "b41513a60118da70c95595f93941342f67be11a9ee1b355ea4708b8b4f461959",
+   "n": 129
+  },
+  "lightharness/src/主目录路径.light": {
+   "sha": "ad8d8ebd5b317778d473a5a91c2c7c12dc284531feb720570564a3f23b21329c",
+   "n": 302
+  },
+  "lightharness/src/事件.light": {
+   "sha": "2c6779a1fa3f7bbbc5bcb1f77e726c1a41e67fc3e8022016f1356eb769622937",
+   "n": 671
+  },
+  "lightharness/src/交互命令.light": {
+   "sha": "d50f2d34a68afc9be942b386848f3d1b124bff0730eb35f91831894a12084e76",
+   "n": 1688
+  },
+  "lightharness/src/交付.light": {
+   "sha": "c66ff6499fe05374a372a216e9336798d5262bb2ab107cfccc9181dac6e60c7c",
+   "n": 457
+  },
+  "lightharness/src/代理.light": {
+   "sha": "2fc8df229560491071ac7a2ccb764bb2ce3d1944b24f3d7bca5af15e29be4650",
+   "n": 4562
+  },
+  "lightharness/src/代理团队.light": {
+   "sha": "04fcb7a9128acbab2752b2319aaa473ef9d17e5daa3505823a2c9154a908a9f9",
+   "n": 4425
+  },
+  "lightharness/src/代理策略.light": {
+   "sha": "555233171aa5703d9d1da7d5aab4c9800b8511b1b1815610039025b8d74ba598",
+   "n": 2111
+  },
+  "lightharness/src/代码运行时.light": {
+   "sha": "7b02b3ff7b6c5b5f98c7891d5268ff33fd2ba16c70ce9748a02224e534403d77",
+   "n": 712
+  },
+  "lightharness/src/代码运行时协议.light": {
+   "sha": "99169444df2c5c6916f5c249bd4d5daa561519faeb98e7d6159fd0f7a14c2cae",
+   "n": 3177
+  },
+  "lightharness/src/令牌估算.light": {
+   "sha": "ce024f366b334da980df17906b218ed12c1af5626e59b9983f97e9e2fe0b86d1",
+   "n": 808
+  },
+  "lightharness/src/令牌计量.light": {
+   "sha": "ba733cc7715d8b13c8cec94a4a98aae02aa53805c4a16a9cd1aafee45bccf803",
+   "n": 1057
+  },
+  "lightharness/src/任务系统.light": {
+   "sha": "d378320e690318a80f67465fc6b50f5722a9b6c0a29b7068c0d4bbf1e1306246",
+   "n": 2005
+  },
+  "lightharness/src/会话.light": {
+   "sha": "1515b577e3d980222e159c7bf074056faf8aea64910f5f5fde793c3032517f07",
+   "n": 1483
+  },
+  "lightharness/src/会话冷读.light": {
+   "sha": "88ce78029f53274b1dba9e31ba690a5bd55c33130d07c6dd4dda582e75f14184",
+   "n": 510
+  },
+  "lightharness/src/会话存储.light": {
+   "sha": "324c4d4e943d483b71fad791bab83cf198788ee4c2f6fc4edfc970c4d2913add",
+   "n": 1304
+  },
+  "lightharness/src/会话引用.light": {
+   "sha": "2fdf9fdc0356c6a475e884b7e6f61beddb699c3dc43c93f9da97c0f07b3f30e1",
+   "n": 791
+  },
+  "lightharness/src/会话引用深化.light": {
+   "sha": "8de433d40fc536452394363e63e99918393622ee57c197020e510301683aaa03",
+   "n": 2300
+  },
+  "lightharness/src/会话持久化JSONL.light": {
+   "sha": "a7c7a5b4dade983444b0168b3287c40d37ad8c4272556891dec57f93bc0ab058",
+   "n": 2739
+  },
+  "lightharness/src/会话控制类型.light": {
+   "sha": "c3389a0bcda6243d7cc2be7239791456d370406687d58f0017f8836b4d38b8c2",
+   "n": 1606
+  },
+  "lightharness/src/会话日志增量.light": {
+   "sha": "c94ca21914d10c2ea991deeb7b5f35891fc3b152abd285f90fcea711a3299b19",
+   "n": 1783
+  },
+  "lightharness/src/会话查询.light": {
+   "sha": "fcdf3c40f535c4fd5ac981da072058660f02965d5dbd32fecef09026681a3529",
+   "n": 3830
+  },
+  "lightharness/src/会话查询过滤.light": {
+   "sha": "1a4a46c99681880be1124fe31f662e39979b8501a2dc97bf603fe6f4ebac8009",
+   "n": 1592
+  },
+  "lightharness/src/会话标题.light": {
+   "sha": "adb1577e4d6f84552868b94eb43d20c526b144c9cc2c956e78de8752e6616ae5",
+   "n": 1355
+  },
+  "lightharness/src/会话标题族.light": {
+   "sha": "d24ae7f7a3f197aa76338bd83cfae4a06ca29ce1cbdd6cd8b2f9eccc8e01db76",
+   "n": 2178
+  },
+  "lightharness/src/会话格式.light": {
+   "sha": "75c46a8595dfe37c9af27cd34bdc7ac47ac3a12ceeb437cd36ebc65b8e189652",
+   "n": 5027
+  },
+  "lightharness/src/会话轮次大纲.light": {
+   "sha": "5070415dea16edc9e33ef1b2d00dc207a99dd5511fae0e7b62b53acf99cad30f",
+   "n": 864
+  },
+  "lightharness/src/值工具.light": {
+   "sha": "d33261a2a4fed2e21950fc31be424265bc6c95a91d305e738e76daa43f69c624",
+   "n": 565
+  },
+  "lightharness/src/凭据.light": {
+   "sha": "61f63ef13e7d33539748d0252b6def5074a5244746c61cfc43fc8170fec8346e",
+   "n": 479
+  },
+  "lightharness/src/函数增强.light": {
+   "sha": "0350e0d226b661c50bfaf62f8bfec1824b6ef06197ba9f33674cae143ada7223",
+   "n": 640
+  },
+  "lightharness/src/分块列表.light": {
+   "sha": "53aa563e2616bf2b7d3da8fdedc29735792746ca7340de7e904ddaa69bad9994",
+   "n": 297
+  },
+  "lightharness/src/加密.light": {
+   "sha": "42ab13f83f690b28ec956bda7e37b790d8e1c668795a632375e9e1fb0e864f92",
+   "n": 52
+  },
+  "lightharness/src/包清单.light": {
+   "sha": "dbf55a5167704d23077f6ff4546b429809cd7f49bbe45e366ed16cdeb367904f",
+   "n": 413
+  },
+  "lightharness/src/协议深化.light": {
+   "sha": "ac9d8ce32bf5bd5c0ebc77173e47f1bac67a95593afddf0559d337ae32ab256b",
+   "n": 4120
+  },
+  "lightharness/src/压缩.light": {
+   "sha": "ea775683e99e18512438fa059c2fadcb81bd47c8f250fc6d1e5796aaffe37efd",
+   "n": 700
+  },
+  "lightharness/src/压缩E5.light": {
+   "sha": "ce4585625ebcf0e8bd01ffd41261d0f9cbedc743516330dc4f19284cb6e4b7cc",
+   "n": 625
+  },
+  "lightharness/src/压缩配套.light": {
+   "sha": "be90bdaf4c5a9f94dae43da2eea49ed3e09afb22ac4ae2a28d8622ccf857d963",
+   "n": 3893
+  },
+  "lightharness/src/双端队列.light": {
+   "sha": "511b012806c91456c4fc0fd7a9c45264422a5a1ffe32b5030d2b264b251ab08a",
+   "n": 521
+  },
+  "lightharness/src/反馈.light": {
+   "sha": "4f47262982d91c007f0efd324fab501b84f896835ec9e5c84267921100aa4a46",
+   "n": 1097
+  },
+  "lightharness/src/启动环境.light": {
+   "sha": "ecbd2721622d69dc0c2e63b1993c1967f49c2bd53e46f5fee98c8934fa065dfe",
+   "n": 388
+  },
+  "lightharness/src/启动配置.light": {
+   "sha": "7c3ace40961dcfb8a9c43d1974b4a7a97a65bddeeb17eca112d02c82572d7b8f",
+   "n": 1750
+  },
+  "lightharness/src/品牌.light": {
+   "sha": "69a896f8a84e6069ec74f6824d49bf375188a18d24a0c1fe6f2324ad14e7cb25",
+   "n": 18
+  },
+  "lightharness/src/团队依赖图.light": {
+   "sha": "5376eff7c0c3ee7befd196fd2a287c1124fedc8b7caa52eb03a8f1a07ef90727",
+   "n": 1416
+  },
+  "lightharness/src/团队工具.light": {
+   "sha": "a6665c71880e935f04542de9d88a91c8ee0b0379ae9ae050a7a5a91b57f6b5b8",
+   "n": 1762
+  },
+  "lightharness/src/团队折叠.light": {
+   "sha": "b8a0014b0b13d52d2227235952afcb211546b089207f6b9afacf1f8c30423694",
+   "n": 3904
+  },
+  "lightharness/src/团队日志.light": {
+   "sha": "dad6352b3cc82a7220062414c37cc8ef08f1bbacf19013d87053a9318bd84744",
+   "n": 294
+  },
+  "lightharness/src/团队服务.light": {
+   "sha": "131f3f63ccc17b028b1c56d8a6f348d2e51b6f3a7eb44c8991da441814096e8e",
+   "n": 3869
+  },
+  "lightharness/src/团队看板.light": {
+   "sha": "fbb630a973a5dfaac9794b2f3a3be23914e5f91f206396338b772e41c72d7e59",
+   "n": 1502
+  },
+  "lightharness/src/团队花名册.light": {
+   "sha": "b22ae54fe8c739300b4733cc98fa6de69a084eeaf583139d38e95e495babdd04",
+   "n": 5148
+  },
+  "lightharness/src/外壳环境.light": {
+   "sha": "4e301e1945f0555a7889ffc4267e7753fefb325667242aadf70c05e460689e37",
+   "n": 1211
+  },
+  "lightharness/src/外壳退出解析.light": {
+   "sha": "95622097c16d0c9e5d3f6a857d2b98aafda911099e607866663a4cafadcffc81",
+   "n": 408
+  },
+  "lightharness/src/大模型回放.light": {
+   "sha": "2fc0650a7948b11d4510e923b92308b80c6fcf4166b85f843979aa0216b44df1",
+   "n": 3609
+  },
+  "lightharness/src/子代理核心.light": {
+   "sha": "8e20cc06ee282ae74a1db662d966047de90f7b788f9651d0daac282c7a508c4c",
+   "n": 3475
+  },
+  "lightharness/src/子代理续传.light": {
+   "sha": "5c190087808ae480c3262a52374724e8e2f6106e79f7d152f7b161e01e29a1a9",
+   "n": 2276
+  },
+  "lightharness/src/子智能体.light": {
+   "sha": "8f2c29832c40d8d0cf50e094407ec66a70b34ea0760d619dc145cd8ddffc2b1e",
+   "n": 2407
+  },
+  "lightharness/src/子进程.light": {
+   "sha": "a1eedb9d61d551de461a9f0517e2fbeebda54b04665152911c3fc89e3da4c52f",
+   "n": 377
+  },
+  "lightharness/src/字典增强.light": {
+   "sha": "1cf27d8e882c585924ab2f44f335c5b869af388d1a4eeef424404d4b7a9648ff",
+   "n": 787
+  },
+  "lightharness/src/字符串增强.light": {
+   "sha": "1477d4e0d1f3f8205b3a5e7127e78f305167f74ee5468215ba529755d457855a",
+   "n": 386
+  },
+  "lightharness/src/字符串替换编辑器.light": {
+   "sha": "c2d71ab0f3ee1be5dcc18b2999a1f41c2ef60acd9abd5d3cf51a6bb701947e8a",
+   "n": 2490
+  },
+  "lightharness/src/存储.light": {
+   "sha": "6f382495197c93aa2d31e84cd737f7c0c389fd13d247c219e00e6148d33611d5",
+   "n": 317
+  },
+  "lightharness/src/存储域.light": {
+   "sha": "d403de59475fe2e51af5a6b0f3f70a8d91d67c604800757bd7fc7392962edbb5",
+   "n": 856
+  },
+  "lightharness/src/存储核心.light": {
+   "sha": "266c7f29e47d5d71a3464315d330c3752e0aedfac6bd354c4a5cd89912863237",
+   "n": 3316
+  },
+  "lightharness/src/安全策略.light": {
+   "sha": "bb30cdfd5dc9ebfa6337cc0b02bca89af7ff2a2273d1e19086dd851620367bb9",
+   "n": 1745
+  },
+  "lightharness/src/定时.light": {
+   "sha": "7515585541fc67754e2b98439186c5a310fe12bdbdb515b50bb48a168cf065e6",
+   "n": 3258
+  },
+  "lightharness/src/审批.light": {
+   "sha": "67fb978ff222f19b4427f458bb9528b05cfa7354d8e64d850066ae1f889fe016",
+   "n": 1865
+  },
+  "lightharness/src/客户端.light": {
+   "sha": "042c182f02a4a470994353087e8f02d51e16cf22b5255de38a04500fad2dbb52",
+   "n": 2345
+  },
+  "lightharness/src/宿主IO.light": {
+   "sha": "5cc870d996f166d06c5709c5f84fcf497437e18cc8581f69f492dff19e323dbf",
+   "n": 3275
+  },
+  "lightharness/src/宿主上下文.light": {
+   "sha": "aa76b59a23cfbc1270a4503b203eaba2c6c4ab971852c0fe1536cbd80f39035d",
+   "n": 780
+  },
+  "lightharness/src/宿主事件.light": {
+   "sha": "fa9836ebf4fe6cbc1a2d97b1e0fcd37ae3341f574b0422f508f35bfd676744e2",
+   "n": 1416
+  },
+  "lightharness/src/宿主工具.light": {
+   "sha": "256a7141a0bb6b9c3841f9b9ff01ff775de65f31c23ceae92c7557b5d540ac6f",
+   "n": 2280
+  },
+  "lightharness/src/宿主运行时.light": {
+   "sha": "250b65af1920e0734d6ac3613c1dec495262c02e36c6fb3a1255f50136e27c9e",
+   "n": 2115
+  },
+  "lightharness/src/宿主配置.light": {
+   "sha": "b63833803f1863712050c42b48a985aeb352727c12b566affcbbdade89235f3b",
+   "n": 2249
+  },
+  "lightharness/src/小域类型.light": {
+   "sha": "c0f2154e7375709bbc38707a748fc91be379a83bfb75a3a8229ce46bb3a9a55d",
+   "n": 909
+  },
+  "lightharness/src/工作区.light": {
+   "sha": "2267af8529edfe5c6105abf126fab807cf03663ff16335c3466132ca882032b6",
+   "n": 1879
+  },
+  "lightharness/src/工作区路径.light": {
+   "sha": "5b3a7eca93fc0c2698aa2aa40d3e39ff85bf6f715f44c32e30999582993b6530",
+   "n": 1438
+  },
+  "lightharness/src/工作流报告.light": {
+   "sha": "7cafca9fcea78074da81cb47b83f08a0aea14a28a55fe798c803f8c68b8721a2",
+   "n": 1888
+  },
+  "lightharness/src/工作流结果渲染.light": {
+   "sha": "fd5ba10a27b6ac44e690487898322d2ee63f886285d1f005374ec4747cdad4b5",
+   "n": 218
+  },
+  "lightharness/src/工作流错误.light": {
+   "sha": "e1b5c51103a4424baf28caab139a096d813b083c1a6bc0896f95fe5c46881e74",
+   "n": 269
+  },
+  "lightharness/src/工具.light": {
+   "sha": "8c3d6b69d31f0cd5f9049e19388a37f35ca2748c1e2774be939790f0b666c72a",
+   "n": 3227
+  },
+  "lightharness/src/工具_bash.light": {
+   "sha": "90068d77b90c2cb2ff930e72c14943326744f071c815c570f4eba5584afdbb1a",
+   "n": 218
+  },
+  "lightharness/src/工具_写文件.light": {
+   "sha": "0d76f5067e5b5dec064c1be0475d8bb137c6d0da8c8ff4ac6f3659989a6d21f3",
+   "n": 213
+  },
+  "lightharness/src/工具_搜索文件.light": {
+   "sha": "4b1fe154b7b22eb0c9f0b7ed83f22cb575d973f11a70cad5ef71473507ba89d4",
+   "n": 724
+  },
+  "lightharness/src/工具_读文件.light": {
+   "sha": "70949214aa793ea71d4fd28c225fff354d5f8c08a5d004800a79b8842d3af12e",
+   "n": 353
+  },
+  "lightharness/src/工具_路径安全.light": {
+   "sha": "2543d2796606a8f1e3cd7cdf9252704cc9e6230d8915449ef1eef9cf727c94be",
+   "n": 138
+  },
+  "lightharness/src/异步代理.light": {
+   "sha": "43f102adba804dc70c23968756267554426c2f393bc3541faf3cfde92f228fd9",
+   "n": 2459
+  },
+  "lightharness/src/待办.light": {
+   "sha": "cca321f03b8cdfab63c12dc847c3ab2d6e454f066d8716aa4dc615aa642bef69",
+   "n": 941
+  },
+  "lightharness/src/总入口.light": {
+   "sha": "dc1952f7b501b1bd0833db042d72a10d35de1147aa063ee70aea2c487ab7d3f0",
+   "n": 2410
+  },
+  "lightharness/src/技能清单.light": {
+   "sha": "9f7a61d7520f811fffa9fb5361f2b0768eda629f5ceefe8f1d2b58bec006e3a4",
+   "n": 1785
+  },
+  "lightharness/src/抓取策略.light": {
+   "sha": "2712a5ae6283b61bd5da5d29af15c157d6679722816e2cc083dccdd17a49a7bb",
+   "n": 1663
+  },
+  "lightharness/src/持久化.light": {
+   "sha": "4b5e143cedf33efd359117592270fd1be125803aca99ff7f598eeb6a98aaf37f",
+   "n": 1462
+  },
+  "lightharness/src/授权链.light": {
+   "sha": "a60e3c5d6ba76a66e1c7c7883777900f1790606297a07d6d72d0d841b6c948a5",
+   "n": 1823
+  },
+  "lightharness/src/控制器类型.light": {
+   "sha": "eb75c45a225693c02681fb8bf72ecfd3232405d6484d0175fa63f86106242b5e",
+   "n": 5266
+  },
+  "lightharness/src/推理工具.light": {
+   "sha": "5c6ab01f6aed2abf926fb7c7994b75645d52e3b92d455c12134cc8da4471c3e2",
+   "n": 2350
+  },
+  "lightharness/src/提示模板.light": {
+   "sha": "1f65fd98010bc0cd56575c26030745e31681c35840be1fbb332abc7de2b1c108",
+   "n": 1389
+  },
+  "lightharness/src/搜索提供商.light": {
+   "sha": "e7596791f014fd23f8140f381a6066b1ea66114cf3a966885b977eef21e3e4e8",
+   "n": 2725
+  },
+  "lightharness/src/数值兼容.light": {
+   "sha": "c82242adc05557bd6a8828c5f33b5c159cbc5627a2f94b7617150da1df40317a",
+   "n": 650
+  },
+  "lightharness/src/文件.light": {
+   "sha": "41bb690f17e51478b14d6734db87f58aa748c8d39b806ebfc28575c8f8dc5876",
+   "n": 559
+  },
+  "lightharness/src/文件引用.light": {
+   "sha": "ca93de45109a838cfab9390bb6949238d49dd52ce96de1eea3bbbf861f87c899",
+   "n": 610
+  },
+  "lightharness/src/文件系统工具.light": {
+   "sha": "f3332367b641b5b65ec103d00006964e7ca21ca852cda900e686516d5113159d",
+   "n": 4291
+  },
+  "lightharness/src/时间上下文.light": {
+   "sha": "e71f708550cc616f216fc3048eda3565d4063d4fdadac639019003a1aa16c378",
+   "n": 797
+  },
+  "lightharness/src/时间工具.light": {
+   "sha": "d617a072ddeceb36ebc09ef9b1c831d2fb21469906689ec782b640bd85223e87",
+   "n": 72
+  },
+  "lightharness/src/智能体指令.light": {
+   "sha": "e38571dd23316f7f49e75e9f8069bb052d59b193b7cf389eacbf91b4c4b0362a",
+   "n": 3217
+  },
+  "lightharness/src/权限.light": {
+   "sha": "00e736b9afd65626a92341504631932d45e4d278365a3bb9883ac2c1056c828a",
+   "n": 933
+  },
+  "lightharness/src/查询工具.light": {
+   "sha": "a2d9f17e1314831be5e24b361bd00c95256a6954247e45c25664874b970d5fb6",
+   "n": 4110
+  },
+  "lightharness/src/核心工具.light": {
+   "sha": "f08d17fe604bad335eb9c0d6798e4cdeb0e5ea05b957875a3a3caa97d5331964",
+   "n": 80
+  },
+  "lightharness/src/检查点策略.light": {
+   "sha": "4ec0c74c2a0a5be9f221c0a874af46d7d3e675152649a4e45eb476bdae844452",
+   "n": 326
+  },
+  "lightharness/src/沙箱.light": {
+   "sha": "0150421a849f9c1ac8e47564b31e3b6eb2616daf75415a59d71f274331c909b7",
+   "n": 675
+  },
+  "lightharness/src/流.light": {
+   "sha": "4ed714f83c61cdebd9155997d309506866c13d16d7f092aadba0d4e39198aa19",
+   "n": 1110
+  },
+  "lightharness/src/消息.light": {
+   "sha": "7d5c30448ea9085f916cbd2f6ab1e34f845c3f280b5cb9f3c875e170c01a8a79",
+   "n": 785
+  },
+  "lightharness/src/溢出.light": {
+   "sha": "7dfe8b75aea536fa03792cd0219ef55c5b0a08ac69ad2d6da5808d122a4b41a0",
+   "n": 826
+  },
+  "lightharness/src/目标折叠.light": {
+   "sha": "9fb1cc2c2303c9088da65d036536777bc1abe2080d14942547a881fd16ae66f8",
+   "n": 4927
+  },
+  "lightharness/src/目标轮驱动.light": {
+   "sha": "862f928a4f6738131bc07704735f55564785a5179f5e3d0d644776a5166d8623",
+   "n": 1375
+  },
+  "lightharness/src/类型注册.light": {
+   "sha": "93bc854e3685037e88fbbf47849e439dcc3d920108e888d1fb084c88d18f8c74",
+   "n": 1252
+  },
+  "lightharness/src/类型系统.light": {
+   "sha": "a65de0e2d43613a9846a13d7918668538397cdcc92589d70423c2943d568f09e",
+   "n": 5170
+  },
+  "lightharness/src/终端.light": {
+   "sha": "f41893f6161d024649126613119f73776455fcde8507b9f19fd12c2f882c5b7c",
+   "n": 1650
+  },
+  "lightharness/src/网关协议.light": {
+   "sha": "aaa1a15bcb62aea5da5e9841fac7ade25c2f68305d06326f46855c2c4bbe3e56",
+   "n": 3190
+  },
+  "lightharness/src/网络钩子GitHub.light": {
+   "sha": "9195213c6182286d7cdb20f98261d46016549ba7f4931089bf3e91a9bd2f4795",
+   "n": 1838
+  },
+  "lightharness/src/网页搜索.light": {
+   "sha": "60cecca756bc8f962f5fdbc1ed7b3bdca2359e50be650c3998090d166e07ef37",
+   "n": 4001
+  },
+  "lightharness/src/计划模式.light": {
+   "sha": "baf722117159aec4696e91b866efbd9b13c1a0fb3a711ad29df8cfe0904c45d7",
+   "n": 818
+  },
+  "lightharness/src/认证.light": {
+   "sha": "05eda9e7454e55cbd80d9e9ea35b424140beba26b34a14c31f058797a4acc49a",
+   "n": 124
+  },
+  "lightharness/src/设置.light": {
+   "sha": "c93f28ac9858aacc2560a9dde3e8cbd1efaf7909a64a512bba39a6a1f3eecab9",
+   "n": 753
+  },
+  "lightharness/src/词法安全.light": {
+   "sha": "51b1f2006a0e04308b5e8215eaee22823ffb82e4f1f376600321b2ac64c3f329",
+   "n": 1188
+  },
+  "lightharness/src/语言服务器.light": {
+   "sha": "26e1f3b1eb5b251aa51cf4e30ea86f3a5749555acfbbbf46133015560ef30ce0",
+   "n": 3438
+  },
+  "lightharness/src/调度深化.light": {
+   "sha": "f2aff81f8a3982b0d4b60bb8b3420e3340d2a3aa917c1789598ecd9207494626",
+   "n": 3083
+  },
+  "lightharness/src/超时策略.light": {
+   "sha": "6cafa8619ea0fd2d51c5c5d1ad55b9268137c335e469376e007e0992ff620ef6",
+   "n": 473
+  },
+  "lightharness/src/路径规则.light": {
+   "sha": "4a1814aef79517c872c58dd88b3d97935d0498e4c4e580181e6d41473651f7db",
+   "n": 1687
+  },
+  "lightharness/src/远端总线.light": {
+   "sha": "6d4e4ff4a0443565eba3d1a44eadd1486e4c7baefdfd135af15e82e0edfef093",
+   "n": 2481
+  },
+  "lightharness/src/遥测.light": {
+   "sha": "e4f0f909c4bf9f7b80f5ae86d3d1094edb9ed1a6e9d7a78e0bc27fe3c9a5c417",
+   "n": 2370
+  },
+  "lightharness/src/遥测导出器.light": {
+   "sha": "437679abca0800a1ede5ce17c34dd8badebf22543c115f712f5fbd081e9c5bca",
+   "n": 1286
+  },
+  "lightharness/src/重复提醒.light": {
+   "sha": "044d4ecbbf014f56d28680e9c703f0798c31dbaacfeeaeb64d6de9848466d303",
+   "n": 1080
+  },
+  "lightharness/src/重试.light": {
+   "sha": "9fc2e1185493a15b879e178c76b4c53ce5050b02736e87979370a170a175215e",
+   "n": 317
+  },
+  "lightharness/src/钩子.light": {
+   "sha": "a744912b930eea80d0d522ace2f85875858dbfd7025c0f5e23389e80a2da48bb",
+   "n": 605
+  },
+  "lightharness/src/钩子协议.light": {
+   "sha": "60fd30b4909d6fbc056399589258bc2226a4acf80cc6b56e0d0a20d69d60409b",
+   "n": 2766
+  },
+  "lightharness/src/错误增强.light": {
+   "sha": "280f24f180e3dd9c53fedebd9fc864a30d58f5be15436443af0d0e3ec398b4cd",
+   "n": 585
+  },
+  "lightharness/src/附件准入.light": {
+   "sha": "1a73a7e17466141540da5e8a85df835db4e11ea7132be31dddc8d9be668bb876",
+   "n": 838
+  },
+  "lightharness/src/附件反馈.light": {
+   "sha": "b87547314ce095a5dc7b8c83ea395336f45973d7997bbece5dd018b0a6ba235c",
+   "n": 3981
+  },
+  "lightharness/src/预设.light": {
+   "sha": "9d65aabe3e787aff4aff4bac559fc3c92c366221ee9bf103957fcedd945b10b7",
+   "n": 3250
+  },
+  "lightharness/src/预设深化.light": {
+   "sha": "c6e8a866cfb7df0f45777d8f3df4345ac558b9c7fd89044fe10a32759a9ce759",
+   "n": 2974
+  }
+ },
+ "total_tokens": 935744,
+ "err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "ccw": []
+}

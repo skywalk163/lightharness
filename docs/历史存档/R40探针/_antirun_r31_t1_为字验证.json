@@ -1,0 +1,170 @@
+{
+ "char": "为",
+ "corpus_files": 856,
+ "corpus_with_char": 763,
+ "base_embed": [
+  "为",
+  "尝试",
+  "返回"
+ ],
+ "reduced_embed": [
+  "尝试",
+  "返回"
+ ],
+ "lexer_sha": "a56c4141319045e43c11a075a3d97c29870fd6bb51130ce1a3f2f7c0ed945883",
+ "base_err_files": [
+  "light-merge/bootstrap/release/stdlib/集合.light",
+  "light-merge/examples/_test_nested_closure.light"
+ ],
+ "evidence": {
+  "char": "为",
+  "g1_changed_files": {
+   "light-merge/bootstrap/release/stdlib/CSV读写器.light": [
+    "@30 ('IDENTIFIER', '作为f') -> ('IDENTIFIER', '作')",
+    "@31 ('COLON', ':') -> ('KEYWORD', '为')",
+    "@32 ('INDENT', 8) -> ('IDENTIFIER', 'f')"
+   ],
+   "light-merge/bootstrap/release/stdlib/字符串处理.light": [
+    "@0 ('IDENTIFIER', '导入字符串为str_utils') -> ('KEYWORD', '导入')",
+    "@1 ('KEYWORD', '导入') -> ('IDENTIFIER', '字符串')",
+    "@2 ('IDENTIFIER', 're') -> ('KEYWORD', '为')"
+   ],
+   "light-merge/bootstrap/release/stdlib/字符串工具.light": [
+    "@1144 ('IDENTIFIER', '替换为') -> ('IDENTIFIER', '替换')",
+    "@1145 ('EQUALS', '=') -> ('KEYWORD', '为')",
+    "@1146 ('STRING', ' ') -> ('EQUALS', '=')"
+   ],
+   "light-merge/bootstrap/release/stdlib/字符串常量.light": [
+    "@58 ('IDENTIFIER', '检查是否为字母') -> ('IDENTIFIER', '检查是否')",
+    "@59 ('IDENTIFIER', '是数字') -> ('KEYWORD', '为')",
+    "@60 ('LPAREN', '(') -> ('IDENTIFIER', '字母')"
+   ],
+   "light-merge/bootstrap/release/stdlib/数学.light": [
+    "@0 ('IDENTIFIER', '导入数学为math') -> ('KEYWORD', '导入')",
+    "@1 ('IDENTIFIER', '定义圆周率') -> ('IDENTIFIER', '数学')",
+    "@2 ('LPAREN', '(') -> ('KEYWORD', '为')"
+   ],
+   "light-merge/bootstrap/release/stdlib/断言工具.light": [
+    "@67 ('IDENTIFIER', '断言为真') -> ('IDENTIFIER', '断言')",
+    "@68 ('LPAREN', '(') -> ('KEYWORD', '为')",
+    "@69 ('IDENTIFIER', '条件') -> ('IDENTIFIER', '真')"
+   ],
+   "light-merge/bootstrap/release/stdlib/正则表达式.light": [
+    "@800 ('IDENTIFIER', '替换为') -> ('IDENTIFIER', '替换')",
+    "@801 ('EQUALS', '=') -> ('KEYWORD', '为')",
+    "@802 ('STRING', ' ') -> ('EQUALS', '=')"
+   ],
+   "light-merge/bootstrap/release/stdlib/系统接口.light": [
+    "@85 ('IDENTIFIER', '检查是否为文件') -> ('IDENTIFIER', '检查是否')",
+    "@86 ('IDENTIFIER', '是目录') -> ('KEYWORD', '为')",
+    "@87 ('LPAREN', '(') -> ('IDENTIFIER', '文件')"
+   ],
+   "light-merge/examples/L1_baihua/05_遍循环.light": [
+    "@18 ('IDENTIFIER', '之为') -> ('KEYWORD', '之')",
+    "@19 ('IDENTIFIER', 'f') -> ('KEYWORD', '为')",
+    "@20 ('COLON', ':') -> ('IDENTIFIER', 'f')"
+   ],
+   "light-merge/examples/L1_baihua/07_字典.light": [
+    "@64 ('IDENTIFIER', '之为') -> ('KEYWORD', '之')",
+    "@65 ('IDENTIFIER', 'k') -> ('KEYWORD', '为')",
+    "@66 ('COLON', ':') -> ('IDENTIFIER', 'k')"
+   ],
+   "light-merge/examples/L1_baihua/08_函数.light": [
+    "@100 ('IDENTIFIER', '之为') -> ('KEYWORD', '之')",
+    "@101 ('IDENTIFIER', 'y') -> ('KEYWORD', '为')",
+    "@102 ('COLON', ':') -> ('IDENTIFIER', 'y')"
+   ],
+   "light-merge/examples/L1_baihua/09_异常.light": [
+    "@54 ('IDENTIFIER', '之为') -> ('KEYWORD', '之')",
+    "@55 ('IDENTIFIER', 't') -> ('KEYWORD', '为')",
+    "@56 ('COLON', ':') -> ('IDENTIFIER', 't')"
+   ],
+   "light-merge/examples/L3_domain/all_in_one_L3_demo.light": [
+    "@71 ('IDENTIFIER', '插入为') -> ('IDENTIFIER', '插入')",
+    "@72 ('IDENTIFIER', 'x') -> ('KEYWORD', '为')",
+    "@73 ('COLON', ':') -> ('IDENTIFIER', 'x')"
+   ],
+   "light-merge/examples/L3_domain/demo1_sql.light": [
+    "@75 ('IDENTIFIER', '学生列表为') -> ('IDENTIFIER', '学生列表')",
+    "@76 ('IDENTIFIER', 's') -> ('KEYWORD', '为')",
+    "@77 ('COLON', ':') -> ('IDENTIFIER', 's')"
+   ],
+   "light-merge/examples/L4_python/all_in_one_demo.light": [
+    "@59 ('IDENTIFIER', '行为') -> ('IDENTIFIER', '行')",
+    "@60 ('IDENTIFIER', 'r') -> ('KEYWORD', '为')",
+    "@61 ('COLON', ':') -> ('IDENTIFIER', 'r')"
+   ],
+   "light-merge/examples/L4_python/demo2_pandas_csv.light": [
+    "@36 ('IDENTIFIER', '前几行为') -> ('IDENTIFIER', '前几行')",
+    "@37 ('IDENTIFIER', '行') -> ('KEYWORD', '为')",
+    "@38 ('COLON', ':') -> ('IDENTIFIER', '行')"
+   ],
+   "light-merge/examples/basic.light": [
+    "@0 ('IDENTIFIER', '设甲') -> ('KEYWORD', '设')",
+    "@1 ('KEYWORD', '为') -> ('IDENTIFIER', '甲')",
+    "@2 ('NUMBER', 123) -> ('KEYWORD', '为')"
+   ],
+   "light-merge/examples/hello.light": [
+    "@43 ('IDENTIFIER', '设和') -> ('KEYWORD', '设')",
+    "@44 ('KEYWORD', '为') -> ('IDENTIFIER', '和')",
+    "@45 ('NUMBER', 0) -> ('KEYWORD', '为')"
+   ],
+   "light-merge/examples/modules/main.light": [
+    "@22 ('IDENTIFIER', '设甲为五') -> ('KEYWORD', '设')",
+    "@23 ('PERIOD', '。') -> ('IDENTIFIER', '甲')",
+    "@24 ('KEYWORD', '打印') -> ('KEYWORD', '为')"
+   ],
+   "lightharness/examples/test_L084.light": [
+    "@5 ('IDENTIFIER', '末位行为') -> ('IDENTIFIER', '末位行')",
+    "@7 ('STRING', 'test') -> ('KEYWORD', '为')",
+    "@8 ('KEYWORD', '打印') -> ('STRING', 'test')"
+   ],
+   "lightharness/examples/test_R22_嵌入关键字冗余验证.light": [
+    "@5 ('IDENTIFIER', '行为') -> ('IDENTIFIER', '行')",
+    "@7 ('STRING', '行为值') -> ('KEYWORD', '为')",
+    "@8 ('KEYWORD', '设') -> ('STRING', '行为值')"
+   ],
+   "lightharness/examples/test_R24_运算符单字守卫.light": [
+    "@276 ('IDENTIFIER', '是否为零') -> ('IDENTIFIER', '是否')",
+    "@278 ('KEYWORD', '假') -> ('CHINESE_NUM', 0)",
+    "@279 ('IDENTIFIER', '断言相等') -> ('KEYWORD', '为')"
+   ],
+   "lightharness/examples/test_R26_词首并入混合.light": [
+    "@320 ('IDENTIFIER', '是否为') -> ('IDENTIFIER', '是否')",
+    "@322 ('KEYWORD', '真') -> ('KEYWORD', '为')",
+    "@323 ('KEYWORD', '设') -> ('KEYWORD', '真')"
+   ]
+  },
+  "g1_changed_count": 23,
+  "g1_pass": false,
+  "g2_rc_base": 0,
+  "g2_rc_removed": 0,
+  "g2_pass": true,
+  "g3_fail": [
+   {
+    "form": "断言为真(1)",
+    "diff": [
+     "@0 ('IDENTIFIER', '断言为真') -> ('IDENTIFIER', '断言')",
+     "@1 ('LPAREN', '(') -> ('KEYWORD', '为')",
+     "@2 ('NUMBER', 1) -> ('IDENTIFIER', '真')"
+    ]
+   },
+   {
+    "form": "行为",
+    "diff": [
+     "@0 ('IDENTIFIER', '行为') -> ('IDENTIFIER', '行')",
+     "@1 ('<END>', '') -> ('KEYWORD', '为')"
+    ]
+   },
+   {
+    "form": "末位行为",
+    "diff": [
+     "@0 ('IDENTIFIER', '末位行为') -> ('IDENTIFIER', '末位行')",
+     "@1 ('<END>', '') -> ('KEYWORD', '为')"
+    ]
+   }
+  ],
+  "g3_pass": false,
+  "verdict": "保留"
+ }
+}
