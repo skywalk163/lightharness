@@ -2730,6 +2730,15 @@
    "状态": "已完成",
    "完成轮次": "第53轮",
    "备注": "任务1/2。修复_module_invokes_entry/_node_calls_name把裸引用Identifier误判为已启动入口的bug，改为只认真正的ParagraphCall调用；带形参入口改为编译期告警不再静默跳过。复现用例examples/test_L172.light红绿双向取证。全量pytest零新增红，0.82跨平台通过。"
+  },
+  {
+   "编号": 193,
+   "功能": "L-170编译器静默修复（核心arity-2动词作变量名下标/成员赋值静默变比较）",
+   "原模块": "编译器parser_stmt语句解析层",
+   "光明模块": "light-merge/src/parser_stmt.py",
+   "状态": "已完成",
+   "完成轮次": "第54轮",
+   "备注": "任务1/2。修复parser_stmt动词调用分支缺赋值守卫+IDENTIFIER路径漏管的问题：核心VERB_ARITY动词作变量名时，后跟[/.之/的/为/等于/=改走赋值而非表达式语句。L-171写X+Y经复核已由L-055覆盖，本轮无需改。复现用例examples/test_L170.light运行时断言赋值真生效。"
   }
  ]
 }
