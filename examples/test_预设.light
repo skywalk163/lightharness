@@ -283,7 +283,7 @@
   可删判定(系统预设, "/u")
 
 段落 反跑_可删判定:
-  设 系统预设 为 {"id":"p","trust":"system","path":"/s/p"}
+  设 系统预设 为 {"id":"p","trust":"system","path":"/s/p"}  # 抑制L166
   检查抛文("反跑_系统预设不可删", "it ships with the deployment", 抛_反跑系统)
 
 段落 反跑_造未知道错误:

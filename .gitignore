@@ -10,3 +10,7 @@ sessions/
 tmp_*
 
 .env
+
+# 生成的宣传海报 / AI 生图产物（单张 ~2.4MB，体积大不入库）
+generated-images/
+*_assets/
