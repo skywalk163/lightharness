@@ -1,0 +1,283 @@
+# ssh协议.light —— R52 任务3：ssh/ssh 纯逻辑三件（protocol.ts + schemas.ts）
+#
+# 上游依据（G:\github\deepseek-harness，0.1.6-alpha.1 = fork 合并 c47b24803e）：
+#   packages/ssh/ssh/src/protocol.ts  — SSH_PROTOCOL_VERSION / SSH_MAX_* 常量 + RemoteOperationError
+#   packages/ssh/ssh/src/schemas.ts   — remotePath / target / info / pathInfo / policy /
+#                                        entries / intent / edit / hello / spawn / streamEndpoint /
+#                                        prepared / outputSnapshotFrameLimit / processId
+#
+# 设计：上游用 Zod（.strict() 拒绝未知键 + .refine 细校验）。本复刻以「顺序 如果 规避 且/或 链」
+# 做等价建模——每个 schema 是一个 段落，返回归一化副本（此处即原值）或 抛出 远程操作错误。
+# 远程操作错误以 {名:"RemoteOperationError", 消息, 码} 标记建模 host 不可伪造语义。
+# 纯逻辑面，绝不接真实 SSH 网络/PTY；不引入 socket / child_process。
+# 注：上游 Zod 校验无「标签」概念，本复刻不引入标签参数（所有 schema 一律单参），
+#     错误信息直接含字段路径（如 "entries[0].name ..."），测试按子串判定。
+
+从 内置核心判型 导入 是整数, 是浮点, 是字符串, 是字典, 是列表, 是空
+从 字符串处理 导入 匹配正则
+从 内置核心字符串 导入 开头
+
+# =====================================================================
+# protocol.ts 常量 + 远程操作错误
+# =====================================================================
+
+# 线协议版本（客户端与私有远端 helper 共享）
+设 SSH协议版本 为 1
+
+# 单个 helper 拥有/运行的进程句柄上限
+设 SSH最大进程句柄数 为 128
+# 单个 helper 拥有的文本迭代器上限
+设 SSH最大文本流数 为 128
+
+# 64MB 帧收集硬上限（对齐 outputSnapshotFrameLimit 的协议天花板）
+设 SSH帧收集上限 为 67108864
+
+# 等价上游 RemoteOperationError：保留类型化 filesystem / sandbox 码
+段落 建立远程操作错误 接收 消息, 码:
+  返回 {"名": "RemoteOperationError", "消息": 消息, "码": 码}
+
+# 等价 host instanceof RemoteOperationError 判定（以 名 标记建模不可伪造语义）
+段落 是远程操作错误 接收 错误:
+  如果 (是字典(错误) == 假): 返回 假
+  如果 (字典包含键(错误, "名") == 假): 返回 假
+  返回 错误["名"] == "RemoteOperationError"
+
+# 等价上游 operationError：把任意未知错误归一成 Error
+段落 归一操作错误 接收 错误:
+  如果 (是字符串(错误) == 真): 返回 建立远程操作错误(错误, 空)
+  如果 (是字典(错误) == 真) 且 (字典包含键(错误, "消息") == 真):
+    如果 (是字符串(错误["消息"]) == 真): 返回 建立远程操作错误(错误["消息"], 空)
+  返回 建立远程操作错误(转字符串(错误), 空)
+
+# =====================================================================
+# 内部工具：严格对象（拒绝未知键）+ 数值判定
+# =====================================================================
+
+# 是数值 等价（上游 isNumber 排除 bool）：int 或 float
+段落 是数 接收 值:
+  如果 是整数(值): 返回 真
+  如果 是浮点(值): 返回 真
+  返回 假
+
+# 等价 Zod .strict()：必须是对象，且不得含已知键之外的字段
+段落 严格对象 接收 值, 已知键, 标签:
+  如果 (是字典(值) == 假):
+    抛出 建立远程操作错误(标签 + " 必须是对象", 空)
+  遍历 键 之 字典键列表(值):
+    如果 (字典包含键(已知键, 键) == 假):
+      抛出 建立远程操作错误(标签 + "." + 键 + " 是未知字段", 空)
+  返回 值
+
+# 枚举成员判定（以已知键集合规避 且/或 链）
+段落 在枚举 接收 值, 允许:
+  返回 字典包含键(允许, 值) == 真
+
+# =====================================================================
+# schemas.ts —— 路径 / 目标 / 信息 / 策略
+# =====================================================================
+
+# 等价 upstream remotePath：非空字符串、以 / 开头、不含 NUL
+段落 校验远程路径 接收 值:
+  如果 (是字符串(值) == 假) 或 (长(值) < 1):
+    抛出 建立远程操作错误("expected an absolute POSIX path", 空)
+  如果 (开头(值, "/") == 假):
+    抛出 建立远程操作错误("expected an absolute POSIX path", 空)
+  如果 (字符串包含(值, "\0") == 真):
+    抛出 建立远程操作错误("expected an absolute POSIX path", 空)
+  返回 值
+
+# 等价 upstream targetSchema：{ targetKey: remotePath, displayPath: string }
+段落 校验目标 接收 值:
+  严格对象(值, {"targetKey": 真, "displayPath": 真}, "target")
+  校验远程路径(值["targetKey"])
+  如果 (是字符串(值["displayPath"]) == 假):
+    抛出 建立远程操作错误("target.displayPath 必须是字符串", 空)
+  返回 值
+
+# 等价 upstream infoSchema：{ version: string, type: enum[file,directory,other], size?: nonneg }
+段落 校验信息 接收 值:
+  严格对象(值, {"version": 真, "type": 真, "size": 真}, "info")
+  如果 (是字符串(值["version"]) == 假):
+    抛出 建立远程操作错误("info.version 必须是字符串", 空)
+  设 允许 为 {"file": 真, "directory": 真, "other": 真}
+  如果 (在枚举(值["type"], 允许) == 假):
+    抛出 建立远程操作错误("info.type 必须是 file/directory/other", 空)
+  如果 (字典包含键(值, "size") == 真):
+    如果 (是数(值["size"]) == 假) 或 (值["size"] < 0):
+      抛出 建立远程操作错误("info.size 必须是非负数字", 空)
+  返回 值
+
+# 等价 upstream pathInfoSchema：infoSchema 扩展 type 允许 symlink
+段落 校验路径信息 接收 值:
+  严格对象(值, {"version": 真, "type": 真, "size": 真}, "pathInfo")
+  如果 (是字符串(值["version"]) == 假):
+    抛出 建立远程操作错误("pathInfo.version 必须是字符串", 空)
+  设 允许 为 {"file": 真, "directory": 真, "symlink": 真, "other": 真}
+  如果 (在枚举(值["type"], 允许) == 假):
+    抛出 建立远程操作错误("pathInfo.type 必须是 file/directory/symlink/other", 空)
+  如果 (字典包含键(值, "size") == 真):
+    如果 (是数(值["size"]) == 假) 或 (值["size"] < 0):
+      抛出 建立远程操作错误("pathInfo.size 必须是非负数字", 空)
+  返回 值
+
+# 等价 upstream policySchema：{ mode: enum, workspaceRoot: remotePath, sessionId?: string }
+段落 校验策略 接收 值:
+  严格对象(值, {"mode": 真, "workspaceRoot": 真, "sessionId": 真}, "policy")
+  设 允许 为 {"read-only": 真, "workspace-write": 真, "danger-full-access": 真}
+  如果 (在枚举(值["mode"], 允许) == 假):
+    抛出 建立远程操作错误("policy.mode 必须是 read-only/workspace-write/danger-full-access", 空)
+  校验远程路径(值["workspaceRoot"])
+  如果 (字典包含键(值, "sessionId") == 真) 且 (是字符串(值["sessionId"]) == 假):
+    抛出 建立远程操作错误("policy.sessionId 必须是字符串", 空)
+  返回 值
+
+# =====================================================================
+# schemas.ts —— 目录条目 / 写意图 / 文本编辑
+# =====================================================================
+
+# 等价 upstream entriesSchema：entry[]，每项 { name, type, target, version?, size? }
+段落 校验条目表 接收 值:
+  如果 (是列表(值) == 假):
+    抛出 建立远程操作错误("entries 必须是数组", 空)
+  设 索引 为 0
+  当 索引 < 长(值):
+    设 项 为 值[索引]
+    设 位置 为 "entries[" + 转字符串(索引) + "]"
+    严格对象(项, {"name": 真, "type": 真, "target": 真, "version": 真, "size": 真}, 位置)
+    如果 (是字符串(项["name"]) == 假):
+      抛出 建立远程操作错误(位置 + ".name 必须是字符串", 空)
+    设 允许 为 {"file": 真, "directory": 真, "other": 真}
+    如果 (在枚举(项["type"], 允许) == 假):
+      抛出 建立远程操作错误(位置 + ".type 必须是 file/directory/other", 空)
+    校验目标(项["target"])
+    如果 (字典包含键(项, "version") == 真) 且 (是字符串(项["version"]) == 假):
+      抛出 建立远程操作错误(位置 + ".version 必须是字符串", 空)
+    如果 (字典包含键(项, "size") == 真):
+      如果 (是数(项["size"]) == 假) 或 (项["size"] < 0):
+        抛出 建立远程操作错误(位置 + ".size 必须是非负数字", 空)
+    设 索引 为 索引 + 1
+  返回 值
+
+# 等价 upstream intentSchema：discriminatedUnion('kind', createIfAbsent | replaceIfVersion)
+段落 校验意图 接收 值:
+  严格对象(值, {"kind": 真, "version": 真}, "intent")
+  设 种类 为 值["kind"]
+  如果 (种类 == "createIfAbsent"):
+    如果 (字典包含键(值, "version") == 真):
+      抛出 建立远程操作错误("intent(kind=createIfAbsent) 不应含 version", 空)
+    返回 值
+  如果 (种类 == "replaceIfVersion"):
+    如果 (字典包含键(值, "version") == 假):
+      抛出 建立远程操作错误("intent(kind=replaceIfVersion) 必须含 version", 空)
+    如果 (是字符串(值["version"]) == 假):
+      抛出 建立远程操作错误("intent.version 必须是字符串", 空)
+    返回 值
+  抛出 建立远程操作错误("intent.kind 必须是 createIfAbsent/replaceIfVersion", 空)
+
+# 等价 upstream editSchema：{ oldString, newString, replaceAll: bool }
+段落 校验编辑 接收 值:
+  严格对象(值, {"oldString": 真, "newString": 真, "replaceAll": 真}, "edit")
+  如果 (是字符串(值["oldString"]) == 假):
+    抛出 建立远程操作错误("edit.oldString 必须是字符串", 空)
+  如果 (是字符串(值["newString"]) == 假):
+    抛出 建立远程操作错误("edit.newString 必须是字符串", 空)
+  如果 (字典包含键(值, "replaceAll") == 假) 或 (是布尔(值["replaceAll"]) == 假):
+    抛出 建立远程操作错误("edit.replaceAll 必须是布尔", 空)
+  返回 值
+
+# =====================================================================
+# schemas.ts —— 握手 / 生成 / 流端点 / 已准备 / 进程标识 / 帧上限
+# =====================================================================
+
+# 等价 upstream helloSchema：连接握手绑定 socket 与工作区到一个 helper 进程
+段落 校验握手 接收 值:
+  严格对象(值, {"protocol": 真, "hash": 真, "platform": 真, "nodeVersion": 真, "node": 真, "root": 真, "workspace": 真, "bootstrapHash": 真}, "hello")
+  如果 (值["protocol"] != 1):
+    抛出 建立远程操作错误("hello.protocol 必须是 1", 空)
+  如果 (匹配正则(值["hash"], "^[0-9a-f]{64}$") == 假):
+    抛出 建立远程操作错误("hello.hash 必须是 64 位十六进制", 空)
+  设 允许 为 {"linux": 真, "darwin": 真}
+  如果 (在枚举(值["platform"], 允许) == 假):
+    抛出 建立远程操作错误("hello.platform 必须是 linux/darwin", 空)
+  如果 (是字符串(值["nodeVersion"]) == 假):
+    抛出 建立远程操作错误("hello.nodeVersion 必须是字符串", 空)
+  校验远程路径(值["node"])
+  校验远程路径(值["root"])
+  校验远程路径(值["workspace"])
+  如果 (字典包含键(值, "bootstrapHash") == 真) 且 (匹配正则(值["bootstrapHash"], "^[0-9a-f]{64}$") == 假):
+    抛出 建立远程操作错误("hello.bootstrapHash 必须是 64 位十六进制", 空)
+  返回 值
+
+# 等价 upstream spawnSchema：普通或终端进程（stdio / terminal 恰好其一）
+段落 校验生成 接收 值:
+  严格对象(值, {"argv": 真, "cwd": 真, "env": 真, "graceMs": 真, "stdio": 真, "terminal": 真}, "spawn")
+  如果 (是列表(值["argv"]) == 假) 或 (长(值["argv"]) < 1):
+    抛出 建立远程操作错误("spawn.argv 必须非空数组", 空)
+  遍历 参 之 值["argv"]:
+    如果 (是字符串(参) == 假) 或 (字符串包含(参, "\0") == 真):
+      抛出 建立远程操作错误("spawn.argv 元素必须非 NUL 字符串", 空)
+  校验远程路径(值["cwd"])
+  如果 (是整数(值["graceMs"]) == 假):
+    抛出 建立远程操作错误("spawn.graceMs 必须是整数", 空)
+  如果 (值["graceMs"] <= 0):
+    抛出 建立远程操作错误("spawn.graceMs 必须是正整数", 空)
+  如果 (值["graceMs"] > 2147483647):
+    抛出 建立远程操作错误("spawn.graceMs 超过 2^31-1", 空)
+  如果 (字典包含键(值, "env") == 真) 且 (是字典(值["env"]) == 假):
+    抛出 建立远程操作错误("spawn.env 必须是对象", 空)
+  设 有标准 为 字典包含键(值, "stdio")
+  设 有终端 为 字典包含键(值, "terminal")
+  如果 (有标准 == 有终端):
+    抛出 建立远程操作错误("spawn 必须恰好选择 stdio 或 terminal 之一", 空)
+  如果 有终端:
+    设 终 为 值["terminal"]
+    严格对象(终, {"terminalType": 真, "rows": 真, "cols": 真}, "spawn.terminal")
+    如果 (是字符串(终["terminalType"]) == 假) 或 (长(终["terminalType"]) < 1):
+      抛出 建立远程操作错误("spawn.terminal.terminalType 必须是非空字符串", 空)
+    如果 (是整数(终["rows"]) == 假) 或 (终["rows"] <= 0):
+      抛出 建立远程操作错误("spawn.terminal.rows 必须是正整数", 空)
+    如果 (是整数(终["cols"]) == 假) 或 (终["cols"] <= 0):
+      抛出 建立远程操作错误("spawn.terminal.cols 必须是正整数", 空)
+  返回 值
+
+# 等价 upstream streamEndpointSchema：{ path: remotePath, capability: 64-hex }
+段落 校验流端点 接收 值:
+  严格对象(值, {"path": 真, "capability": 真}, "streamEndpoint")
+  校验远程路径(值["path"])
+  如果 (匹配正则(值["capability"], "^[0-9a-f]{64}$") == 假):
+    抛出 建立远程操作错误("streamEndpoint.capability 必须是 64 位十六进制", 空)
+  返回 值
+
+# 等价 upstream processIdSchema / textStreamIdSchema：UUID
+段落 校验进程标识 接收 值:
+  如果 (是字符串(值) == 假) 或 (匹配正则(值, "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$") == 假):
+    抛出 建立远程操作错误("processId 必须是 UUID", 空)
+  返回 值
+
+# 等价 upstream preparedSchema：{ id: uuid, streams: partialRecord(enum->streamEndpoint) }
+段落 校验已准备 接收 值:
+  严格对象(值, {"id": 真, "streams": 真}, "prepared")
+  校验进程标识(值["id"])
+  设 流 为 值["streams"]
+  如果 (是字典(流) == 假):
+    抛出 建立远程操作错误("prepared.streams 必须是对象", 空)
+  遍历 键 之 字典键列表(流):
+    设 允许 为 {"stdin": 真, "stdout": 真, "stderr": 真, "control": 真, "terminal": 真}
+    如果 (在枚举(键, 允许) == 假):
+      抛出 建立远程操作错误("prepared.streams." + 键 + " 是非法键", 空)
+    校验流端点(流[键])
+  返回 值
+
+# 等价 upstream outputSnapshotFrameLimit：min(64MB, maxBytes*2 + 1024)
+# 纯函数；绑定声明集合预算与协议天花板
+段落 输出快照帧上限 接收 最大字节:
+  设 候选 为 最大字节 * 2 + 1024
+  如果 候选 > SSH帧收集上限: 设 候选 为 SSH帧收集上限
+  返回 候选
+
+# 导出公共名称（常量 + 校验器 + 错误构造），供 examples 测试与下游模块复用
+导出 SSH协议版本, SSH最大进程句柄数, SSH最大文本流数, SSH帧收集上限
+导出 建立远程操作错误, 是远程操作错误, 归一操作错误
+导出 校验远程路径, 校验目标, 校验信息, 校验路径信息, 校验策略
+导出 校验条目表, 校验意图, 校验编辑
+导出 校验握手, 校验生成, 校验流端点, 校验进程标识, 校验已准备, 输出快照帧上限

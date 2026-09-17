@@ -1,0 +1,211 @@
+# test_R52_workflow_ptc.light —— R52 任务1：workflow-ptc meta(validateMeta)+realm(materializeFromRealm)
+#
+# 上游依据（G:\github\deepseek-harness，0.1.6-alpha.1 = fork 合并 c47b24803e）：
+#   packages/workflow/workflow-ptc/src/meta.ts  — validateMeta(value): WorkflowMeta
+#   packages/workflow/workflow-ptc/src/realm.ts — materializeFromRealm / MaterializeError / renderThrown
+#
+# 覆盖：
+#   §1 validateMeta 合法（完整/最小/空phases/可选phase字段）
+#   §2 validateMeta 非法形状逐条命名违规并抛 META_INVALID
+#   §3 materializeFromRealm 深拷贝（标量/嵌套字典/嵌套列表/深结构）
+#   §4 materializeFromRealm 根 null 原样返回
+#   §5 materializeFromRealm 拒绝非有限数 → MaterializeError
+#   §6 materializeFromRealm 拒绝函数 → MaterializeError
+#   §7 materializeFromRealm 拒绝循环引用 → MaterializeError
+#   §8 renderThrown total（绝不向上抛）
+#   §9 归一化副本不别名调用方对象
+#
+# 反跑判据：把任一 断言相等 的期望文案/结构改反即红；把归一化字段改错即红。
+# 运行：cd lightharness && python 运行.py examples/test_R52_workflow_ptc.light
+
+从 工作流错误 导入 建立工作流错误, 判定致命工作流错误, 已知工作流错误码, 渲染监听错误
+从 工作流错误 导入 validateMeta, 物化自域, 渲染抛出, 建立物化错误
+从 内置核心判型 导入 是整数, 是浮点
+从 JSON 导入 序列化JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 "反跑判据失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望)
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假: 抛出 "反跑判据失败[" + 标签 + "]：条件为假"
+
+# 验证 validateMeta 在非法输入上抛 WorkflowError(META_INVALID) 且消息含指定片段
+段落 校验抛META 接收 值, 期望含, 标签:
+  设 捕获名 为 空
+  设 捕获码 为 空
+  设 捕获消息 为 空
+  尝试:
+    设 丢弃 为 validateMeta(值)
+    断言相等(假, 真, 标签 + "_应抛未抛")
+  捕获 抛了:
+    设 错误体 为 抛了.args[0]
+    设 捕获名 为 错误体["名"]
+    设 捕获码 为 错误体["码"]
+    设 捕获消息 为 错误体["消息"]
+  断言相等(捕获名, "WorkflowError", 标签 + "_名")
+  断言相等(捕获码, "META_INVALID", 标签 + "_码")
+  断言真(期望含 在 捕获消息, 标签 + "_消息含:" + 捕获消息)
+
+段落 主:
+  # =====================================================================
+  # §1 validateMeta 合法
+  # =====================================================================
+  设 完整 为 ["name": "summarize", "description": "总结对话", "whenToUse": "当用户要摘要", "phases": [["title": "检索", "detail": "拉取资料", "provider": "openai", "model": "gpt-4"]]]
+  设 归一完整 为 validateMeta(完整)
+  断言相等(归一完整["name"], "summarize", "1a_name")
+  断言相等(归一完整["description"], "总结对话", "1b_desc")
+  断言相等(归一完整["whenToUse"], "当用户要摘要", "1c_when")
+  断言相等(长(归一完整["phases"]), 1, "1d_phases_len")
+  断言相等(归一完整["phases"][0]["title"], "检索", "1e_phase_title")
+  断言相等(归一完整["phases"][0]["detail"], "拉取资料", "1f_phase_detail")
+  断言相等(归一完整["phases"][0]["provider"], "openai", "1g_phase_provider")
+  断言相等(归一完整["phases"][0]["model"], "gpt-4", "1h_phase_model")
+
+  设 最小 为 ["name": "x", "description": "y"]
+  设 归一最小 为 validateMeta(最小)
+  断言相等(归一最小["name"], "x", "1i_min_name")
+  断言相等(归一最小["description"], "y", "1j_min_desc")
+  断言真(字典包含键(归一最小, "whenToUse") == 假, "1k_min无when")
+  断言真(字典包含键(归一最小, "phases") == 假, "1l_min无phases")
+
+  # 空 phases 数组仍需保留（对齐上游 ...record.phases !== undefined ? {phases} : {}）
+  设 空阶段 为 ["name": "x", "description": "y", "phases": []]
+  设 归一空阶段 为 validateMeta(空阶段)
+  断言相等(归一空阶段["phases"], [], "1m_空phases保留")
+
+  # phase 仅含必填 title，可选字段缺省不纳入
+  设 仅标题 为 ["name": "x", "description": "y", "phases": [["title": "仅标题"]]]
+  设 归一仅标题 为 validateMeta(仅标题)
+  断言相等(归一仅标题["phases"][0], ["title": "仅标题"], "1n_仅标题phase")
+
+  # =====================================================================
+  # §2 validateMeta 非法形状逐条命名违规
+  # =====================================================================
+  校验抛META("not-an-object", "meta must be an object", "2a_非对象")
+  校验抛META(["x", "y"], "meta must be an object", "2b_数组非对象")
+  校验抛META(["name": "x", "description": "y", "bogus": 1], "meta.bogus is not a recognized field", "2c_未知字段")
+  校验抛META(["name": "", "description": "y"], "meta.name must be a non-empty string", "2d_空name")
+  校验抛META(["name": "x"], "meta.description must be a non-empty string", "2e_缺description")
+  校验抛META(["name": "x", "description": "y", "whenToUse": 5], "meta.whenToUse must be a string", "2f_when类型错")
+  校验抛META(["name": "x", "description": "y", "phases": "no"], "meta.phases must be an array", "2g_phases非数组")
+  校验抛META(["name": "x", "description": "y", "phases": ["t"]], "meta.phases[0] must be an object", "2h_phase非对象")
+  校验抛META(["name": "x", "description": "y", "phases": [["title": "t", "bogus": 1]]], "meta.phases[0].bogus is not a recognized field", "2i_phase未知字段")
+  校验抛META(["name": "x", "description": "y", "phases": [["detail": "d"]]], "meta.phases[0].title must be a non-empty string", "2j_phase空title")
+  校验抛META(["name": "x", "description": "y", "phases": [["title": "t", "detail": 5]]], "meta.phases[0].detail must be a string", "2k_phasedetail类型错")
+  校验抛META(["name": "x", "description": "y", "phases": [["title": "t", "model": 5]]], "meta.phases[0].model must be a string", "2l_phasemodel类型错")
+
+  # =====================================================================
+  # §3 materializeFromRealm 深拷贝
+  # =====================================================================
+  设 标量 为 物化自域(42, "value")
+  断言相等(标量, 42, "3a_标量")
+  设 布尔值 为 物化自域(真, "value")
+  断言相等(布尔值, 真, "3b_布尔")
+  设 文本 为 物化自域("hi", "value")
+  断言相等(文本, "hi", "3c_文本")
+
+  # 嵌套字典深拷贝独立性
+  设 原字典 为 ["x": ["y": 1], "z": [1, 2]]
+  设 副字典 为 物化自域(原字典, "value")
+  断言相等(副字典, ["x": ["y": 1], "z": [1, 2]], "3d_嵌套字典结构")
+  字典设置(原字典["x"], "y", 999)
+  列表弹出(原字典["z"], 0)
+  列表插入(原字典["z"], 0, 888)
+  断言相等(副字典["x"]["y"], 1, "3e_字典深拷贝独立")
+  断言相等(副字典["z"][0], 1, "3f_列表深拷贝独立")
+
+  # 深结构
+  设 深 为 ["a": [["b": 1], ["b": 2]], "c": ["d": ["e": 3]]]
+  设 深副 为 物化自域(深, "value")
+  断言相等(深副["a"][1]["b"], 2, "3g_深结构a")
+  断言相等(深副["c"]["d"]["e"], 3, "3h_深结构c")
+
+  # =====================================================================
+  # §4 根 null 原样返回
+  # =====================================================================
+  断言相等(物化自域(空, "value"), 空, "4a_根null")
+
+  # =====================================================================
+  # §5 拒绝非有限数
+  # =====================================================================
+  设 捕获名5 为 空
+  设 捕获原因5 为 空
+  尝试:
+    设 丢弃 为 物化自域(math.inf, "value")
+    断言相等(假, 真, "5a_应抛未抛")
+  捕获 抛了:
+    设 体5 为 抛了.args[0]
+    设 捕获名5 为 体5["名"]
+    设 捕获原因5 为 体5["原因"]
+  断言相等(捕获名5, "MaterializeError", "5b_名")
+  断言相等(捕获原因5, "non-finite numbers are not JSON data", "5c_原因")
+
+  # =====================================================================
+  # §6 拒绝函数
+  # =====================================================================
+  设 捕获名6 为 空
+  设 捕获原因6 为 空
+  尝试:
+    设 丢弃 为 物化自域(主, "value")
+    断言相等(假, 真, "6a_应抛未抛")
+  捕获 抛了:
+    设 体6 为 抛了.args[0]
+    设 捕获名6 为 体6["名"]
+    设 捕获原因6 为 体6["原因"]
+  断言相等(捕获名6, "MaterializeError", "6b_名")
+  断言相等(捕获原因6, "functions are not plain JSON data", "6c_原因")
+
+  # =====================================================================
+  # §7 拒绝循环引用
+  # =====================================================================
+  设 环 为 字典创建()
+  字典设置(环, "self", 环)
+  设 捕获名7 为 空
+  设 捕获原因7 为 空
+  尝试:
+    设 丢弃 为 物化自域(环, "value")
+    断言相等(假, 真, "7a_应抛未抛")
+  捕获 抛了:
+    设 体7 为 抛了.args[0]
+    设 捕获名7 为 体7["名"]
+    设 捕获原因7 为 体7["原因"]
+  断言相等(捕获名7, "MaterializeError", "7b_名")
+  断言相等(捕获原因7, "circular references are not JSON data", "7c_原因")
+
+  # 嵌套循环
+  设 外层 为 字典创建()
+  设 内层 为 字典创建()
+  字典设置(外层, "child", 内层)
+  字典设置(内层, "back", 外层)
+  设 捕获名7b 为 空
+  尝试:
+    设 丢弃 为 物化自域(外层, "value")
+    断言相等(假, 真, "7d_应抛未抛")
+  捕获 抛了:
+    设 体7b 为 抛了.args[0]
+    设 捕获名7b 为 体7b["名"]
+  断言相等(捕获名7b, "MaterializeError", "7e_嵌套循环名")
+
+  # =====================================================================
+  # §8 renderThrown total
+  # =====================================================================
+  断言相等(渲染抛出(["消息": "boom"]), "boom", "8a_字典消息")
+  断言相等(渲染抛出("plain text"), "plain text", "8b_字符串")
+  设 抛错 为 空
+  尝试:
+    抛出 "err-msg"
+  捕获 抛了:
+    设 抛错 为 抛了
+  断言相等(渲染抛出(抛错), "err-msg", "8c_异常对象")
+
+  # =====================================================================
+  # §9 归一化副本不别名调用方对象
+  # =====================================================================
+  设 入参 为 ["name": "orig", "description": "d"]
+  设 出参 为 validateMeta(入参)
+  字典设置(入参, "name", "mutated")
+  断言相等(出参["name"], "orig", "9a_归一化不别名")
+
+  打印 "--- R52 任务1 workflow-ptc meta+realm 纯逻辑测试通过 ---"
+
+主()

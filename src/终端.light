@@ -324,3 +324,346 @@
     捕获 错误:
     设 己.控制台 为 空
     设 己.消费点 为 0
+
+# ============================================================
+# 第52轮 任务4 追加 —— terminal-controller 视图状态机
+# （对标 0.1.6-alpha.1：packages/api/terminal-controller/src/client/model.ts
+#   + src/stream.ts + src/client/close-requests.ts，纯逻辑面）
+#
+# 对齐口径（纯逻辑化，剔除的宿主面在交付报告「已登记偏差」）：
+#   - SnapshotStore/AbortController/Promise/Remote 流载具 → 同步步进状态机；
+#   - TerminalView 的 connect/refresh/write/rename 等远程调用编排是宿主面，不进本节；
+#   - 保留其**纯决策核**：帧消费校验状态机、失败→相位/问题映射、输入配额与写入准入、
+#     尺寸钳制、跟随器字节预算队列、关机请求簿（localStorage 面剔除，纯内存）。
+#
+# 语义对齐要点：
+#   - 帧消费（consume 纯化）：代切换必须以 snapshot 开场，否则 invalidOutput
+#     （"generation is missing its screen snapshot"）；同代中途 snapshot → invalidOutput
+#     （"Unexpected terminal screen snapshot"）；output 序号必须严格 +1，缺口 → invalidOutput
+#     （"Terminal output sequence has a gap"）；非 output 帧 → patch
+#     {info, title, phase: connected, writable: state==running 且 controllerId==挂载标识}；
+#     非 state 帧 → 渲染（revision 递增）；
+#   - 失败映射（fail 纯化）：terminal/control-unavailable → 仅失写不失败；
+#     terminal/view → issue 透传；terminal/limit-reached → issue=terminalLimit；
+#     流载具错误 → disconnected；其余 → failed；
+#   - 写入准入：非 writable / 无 info / 无挂载标识 → 忽略；排队字节 + 新增 > 上限 → inputFull；
+#   - 尺寸钳制：resize 只从可写视图发起；相同尺寸忽略；列/行钳到环境上限；
+#   - 跟随器（TerminalFollower）：慢消费者显式失败——字节超预算 → 失败 + 关闭；
+#     关闭/完结后推入忽略；读一步：队首帧 / 等待 / 完结后完 / 失败上抛；
+#   - 关机请求簿：键前缀 dsh.terminal.close.v1.，每请求独立键；
+#     载入校验 请求形状 且 键与 id 一致，否则 "Invalid terminal cleanup request"。
+# ============================================================
+
+从 正则表达式 导入 搜索
+
+# ---- 词表与形状（client/model.ts） ----
+
+# TerminalViewIssue：产品错误标识（UI 翻译用）
+段落 视图问题表:
+  返回 ["missingTerminal", "inputFull", "attachmentEnded", "invalidOutput", "terminalLimit"]
+
+# TerminalViewState.phase：侧栏一条目的九相位
+段落 视图相位表:
+  返回 ["idle", "loading", "creating", "connecting", "connected", "disconnected", "closing", "closed", "failed"]
+
+# TerminalRenderFrame：{revision, frame}——待 xterm 回调的一次屏写
+段落 是渲染帧 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 判数值宽(字典获取(值, "revision", 空)) == 假:
+    返回 假
+  设 帧 为 字典获取(值, "frame", 空)
+  如果 是字典(帧) == 假:
+    返回 假
+  如果 帧["type"] == "snapshot":
+    返回 真
+  如果 帧["type"] == "output":
+    返回 真
+  返回 假
+
+# 判数值宽：整数或浮点（不含布尔）
+段落 判数值宽 接收 值:
+  如果 isinstance(值, bool):
+    返回 假
+  如果 是整数(值):
+    返回 真
+  返回 是浮点(值)
+
+# WebTerminalInfo 宽松形状：{id, title, state, controllerId, ...}
+段落 是终端信息 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "id", 空)) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "title", 空)) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "state", 空)) == 假:
+    返回 假
+  返回 是字符串(字典获取(值, "controllerId", 空))
+
+# TerminalViewState 谓词：phase ∈ 九相位 + writable 布尔 + 可选键合法
+段落 是视图状态 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 列表包含(视图相位表(), 字典获取(值, "phase", 空)) == 假:
+    返回 假
+  如果 isinstance(字典获取(值, "writable", 空), bool) == 假:
+    返回 假
+  如果 字典包含键(值, "environment") == 真:
+    如果 是无损JSON宽(值["environment"]) == 假:
+      返回 假
+  如果 字典包含键(值, "render") == 真:
+    如果 值["render"] != 空:
+      返回 是渲染帧(值["render"])
+  如果 字典包含键(值, "issue") == 真:
+    如果 值["issue"] != 空:
+      返回 列表包含(视图问题表(), 值["issue"])
+  返回 真
+
+# 无损 JSON 宽谓词（环境表等自由载荷；本地实现避免跨模块耦合）
+段落 是无损JSON宽 接收 值:
+  返回 是无损JSON深层宽(值, 0)
+
+段落 是无损JSON深层宽 接收 值, 深度:
+  如果 深度 > 64:
+    返回 假
+  如果 值 == 空:
+    返回 真
+  如果 是字符串(值):
+    返回 真
+  如果 判数值宽(值):
+    返回 真
+  如果 是列表(值):
+    遍历 项 之 值:
+      如果 是无损JSON深层宽(项, 深度 + 1) == 假:
+        返回 假
+    返回 真
+  如果 是字典(值):
+    遍历 键 之 字典键列表(值):
+      如果 是无损JSON深层宽(值[键], 深度 + 1) == 假:
+        返回 假
+    返回 真
+  返回 假
+
+# ---- 帧消费状态机（consume 纯化） ----
+
+# 造帧消费机：{代, 序号, 补丁表, 问题, 失败, 修订}
+段落 造帧消费机:
+  返回 {"代": 空, "序号": 0, "补丁表": [], "问题": 空, "失败": 空, "修订": [0]}
+
+# 吃一帧：机 内累积 补丁表；返回 {"机", "失败"}——失败非空即本轮 invalidOutput
+#   帧 = {type: "snapshot"|"output"|"state", sequence?, info?}（snapshot/state 带 info）
+#   代 = 流代数；挂载标识 = 本代 attachmentId（writable 判定用）
+段落 帧消费机吃帧 接收 机, 帧, 代, 挂载标识:
+  如果 是字典(帧) == 假:
+    字典设置(机, "失败", "invalidOutput")
+    返回 {"机": 机, "失败": 机["失败"]}
+  设 种类 为 字典获取(帧, "type", 空)
+  如果 种类 == "output":
+    # 同代 output：序号必须严格 +1（缺口即非法）；代切换遇 output 同样非法
+    如果 机["代"] != 代:
+      字典设置(机, "失败", "invalidOutput")
+    否则:
+      如果 帧["sequence"] != 机["序号"] + 1:
+        字典设置(机, "失败", "invalidOutput")
+      否则:
+        字典设置(机, "序号", 帧["sequence"])
+  否则:
+    # 非 output 帧（snapshot/state）
+    如果 机["代"] != 代:
+      # 代切换必须以 snapshot 开场
+      如果 种类 != "snapshot":
+        字典设置(机, "失败", "invalidOutput")
+      否则:
+        字典设置(机, "代", 代)
+        字典设置(机, "序号", 字典获取(帧, "sequence", 0))
+    否则:
+      # 同代中途再收 snapshot → 非法
+      如果 种类 == "snapshot":
+        字典设置(机, "失败", "invalidOutput")
+  如果 机["失败"] != 空:
+    返回 {"机": 机, "失败": 机["失败"]}
+  # 非 output 帧：patch {info, title, phase: connected, writable}
+  如果 种类 != "output":
+    设 信息 为 字典获取(帧, "info", 空)
+    设 补丁 为 {"info": 信息, "title": 字典获取(信息, "title", 空), "phase": "connected"}
+    设 可写 为 真
+    如果 字典获取(信息, "state", 空) != "running":
+      设 可写 为 假
+    如果 字典获取(信息, "controllerId", 空) != 挂载标识:
+      设 可写 为 假
+    字典设置(补丁, "writable", 可写)
+    列表追加(机["补丁表"], 补丁)
+  # 非 state 帧：渲染（revision 递增）
+  如果 种类 != "state":
+    设 修订表 为 机["修订"]
+    设 修订 为 修订表[0] + 1
+    字典设置(修订表, 0, 修订)
+    列表追加(机["补丁表"], {"render": {"revision": 修订, "frame": 帧}})
+  返回 {"机": 机, "失败": 空}
+
+# ---- 失败映射（fail 纯化） ----
+
+# 视图失败映射：错误码 + 是否流载具错误 → {"改相位", "仅失写", "问题"}
+#   仅失写=真 表示只置 writable:false、清 error/issue，不改相位（control-unavailable 特例）
+#   terminal/view 的 issue 由调用方按实际问题传入此处按 invalidOutput 缺省
+段落 视图失败映射 接收 错误码, 是载具错误:
+  如果 错误码 == "terminal/control-unavailable":
+    返回 {"改相位": 空, "仅失写": 真, "问题": 空}
+  如果 错误码 == "terminal/limit-reached":
+    返回 {"改相位": 视图载具相位(是载具错误), "仅失写": 假, "问题": "terminalLimit"}
+  返回 {"改相位": 视图载具相位(是载具错误), "仅失写": 假, "问题": 空}
+
+段落 视图载具相位 接收 是载具错误:
+  如果 是载具错误 == 真:
+    返回 "disconnected"
+  返回 "failed"
+
+# ---- 写入准入与配额（write 纯化） ----
+
+# 写入准入：非 writable / 无 info / 无挂载标识 → 忽略（假）；否则 真
+段落 写入准入 接收 状态, 挂载标识:
+  如果 字典获取(状态, "writable", 假) == 假:
+    返回 假
+  如果 字典获取(状态, "info", 空) == 空:
+    返回 假
+  如果 挂载标识 == 空:
+    返回 假
+  返回 真
+
+# 输入配额：排队字节 + 新增字节 > 上限 → {"准": 假, "问题": "inputFull"}；否则放行
+段落 输入配额判定 接收 排队字节, 新增字节, 上限字节:
+  如果 排队字节 + 新增字节 > 上限字节:
+    返回 {"准": 假, "问题": "inputFull"}
+  返回 {"准": 真, "问题": 空}
+
+# ---- 尺寸钳制（resize 纯化） ----
+
+# 相同尺寸忽略判定
+段落 尺寸未变 接收 信息, 入列, 入行:
+  如果 字典获取(信息, "cols", 空) != 入列:
+    返回 假
+  返回 字典获取(信息, "rows", 空) == 入行
+
+# 钳到环境上限（环境缺省用原值）
+段落 尺寸钳制 接收 入列, 入行, 环境:
+  设 出列 为 入列
+  设 出行 为 入行
+  如果 环境 != 空:
+    如果 入列 > 字典获取(环境, "maxCols", 入列):
+      设 出列 为 字典获取(环境, "maxCols", 入列)
+    如果 入行 > 字典获取(环境, "maxRows", 入行):
+      设 出行 为 字典获取(环境, "maxRows", 入行)
+  返回 {"cols": 出列, "rows": 出行}
+
+# ---- TerminalFollower（stream.ts 纯化）：有界字节输出队列 ----
+
+# 造视图跟随器 接收 最大字节
+段落 造视图跟随器 接收 最大字节:
+  返回 {"队列": [], "字节": 0, "关闭": 假, "完成": 假, "失败": 空, "最大字节": 最大字节}
+
+# 推入：关闭/完结后忽略；字节超预算 → 失败（显式）+ 关闭；否则入队
+段落 跟随器推入 接收 随, 帧, 字节:
+  如果 随["关闭"] == 真:
+    返回 随
+  如果 随["完成"] == 真:
+    返回 随
+  如果 随["字节"] + 字节 > 随["最大字节"]:
+    字典设置(随, "失败", "Terminal output consumer exceeded its buffer; reconnect to recover the current screen")
+    跟随器关闭(随)
+    返回 随
+  列表追加(随["队列"], {"frame": 帧, "bytes": 字节})
+  字典设置(随, "字节", 随["字节"] + 字节)
+  返回 随
+
+# 完结：交付完队列内全部帧（含最终退出态）后收尾
+段落 跟随器完结 接收 随:
+  字典设置(随, "完成", 真)
+  返回 随
+
+# 关闭：停跟随但不停终端——清队清字节
+段落 跟随器关闭 接收 随:
+  字典设置(随, "关闭", 真)
+  字典设置(随, "队列", [])
+  字典设置(随, "字节", 0)
+  返回 随
+
+# 读一步（read 循环的同步步进）：
+#   {原因: "帧", 帧} / {原因: "等待"}（队列空未完结）/ {原因: "完"} / {原因: "败", 错误}
+#   失败在队列排空后上抛（对齐上游 read 的循环后 throw）
+段落 跟随器读一步 接收 随:
+  如果 长(随["队列"]) > 0:
+    设 首 为 随["队列"][0]
+    设 余表 为 []
+    设 序 为 1
+    当 序 < 长(随["队列"]):
+      列表追加(余表, 随["队列"][序])
+      设 序 为 序 + 1
+    字典设置(随, "队列", 余表)
+    字典设置(随, "字节", 随["字节"] - 首["bytes"])
+    返回 {"原因": "帧", "帧": 首["frame"]}
+  如果 随["失败"] != 空:
+    返回 {"原因": "败", "错误": 随["失败"]}
+  如果 随["关闭"] == 真:
+    返回 {"原因": "完"}
+  如果 随["完成"] == 真:
+    返回 {"原因": "完"}
+  返回 {"原因": "等待"}
+
+# ---- TerminalCloseRequests（close-requests.ts 纯化） ----
+
+# 存储键前缀
+段落 关机键前缀:
+  返回 "dsh.terminal.close.v1."
+
+# 造关机请求簿（localStorage 宿主面剔除 → 纯内存表）
+段落 造关机请求簿:
+  返回 {"表": {}}
+
+# TerminalCloseRequest 形状：sessionId 非空串 + id 匹配 ^[\w-]{1,128}$ + title 串
+段落 是关机请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  设 会话 为 字典获取(值, "sessionId", 空)
+  如果 是字符串(会话) == 假:
+    返回 假
+  如果 字符串长度(会话) == 0:
+    返回 假
+  设 标识 为 字典获取(值, "id", 空)
+  如果 是字符串(标识) == 假:
+    返回 假
+  如果 是空(搜索("^[\\w-]{1,128}$", 标识)):
+    返回 假
+  返回 是字符串(字典获取(值, "title", 空))
+
+# save：移除标签页前保留清理意图（跨刷新存活；每请求独立键）
+段落 关机簿保存 接收 簿, 请求:
+  如果 是关机请求(请求) == 假:
+    抛出 新建 错误("Invalid terminal cleanup request")
+  字典设置(簿["表"], 请求["id"], 请求)
+  返回 簿
+
+# remove：宿主清理确认后在内存与存储中遗忘（重建去键表）
+段落 关机簿移除 接收 簿, 标识:
+  设 新表 为 {}
+  遍历 键 之 字典键列表(簿["表"]):
+    如果 键 != 标识:
+      字典设置(新表, 键, 簿["表"][键])
+  字典设置(簿, "表", 新表)
+  返回 簿
+
+# pending：仍未获宿主确认的清理请求
+段落 关机簿待办 接收 簿:
+  设 结果 为 []
+  遍历 标识 之 字典键列表(簿["表"]):
+    列表追加(结果, 簿["表"][标识])
+  返回 结果
+
+# 载入（load 纯化）：形状非法 或 键与 id 不一致 → 抛
+段落 关机簿载入 接收 簿, 键, 请求:
+  如果 是关机请求(请求) == 假:
+    抛出 新建 错误("Invalid terminal cleanup request")
+  如果 键 != 关机键前缀() + 请求["id"]:
+    抛出 新建 错误("Invalid terminal cleanup request")
+  字典设置(簿["表"], 请求["id"], 请求)
+  返回 簿

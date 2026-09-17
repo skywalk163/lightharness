@@ -1,0 +1,193 @@
+# test_R52_ssh协议.light —— R52 任务3：ssh/ssh 纯逻辑（protocol.ts + schemas.ts）
+#
+# 上游依据（G:\github\deepseek-harness，0.1.6-alpha.1 = fork 合并 c47b24803e）：
+#   packages/ssh/ssh/src/protocol.ts  — SSH_PROTOCOL_VERSION / SSH_MAX_* + RemoteOperationError
+#   packages/ssh/ssh/src/schemas.ts   — remotePath / target / info / pathInfo / policy /
+#                                        entries / intent / edit / hello / spawn /
+#                                        streamEndpoint / prepared / outputSnapshotFrameLimit / processId
+#
+# 覆盖：
+#   §1 协议常量
+#   §2 RemoteOperationError 构造 / 判定 / 归一
+#   §3 remotePath（绝对POSIX / 非空 / 无 NUL）
+#   §4 target
+#   §5 info / pathInfo（type 枚举 + size 非负）
+#   §6 policy（mode 枚举 + workspaceRoot 绝对）
+#   §7 entries（每项结构）
+#   §8 intent（createIfAbsent / replaceIfVersion 判别）
+#   §9 edit（replaceAll 必须是布尔）
+#   §10 hello（hash 64-hex / platform 枚举）
+#   §11 spawn（stdio/terminal 互斥 + argv/graceMs/cwd）
+#   §12 streamEndpoint（capability 64-hex）
+#   §13 prepared（id UUID / streams 键集）
+#   §14 outputSnapshotFrameLimit（min(64MB, maxBytes*2+1024)）
+#
+# 反跑判据：把任一 断言相等 的期望改反即红；把校验放行条件改错即红。
+# 运行：cd lightharness && python 运行.py examples/test_R52_ssh协议.light
+
+从 ssh协议 导入 SSH协议版本, SSH最大进程句柄数, SSH最大文本流数
+从 ssh协议 导入 建立远程操作错误, 是远程操作错误, 归一操作错误
+从 ssh协议 导入 校验远程路径, 校验目标, 校验信息, 校验路径信息, 校验策略
+从 ssh协议 导入 校验条目表, 校验意图, 校验编辑
+从 ssh协议 导入 校验握手, 校验生成, 校验流端点, 校验进程标识, 校验已准备, 输出快照帧上限
+从 JSON 导入 序列化JSON
+
+设 合法UUID 为 "123e4567-e89b-12d3-a456-426614174000"
+设 合法哈希 为 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望: 抛出 "反跑判据失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望)
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假: 抛出 "反跑判据失败[" + 标签 + "]：条件为假"
+
+# 验证校验器在非法输入上 抛出 {名:"RemoteOperationError"} 且消息含指定片段
+# 校验器 为单参函数引用（标签可选，默认内部定位）；值 为非法输入
+段落 校验抛远程 接收 校验器, 值, 期望含, 标签:
+  设 捕获名 为 空
+  设 捕获消息 为 空
+  尝试:
+    设 丢弃 为 校验器(值)
+    断言相等(假, 真, 标签 + "_应抛未抛")
+  捕获 抛了:
+    设 错误体 为 抛了.args[0]
+    设 捕获名 为 错误体["名"]
+    设 捕获消息 为 错误体["消息"]
+  断言相等(捕获名, "RemoteOperationError", 标签 + "_名")
+  断言真(期望含 在 捕获消息, 标签 + "_消息含:" + 捕获消息)
+
+段落 主:
+  # =====================================================================
+  # §1 协议常量
+  # =====================================================================
+  断言相等(SSH协议版本, 1, "1a_版本")
+  断言相等(SSH最大进程句柄数, 128, "1b_进程句柄")
+  断言相等(SSH最大文本流数, 128, "1c_文本流")
+
+  # =====================================================================
+  # §2 RemoteOperationError 构造 / 判定 / 归一
+  # =====================================================================
+  设 错 为 建立远程操作错误("boom", "FS_EOF")
+  断言相等(错["名"], "RemoteOperationError", "2a_名")
+  断言相等(错["消息"], "boom", "2b_消息")
+  断言相等(错["码"], "FS_EOF", "2c_码")
+  断言真(是远程操作错误(错) == 真, "2d_判定真")
+  断言真(是远程操作错误(["名": "WorkflowError"]) == 假, "2e_判定非")
+  设 归一 为 归一操作错误("plain str")
+  断言相等(归一["名"], "RemoteOperationError", "2f_归一字符串")
+  断言相等(归一["消息"], "plain str", "2g_归一消息")
+
+  # =====================================================================
+  # §3 remotePath
+  # =====================================================================
+  断言相等(校验远程路径("/a/b"), "/a/b", "3a_合法")
+  校验抛远程(校验远程路径, "", "expected an absolute POSIX path", "3b_空")
+  校验抛远程(校验远程路径, "a/b", "expected an absolute POSIX path", "3c_相对")
+  校验抛远程(校验远程路径, "/a" + "\0" + "b", "expected an absolute POSIX path", "3d_NUL")
+
+  # =====================================================================
+  # §4 target
+  # =====================================================================
+  设 合法目标 为 ["targetKey": "/proj/file", "displayPath": "file"]
+  断言相等(校验目标(合法目标), 合法目标, "4a_合法")
+  校验抛远程(校验目标, ["targetKey": "rel", "displayPath": "x"], "expected an absolute POSIX path", "4b_键非绝对")
+  校验抛远程(校验目标, ["targetKey": "/p", "displayPath": 5], "displayPath", "4c_展示非串")
+  校验抛远程(校验目标, ["targetKey": "/p", "bogus": 1], "未知字段", "4d_未知键")
+
+  # =====================================================================
+  # §5 info / pathInfo
+  # =====================================================================
+  设 合法信息 为 ["version": "1", "type": "file", "size": 10]
+  断言相等(校验信息(合法信息), 合法信息, "5a_信息合法")
+  校验抛远程(校验信息, ["version": "1", "type": "weird"], "type", "5b_信息类型错")
+  校验抛远程(校验信息, ["version": "1", "type": "file", "size": -1], "size", "5c_信息size负")
+  设 合法链接 为 ["version": "1", "type": "symlink"]
+  断言相等(校验路径信息(合法链接), 合法链接, "5d_链接合法")
+  校验抛远程(校验路径信息, ["version": "1", "type": "weird"], "type", "5e_链接类型错")
+
+  # =====================================================================
+  # §6 policy
+  # =====================================================================
+  设 合法策略 为 ["mode": "workspace-write", "workspaceRoot": "/ws"]
+  断言相等(校验策略(合法策略), 合法策略, "6a_策略合法")
+  校验抛远程(校验策略, ["mode": "bogus", "workspaceRoot": "/ws"], "mode", "6b_模式错")
+  校验抛远程(校验策略, ["mode": "read-only", "workspaceRoot": "ws"], "expected an absolute POSIX path", "6c_根非绝对")
+  设 带会话 为 ["mode": "read-only", "workspaceRoot": "/ws", "sessionId": "s1"]
+  断言相等(校验策略(带会话), 带会话, "6d_带会话合法")
+
+  # =====================================================================
+  # §7 entries
+  # =====================================================================
+  设 合法条目 为 [["name": "f.txt", "type": "file", "target": 合法目标, "size": 3]]
+  断言相等(校验条目表(合法条目), 合法条目, "7a_条目合法")
+  校验抛远程(校验条目表, [["name": "x", "type": "weird", "target": 合法目标]], "type", "7b_条目类型错")
+  校验抛远程(校验条目表, [["name": "x", "type": "file", "target": ["targetKey": "rel", "displayPath": "x"]]], "expected an absolute POSIX path", "7c_条目目标错")
+  校验抛远程(校验条目表, "not-list", "entries 必须是数组", "7d_非数组")
+
+  # =====================================================================
+  # §8 intent
+  # =====================================================================
+  设 创建 为 ["kind": "createIfAbsent"]
+  断言相等(校验意图(创建), 创建, "8a_创建合法")
+  设 替换 为 ["kind": "replaceIfVersion", "version": "v2"]
+  断言相等(校验意图(替换), 替换, "8b_替换合法")
+  校验抛远程(校验意图, ["kind": "replaceIfVersion"], "必须含 version", "8c_替换缺版本")
+  校验抛远程(校验意图, ["kind": "createIfAbsent", "version": "v1"], "不应含 version", "8d_创建多版本")
+  校验抛远程(校验意图, ["kind": "weird"], "kind", "8e_种类错")
+
+  # =====================================================================
+  # §9 edit
+  # =====================================================================
+  设 合法编辑 为 ["oldString": "a", "newString": "b", "replaceAll": 真]
+  断言相等(校验编辑(合法编辑), 合法编辑, "9a_编辑合法")
+  校验抛远程(校验编辑, ["oldString": "a", "newString": "b", "replaceAll": "yes"], "replaceAll", "9b_替换全非布尔")
+  校验抛远程(校验编辑, ["oldString": "a", "newString": "b"], "replaceAll", "9c_缺replaceAll(严格)")
+
+  # =====================================================================
+  # §10 hello
+  # =====================================================================
+  设 合法握手 为 ["protocol": 1, "hash": 合法哈希, "platform": "linux", "nodeVersion": "v20", "node": "/n", "root": "/", "workspace": "/ws"]
+  断言相等(校验握手(合法握手), 合法握手, "10a_握手合法")
+  校验抛远程(校验握手, ["protocol": 1, "hash": "xyz", "platform": "linux", "nodeVersion": "v20", "node": "/n", "root": "/", "workspace": "/ws"], "hash", "10b_hash错")
+  校验抛远程(校验握手, ["protocol": 1, "hash": 合法哈希, "platform": "win", "nodeVersion": "v20", "node": "/n", "root": "/", "workspace": "/ws"], "platform", "10c_平台错")
+  校验抛远程(校验握手, ["protocol": 2, "hash": 合法哈希, "platform": "linux", "nodeVersion": "v20", "node": "/n", "root": "/", "workspace": "/ws"], "protocol", "10d_协议错")
+  设 带引导 为 ["protocol": 1, "hash": 合法哈希, "platform": "darwin", "nodeVersion": "v20", "node": "/n", "root": "/", "workspace": "/ws", "bootstrapHash": 合法哈希]
+  断言相等(校验握手(带引导), 带引导, "10e_带引导合法")
+
+  # =====================================================================
+  # §11 spawn
+  # =====================================================================
+  设 普通生成 为 ["argv": ["/bin/ls"], "cwd": "/work", "graceMs": 1000, "stdio": ["stdout": "pipe"]]
+  断言相等(校验生成(普通生成), 普通生成, "11a_普通合法")
+  设 终端生成 为 ["argv": ["/bin/sh"], "cwd": "/work", "graceMs": 5000, "terminal": ["terminalType": "xterm", "rows": 24, "cols": 80]]
+  断言相等(校验生成(终端生成), 终端生成, "11b_终端合法")
+  校验抛远程(校验生成, ["argv": ["/bin/ls"], "cwd": "/work", "graceMs": 1000, "stdio": ["stdout": "pipe"], "terminal": ["terminalType": "xterm", "rows": 1, "cols": 1]], "必须恰好选择", "11c_两者皆有")
+  校验抛远程(校验生成, ["argv": ["/bin/ls"], "cwd": "/work", "graceMs": 1000], "必须恰好选择", "11d_两者皆无")
+  校验抛远程(校验生成, ["argv": [], "cwd": "/work", "graceMs": 1000, "stdio": ["stdout": "pipe"]], "argv", "11e_空argv")
+  校验抛远程(校验生成, ["argv": ["/bin/ls"], "cwd": "work", "graceMs": 1000, "stdio": ["stdout": "pipe"]], "expected an absolute POSIX path", "11f_cwd相对")
+  校验抛远程(校验生成, ["argv": ["/bin/ls"], "cwd": "/work", "graceMs": -1, "stdio": ["stdout": "pipe"]], "graceMs", "11g_grace负")
+
+  # =====================================================================
+  # §12 streamEndpoint
+  # =====================================================================
+  设 合法端点 为 ["path": "/s", "capability": 合法哈希]
+  断言相等(校验流端点(合法端点), 合法端点, "12a_端点合法")
+  校验抛远程(校验流端点, ["path": "/s", "capability": "xyz"], "capability", "12b_能力错")
+
+  # =====================================================================
+  # §13 prepared
+  # =====================================================================
+  设 合法准备 为 ["id": 合法UUID, "streams": ["stdout": 合法端点]]
+  断言相等(校验已准备(合法准备), 合法准备, "13a_准备合法")
+  校验抛远程(校验已准备, ["id": "not-uuid", "streams": []], "UUID", "13b_id错")
+  校验抛远程(校验已准备, ["id": 合法UUID, "streams": ["bogus": 合法端点]], "非法键", "13c_流键错")
+
+  # =====================================================================
+  # §14 outputSnapshotFrameLimit
+  # =====================================================================
+  断言相等(输出快照帧上限(1000), 3024, "14a_小预算")
+  断言相等(输出快照帧上限(40000000), 67108864, "14b_超上限封顶")
+
+  打印 "--- R52 任务3 ssh协议 纯逻辑测试通过 ---"
+
+主()

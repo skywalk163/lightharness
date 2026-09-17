@@ -2685,6 +2685,42 @@
    "状态": "已完成",
    "完成轮次": "第51轮",
    "备注": "任务3。PORTABLE_RESERVED_WORDS保留字表+PtcRunRequest/Spec/Sandbox/Failure/Result契约。不改#84已覆盖protocol。双平台rc=0。"
+  },
+  {
+   "编号": 188,
+   "功能": "workflow-ptc meta(validateMeta)+realm(materializeFromRealm)",
+   "原模块": "workflow/workflow-ptc",
+   "光明模块": "lightharness/src/工作流错误.light",
+   "状态": "已完成",
+   "完成轮次": "第52轮",
+   "备注": "任务1。WorkflowMeta元数据校验+资源域物化。不改#41已做WorkflowError。双平台rc=0。"
+  },
+  {
+   "编号": 189,
+   "功能": "remote-mock（RemoteMock+RemoteTable+StreamScript）",
+   "原模块": "test-support/remote-mock",
+   "光明模块": "lightharness/src/远程mock.light",
+   "状态": "已完成",
+   "完成轮次": "第52轮",
+   "备注": "任务2。unary规则表+字节流脚本+ok/frames/openStream/MockStream/toError。不改既有mock大模型服务器。双平台rc=0。"
+  },
+  {
+   "编号": 190,
+   "功能": "ssh纯逻辑三件（protocol+schemas）",
+   "原模块": "ssh/ssh",
+   "光明模块": "lightharness/src/ssh协议.light",
+   "状态": "已完成",
+   "完成轮次": "第52轮",
+   "备注": "任务3。SSH协议版本/常量+远程路径/策略/条目/意图/编辑校验。纯逻辑不接真实SSH。全新域。双平台rc=0。"
+  },
+  {
+   "编号": 191,
+   "功能": "terminal-controller TerminalView视图状态机",
+   "原模块": "api/terminal-controller",
+   "光明模块": "lightharness/src/终端.light",
+   "状态": "已完成",
+   "完成轮次": "第52轮",
+   "备注": "任务4。TerminalView/Issue/RenderFrame/State+TerminalFollower/CloseRequests。不接真实PTY。双平台rc=0。"
   }
  ]
 }

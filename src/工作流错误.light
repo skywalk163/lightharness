@@ -1,3 +1,5 @@
+从 内置核心判型 导入 是整数, 是浮点
+
 # 工作流错误税目纯逻辑核心
 # 对标 packages/workflow/workflow/src/index.ts
 # 原版要点：
@@ -45,3 +47,165 @@
     返回 序列化JSON(错误)
   捕获 抛了:
     返回 "[unrenderable thrown value]"
+
+# =====================================================================
+# R52 任务1：workflow-ptc meta.ts + realm.ts 纯逻辑对齐（0.1.6-alpha.1）
+# 注：光明无原型链/符号键/稀疏数组/bigint/undefined 等 JS 专属概念，
+#     物化面做等价建模——plain 判定恒真、空(null)即合法 JSON、不可物化值
+#     统一按「函数非纯 JSON」拒绝；稀疏数组在光明列表里不可构造，检测为 no-op。
+# =====================================================================
+
+# 是数值 等价（上游 isNumber 排除 bool）：int 或 float
+段落 是数 接收 值:
+  返回 (是整数(值) 或 是浮点(值))
+
+# 等价上游 MaterializeError：以 名 标记建模 host 不可伪造语义
+段落 建立物化错误 接收 路径, 原因:
+  返回 {"名": "MaterializeError", "路径": 路径, "原因": 原因}
+
+# 等价上游 renderThrown：total，绝不向上抛；优先 stack→message→String
+# 光明侧无 stack 字段，按 消息(字典)→字符串(标量)→String(对象) 降级
+段落 渲染抛出 接收 错误:
+  尝试:
+    如果 (是字典(错误) == 真) 且 (字典包含键(错误, "消息") == 真):
+      设 消息 为 错误["消息"]
+      如果 (是字符串(消息) == 真) 且 (长(消息) > 0): 返回 消息
+    如果 是字符串(错误): 返回 错误
+    返回 转字符串(错误)
+  捕获 抛了:
+    返回 "[unrenderable thrown value]"
+
+# 等价上游 validateMetaShape：纯 JSON 数据按 seam 契约逐字段校验
+段落 校验元形状 接收 元:
+  设 违规 为 []
+  如果 (是字典(元) == 假):
+    返回 {"违规": ["meta must be an object"]}
+  设 记录 为 元
+  设 已知 为 {"name": 真, "description": 真, "whenToUse": 真, "phases": 真}
+  遍历 键 之 字典键列表(记录):
+    如果 (字典包含键(已知, 键) == 假):
+      列表追加(违规, "meta." + 键 + " is not a recognized field (name/description/whenToUse/phases)")
+  # 缺键与类型/空值分开判，绝不访问可能缺失的键（光明取缺失键会抛错）
+  如果 (字典包含键(记录, "name") == 假):
+    列表追加(违规, "meta.name must be a non-empty string")
+  否则:
+    如果 (是字符串(记录["name"]) == 假) 或 (长(记录["name"]) == 0):
+      列表追加(违规, "meta.name must be a non-empty string")
+  如果 (字典包含键(记录, "description") == 假):
+    列表追加(违规, "meta.description must be a non-empty string")
+  否则:
+    如果 (是字符串(记录["description"]) == 假) 或 (长(记录["description"]) == 0):
+      列表追加(违规, "meta.description must be a non-empty string")
+  如果 (字典包含键(记录, "whenToUse") == 真) 且 (是字符串(记录["whenToUse"]) == 假):
+    列表追加(违规, "meta.whenToUse must be a string")
+  设 阶段 为 []
+  如果 字典包含键(记录, "phases"):
+    如果 (是列表(记录["phases"]) == 假):
+      列表追加(违规, "meta.phases must be an array")
+    否则:
+      设 索引 为 0
+      当 索引 < 长(记录["phases"]):
+        设 阶段项 为 记录["phases"][索引]
+        如果 (是字典(阶段项) == 假):
+          列表追加(违规, "meta.phases[" + 转字符串(索引) + "] must be an object")
+          设 索引 为 索引 + 1
+          继续
+        遍历 键2 之 字典键列表(阶段项):
+          如果 (键2 == "title" 或 键2 == "detail" 或 键2 == "provider" 或 键2 == "model") == 假:
+            列表追加(违规, "meta.phases[" + 转字符串(索引) + "]." + 键2 + " is not a recognized field")
+        如果 (字典包含键(阶段项, "title") == 假):
+          列表追加(违规, "meta.phases[" + 转字符串(索引) + "].title must be a non-empty string")
+        否则:
+          如果 (是字符串(阶段项["title"]) == 假) 或 (长(阶段项["title"]) == 0):
+            列表追加(违规, "meta.phases[" + 转字符串(索引) + "].title must be a non-empty string")
+        如果 (字典包含键(阶段项, "detail") == 真) 且 (是字符串(阶段项["detail"]) == 假):
+          列表追加(违规, "meta.phases[" + 转字符串(索引) + "].detail must be a string")
+        如果 (字典包含键(阶段项, "provider") == 真) 且 (是字符串(阶段项["provider"]) == 假):
+          列表追加(违规, "meta.phases[" + 转字符串(索引) + "].provider must be a string")
+        如果 (字典包含键(阶段项, "model") == 真) 且 (是字符串(阶段项["model"]) == 假):
+          列表追加(违规, "meta.phases[" + 转字符串(索引) + "].model must be a string")
+        # 上游：violations 累加，本阶段无新增违规才纳入归一化
+        # （共享 违规 表，故一旦任一阶段违规，后续有效阶段也不再纳入，与原版同构）
+        如果 长(违规) == 0:
+          设 条目 为 字典创建()
+          字典设置(条目, "title", 阶段项["title"])
+          如果 字典包含键(阶段项, "detail"): 字典设置(条目, "detail", 阶段项["detail"])
+          如果 字典包含键(阶段项, "provider"): 字典设置(条目, "provider", 阶段项["provider"])
+          如果 字典包含键(阶段项, "model"): 字典设置(条目, "model", 阶段项["model"])
+          列表追加(阶段, 条目)
+        设 索引 为 索引 + 1
+  如果 长(违规) > 0:
+    返回 {"违规": 违规}
+  设 归一 为 字典创建()
+  字典设置(归一, "name", 记录["name"])
+  字典设置(归一, "description", 记录["description"])
+  如果 字典包含键(记录, "whenToUse"): 字典设置(归一, "whenToUse", 记录["whenToUse"])
+  如果 字典包含键(记录, "phases"): 字典设置(归一, "phases", 阶段)
+  返回 {"违规": 违规, "元": 归一}
+
+# 等价上游 validateMeta：校验失败抛 META_INVALID（逐条命名违规）；
+# 返回从已校验字段构建的归一化副本，引擎绝不别名调用方对象
+段落 validateMeta 接收 值:
+  设 结果 为 校验元形状(值)
+  如果 (字典包含键(结果, "元") == 假):
+    抛出 建立工作流错误("invalid meta: " + 连接文本(结果["违规"], "; "), "META_INVALID", 真)
+  返回 结果["元"]
+
+# 列表文本连接（等价 Array.join，避免依赖未知内置）
+段落 连接文本 接收 表, 分隔:
+  设 结果 为 ""
+  设 首个 为 真
+  遍历 项 之 表:
+    如果 首个 == 假: 设 结果 为 结果 + 分隔
+    设 结果 为 结果 + 项
+    设 首个 为 假
+  返回 结果
+
+# 等价上游 materializeFromRealm：根 空(null) 原样返回；其余走 物化
+段落 物化自域 接收 值, 根:
+  如果 是空(值): 返回 空
+  尝试:
+    返回 物化(值, 根, [])
+  捕获 抛了:
+    如果 (是字典(抛了.args[0]) == 真) 且 (字典包含键(抛了.args[0], "名") == 真) 且 (抛了.args[0]["名"] == "MaterializeError"):
+      抛出 抛了
+    抛出 建立物化错误(根, "reading the value threw: " + 渲染抛出(抛了.args[0]))
+
+# 等价上游 materialize：按类型分流；非 JSON 值抛 MaterializeError
+段落 物化 接收 值, 路径, 已见:
+  如果 是布尔(值): 返回 值
+  如果 是字符串(值): 返回 值
+  如果 是数(值):
+    如果 (math.isfinite(值) == 假): 抛出 建立物化错误(路径, "non-finite numbers are not JSON data")
+    返回 值
+  如果 是字典(值): 返回 物化对象(值, 路径, 已见)
+  如果 是列表(值): 返回 物化数组(值, 路径, 已见)
+  如果 是空(值): 返回 空
+  # 函数/其他非 JSON 值（光明无原型/符号/bigint 概念，统一按不可物化拒绝）
+  抛出 建立物化错误(路径, "functions are not plain JSON data")
+
+# 等价上游 materializeArray：光明列表恒稠密，稀疏检测为 no-op；
+# 用 id 表做循环引用检测（已见 存对象 id，等价上游 seen Set）
+段落 物化数组 接收 值, 路径, 已见:
+  设 标识 为 id(值)
+  如果 标识 在 已见: 抛出 建立物化错误(路径, "circular references are not JSON data")
+  列表追加(已见, 标识)
+  设 输出 为 []
+  设 索引 为 0
+  当 索引 < 长(值):
+    列表追加(输出, 物化(值[索引], 路径 + "[" + 转字符串(索引) + "]", 已见))
+    设 索引 为 索引 + 1
+  列表弹出(已见, 长(已见) - 1)
+  返回 输出
+
+# 等价上游 materializeObject：plain 判定恒真（光明字典无 exotic 原型）；
+# 用 defineProperty 等价方式设键（光明字典设置即独立数据属性，无 __proto__ 副作用）
+段落 物化对象 接收 值, 路径, 已见:
+  设 标识 为 id(值)
+  如果 标识 在 已见: 抛出 建立物化错误(路径, "circular references are not JSON data")
+  列表追加(已见, 标识)
+  设 输出 为 字典创建()
+  遍历 键 之 字典键列表(值):
+    字典设置(输出, 键, 物化(值[键], 路径 + "." + 键, 已见))
+  列表弹出(已见, 长(已见) - 1)
+  返回 输出
