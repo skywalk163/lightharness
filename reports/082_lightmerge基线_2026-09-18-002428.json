@@ -1,0 +1,832 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-18T00:24:28+08:00",
+  "target": {
+    "name": "light-merge",
+    "platform": "0.82 FreeBSD 15.1",
+    "host": "192.168.0.82",
+    "remote_dir": "/tmp/r44-20260917-235706",
+    "cwd": "/tmp/r44-20260917-235706/light-merge"
+  },
+  "runner": {
+    "mode": "fast",
+    "parallel": false,
+    "timeout_sec": 2700,
+    "marker": "not slow",
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260917-235706/light-merge && /usr/local/bin/python3.11 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-o'\\'' '\\''addopts='\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260917-235706/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-p'\\'' '\\''no:xdist'\\'''",
+    "elapsed_sec": 1520.1,
+    "pytest_rc": 1,
+    "timed_out": false
+  },
+  "totals": {
+    "total": 7806,
+    "failure": 108,
+    "error": 9,
+    "skipped": 80,
+    "xfailed": 13,
+    "xpassed": 0,
+    "passed": 7596,
+    "failed": 117,
+    "duration_sec": 1516.753
+  },
+  "failed": [
+    {
+      "id": "tests/_test_null_safety.py::test_unwrap_on_nullable_variable",
+      "status": "failure",
+      "file": "tests/_test_null_safety.py",
+      "message": "AssertionError: unexpectedly None"
+    },
+    {
+      "id": "tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg",
+      "status": "failure",
+      "file": "tests/_test_null_safety.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/_test_null_safety.py::test_operation_without_unwrap",
+      "status": "failure",
+      "file": "tests/_test_null_safety.py",
+      "message": "AssertionError: False is not true : 期望可空值参与运算时报错，但得到: []"
+    },
+    {
+      "id": "tests/_test_null_safety.py::test_paragraph_call",
+      "status": "failure",
+      "file": "tests/_test_null_safety.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/integration/test_class_system.py::test_class_with_attributes",
+      "status": "failure",
+      "file": "tests/integration/test_class_system.py",
+      "message": "NameError: name '己姓名' is not defined"
+    },
+    {
+      "id": "tests/integration/test_class_system.py::test_constructor_with_inheritance",
+      "status": "failure",
+      "file": "tests/integration/test_class_system.py",
+      "message": "NameError: name '己名字' is not defined"
+    },
+    {
+      "id": "tests/integration/test_class_system.py::test_method_override",
+      "status": "failure",
+      "file": "tests/integration/test_class_system.py",
+      "message": "NameError: name '己半径' is not defined"
+    },
+    {
+      "id": "tests/integration/test_class_system.py::test_multiple_classes_in_one_file",
+      "status": "failure",
+      "file": "tests/integration/test_class_system.py",
+      "message": "NameError: name '己品牌' is not defined"
+    },
+    {
+      "id": "tests/integration/test_class_system.py::test_self_method_call",
+      "status": "failure",
+      "file": "tests/integration/test_class_system.py",
+      "message": "NameError: name '己值' is not defined"
+    },
+    {
+      "id": "tests/test_async_class_method.py::test_03_async_method读写己属性",
+      "status": "failure",
+      "file": "tests/test_async_class_method.py",
+      "message": "AssertionError: assert ('self.值 = (self.值 + 1)' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...    # LIGHT_SRC:7\\n        return self.值\\n\\n    async def 取值(self):\\n        # LIGHT_SRC:10\\n        return self.值\\n\\n' or 'self"
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_tls异步读体拿到完整体且不占用事件循环",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_两路TLS串行与并发的关系",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_tls异步腿的读超时抛读取错误",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_await_chained_member",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'await 甲.乙.丙()' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\nasync def 主():\\n    # LIGHT_SRC:2\\n    await _light_attr_get(甲, '乙').丙()\\n\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_自_param_and_body_both_self",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'self.姓名 = 姓名' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\nfrom abc import ABC, abstractmethod\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nim...n (\"学生\" + _light_attr_get(self, \\'学号\\'))\\n\\n    def 自报(self) -> str:\\n        return _light_attr_get(self, \\'学号\\')\\n\\n'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_为搭配函数调用",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "AssertionError: assert '==' not in '# 由光明编译器生成\\...    print(i)'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_自之属性赋值",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'self.姓名 = 姓名' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...LIGHT_SRC:2\\nclass 人:\\n    def __init__(self, 姓名):\\n        # LIGHT_SRC:4\\n        _light_attr_set(self, '姓名', 姓名)\\n\\n\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_自之属性带索引赋值",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'self.成绩[科目] = 分数' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...HT_SRC:2\\nclass 人:\\n    def 录入(self, 科目, 分数):\\n        # LIGHT_SRC:4\\n        _light_attr_get(self, '成绩')[科目] = 分数\\n\\n\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_普通标识符之成员赋值",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'obj.字段 = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...tattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:2\\ndef 甲(obj):\\n    # LIGHT_SRC:3\\n    _light_attr_set(obj, '字段', 1)\\n\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_点号成员赋值未被破坏",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "assert 'obj.字段 = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...tattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:2\\ndef 甲(obj):\\n    # LIGHT_SRC:3\\n    _light_attr_set(obj, '字段', 1)\\n\""
+    },
+    {
+      "id": "tests/test_context_manager.py::test_继承链可用",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '己名称' is not defined"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_chao_dot_plain_method",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '己名称' is not defined"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_chao_zhi_form",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '己名称' is not defined"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_chao_de_form",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '己名称' is not defined"
+    },
+    {
+      "id": "tests/test_cross_platform.py::test_stdlib_modules_importable",
+      "status": "failure",
+      "file": "tests/test_cross_platform.py",
+      "message": "AssertionError: 以下模块导入失败:"
+    },
+    {
+      "id": "tests/test_datetime.py::test_公历转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_农历转公历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期时间转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_春节日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中秋日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_端午日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中国节假日",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_distributed_eval_light.py::test_重派与心跳_杀节点后重派且无静默丢条",
+      "status": "failure",
+      "file": "tests/test_distributed_eval_light.py",
+      "message": "AssertionError: 心跳：失联应恰为被杀节点 1 个，实际 []"
+    },
+    {
+      "id": "tests/test_edge_cases.py::test_class_with_multiple_methods",
+      "status": "failure",
+      "file": "tests/test_edge_cases.py",
+      "message": "RuntimeError: 执行错误: name '己初始值' is not defined"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_a24_泛型类真跑",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: [run] 退出码 1:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_a24_多参数泛型类",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: [run] 退出码 1:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_a25_两个嵌套类且外层成员不被吞",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: [run] 退出码 1:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u8bfb\\u53d6\\u4e8c\\u8fdb\\u5236]",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u5199\\u5165\\u4e8c\\u8fdb\\u5236]",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u7b49\\u5f85]",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u53d6\\u6d88]",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u53d6\\u6570]",
+      "status": "failure",
+      "file": "tests/test_frontend_blockers_run.py",
+      "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:"
+    },
+    {
+      "id": "tests/test_level6_types.py::test_class_instantiation",
+      "status": "failure",
+      "file": "tests/test_level6_types.py",
+      "message": "NameError: name '己当前' is not defined"
+    },
+    {
+      "id": "tests/test_lexer.py::test_basic_keywords",
+      "status": "failure",
+      "file": "tests/test_lexer.py",
+      "message": "AssertionError: R36 钉现状失败：无空格 设甲为三 应整体成一个标识符，得到 ['设', '甲为三', '。']"
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP提交",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP获取",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_URL编码解码",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_导入",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_拼接URL",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_获取JSON",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_parser.py::test_variable_with_expression",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/test_parser.py::test_arithmetic_expression",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/test_parser.py::test_nested_expression",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/test_parser.py::test_function_with_body",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/test_parser.py::test_call_in_expression",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "assert False"
+    },
+    {
+      "id": "tests/test_parser.py::test_no_space_variable",
+      "status": "failure",
+      "file": "tests/test_parser.py",
+      "message": "parser_core.ParseError:"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_HTTP错误响应",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "AssertionError: <bound method 响应.是否成功 of <网络请求.响应 object at 0x3d5fe1e7b650>> is not false"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_URL编码解码",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "AssertionError: '???world' != '你好 world'"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_响应对象",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "AssertionError: <bound method 响应.文本 of <网络请求.响应 object at 0x3d5fe9847d50>> != '{\"key\": \"value\"}'"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_拼接URL",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "TypeError: 拼接URL() takes 2 positional arguments but 4 were given"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_解析查询串",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "NameError: name '新建字典' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_字符串断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_对象断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_异常断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言不相等",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言为假",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言为真",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言在范围内",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言失败异常",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言接近",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言正数负数零",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_断言相等",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_类型断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_自定义断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_链式断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_集合操作断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_stdlib_phase9/测试断言工具.py::test_集合断言",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase9/测试断言工具.py",
+      "message": "NameError: name '错误' is not defined"
+    },
+    {
+      "id": "tests/test_tls_light.py::test_缺cryptography必须响亮降级",
+      "status": "failure",
+      "file": "tests/test_tls_light.py",
+      "message": "Failed: 本机缺 cryptography（No module named 'cryptography'）：TLS 测试无法生成自签证书，本文件的 TLS 覆盖为零。"
+    },
+    {
+      "id": "tests/unit/test_break_continue_aliases.py::test_断_跃_已进复合词安全表",
+      "status": "failure",
+      "file": "tests/unit/test_break_continue_aliases.py",
+      "message": "AssertionError: '断' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_doc_examples_gate.py::test_不许新增ROT",
+      "status": "failure",
+      "file": "tests/unit/test_doc_examples_gate.py",
+      "message": "AssertionError: Lists differ: [] != [('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf[221 chars]68')]"
+    },
+    {
+      "id": "tests/unit/test_doc_examples_gate.py::test_噪声类总数不许涨",
+      "status": "failure",
+      "file": "tests/unit/test_doc_examples_gate.py",
+      "message": "AssertionError: 19 not less than or equal to 18 : 噪声块从 18 涨到 19：新写的文档又混进了 REPL 记录/伪代码/箭头注解/转义污染。非代码块请改用 ```text 标签。"
+    },
+    {
+      "id": "tests/unit/test_examples_run.py::test_all_examples_output",
+      "status": "failure",
+      "file": "tests/unit/test_examples_run.py",
+      "message": "AssertionError: Lists differ: [] != [\"hello.light: 运行异常 -> \\n┌─ 语法错误\\n│ 位置: 行 [1216 chars]ned\"]"
+    },
+    {
+      "id": "tests/unit/test_interface_aliases.py::test_现_已进复合词安全表",
+      "status": "failure",
+      "file": "tests/unit/test_interface_aliases.py",
+      "message": "AssertionError: '现' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_l0_char_alias_async_yi.py::test_异_进复合词保护表",
+      "status": "failure",
+      "file": "tests/unit/test_l0_char_alias_async_yi.py",
+      "message": "AssertionError: '异' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_l0_char_alias_const_chang.py::test_常_进复合词保护表",
+      "status": "failure",
+      "file": "tests/unit/test_l0_char_alias_const_chang.py",
+      "message": "AssertionError: '常' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_l0_char_aliases_paradigm_ac.py::test_引_本来就是关键字",
+      "status": "failure",
+      "file": "tests/unit/test_l0_char_aliases_paradigm_ac.py",
+      "message": "AssertionError: '引' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_lexer.py::test_chinese_number",
+      "status": "failure",
+      "file": "tests/unit/test_lexer.py",
+      "message": "AssertionError: 0 != 2"
+    },
+    {
+      "id": "tests/unit/test_lexer.py::test_number_prefix_still_split_when_rest_is_keyword",
+      "status": "failure",
+      "file": "tests/unit/test_lexer.py",
+      "message": "AssertionError: Tuples differ: ('IDENTIFIER', '那么大') != ('KEYWORD', '那么')"
+    },
+    {
+      "id": "tests/unit/test_lexer.py::test_simple_tokenize",
+      "status": "failure",
+      "file": "tests/unit/test_lexer.py",
+      "message": "AssertionError: <TokenType.CHINESE_NUM: 5> not found in [<TokenType.KEYWORD: 7>, <TokenType.IDENTIFIER: 6>, <TokenType.PERIOD: 10>, <TokenType.EOF: 43>]"
+    },
+    {
+      "id": "tests/unit/test_lexer_compound_safe_alignment.py::test_除类型错误",
+      "status": "failure",
+      "file": "tests/unit/test_lexer_compound_safe_alignment.py",
+      "message": "AssertionError: ('IDENTIFIER', '除') not found in [('KEYWORD', '捕'), ('IDENTIFIER', '除类型错误'), ('IDENTIFIER', '印')]"
+    },
+    {
+      "id": "tests/unit/test_lexer_p0a_deterministic.py::test_六雷区_整体成词",
+      "status": "failure",
+      "file": "tests/unit/test_lexer_p0a_deterministic.py",
+      "message": "AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]"
+    },
+    {
+      "id": "tests/unit/test_lexer_p0a_deterministic.py::test_同构复合词_整体成词",
+      "status": "failure",
+      "file": "tests/unit/test_lexer_p0a_deterministic.py",
+      "message": "AssertionError: Lists differ: [('KEYWORD', '外部'), ('IDENTIFIER', '命令')] != [('IDENTIFIER', '外部命令')]"
+    },
+    {
+      "id": "tests/unit/test_lexer_p0a_deterministic.py::test_清空白名单后仍整体成词",
+      "status": "failure",
+      "file": "tests/unit/test_lexer_p0a_deterministic.py",
+      "message": "AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]"
+    },
+    {
+      "id": "tests/unit/test_lexer_perf.py::test_lexer_correctness_smoke",
+      "status": "failure",
+      "file": "tests/unit/test_lexer_perf.py",
+      "message": "AssertionError: '为' not found in ['设', '甲为三', '。', '打印', '甲', '加', 5, '。', None]"
+    },
+    {
+      "id": "tests/unit/test_match_elif_import_aliases.py::test_pi_is_compound_safe",
+      "status": "failure",
+      "file": "tests/unit/test_match_elif_import_aliases.py",
+      "message": "AssertionError: '匹' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_modifier_await_aliases.py::test_等_已进复合词安全表",
+      "status": "failure",
+      "file": "tests/unit/test_modifier_await_aliases.py",
+      "message": "AssertionError: '等' not found in frozenset()"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_内置函数清单与代码一致",
+      "status": "failure",
+      "file": "tests/unit/test_native_leg_capability.py",
+      "message": "AssertionError: 内置函数清单与代码不一致:"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位",
+      "status": "failure",
+      "file": "tests/unit/test_native_leg_capability.py",
+      "message": "AssertionError: 内置函数证据行号问题:"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_运行时符号清单与代码一致",
+      "status": "failure",
+      "file": "tests/unit/test_native_leg_capability.py",
+      "message": "AssertionError: 运行时符号清单与代码不一致:"
+    },
+    {
+      "id": "tests/unit/test_parser.py::test_compact_binary_expr_with_call",
+      "status": "failure",
+      "file": "tests/unit/test_parser.py",
+      "message": "AssertionError: 'n乘阶乘' == 'n乘阶乘'"
+    },
+    {
+      "id": "tests/unit/test_v34_syntax_sugar.py::test_self_attr_eq",
+      "status": "failure",
+      "file": "tests/unit/test_v34_syntax_sugar.py",
+      "message": "assert 'self.x = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    def f(self, self):\\n        # LIGHT_SRC:3\\n        _light_attr_set(self, 'x', 1)\\n\\n\""
+    },
+    {
+      "id": "tests/unit/test_v34_syntax_sugar.py::test_self_attr_等于",
+      "status": "failure",
+      "file": "tests/unit/test_v34_syntax_sugar.py",
+      "message": "assert ('self.x == 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    def f(self, self):\\n        # LIGHT_SRC:3\\n        _light_attr_set(self, 'x', 1)\\n\\n\" or 'self.x = 1' in \"# 由光明编译器生成\\n# "
+    },
+    {
+      "id": "tests/unit/test_v34_syntax_sugar.py::test_obj_attr_eq",
+      "status": "failure",
+      "file": "tests/unit/test_v34_syntax_sugar.py",
+      "message": "assert 'p.x = 10' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n        setattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\np = 点(3, 4)\\n# LIGHT_SRC:2\\n_light_attr_set(p, 'x', 10)\""
+    },
+    {
+      "id": "tests/unit/test_v34_syntax_sugar.py::test_dot_access_still_works",
+      "status": "failure",
+      "file": "tests/unit/test_v34_syntax_sugar.py",
+      "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n        setattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\np = 点(3, 4)\\n# LIGHT_SRC:2\\nx = _light_attr_get(p, 'x')\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_two_level_attr_assign",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert ('b.a.x = 42' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...b = B()\\n# LIGHT_SRC:6\\n_light_attr_set(b, 'a', A())\\n# LIGHT_SRC:7\\n_light_attr_set(_light_attr_get(b, 'a'), 'x', 42)\" or '.x = 42' in \"# 由光明编译器生成\\n# 源文件:"
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_self_chain_assign",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert ('self.inner.val' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... set_val(self, self, v):\\n        # LIGHT_SRC:4\\n        _light_attr_set(_light_attr_get(self, 'inner'), 'val', v)\\n\\n\" or '.inner.val' in \"# 由光明编译器生成\\"
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_three_level_attr_assign",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert ('a.b.c.val = 99' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...attr_get(a, 'b'), 'c', C())\\n# LIGHT_SRC:10\\n_light_attr_set(_light_attr_get(_light_attr_get(a, 'b'), 'c'), 'val', 99)\" or '.val = 99' in \"# 由光明编译器生成\\n"
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_attr_assign_with_expr",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'a.x = ' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... _v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    x = 0\\n\\n# LIGHT_SRC:3\\na = A()\\n# LIGHT_SRC:4\\n_light_attr_set(a, 'x', (10 + 20))\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_dot_member_access",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... return _v\\n\\n# LIGHT_SRC:1\\nclass P:\\n    x = 0\\n\\n# LIGHT_SRC:3\\np = P()\\n# LIGHT_SRC:4\\nv = _light_attr_get(p, 'x')\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_mixed_period_and_dot",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...:1\\nclass P:\\n    x = 0\\n\\n# LIGHT_SRC:3\\np = P()\\n# LIGHT_SRC:4\\nv = _light_attr_get(p, 'x')\\n# LIGHT_SRC:5\\nprint(v)\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_no_period_no_dot_ambiguity",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'p.x = 3' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n# LIGHT_SRC:6\\n_light_attr_set(p, 'y', (_light_attr_get(p, 'x') + 1))\\n# LIGHT_SRC:7\\nprint(_light_attr_get(p, 'y'))\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_period_in_class_body",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'self.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\nclass A:\\n    x = 10\\n    def get(self, self):\\n        # LIGHT_SRC:4\\n        return _light_attr_get(self, 'x')\\n\\n\""
+    },
+    {
+      "id": "tests/unit/test_v35_chained_call.py::test_dot_access_after_new_keyword",
+      "status": "failure",
+      "file": "tests/unit/test_v35_chained_call.py",
+      "message": "assert 'a.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... return _v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    x = 0\\n\\n# LIGHT_SRC:3\\na = A()\\n# LIGHT_SRC:4\\nv = _light_attr_get(a, 'x')\""
+    },
+    {
+      "id": "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_行政区划代码_对拍与扩展",
+      "status": "failure",
+      "file": "tests/unit/test_原生腿_R13B_能力扩展.py",
+      "message": "AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'"
+    },
+    {
+      "id": "tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码",
+      "status": "failure",
+      "file": "tests/unit/test_原生腿_R13C_对拍扩展.py",
+      "message": "Failed: 实际=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=光明'] 期望=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=奥楥']"
+    },
+    {
+      "id": "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用",
+      "status": "failure",
+      "file": "tests/unit/test_地板搬迁_列表_S2.py",
+      "message": "AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]"
+    }
+  ],
+  "skipped": [
+    "::tests.test_comprehensive",
+    "::tests.test_http_client",
+    "::tests.test_module_system",
+    "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
+    "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
+    "tests/integration/test_playground_api.py::test_get_demo_detail",
+    "tests/integration/test_playground_api.py::test_get_demo_not_found",
+    "tests/integration/test_playground_api.py::test_list_demos",
+    "tests/integration/test_playground_api.py::test_list_demos_category_filter",
+    "tests/integration/test_playground_api.py::test_list_demos_limit",
+    "tests/integration/test_playground_api.py::test_run_demo_by_id",
+    "tests/integration/test_playground_api.py::test_run_demo_inline_code",
+    "tests/integration/test_playground_api.py::test_run_demo_invalid_id",
+    "tests/integration/test_playground_api.py::test_run_demo_no_params",
+    "tests/integration/test_playground_api.py::test_execute_conditional",
+    "tests/integration/test_playground_api.py::test_execute_empty_code",
+    "tests/integration/test_playground_api.py::test_execute_loop",
+    "tests/integration/test_playground_api.py::test_execute_simple",
+    "tests/integration/test_playground_api.py::test_execute_syntax_error",
+    "tests/integration/test_playground_api.py::test_execute_variable_assignment",
+    "tests/integration/test_playground_api.py::test_parse_empty",
+    "tests/integration/test_playground_api.py::test_parse_simple",
+    "tests/integration/test_playground_api.py::test_tokenize_empty",
+    "tests/integration/test_playground_api.py::test_tokenize_simple",
+    "tests/integration/test_playground_api.py::test_get_examples",
+    "tests/integration/test_playground_api.py::test_get_grammar",
+    "tests/integration/test_playground_api.py::test_get_stdlib",
+    "tests/test_agent_tools_light.py::test_junction指向外部不被递归且不外泄",
+    "tests/test_agent_tools_light.py::test_junction外部不膨胀遍历文件数",
+    "tests/test_agent_tools_light.py::test_junction指向外部被拒",
+    "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
+    "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
+    "tests/test_level6_lexer.py::test_backtick_escape",
+    "tests/test_llm_client_light.py::test_stream_chat",
+    "tests/test_llm_client_light.py::test_nonstream_chat",
+    "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
+    "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
+    "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
+    "tests/test_lsp_protocol_full.py::test",
+    "tests/test_path_guard_light.py::test_junction指向外部被拒",
+    "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
+    "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
+    "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
+    "tests/test_pty_light.py::test_设窗口大小不炸",
+    "tests/test_pty_light.py::test_写输入不崩",
+    "tests/test_pty_light.py::test_优雅关闭长驻进程",
+    "tests/test_pty_light.py::test_平台缺失明确报错类存在",
+    "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
+    "tests/test_self_host_bootstrap.py::test_binary_mod",
+    "tests/test_self_host_bootstrap.py::test_logical_not",
+    "tests/test_semantic.py::test_number_type",
+    "tests/test_semantic.py::test_string_type",
+    "tests/test_semantic.py::test_binary_operation_type",
+    "tests/test_semantic.py::test_global_scope",
+    "tests/test_semantic.py::test_function_scope",
+    "tests/test_semantic.py::test_nested_scope",
+    "tests/test_semantic.py::test_variable_declaration",
+    "tests/test_semantic.py::test_function_declaration",
+    "tests/test_semantic.py::test_undefined_variable",
+    "tests/test_semantic.py::test_type_mismatch",
+    "tests/test_semantic.py::test_duplicate_definition",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
+    "tests/test_stdlib_phase4.py::test_AES",
+    "tests/test_stdlib_phase4.py::test_RSA",
+    "tests/test_stdlib_phase4.py::test_Base64",
+    "tests/test_stdlib_phase4.py::test_URL查询串",
+    "tests/test_stdlib_phase4.py::test_URL编码解码",
+    "tests/test_stdlib_phase4.py::test_二进制十六进制转换",
+    "tests/test_stdlib_phase4.py::test_字符集转换",
+    "tests/test_stdlib_phase4.py::test_字节字符串转换",
+    "tests/test_stdlib_phase4.py::test_验证IP地址",
+    "tests/test_stdlib_phase4.py::test_验证JSON",
+    "tests/test_tls_light.py::test_tls_with_ca_handshake_and_sse",
+    "tests/test_tls_light.py::test_tls_without_ca_fails_handshake",
+    "tests/test_tls_light.py::test_tls_disabled_uses_plaintext_server",
+    "tests/test_v4_1_integration.py::test_compile_to_pyodide_error",
+    "tests/test_v4_1_integration.py::test_compile_to_python_error",
+    "tests/test_windows_path.py::test_文件存在_隐藏文件",
+    "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
+    "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
+    "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
+    "tests/unit/test_light_examples_run.py::test_dict_placeholder",
+    "tests/unit/test_light_examples_run.py::test_placeholder",
+    "tests/unit/test_light_examples_run.py::test_dict_word_count",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码"
+  ]
+}

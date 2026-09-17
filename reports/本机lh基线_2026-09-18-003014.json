@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-18T00:30:14+08:00",
+  "target": {
+    "name": "lightharness",
+    "platform": "本机 Windows 10",
+    "host": "",
+    "remote_dir": "",
+    "cwd": "G:\\dswork\\duan-light-merge\\lightharness"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": false,
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -o addopts= -p no:cacheprovider -p no:xdist --timeout 60",
+    "elapsed_sec": 1497.9,
+    "pytest_rc": 1
+  },
+  "totals": {
+    "total": 1272,
+    "failure": 7,
+    "error": 0,
+    "skipped": 3,
+    "xfailed": 0,
+    "xpassed": 0,
+    "passed": 1262,
+    "failed": 7,
+    "duration_sec": 1493.722
+  },
+  "failed": [
+    {
+      "id": "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
+      "cid": "tests.test_R31_EMBED表保留+flaky修复_token::test_fanhui_embedded_scan_triggered",
+      "status": "failure",
+      "file": "tests/test_R31_EMBED表保留+flaky修复_token.py",
+      "message": "AssertionError: assert '返回表' in ['设', 'x', '为', '返回', '表', None]"
+    },
+    {
+      "id": "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged",
+      "cid": "tests.test_R31_EMBED表保留+flaky修复_token::test_fanhui_return_value_merged",
+      "status": "failure",
+      "file": "tests/test_R31_EMBED表保留+flaky修复_token.py",
+      "message": "AssertionError: assert '返回值' in ['设', 'x', '为', '返回', '值', None]"
+    },
+    {
+      "id": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_deleted_return_code_still_merged",
+      "cid": "tests.test_R32_OPERATOR+MERGE_WHOLE精简_token::test_deleted_return_code_still_merged",
+      "status": "failure",
+      "file": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py",
+      "message": "AssertionError: assert '返回码' in ['设', 'x', '为', '返回', '码', None]"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R22_\\u5d4c\\u5165\\u5173\\u952e\\u5b57\\u5197\\u4f59\\u9a8c\\u8bc1.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R22_\\u5d4c\\u5165\\u5173\\u952e\\u5b57\\u5197\\u4f59\\u9a8c\\u8bc1.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R22_嵌入关键字冗余验证.light 应绿，实际 rc=1"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R26_词首并入反向.light 应绿，实际 rc=1"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u6df7\\u5408.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u6df7\\u5408.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R26_词首并入混合.light 应绿，实际 rc=1"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R27_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R27_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R27_词首并入反向.light 应绿，实际 rc=1"
+    }
+  ],
+  "skipped": [
+    "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged"
+  ]
+}

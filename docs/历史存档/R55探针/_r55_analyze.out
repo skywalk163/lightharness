@@ -1,0 +1,71 @@
+== 0.82 light-merge 基线 ==
+{'total': 7806, 'passed': 7596, 'failed': 117, 'failure': 108, 'error': 9, 'skipped': 80, 'xfailed': 13, 'duration_sec': 1516.753}
+
+== 失败按文件分布（前 20）==
+    16  tests/test_stdlib_phase9/测试断言工具.py
+    11  tests/test_context_manager.py
+     9  tests/unit/test_v35_chained_call.py
+     8  tests/test_datetime.py
+     8  tests/test_frontend_blockers_run.py
+     6  tests/test_lightpub_bridge.py
+     6  tests/test_parser.py
+     5  tests/integration/test_class_system.py
+     5  tests/test_stdlib_phase3.py
+     4  tests/_test_null_safety.py
+     4  tests/unit/test_v34_syntax_sugar.py
+     3  tests/test_async_io_light.py
+     3  tests/unit/test_lexer.py
+     3  tests/unit/test_lexer_p0a_deterministic.py
+     3  tests/unit/test_native_leg_capability.py
+     2  tests/unit/test_doc_examples_gate.py
+     1  tests/test_async_class_method.py
+     1  tests/test_cross_platform.py
+     1  tests/test_distributed_eval_light.py
+     1  tests/test_edge_cases.py
+
+== 失败按原因归类 ==
+    61  AssertionError（行为/代码生成不符）
+    27  NameError（代码生成符号缺失）
+     8  缺可选依赖 lunardate
+     7  ParseError（词法/语法）
+     6  缺可选依赖（其他模块）
+     4  缺可选依赖 cryptography
+     2  其他
+     1  RuntimeError
+     1  TypeError
+
+== 「其他」失败样例（前 10 条原文截断）==
+    tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_行政区划代码_对拍与扩展 | AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'
+    tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码 | Failed: 实际=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=光明'] 期望=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=奥
+
+== 与 light-merge 自带 CI 基线（tests/ci_baseline_failures.txt，12 条）交叉核对 ==
+  双方都红：0
+  只在我们这轮红（CI 基线里没有）：117
+  只在 CI 基线里红（本轮未跑/已绿）：12
+  本轮独有红（前 15 条）：
+     tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg
+     tests/_test_null_safety.py::test_operation_without_unwrap
+     tests/_test_null_safety.py::test_paragraph_call
+     tests/_test_null_safety.py::test_unwrap_on_nullable_variable
+     tests/integration/test_class_system.py::test_class_with_attributes
+     tests/integration/test_class_system.py::test_constructor_with_inheritance
+     tests/integration/test_class_system.py::test_method_override
+     tests/integration/test_class_system.py::test_multiple_classes_in_one_file
+     tests/integration/test_class_system.py::test_self_method_call
+     tests/test_async_class_method.py::test_03_async_method读写己属性
+     tests/test_async_io_light.py::test_tls异步腿的读超时抛读取错误
+     tests/test_async_io_light.py::test_tls异步读体拿到完整体且不占用事件循环
+     tests/test_async_io_light.py::test_两路TLS串行与并发的关系
+     tests/test_context_manager.py::test_await_chained_member
+     tests/test_context_manager.py::test_chao_de_form
+  CI 基线独有（前 10 条）：
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[E\u9636\u6bb5_L3L4\u539f\u751f\u8bed\u6cd5/E4_L4_\u6c99\u7bb1\u9694\u79bb\u9a8c\u8bc1.light]
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L3_domain/demo3_math.light]
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/demo3_matplotlib_plot.light]
+     tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/demo5_sklearn_iris.light]
+     tests.e2e.test_e2e_chain::test_duan_run[E\u9636\u6bb5_L3L4\u539f\u751f\u8bed\u6cd5/E4_L4_\u6c99\u7bb1\u9694\u79bb\u9a8c\u8bc1.light]
+     tests.e2e.test_e2e_chain::test_duan_run[L3_domain/demo3_math.light]
+     tests.e2e.test_e2e_chain::test_duan_run[L4_python/all_in_one_demo.light]
+     tests.e2e.test_e2e_chain::test_duan_run[L4_python/demo2_pandas_csv.light]
