@@ -20,14 +20,16 @@
    "功能": "会话事件日志（SessionEvent append-only log）",
    "原版包": "core/session",
    "光明模块": "src/会话.light",
-   "状态": "v2；0.1.5路1：会话V3编解码+迁移链+节点0+内嵌助手流(会话格式.light)；整理消息节点0前置(role形状)",
+   "状态": "done；0.1.5路1 v2收口（R48任务4）：会话V3迁移链role形状前置+系统头保护+V2→V3迁移补验(会话格式.light §15)；R47已做surface节点0投影/遮蔽跳过/记录系统提示(V3)；R47/R48判据examples全绿",
    "证据": [
     "src/会话.light",
     "examples/test_会话.light",
     "examples/test_会话深化.light",
     "examples/test_会话格式.light",
     "examples/test_会话V3迁移.light",
-    "examples/test_会话格式冒烟.light"
+    "examples/test_会话格式冒烟.light",
+    "examples/test_R48_会话V3迁移.light",
+    "lightharness/_task4_R48_会话V3迁移.md"
    ],
    "本轮目标": "done：事件表追加/序号连续/时间戳/类型判别，覆盖 turn/step/user/assistant/tool/request 全事件；v2 新增查询事件(类型,开始序号,结束序号)：类型空串\"\"不过滤类型，开始序号=0不限制下限，结束序号=0不限制上限；test_会话深化.light 查询事件测试全通过",
    "反跑判据": "test_会话.light：将 事件数 断言改为 ≠ 即红；v2：test_会话深化.light 把查询结果数量断言改反即红",
@@ -41,13 +43,15 @@
    "功能": "surface 折叠（消息产生事件投影 + append/replace）",
    "原版包": "core/session/surface.ts",
    "光明模块": "src/会话.light",
-   "状态": "v2；0.1.5路1：surface 节点0 投影/遮蔽跳过/记录系统提示(V3)",
+   "状态": "done；0.1.5路1 v2收口（R48任务1）：surface消息产生事件投影+append/replace(会话格式.light §14b：是追加/替换表面事件+校验表面标记)；R47已做节点0投影/遮蔽跳过/记录系统提示(V3)",
    "证据": [
     "src/会话.light 的 整理消息/压缩替换",
     "examples/test_会话.light（surface投影正确/压缩替换语义正确）",
     "examples/test_会话深化.light",
     "examples/test_会话格式.light",
-    "examples/test_会话格式冒烟.light"
+    "examples/test_会话格式冒烟.light",
+    "examples/test_R48_surface消息投影.light",
+    "lightharness/_task1_R48_surface消息投影.md"
    ],
    "本轮目标": "done：整理消息() 从 surface 节点投影模型历史；compaction replace 语义；v2 新增投影统计()：返回消息数/总块数/角色分布(user/assistant/tool)，遮蔽事件不计入；test_会话深化.light 投影统计测试全通过",
    "反跑判据": "test_会话.light：改 压缩替换(1,3,…) 范围为 (0,4,…) 则断言红；v2：test_会话深化.light 把投影统计断言改反即红",
@@ -99,12 +103,14 @@
    "功能": "LLM 流式词汇表（StreamChunk/FinishReason/TokenUsage）",
    "原版包": "llm/llm/types.ts",
    "光明模块": "src/流.light",
-   "状态": "v2；0.1.5路5：流 造用量 独立桶(缓存读/推理)",
+   "状态": "done；0.1.5路5 v2收口（R47任务1）：流式用量桶——StreamChunk usage 累计+独立桶(缓存读/缓存写/推理)，TokenUsage 分桶对齐",
    "证据": [
     "src/流.light",
     "examples/test_流.light",
     "examples/test_流深化.light",
-    "examples/test_令牌估算1.5.light"
+    "examples/test_令牌估算1.5.light",
+    "examples/test_R47_流式用量桶.light",
+    "lightharness/_task1_R47_流式用量桶.md"
    ],
    "本轮目标": "done：七种流块 + 组装器（块表/完成原因/用量/中断块/组装消息）；v2 新增流块合并：合并连续delta流块为完整消息，支持finish_reason和usage聚合；test_流深化.light 合并流块测试全通过",
    "反跑判据": "test_流.light：改 完成原因 种类断言或 block-end 冻结断言即红；v2：test_流深化.light 把合并结果断言改反即红",
@@ -118,12 +124,14 @@
    "功能": "deepseek 流式客户端（llm-deepseek 适配器）",
    "原版包": "llm/llm-deepseek",
    "光明模块": "src/客户端.light",
-   "状态": "v2；0.1.5路5：客户端 模型目录+TokenUsage 桶转换",
+   "状态": "done；0.1.5路5 v2收口（R47任务1）：客户端 模型目录+TokenUsage 桶转换对齐",
    "证据": [
     "src/客户端.light",
     "examples/test_客户端.light",
     "examples/test_客户端超时.light",
-    "examples/test_模型目录.light"
+    "examples/test_模型目录.light",
+    "examples/test_R47_流式用量桶.light",
+    "lightharness/_task1_R47_流式用量桶.md"
    ],
    "本轮目标": "done：SSE载荷解析/翻译流(推理文本工具增量/EMPTY_RESPONSE/完成原因映射/用量缓存减出)/harness→wire映射/HTTP对话(重试留待agent-loop)；v2 新增请求超时配置：客户端类新增超时秒属性（默认60），构造函数支持选项[\"超时秒\"]配置，对话响应方法用己.超时秒代替写死的60，对话响应协程方法支持超时秒为空时回退到默认值",
    "反跑判据": "test_客户端.light：把 翻译用量(100-40) 期望改为 100 即红；v2：test_客户端超时.light 把默认超时秒断言60改30即红",
@@ -137,7 +145,7 @@
    "功能": "agent-loop 多轮循环（turn/step 流程）",
    "原版包": "core/agent-loop/agent.ts",
    "光明模块": "src/代理.light（同步）+ src/异步代理.light（异步）+ src/中止.light + src/重试策略.light + src/客户端.light（异步对话）",
-   "状态": "v2；0.1.5路3：代理 系统提示提交/请求头四原因/暂停恢复/轮次驱动",
+   "状态": "done；0.1.5路3 v2收口（R47任务2）：请求头四原因(initial/resume/change/series)+暂停恢复相位机(idle/running/maintenance+闩锁重放)+轮次驱动max-tokens粘滞",
    "证据": [
     "src/代理.light",
     "src/异步代理.light",
@@ -149,7 +157,9 @@
     "examples/test_异步代理.light",
     "examples/test_代理深化.light",
     "examples/test_代理系统提示.light",
-    "examples/test_目标恢复激活.light"
+    "examples/test_目标恢复激活.light",
+    "examples/test_R47_代理循环深化.light",
+    "lightharness/_task2_R47_代理循环深化.md"
    ],
    "本轮目标": "v2：在 v1 基础上新增 max_steps 步数上限（默认25，选项[\"最大步数\"]配置）+ 轮次结果增强（种类/步骤数/输入token/输出token/耗时秒）；修复执行步骤内部循环在工具调用后不退出的问题（新增\"continue\"状态，驱动方法检测后继续下一步），使 max_steps 能正确终止工具调用循环",
    "反跑判据": "同步：test_代理.light 把 假客户端.调用次数 期望 2 改 1 即红；v2：test_代理深化.light 删最大步数配置即红（无限循环）、改期望步骤数即红",
@@ -165,14 +175,16 @@
    "功能": "工具注册表 + 执行流水线",
    "原版包": "core/tools + agent-loop/tool-calls.ts",
    "光明模块": "src/工具.light + src/代理.light(执行组)",
-   "状态": "v2；0.1.5路6：工具 scoped tools 可见性+指导过滤+PTC 词汇",
+   "状态": "done；0.1.5路6 v2收口（R47任务3）：工具 scoped tools 可见性+指导过滤+PTC 词汇",
    "证据": [
     "src/工具.light",
     "examples/test_工具.light",
     "examples/test_工具深.light",
     "examples/test_代理.light",
     "examples/test_工具统计.light",
-    "examples/test_交付.light"
+    "examples/test_交付.light",
+    "examples/test_R47_工具scoped.light",
+    "lightharness/_task3_R47_工具scoped.md"
    ],
    "本轮目标": "done（T10-05 加深）：注册/注销/查找/描述表/执行策略(exclusive|parallel)/执行(参数解析空→{} 非法→原文)；新增 JSON Schema 参数校验器 校验参数(模式,参数)（支持 type/properties/required/items/enum/const/pattern/minimum/maximum/minLength/maxLength/minItems/maxItems，错误列表含「字段路径(列表，如[\"参数\",\"秒\"])+原因+细节」）；执行流水线接入 prepare→校验(schema)→dispatch→finalize 三阶段（准备钩子可改参/拒绝，收尾钩子 execute 后调用、异常不掩盖主结果）；返回结构不变 {content,isError,concludesTurn,additionalContexts,error}，仅校验失败时为 error 补「字段错误」详情；v2 新增执行统计：注册表统计表属性（调用次数/成功次数/失败次数），注册时初始化、注销时删除、执行时更新，新增统计()方法返回统计表",
    "反跑判据": "test_工具.light：把 注销后 名单长度 期望 1 改为 2 即红；test_工具深.light：§4.2 把「校验失败→isError」断言 真 改 假 立红；§4.4 把 prepare 计数器断言 1 改 0 立红；§4.3 把 原因为type/enum/pattern 改非对应值立红；v2：test_工具统计.light 把成功次数断言3改2即红",
@@ -360,12 +372,14 @@
    "功能": "子智能体/Subagent",
    "原版包": "packages/subagent",
    "光明模块": "src/子智能体.light",
-   "状态": "v2；0.1.5路4：subagent 父属目录/human inbox/chunked-list",
+   "状态": "done；0.1.5路4 v2收口（R48任务2）：subagent 父属目录(查找/行形状/目录视图/后代前序候选)+human inbox(提示准入+控制载荷校验+拒绝码映射)+chunked-list(分块目录投影)+人工收件箱入队出队(splice/claim/clear)",
    "证据": [
     "src/子智能体.light",
     "examples/test_子智能体.light",
     "examples/test_子智能体深化.light",
-    "examples/test_子智能体1.5.light"
+    "examples/test_子智能体1.5.light",
+    "examples/test_R48_subagent深化.light",
+    "lightharness/_task2_R48_subagent深化.md"
    ],
    "本轮目标": "done：子智能体类（独立会话+独立代理循环+工具子集，执行(任务)返回最后助手消息文本）；造子智能体工具 顶层函数（包装为工具定义，可注册到主 agent 注册表，参数{任务}）；状态查询（名字/执行次数/事件数）；v2：执行状态(空闲/运行中/完成/失败 + 已运行秒 + 当前步骤 + 总耗时) + 设置最大深度 + 嵌套深度限制(超限返回嵌套深度超限) + 执行统计(调用次数/总耗时/成功次数/失败次数/成功率)，执行方法内部增强状态追踪和耗时统计(签名不变)",
    "反跑判据": "test_子智能体.light：把 执行次数 1 改 2 即红；或把 结果包含子任务完成 断言改反即红；v2：test_子智能体深化.light 把 执行后状态完成改空闲即红、嵌套深度超限结果不含嵌套深度超限即红、执行统计成功率改反即红",
@@ -2635,6 +2649,15 @@
    "状态": "已完成",
    "完成轮次": "第48轮",
    "备注": "任务4。节点0消息role形状校验+V2→V3迁移补验。与任务1分工不冲突。双平台rc=0。"
+  },
+  {
+   "编号": 184,
+   "功能": "端到端真实链路终验（真LLM+真HTTP+真工具5轮4调）",
+   "原模块": "R40互举接线+R43真实LLM+R41-42真实IO",
+   "光明模块": "lightharness/examples/test_R50_端到端真实链路.light",
+   "状态": "已完成",
+   "完成轮次": "第50轮",
+   "备注": "任务1。5轮真HTTP往返+4次真工具调用（bash echo/写文件/读文件/bash cat），工具结果回LLM续跑。修：Windows无cat命令改两层一致；沙箱路径提取。双平台rc=0。"
   }
  ]
 }
