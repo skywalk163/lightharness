@@ -1,0 +1,275 @@
+# test_R48_subagent深化.light —— 第48轮 任务2（#18 父属目录 / human inbox / chunked-list）
+#
+# 运行：cd lightharness && python 运行.py examples/test_R48_subagent深化.light
+# 退出码 0 = 全部断言通过；任一断言失败 → 抛出 错误 → 非零退出。
+#
+# 覆盖（纯逻辑面，不接真实子会话拉起）：
+#   §5 分块目录投影（catalog.ts + util/chunked-list）：不可变追加分块承载 head、继承切点、
+#      事件序条目表、按子标识查找、分块校验（超容块/坏条目/坏继承数）、块数观测
+#   §6 人工介入收件箱（agent-loop inbox.ts）：queue/steer 入队、规范化拼接（负偏移/截断/无操作）、
+#      跨列标识唯一不变式、前置/定位/替换/移除、认领（claim）、清空（clear）顺序、
+#      持久拼接载荷（removedCount 省略 / outcome=canceled）、积压
+#   §7 控制面词汇（control-types.ts + control.ts catalogView）：child/diagnostic 行、
+#      目录视图活动替换、回执、地址
+#   §8 父属目录查找（list-children.ts）：见证键同生命周期、created,id 稳定序、
+#      父代集合、后代前序候选（普通会话作途经节点、深度自根计 1）
+#   §9 human inbox 准入（index.ts prompt + control.ts rejectPrompt/rejectCatalogRead）：
+#      控制载荷校验、时区规范化、父可用判定、持久消息源、Remote 拒绝码映射
+#
+# 命名避坑：断言助手 检相等/检真，避开与被导入模块段同名（src 后端内联合并）。
+
+从 子代理核心 导入 造子行, 造诊断行, 是控制行, 造子代理地址, 造父目录视图
+从 子代理核心 导入 造提示回执, 造中断回执, 生命周期见证键表, 是同生命周期
+从 子代理核心 导入 记录比较, 有序插入记录表, 父代集合, 后代候选
+从 子代理核心 导入 控制方法表, 校验控制载荷, 是取消判定, 目录读拒绝映射, 提示拒绝映射
+从 子代理核心 导入 提示准入, 子代理全错误码表
+从 子代理深化 导入 目录分块初值, 应用分块目录事件, 分块目录条目表, 分块目录查找
+从 子代理深化 导入 校验分块目录状态, 目录块计数
+从 子代理深化 导入 造待办箱, 造箱消息, 箱投递, 箱切片, 箱追加, 箱前置, 箱定位
+从 子代理深化 导入 箱替换, 箱移除, 箱认领, 箱清空, 箱积压
+
+段落 检相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 检真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件为假")
+  返回 真
+
+段落 主:
+  打印 "===== 第48轮 任务2：subagent 父属目录/人工收件箱/分块投影 ====="
+
+  # ============ 1) §5 分块目录投影 ============
+  设 单次条目 为 {"version": 0, "childId": "c1", "childCreatedAt": 10, "mode": "one-shot"}
+  设 可续条目 为 {"version": 0, "childId": "c2", "childCreatedAt": 20, "mode": "continuable", "label": "研究"}
+  检相等(目录分块初值(7), {"inheritedEventCount": 7}, "分块_初值只继承切点")
+  设 状态 为 目录分块初值(0)
+  检真(应用分块目录事件(状态, {"type": "step/start", "seq": 0, "data": {}}) == 状态, "分块_非目录事件原样")
+  设 状态 为 应用分块目录事件(状态, {"type": "subagent/catalog", "seq": 0, "data": 单次条目})
+  设 状态 为 应用分块目录事件(状态, {"type": "subagent/catalog", "seq": 1, "data": 可续条目})
+  检相等(分块目录条目表(状态), [{"id": "c1", "createdAt": 10, "mode": "one-shot"}, {"id": "c2", "createdAt": 20, "mode": "continuable", "label": "研究"}], "分块_条目表保事件序")
+  检相等(分块目录查找(状态, "c2"), {"id": "c2", "createdAt": 20, "mode": "continuable", "label": "研究"}, "分块_查找命中")
+  检真(分块目录查找(状态, "无") == 空, "分块_查找未登记返回空")
+  检相等(校验分块目录状态(状态), "", "分块_状态合法")
+  设 切点态 为 目录分块初值(5)
+  检真(应用分块目录事件(切点态, {"type": "subagent/catalog", "seq": 3, "data": 单次条目}) == 切点态, "分块_切点内忽略")
+  # 65 条事件跨两块（块容量 64），事件序与校验保持
+  设 大态 为 目录分块初值(0)
+  设 序 为 0
+  当 序 < 65:
+    设 大态 为 应用分块目录事件(大态, {"type": "subagent/catalog", "seq": 序, "data": {"version": 0, "childId": "块" + 转字符串(序), "childCreatedAt": 序, "mode": "one-shot"}})
+    设 序 为 序 + 1
+  检相等(目录块计数(大态), 2, "分块_65条跨两块")
+  检相等(长(分块目录条目表(大态)), 65, "分块_跨块展平全量")
+  检相等(分块目录条目表(大态)[64], {"id": "块64", "createdAt": 64, "mode": "one-shot"}, "分块_末条保序")
+  检相等(校验分块目录状态(大态), "", "分块_跨块校验通过")
+  # 手工超容块（单块 65 条）→ 校验拒绝
+  设 超容条目表 为 []
+  设 序 为 0
+  当 序 < 65:
+    列表追加(超容条目表, 单次条目)
+    设 序 为 序 + 1
+  检相等(校验分块目录状态({"inheritedEventCount": 0, "头": {"值表": 超容条目表}}), "subagent catalog head must be a chunked list", "分块_超容块拒绝")
+  # 坏条目（块形状合法但条目不合法）
+  检相等(校验分块目录状态({"inheritedEventCount": 0, "头": {"值表": [{"x": 1}]}}), "subagent catalog head entry is invalid", "分块_坏条目拒绝")
+  # 坏继承数 / 缺继承数
+  检相等(校验分块目录状态({"inheritedEventCount": -1}), "inheritedEventCount must be a non-negative safe integer", "分块_负继承数拒绝")
+  检相等(校验分块目录状态({"头": 空}), "subagent catalog state is missing inheritedEventCount", "分块_缺继承数拒绝")
+
+  # ============ 2) §6 人工介入收件箱 ============
+  设 消甲 为 造箱消息("m1", "第一问")
+  设 消乙 为 造箱消息("m2", "第二问")
+  设 消丙 为 造箱消息("m3", "第三问")
+  # queue → 下轮；steer → 下一步
+  设 箱 为 造待办箱()
+  检真(箱积压(箱) == 假, "箱_空箱无积压")
+  设 判 为 箱投递(箱, 消甲, "queue")
+  检相等(判["箱"]["下轮"], [消甲], "箱_queue入下轮")
+  设 判 为 箱投递(判["箱"], 消乙, "steer")
+  检相等(判["箱"]["下一步"], [消乙], "箱_steer入下一步")
+  检真(箱积压(判["箱"]), "箱_有积压")
+  # 未知交付方式拒绝
+  设 抛错数 为 0
+  尝试:
+    箱投递(判["箱"], 消丙, "插队")
+  捕获 异常 为 e:
+    设 抛错数 为 抛错数 + 1
+  检相等(抛错数, 1, "箱_未知交付方式抛错")
+  # 前置 + 定位
+  设 判 为 箱前置(判["箱"], "下一步", 消丙)
+  检相等(判["箱"]["下一步"], [消丙, 消乙], "箱_前置插到列首")
+  检相等(箱定位(判["箱"], "m3"), {"目标": "下一步", "序位": 0}, "箱_定位跨列")
+  检真(箱定位(判["箱"], "无") == 空, "箱_定位未找到返回空")
+  # 跨列标识唯一不变式：把已占标识再插另一列 → 抛
+  设 抛错数 为 0
+  尝试:
+    箱追加(判["箱"], "下一步", 造箱消息("m1", "重复"))
+  捕获 异常 为 e:
+    设 抛错数 为 抛错数 + 1
+  检相等(抛错数, 1, "箱_跨列重复标识抛错")
+  # 替换 / 移除
+  设 判 为 箱替换(判["箱"], "m3", 造箱消息("m4", "改问"))
+  检真(判["成功"], "箱_替换在位成功")
+  检相等(箱定位(判["箱"], "m4")["目标"], "下一步", "箱_替换后新标识在位")
+  设 判 为 箱替换(判["箱"], "无", 消甲)
+  检真(判["成功"] == 假, "箱_替换未在位失败")
+  设 判 为 箱移除(判["箱"], "m4")
+  检真(判["成功"], "箱_移除在位成功")
+  检相等(判["箱"]["下一步"], [消乙], "箱_移除后列余一条")
+  # 规范化拼接：负偏移自尾计、删除数截断
+  设 判 为 箱切片(判["箱"], "下轮", -1, 99, [], 假)
+  检相等(判["移除"], [消甲], "箱_负偏移自尾计")
+  检相等(判["载荷"]["start"], 0, "箱_负偏移规范化起点")
+  # 无操作拼接：状态原样、载荷 空
+  设 零判 为 箱切片(判["箱"], "下轮", 0, 0, [], 假)
+  检真(零判["载荷"] == 空, "箱_无操作拼接载荷空")
+  # 记取消载荷：有移除时带 outcome=canceled；不记取消不带
+  设 箱丁 为 造待办箱()
+  设 箱丁 为 箱投递(箱丁, 消甲, "queue")["箱"]
+  设 取消判 为 箱切片(箱丁, "下轮", 0, 1, [], 真)
+  检相等(取消判["载荷"]["outcome"], "canceled", "箱_记取消带outcome")
+  检相等(取消判["载荷"]["removedCount"], 1, "箱_载荷带移除数")
+  设 留判 为 箱投递(取消判["箱"], 消甲, "queue")
+  设 留判 为 箱切片(留判["箱"], "下轮", 0, 1, [], 假)
+  检真(字典包含键(留判["载荷"], "outcome") == 假, "箱_不记取消无outcome")
+  # 认领：下一步目标只取下一步；下轮目标同时取下轮队首一条
+  设 箱戊 为 造待办箱()
+  设 箱戊 为 箱投递(箱戊, 消甲, "queue")["箱"]
+  设 箱戊 为 箱投递(箱戊, 消乙, "queue")["箱"]
+  设 箱戊 为 箱投递(箱戊, 消丙, "steer")["箱"]
+  设 判 为 箱认领(箱戊, "下一步", 3)
+  检相等(判["认领"], [消丙], "箱_认领step只取下一步")
+  设 判 为 箱认领(判["箱"], "下轮", 3)
+  检相等(判["认领"], [消甲], "箱_认领next-turn并取下轮队首一条")
+  检相等(判["箱"]["下轮"], [消乙], "箱_认领后下轮余一条")
+  # 清空：先下一步后下轮（持久取消顺序对齐上游），两段均记取消
+  设 箱己 为 造待办箱()
+  设 箱己 为 箱投递(箱己, 消甲, "queue")["箱"]
+  设 箱己 为 箱投递(箱己, 消丙, "steer")["箱"]
+  设 清判 为 箱清空(箱己)
+  检相等(清判["下一步移除"], [消丙], "箱_清空先下一步")
+  检相等(清判["下轮移除"], [消甲], "箱_清空后下轮")
+  检真(箱积压(清判["箱"]) == 假, "箱_清空后无积压")
+
+  # ============ 3) §7 控制面词汇 ============
+  设 子行 为 造子行("c1", "one-shot", 空, "inactive", 假)
+  检相等(子行, {"kind": "child", "id": "c1", "mode": "one-shot", "activity": "inactive", "hasChildren": 假}, "行_one_shot无标签")
+  检真(是控制行(子行), "行_one_shot谓词通过")
+  设 标签行 为 造子行("c2", "continuable", "研究", "running", 真)
+  检真(是控制行(标签行), "行_continuable谓词通过")
+  设 抛错数 为 0
+  尝试:
+    造子行("c3", "continuable", 空, "running", 假)
+  捕获 异常 为 e:
+    设 抛错数 为 抛错数 + 1
+  检相等(抛错数, 1, "行_continuable缺标签抛错")
+  # 诊断行
+  设 诊行 为 造诊断行("c4", "corrupt")
+  检相等(诊行, {"kind": "diagnostic", "id": "c4", "reason": "corrupt"}, "行_诊断行形状")
+  检真(是控制行(诊行), "行_诊断行谓词通过")
+  设 抛错数 为 0
+  尝试:
+    造诊断行("c4", "玄学")
+  捕获 异常 为 e:
+    设 抛错数 为 抛错数 + 1
+  检相等(抛错数, 1, "行_未知诊断缘由抛错")
+  # 非法行谓词拒绝
+  检真(是控制行({"kind": "child", "id": "c", "mode": "one-shot", "activity": "梦游", "hasChildren": 假}) == 假, "行_未知活动拒绝")
+  检真(是控制行({"kind": "其它"}) == 假, "行_未知种类拒绝")
+  # 目录视图：live 活动替换 + 诊断透传 + 父可用提示
+  设 视图 为 造父目录视图([子行, 标签行, 诊行], {"c1": "running", "c2": "running"}, 真)
+  检相等(视图["entries"][0]["activity"], "running", "视图_live活动替换")
+  检相等(视图["entries"][1]["activity"], "running", "视图_表内活动替换")
+  检真(视图["entries"][2]["kind"] == "diagnostic", "视图_诊断行透传")
+  检真(视图["parentAvailable"], "视图_父可用提示")
+  设 视图 为 造父目录视图([子行], {}, 假)
+  检相等(视图["entries"][0]["activity"], "inactive", "视图_无记录默认inactive")
+  # 回执与地址
+  检相等(造提示回执("m-9"), {"messageId": "m-9"}, "行_提示回执")
+  检相等(造中断回执(), {"accepted": 真}, "行_中断回执")
+  检相等(造子代理地址("p1", "c1", "continuable"), {"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable"}, "行_子代理地址")
+
+  # ============ 4) §8 父属目录查找 ============
+  检相等(长(生命周期见证键表()), 9, "查_见证键表规模")
+  设 头甲 为 {"version": 3, "id": "s1", "createdAt": 1, "cwd": "/w", "parentSession": "p", "isSeeded": 假, "delegationDepth": 1, "origin": "subagent", "agentPreset": 空}
+  检真(是同生命周期(头甲, 头甲), "查_同生命周期自等")
+  设 头乙 为 {"version": 3, "id": "s1", "createdAt": 1, "cwd": "/w2", "parentSession": "p", "isSeeded": 假, "delegationDepth": 1, "origin": "subagent", "agentPreset": 空}
+  检真(是同生命周期(头甲, 头乙) == 假, "查_见证键不同判异")
+  设 头丙 为 {"version": 3, "id": "s1", "createdAt": 1, "cwd": "/w", "parentSession": "p", "isSeeded": 假, "delegationDepth": 1, "origin": "subagent"}
+  检真(是同生命周期(头甲, 头丙) == 假, "查_缺省位不同判异")
+  # 记录比较与稳定有序插入
+  检相等(记录比较({"createdAt": 1, "id": "a"}, {"createdAt": 2, "id": "z"}), -1, "查_比较时刻优先")
+  检相等(记录比较({"createdAt": 1, "id": "b"}, {"createdAt": 1, "id": "a"}), 1, "查_比较标识决胜")
+  设 序表 为 []
+  有序插入记录表(序表, {"createdAt": 2, "id": "m"})
+  有序插入记录表(序表, {"createdAt": 1, "id": "b"})
+  有序插入记录表(序表, {"createdAt": 1, "id": "a"})
+  有序插入记录表(序表, {"createdAt": 1, "id": "c"})
+  检相等(序表, [{"createdAt": 1, "id": "a"}, {"createdAt": 1, "id": "b"}, {"createdAt": 1, "id": "c"}, {"createdAt": 2, "id": "m"}], "查_有序插入稳定序")
+  # 后代候选：前序遍历、普通会话作途经节点、深度自根计 1
+  设 语料 为 [{"id": "p", "createdAt": 0, "parentSession": 空, "origin": "user"}, {"id": "a", "createdAt": 1, "parentSession": "p", "origin": "subagent"}, {"id": "d", "createdAt": 1, "parentSession": "p", "origin": "subagent"}, {"id": "b", "createdAt": 2, "parentSession": "p", "origin": "user"}, {"id": "c", "createdAt": 3, "parentSession": "b", "origin": "subagent"}, {"id": "e", "createdAt": 4, "parentSession": "c", "origin": "subagent"}]
+  设 候选 为 后代候选(语料, "p")
+  检相等(长(候选), 4, "查_候选只收子代理")
+  检相等(候选[0]["记"]["id"], "a", "查_前序首选")
+  检相等(候选[1]["记"]["id"], "d", "查_同刻兄弟标识决胜")
+  检相等(候选[2]["记"]["id"], "c", "查_普通会话作途经节点")
+  检相等(候选[2]["父标识"], "b", "查_途经节点父标识")
+  检相等(候选[2]["深度"], 2, "查_深度自根计1")
+  检相等(候选[3]["记"]["id"], "e", "查_深层后代")
+  检相等(候选[3]["深度"], 3, "查_三层深度")
+  # 父代集合（hasChildren 判定源，去重）
+  设 父表 为 父代集合(语料)
+  检真(列表包含(父表, "p"), "查_父代集合含根")
+  检真(列表包含(父表, "b"), "查_父代集合含途经父")
+  检真(列表包含(父表, "c"), "查_父代集合含子代父")
+  检相等(长(父表), 3, "查_父代集合去重")
+
+  # ============ 5) §9 human inbox 准入与拒绝映射 ============
+  检相等(控制方法表(), ["subagent.list", "subagent.prompt", "subagent.interrupt"], "准_控制方法表")
+  检相等(校验控制载荷("subagent.list", {"parentSessionId": "p1"}), "", "准_list合法")
+  检相等(校验控制载荷("subagent.list", {"parentSessionId": ""}), "invalid payload for subagent.list", "准_list空父拒绝")
+  设 好载荷 为 {"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable", "delivery": "queue", "requestId": "r1"}
+  检相等(校验控制载荷("subagent.prompt", 好载荷), "", "准_prompt合法")
+  检相等(校验控制载荷("subagent.prompt", {"parentSessionId": "p1", "childSessionId": "c1", "mode": "one-shot", "delivery": "queue"}), "invalid payload for subagent.prompt", "准_prompt_mode拒绝")
+  检相等(校验控制载荷("subagent.prompt", {"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable", "delivery": "插队"}), "invalid payload for subagent.prompt", "准_prompt_delivery拒绝")
+  检相等(校验控制载荷("subagent.interrupt", {"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable"}), "", "准_interrupt合法")
+  检相等(校验控制载荷("subagent.interrupt", {"parentSessionId": "p1"}), "invalid payload for subagent.interrupt", "准_interrupt缺子拒绝")
+  检相等(校验控制载荷("subagent.玄学", 好载荷), "invalid payload for subagent.玄学", "准_未知方法拒绝")
+  # 拒绝映射
+  检相等(目录读拒绝映射("CANCELLED"), "gateway/cancelled", "映_目录读取消")
+  检相等(目录读拒绝映射("SUBAGENT_CONTROL_PROJECTIONS_UNAVAILABLE"), "subagent/projections-unavailable", "映_目录读缺投影")
+  检相等(目录读拒绝映射("其它"), "gateway/internal", "映_目录读兜底")
+  检相等(提示拒绝映射("CANCELLED"), "gateway/cancelled", "映_提示取消")
+  检相等(提示拒绝映射("MODEL_DOES_NOT_SUPPORT_IMAGES"), "subagent/attachment-invalid", "映_附件无效")
+  检相等(提示拒绝映射("NOT_RESUMABLE"), "subagent/not-resumable", "映_不可续")
+  检相等(提示拒绝映射("UNAUTHORIZED"), "subagent/unauthorized", "映_未授权")
+  检相等(提示拒绝映射("DRAINING"), "subagent/delivery-unavailable", "映_排水不可投")
+  检相等(提示拒绝映射("ACTIVATION_CLOSING"), "subagent/delivery-unavailable", "映_关闭不可投")
+  检相等(提示拒绝映射("CONTINUATION_UNAVAILABLE"), "subagent/delivery-unavailable", "映_续传不可投")
+  检相等(提示拒绝映射("PERSISTENCE_UNAVAILABLE"), "subagent/delivery-unavailable", "映_持久不可投")
+  检相等(提示拒绝映射("DUPLICATE_CHILD"), "gateway/internal", "映_词表外兜底")
+  # 取消判定
+  检真(是取消判定("CANCELLED", 假), "映_码取消成立")
+  检真(是取消判定("其它", 真), "映_旗标取消成立")
+  检真(是取消判定("其它", 假) == 假, "映_无取消不成立")
+  # 提示准入：载荷校验 → 时区规范化 → 父可用 → 组装持久源
+  设 判 为 提示准入({"parentSessionId": ""}, 真)
+  检相等(判["拒绝"], "gateway/bad-request", "准_坏载荷拒绝")
+  设 判 为 提示准入({"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable", "delivery": "queue", "requestId": "r1", "clientTimeZone": " bogus"}, 真)
+  检相等(判["拒绝"], "subagent/invalid-time-zone", "准_坏时区拒绝")
+  设 判 为 提示准入({"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable", "delivery": "queue", "requestId": "r1"}, 假)
+  检相等(判["拒绝"], "subagent/parent-unavailable", "准_父不在线拒绝")
+  设 判 为 提示准入(好载荷, 真)
+  检真(判["拒绝"] == 空, "准_成功无拒绝")
+  检相等(判["源"], {"kind": "user", "rpcId": "r1"}, "准_源不含时区")
+  设 带时区载荷 为 {"parentSessionId": "p1", "childSessionId": "c1", "mode": "continuable", "delivery": "steer", "requestId": "r2", "clientTimeZone": "Asia/Shanghai"}
+  设 判 为 提示准入(带时区载荷, 真)
+  检相等(判["源"], {"kind": "user", "rpcId": "r2", "clientTimeZone": "Asia/Shanghai"}, "准_源含规范时区")
+  # 全错误码表
+  检相等(长(子代理全错误码表()), 11, "映_全错误码表规模")
+
+  打印 "R48 subagent深化：分块目录投影/人工收件箱/控制词汇/目录查找/提示准入 全部通过"
+
+主()

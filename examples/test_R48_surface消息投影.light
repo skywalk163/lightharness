@@ -1,0 +1,208 @@
+# test_R48_surface消息投影.light —— R48 任务1：surface 折叠消息产生事件投影 + append/replace
+#
+# 上游依据（G:\github\deepseek-harness，0.1.5-rc.2）：
+#   packages/core/session/src/surface.ts
+#     isAppendSurfaceEvent / isReplacementSurfaceEvent /
+#     validateSurfaceMetadata + assertProvenance（事件级部分）
+#
+# 覆盖：
+#   §1 追加/替换表面事件谓词（isAppendSurfaceEvent / isReplacementSurfaceEvent）
+#   §2 校验表面标记（surfaceOp 标记校验 + replace 区间 + 来源事件序号 provenance）
+#   §3 消息产生事件投影（投影消息产生：节点0 前置 + 逐节点 + 遮蔽跳过 + 空内容排除）
+#
+# 反跑判据：把任一 断言相等/断言真 的期望值改反即红；把 §2 的抛错分支期望改成「应通过」即红。
+# 运行：cd lightharness && python 运行.py examples/test_R48_surface消息投影.light
+
+从 会话格式 导入 造事件, 投影消息产生
+从 会话格式 导入 是追加表面事件, 是替换表面事件, 校验表面标记
+从 JSON 导入 序列化JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 (实际 != 期望):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 (条件 == 假):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]")
+
+# 含子串（判据文案核对用）
+段落 含子串 接收 原文, 子串:
+  设 n 为 长度(原文)
+  设 m 为 长度(子串)
+  如果 m == 0:
+    返回 真
+  设 i 为 0
+  当 i + m <= n:
+    如果 原文[i:(i+m)] == 子串:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+段落 主程:
+  # ================= §1 追加/替换表面事件谓词 =================
+  # 1a system/message append → 是追加、非替换
+  设 系统追加 为 造事件("system/message", 0, 1, ["系统": "S", "表面操作": "append"])
+  断言真(是追加表面事件(系统追加), "1a system+append 是追加")
+  断言相等(是替换表面事件(系统追加), 假, "1b system+append 非替换")
+
+  # 1c system/message replace → 是替换
+  设 系统替换 为 造事件("system/message", 1, 2, ["系统": "S2", "表面操作": "replace"])
+  断言真(是替换表面事件(系统替换), "1c system+replace 是替换")
+  断言相等(是追加表面事件(系统替换), 假, "1d system+replace 非追加")
+
+  # 1e user/message append → 是追加（表面操作缺省 append）
+  设 用户件 为 造事件("user/message", 2, 3, ["消息": ["角色": "user", "content": [["type": "text", "text": "hi"]]]])
+  断言真(是追加表面事件(用户件), "1e 缺省表面操作视为 append")
+  断言相等(是替换表面事件(用户件), 假, "1f 缺省非替换")
+
+  # 1g 事件级字典 replace 操作 → 是替换
+  设 字典替换 为 ["类型": "assistant/message", "序号": 3, "时间": 4,
+    "数据": ["消息": ["角色": "assistant", "content": [["type": "text", "text": "x"]]]],
+    "表面操作": ["op": "replace", "startSeq": 0, "endSeq": 0]]
+  断言真(是替换表面事件(字典替换), "1g 字典 replace 是替换")
+
+  # 1h 非表面事件（turn/start）→ 两者皆非
+  设 轮起 为 造事件("turn/start", 4, 5, [])
+  断言相等(是追加表面事件(轮起), 假, "1h turn/start 非追加")
+  断言相等(是替换表面事件(轮起), 假, "1i turn/start 非替换")
+
+  # ================= §2 校验表面标记（surfaceOp 标记校验 + provenance） =================
+  # 2a 表面可入 + 显式 append → 返回 "append"（上游要求 surfaceOp 显式标记，无标记见 2e）
+  设 显式用户件 为 造事件("user/message", 6, 7, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": "append"])
+  断言相等(校验表面标记(显式用户件), "append", "2a 显式 append 返回 append")
+
+  # 2b 表面可入 + 合法 replace 字典（startSeq/endSeq 更早）→ 返回该字典
+  设 合法替换件 为 造事件("user/message", 5, 6, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": ["op": "replace", "startSeq": 2, "endSeq": 4]])
+  设 标b 为 校验表面标记(合法替换件)
+  断言真(是字典(标b), "2b replace 返回字典")
+  断言相等(标b.获取("op"), "replace", "2c replace op 正确")
+  断言相等(标b.获取("startSeq"), 2, "2d replace startSeq 正确")
+
+  # 2e 表面可入但缺 surfaceOp 标记 → 抛「requires a surfaceOp marker」
+  设 文e 为 ""
+  设 缺标记件 为 造事件("user/message", 6, 7, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]]])
+  尝试:
+    设 占e 为 校验表面标记(缺标记件)
+    抛出 新建 错误("反跑判据失败[2e]：应抛错却通过")
+  捕获 异常 e1:
+    设 文e 为 转字符串(e1)
+  断言真(含子串(文e, "requires a surfaceOp marker"), "2e 缺标记抛错")
+
+  # 2f 非法 surfaceOp（非 append、非合法 replace 字典）→ 抛「invalid surfaceOp」
+  设 文f 为 ""
+  设 坏操作件 为 造事件("user/message", 7, 8, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": "foo"])
+  尝试:
+    设 占f 为 校验表面标记(坏操作件)
+    抛出 新建 错误("反跑判据失败[2f]：应抛错却通过")
+  捕获 异常 e2:
+    设 文f 为 转字符串(e2)
+  断言真(含子串(文f, "invalid surfaceOp"), "2f 非法操作抛错")
+
+  # 2g replace 区间引用不更早的事件（startSeq >= seq）→ 抛「must reference earlier events」
+  设 文g 为 ""
+  设 区间坏件 为 造事件("user/message", 8, 9, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": ["op": "replace", "startSeq": 8, "endSeq": 8]])
+  尝试:
+    设 占g 为 校验表面标记(区间坏件)
+    抛出 新建 错误("反跑判据失败[2g]：应抛错却通过")
+  捕获 异常 e3:
+    设 文g 为 转字符串(e3)
+  断言真(含子串(文g, "startSeq and endSeq must reference earlier events"), "2g 区间不更早抛错")
+
+  # 2h 非表面事件携带 surfaceOp → 抛「cannot carry surfaceOp」
+  设 文h 为 ""
+  设 非表面带标记 为 造事件("turn/start", 9, 10, ["表面操作": "append"])
+  尝试:
+    设 占h 为 校验表面标记(非表面带标记)
+    抛出 新建 错误("反跑判据失败[2h]：应抛错却通过")
+  捕获 异常 e4:
+    设 文h 为 转字符串(e4)
+  断言真(含子串(文h, "is not surface-eligible and cannot carry surfaceOp"), "2h 非表面带标记抛错")
+
+  # 2i 非表面事件携带 来源事件序号 → 抛「cannot carry sourceEventSeqs」
+  设 文i 为 ""
+  设 非表面带源 为 造事件("turn/start", 10, 11, [])
+  非表面带源["来源事件序号"] 为 [0]
+  尝试:
+    设 占i 为 校验表面标记(非表面带源)
+    抛出 新建 错误("反跑判据失败[2i]：应抛错却通过")
+  捕获 异常 e5:
+    设 文i 为 转字符串(e5)
+  断言真(含子串(文i, "is not surface-eligible and cannot carry sourceEventSeqs"), "2i 非表面带来源抛错")
+
+  # 2j 来源事件序号 引用不更早（>= seq）→ 抛「must reference earlier events」
+  设 文j 为 ""
+  设 源晚件 为 造事件("user/message", 11, 12, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": "append"])
+  源晚件["来源事件序号"] 为 [20]
+  尝试:
+    设 占j 为 校验表面标记(源晚件)
+    抛出 新建 错误("反跑判据失败[2j]：应抛错却通过")
+  捕获 异常 e6:
+    设 文j 为 转字符串(e6)
+  断言真(含子串(文j, "sourceEventSeqs must reference earlier events"), "2j 来源引用不更早抛错")
+
+  # 2k 来源事件序号 含重复 → 抛「must not contain duplicates」
+  设 文k 为 ""
+  设 源重复件 为 造事件("user/message", 12, 13, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": "append"])
+  源重复件["来源事件序号"] 为 [1, 1]
+  尝试:
+    设 占k 为 校验表面标记(源重复件)
+    抛出 新建 错误("反跑判据失败[2k]：应抛错却通过")
+  捕获 异常 e7:
+    设 文k 为 转字符串(e7)
+  断言真(含子串(文k, "sourceEventSeqs must not contain duplicates"), "2k 来源重复抛错")
+
+  # 2l assistant/message 携带 来源事件序号 → 抛「cannot carry sourceEventSeqs」
+  设 文l 为 ""
+  设 助手带源 为 造事件("assistant/message", 13, 14, ["消息": ["角色": "assistant", "content": [["type": "text", "text": "a"]]],
+    "表面操作": "append"])
+  助手带源["来源事件序号"] 为 [0]
+  尝试:
+    设 占l 为 校验表面标记(助手带源)
+    抛出 新建 错误("反跑判据失败[2l]：应抛错却通过")
+  捕获 异常 e8:
+    设 文l 为 转字符串(e8)
+  断言真(含子串(文l, "assistant/message embeds its source stream and cannot carry sourceEventSeqs"), "2l 助手带来源抛错")
+
+  # ================= §3 消息产生事件投影（投影消息产生） =================
+  # 3a 完整 surface：system + user + assistant + tool/result → 4 条消息
+  设 表甲 为 []
+  列表追加(表甲, 造事件("system/message", 0, 1, ["系统": "你是助手", "表面操作": "append"]))
+  列表追加(表甲, 造事件("user/message", 1, 2, ["消息": ["角色": "user", "content": [["type": "text", "text": "你好"]]]]))
+  设 助手件 为 造事件("assistant/message", 2, 3, ["消息": ["角色": "assistant", "content": [["type": "text", "text": "回答"]]]])
+  列表追加(表甲, 助手件)
+  列表追加(表甲, 造事件("tool/result", 3, 4, ["调用": "c1", "成功": 真, "消息": ["角色": "tool", "content": [["type": "text", "text": "结果"]]]]))
+  设 消息甲 为 投影消息产生(表甲)
+  断言相等(长度(消息甲), 4, "3a 四消息投影")
+  断言相等(消息甲[0]["角色"], "system", "3b 节点0 系统消息")
+  断言相等(消息甲[0]["content"][0]["text"], "你是助手", "3c 节点0 文本")
+  断言相等(消息甲[1]["角色"], "user", "3d user 消息")
+  断言相等(消息甲[2]["角色"], "assistant", "3e assistant 消息")
+  断言相等(消息甲[3]["角色"], "tool", "3f tool 消息")
+
+  # 3g 空内容 assistant → 不产生消息
+  设 表乙 为 []
+  列表追加(表乙, 造事件("user/message", 0, 1, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]]]))
+  列表追加(表乙, 造事件("assistant/message", 1, 2, ["消息": ["角色": "assistant", "content": []]]))
+  设 消息乙 为 投影消息产生(表乙)
+  断言相等(长度(消息乙), 1, "3g 空内容助手被排除")
+
+  # 3h 被遮蔽节点 → 不产生消息（对齐「shadowed nodes are excluded」）
+  设 表丙 为 []
+  设 旧用户 为 造事件("user/message", 0, 1, ["消息": ["角色": "user", "content": [["type": "text", "text": "旧"]]]])
+  旧用户["遮蔽"] 为 真
+  列表追加(表丙, 旧用户)
+  列表追加(表丙, 造事件("user/message", 1, 2, ["消息": ["角色": "user", "content": [["type": "text", "text": "新"]]]]))
+  设 消息丙 为 投影消息产生(表丙)
+  断言相等(长度(消息丙), 1, "3h 遮蔽节点不产消息")
+  断言相等(消息丙[0]["content"][0]["text"], "新", "3i 可见为新节点")
+
+  写 "test_R48_surface消息投影: 全部用例通过"
+  返回 真
+
+主程()

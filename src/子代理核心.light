@@ -14,6 +14,9 @@
 # 语言缺陷：L-131（除法 x/0 抛 除零错误，而非 ±Inf/NaN；见交付报告）。
 # 本模块无除法未触发；核是有限数 仅作防御性兜底（光明无法产出 inf/nan，故该段实质死代码）。
 
+# 从  时间工具 导入 规范客户端时区（§9 human inbox 提示准入的时区规范化复用 #78 复刻面）
+从 时间工具 导入 规范客户端时区
+
 # =====================================================================
 # §1 父侧子代理目录（catalog.ts）
 # =====================================================================
@@ -595,3 +598,282 @@
   如果 字符串包含(文本, "nan") == 真:
     返回 假
   返回 文本 != "-0.0"
+
+# =====================================================================
+# §7 控制面词汇与行形状（control-types.ts —— 第48轮 任务2 追加）
+#   SubagentListEntry（child/diagnostic 行）、SubagentAddress、SubagentCatalog 视图、
+#   提示/中断回执。上游由 union 类型承担的形状判别，光明以显式谓词等价提供。
+# =====================================================================
+
+# 控制面非空串谓词（上游 z.string().min(1)）
+段落 控制非空串 接收 值:
+  如果 是字符串(值) == 假:
+    返回 假
+  返回 字符串长度(值) > 0
+
+# diagnostic 行的 reason 词表（corrupt/unsupported/unavailable；unsupported 不产出仅保留给消费方）
+段落 诊断缘由表:
+  返回 ["corrupt", "unsupported", "unavailable"]
+
+# child 行的活动状态词表（durable listing 读存储；browser catalog 再采样驱动）
+段落 活动状态表:
+  返回 ["running", "inactive"]
+
+# childRow：materialize one served identity as its child row
+#   continuable 行必须有持久标签（上游类型判别）；one-shot 标签可缺省
+段落 造子行 接收 标识, 模式, 标签, 活动, 有子代:
+  如果 模式 == "continuable":
+    如果 是字符串(标签) == 假 或 字符串长度(标签) == 0:
+      抛出 新建 错误("continuable child row requires a durable label [INVALID_CHILD_ROW]")
+  设 行 为 {"kind": "child", "id": 标识, "mode": 模式, "activity": 活动, "hasChildren": 有子代}
+  如果 标签 != 空:
+    字典设置(行, "label", 标签)
+  返回 行
+
+# diagnostic 行：候选无 child 行时的受控诊断（每子隔离，不拖垮整个列表）
+段落 造诊断行 接收 标识, 缘由:
+  如果 列表包含(诊断缘由表(), 缘由) == 假:
+    抛出 新建 错误("unknown diagnostic reason [INVALID_DIAGNOSTIC_ROW]")
+  返回 {"kind": "diagnostic", "id": 标识, "reason": 缘由}
+
+# SubagentListEntry 谓词：child 行 / diagnostic 行
+段落 是控制行 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典获取(值, "kind", 空) == "child":
+    如果 核字段齐备(值, ["id", "mode", "activity", "hasChildren"]) == 假:
+      返回 假
+    如果 控制非空串(值["id"]) == 假:
+      返回 假
+    如果 字典获取(值, "mode", 空) == "continuable":
+      如果 是字符串(字典获取(值, "label", 空)) == 假:
+        返回 假
+    否则:
+      如果 字典获取(值, "mode", 空) == "one-shot":
+        如果 字典包含键(值, "label") == 真:
+          如果 是字符串(值["label"]) == 假:
+            返回 假
+      否则:
+        返回 假
+    如果 列表包含(活动状态表(), 值["activity"]) == 假:
+      返回 假
+    返回 核是布尔标量(值["hasChildren"])
+  如果 字典获取(值, "kind", 空) == "diagnostic":
+    如果 核字段齐备(值, ["id", "reason"]) == 假:
+      返回 假
+    如果 控制非空串(值["id"]) == 假:
+      返回 假
+    返回 列表包含(诊断缘由表(), 值["reason"])
+  返回 假
+
+# SubagentAddress：持久父/子地址（mode 判别由调用方携带）
+段落 造子代理地址 接收 父标识, 子标识, 模式:
+  返回 {"parentSessionId": 父标识, "childSessionId": 子标识, "mode": 模式}
+
+# SubagentCatalog 视图（control.ts catalogView 纯化）：
+#   durable 行的活动状态由调用方注入的 live 活动表替换；无登记记录的 child 行一律 inactive；
+#   diagnostic 行原样透传；parentAvailable 只是投递期提示，prompt 准入才是权威判定
+段落 造父目录视图 接收 行表, 活动表, 父可用:
+  设 结果 为 []
+  遍历 行 之 行表:
+    如果 是控制行(行) == 假:
+      抛出 新建 错误("catalog view received an invalid row [INVALID_CATALOG_ROW]")
+    如果 行["kind"] == "child":
+      设 活动 为 字典获取(活动表, 行["id"], "inactive")
+      列表追加(结果, 造子行(行["id"], 行["mode"], 字典获取(行, "label", 空), 活动, 行["hasChildren"]))
+    否则:
+      列表追加(结果, 行)
+  返回 {"entries": 结果, "parentAvailable": 父可用}
+
+# 回执形状：提示被收件箱接纳后返回消息标识；中断准入即回执（不承诺目标已静默）
+段落 造提示回执 接收 消息标识:
+  返回 {"messageId": 消息标识}
+
+段落 造中断回执:
+  返回 {"accepted": 真}
+
+# =====================================================================
+# §8 父属目录查找（list-children.ts 纯逻辑 —— 第48轮 任务2 追加）
+#   语料记录 = 会话头子集：{id, createdAt, parentSession, origin}。
+#   剔除查询引擎/投影注册表/并发冷读等宿主面，保留排序、遍历、分类、见证四个纯函数。
+# =====================================================================
+
+# sameLifecycle 的 LIFECYCLE_WITNESS_KEYS：同一 id 下区分生命周期的不可变头字段
+段落 生命周期见证键表:
+  返回 ["version", "id", "createdAt", "cwd", "parentSession", "isSeeded", "delegationDepth", "origin", "agentPreset"]
+
+# sameLifecycle：见证键逐键相等（缺省位也必须一致——删除重建的会话不得漏进旧父的列表）
+段落 是同生命周期 接收 头, 期望:
+  遍历 键 之 生命周期见证键表():
+    设 甲有 为 字典包含键(头, 键)
+    设 乙有 为 字典包含键(期望, 键)
+    如果 甲有 != 乙有:
+      返回 假
+    如果 甲有 == 真:
+      如果 头[键] != 期望[键]:
+        返回 假
+  返回 真
+
+# compareCorpusRecords：createdAt 优先，id 字典序决胜；返回 -1/0/1
+段落 记录比较 接收 甲, 乙:
+  如果 甲["createdAt"] < 乙["createdAt"]:
+    返回 -1
+  如果 甲["createdAt"] > 乙["createdAt"]:
+    返回 1
+  如果 甲["id"] < 乙["id"]:
+    返回 -1
+  如果 甲["id"] > 乙["id"]:
+    返回 1
+  返回 0
+
+# 稳定有序插入（等价 Array.prototype.sort 的稳定序；不用「排序」命名规避关键字）
+段落 有序插入记录表 接收 表, 记:
+  设 插位 为 长(表)
+  设 序 为 0
+  当 序 < 长(表):
+    如果 记录比较(表[序], 记) > 0:
+      设 插位 为 序
+      设 序 为 长(表)
+    否则:
+      设 序 为 序 + 1
+  列表插入(表, 插位, 记)
+  返回 表
+
+# subagentParents：origin=subagent 的记录把其父标识收进父代集合（hasChildren 判定源）
+段落 父代集合 接收 记录表:
+  设 结果 为 []
+  遍历 记 之 记录表:
+    如果 字典获取(记, "origin", 空) == "subagent":
+      设 父 为 字典获取(记, "parentSession", 空)
+      如果 父 != 空:
+        如果 列表包含(结果, 父) == 假:
+          列表追加(结果, 父)
+  返回 结果
+
+# descendantCandidates：从完整树无递归构建前序定位候选。
+#   普通会话与 one-shot 子代都作途经节点（可续子代理藏在任何父之下都要被发现）；
+#   只有 origin=subagent 的候选进入定位表；兄弟按 created,id 有序；深度自根为 1。
+段落 后代候选 接收 记录表, 根标识:
+  设 邻接 为 {}
+  遍历 记 之 记录表:
+    设 父 为 字典获取(记, "parentSession", 空)
+    如果 父 != 空:
+      如果 字典包含键(邻接, 父) == 假:
+        字典设置(邻接, 父, [])
+      有序插入记录表(邻接[父], 记)
+  设 栈 为 []
+  设 首批 为 字典获取(邻接, 根标识, [])
+  设 位 为 长(首批) - 1
+  当 位 >= 0:
+    列表追加(栈, {"记": 首批[位], "父": 根标识, "深": 1})
+    设 位 为 位 - 1
+  设 已访 为 {}
+  字典设置(已访, 根标识, 真)
+  设 定位表 为 []
+  设 顶 为 长(栈) - 1
+  当 顶 >= 0:
+    设 帧 为 栈[顶]
+    设 顶 为 顶 - 1
+    设 标识 为 帧["记"]["id"]
+    如果 字典包含键(已访, 标识) == 假:
+      字典设置(已访, 标识, 真)
+      如果 字典获取(帧["记"], "origin", 空) == "subagent":
+        列表追加(定位表, {"记": 帧["记"], "父标识": 帧["父"], "深度": 帧["深"]})
+      设 子表 为 字典获取(邻接, 标识, [])
+      设 位 为 长(子表) - 1
+      当 位 >= 0:
+        列表追加(栈, {"记": 子表[位], "父": 标识, "深": 帧["深"] + 1})
+        设 位 为 位 - 1
+      设 顶 为 长(栈) - 1
+  返回 定位表
+
+# =====================================================================
+# §9 human inbox 准入与拒绝映射（index.ts prompt + control.ts —— 第48轮 任务2 追加）
+#   人工提示经浏览器控制面投给可续子代理：载荷校验 → 时区规范化 → 父可用判定 →
+#   组装持久消息源；拒绝一律映射到稳定 Remote 码词表。
+# =====================================================================
+
+# validateControlRequest 的方法键（control.ts CONTROL_ID_SCHEMAS）
+段落 控制方法表:
+  返回 ["subagent.list", "subagent.prompt", "subagent.interrupt"]
+
+# validateControlRequest 纯化：返回诊断串，空 = 合法（上游抛 RemoteError gateway/bad-request）
+#   list 只需非空父标识；prompt/interrupt 需父/子非空 + mode 必须为 continuable 判别；
+#   prompt 额外要求 delivery ∈ {queue, steer}
+段落 校验控制载荷 接收 方法, 载荷:
+  如果 列表包含(控制方法表(), 方法) == 假:
+    返回 "invalid payload for " + 方法
+  如果 是字典(载荷) == 假:
+    返回 "invalid payload for " + 方法
+  如果 控制非空串(字典获取(载荷, "parentSessionId", 空)) == 假:
+    返回 "invalid payload for " + 方法
+  如果 方法 != "subagent.list":
+    如果 控制非空串(字典获取(载荷, "childSessionId", 空)) == 假:
+      返回 "invalid payload for " + 方法
+    如果 字典获取(载荷, "mode", 空) != "continuable":
+      返回 "invalid payload for " + 方法
+  如果 方法 == "subagent.prompt":
+    设 交付 为 字典获取(载荷, "delivery", 空)
+    如果 交付 != "queue":
+      如果 交付 != "steer":
+        返回 "invalid payload for " + 方法
+  返回 ""
+
+# isCancellation：调用方已取消，或错误码 CANCELLED
+段落 是取消判定 接收 码, 已取消:
+  如果 已取消 == 真:
+    返回 真
+  返回 码 == "CANCELLED"
+
+# rejectCatalogRead 纯化：目录读拒绝 → Remote 码（取消与缺投影注册表各自成码，其余 internal）
+段落 目录读拒绝映射 接收 码:
+  如果 码 == "CANCELLED":
+    返回 "gateway/cancelled"
+  如果 码 == "SUBAGENT_CONTROL_PROJECTIONS_UNAVAILABLE":
+    返回 "subagent/projections-unavailable"
+  返回 "gateway/internal"
+
+# rejectPrompt 纯化：调用方可行动的准入失败保留专属码，其余一律 internal
+段落 提示拒绝映射 接收 码:
+  如果 码 == "CANCELLED":
+    返回 "gateway/cancelled"
+  如果 码 == "MODEL_DOES_NOT_SUPPORT_IMAGES":
+    返回 "subagent/attachment-invalid"
+  如果 码 == "NOT_RESUMABLE":
+    返回 "subagent/not-resumable"
+  如果 码 == "UNAUTHORIZED":
+    返回 "subagent/unauthorized"
+  如果 码 == "DRAINING":
+    返回 "subagent/delivery-unavailable"
+  如果 码 == "ACTIVATION_CLOSING":
+    返回 "subagent/delivery-unavailable"
+  如果 码 == "CONTINUATION_UNAVAILABLE":
+    返回 "subagent/delivery-unavailable"
+  如果 码 == "PERSISTENCE_UNAVAILABLE":
+    返回 "subagent/delivery-unavailable"
+  返回 "gateway/internal"
+
+# prompt 准入序列（index.ts prompt 纯化）：
+#   载荷校验（坏 → gateway/bad-request）→ clientTimeZone 规范化（UTC 或 IANA，坏 →
+#   subagent/invalid-time-zone）→ 父不在线（→ subagent/parent-unavailable）→
+#   组装持久源 {kind:"user", rpcId: requestId, clientTimeZone?}（时区仅在提供时携带）。
+#   返回 {"拒绝": Remote码 或 空, "源": 消息源 或 空}
+段落 提示准入 接收 载荷, 父可用:
+  设 诊断 为 校验控制载荷("subagent.prompt", 载荷)
+  如果 诊断 != "":
+    返回 {"拒绝": "gateway/bad-request", "源": 空}
+  设 时区 为 空
+  如果 字典包含键(载荷, "clientTimeZone") == 真:
+    设 时区 为 规范客户端时区(载荷["clientTimeZone"])
+    如果 时区 == 空:
+      返回 {"拒绝": "subagent/invalid-time-zone", "源": 空}
+  如果 父可用 == 假:
+    返回 {"拒绝": "subagent/parent-unavailable", "源": 空}
+  设 源 为 {"kind": "user", "rpcId": 字典获取(载荷, "requestId", 空)}
+  如果 时区 != 空:
+    字典设置(源, "clientTimeZone", 时区)
+  返回 {"拒绝": 空, "源": 源}
+
+# SubagentError 全码表（本复刻面涉及的错误码词表；§4 的 子代理错误码表 维持第16轮原状不动）
+段落 子代理全错误码表:
+  返回 ["ACTIVATION_CLOSING", "CANCELLED", "DUPLICATE_CHILD", "DUPLICATE_PROVIDER", "NO_PROVIDER", "UNAUTHORIZED", "NOT_RESUMABLE", "DRAINING", "CONTINUATION_UNAVAILABLE", "PERSISTENCE_UNAVAILABLE", "MODEL_DOES_NOT_SUPPORT_IMAGES"]

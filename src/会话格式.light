@@ -914,7 +914,218 @@ V3编解码["编码事件"] 为 编码V2事件
     列表追加(消息表, 消息)
   返回 ["节点表": 节点表, "消息表": 消息表]
 
+# =====================================================================
+# 14b. R48 任务1：消息产生事件投影 + append/replace 两种 surfaceOp 投影规则
+#      （对齐 surface.ts：isAppendSurfaceEvent / isReplacementSurfaceEvent /
+#       validateSurfaceMetadata + assertProvenance 事件级部分）
+#      加性对齐，不改 R47 已做的 投影节点0 / 遮蔽跳过 / 投影节点消息 / 是表面事件 / 是替换操作。
+# =====================================================================
+# 是否追加表面事件（align isAppendSurfaceEvent）：表面事件 且 surfaceOp 为字符串 "append"
+段落 是追加表面事件 接收 事件项:
+  如果 (是表面事件(事件项) == 假):
+    返回 假
+  返回 表面操作取值(事件项) == "append"
+
+# 是否替换表面事件（align isReplacementSurfaceEvent）：表面事件 且 surfaceOp 非 "append"
+#   （字符串 "replace" 或 字典 {"op":"replace",...} 均判替换；log-only 事件不算表面事件）
+段落 是替换表面事件 接收 事件项:
+  如果 (是表面事件(事件项) == 假):
+    返回 假
+  返回 表面操作取值(事件项) != "append"
+
+# 是否非负安全序号（align isEventSeq：Number.isSafeInteger && >=0 && 非 -0）
+段落 是非负安全序号 接收 值:
+  如果 (是数字(值) == 假):
+    返回 假
+  如果 (是负零(值) == 真):
+    返回 假
+  如果 (是整数(值) == 假):
+    返回 假
+  返回 值 >= 0
+
+# 校验表面标记（align surfaceOpOf + validateSurfaceMetadata + assertProvenance 事件级部分）：
+#   返回 surfaceOp（"append" 或 替换字典）；非表面事件返回 空；违规抛错。
+#   规则：
+#   - 表面可入类型 但 缺 surfaceOp 标记 → 抛「requires a surfaceOp marker」
+#   - 表面可入类型 + 非法 surfaceOp（非 append、非合法 replace 字典）→ 抛「invalid surfaceOp」
+#   - replace 字典须含 op/startSeq/endSeq，且 startSeq/endSeq 为更早的非负安全序号
+#   - 非表面事件 携带 surfaceOp / 来源事件序号 → 抛（未知可忽略事件除外）
+#   - 来源事件序号（sourceEventSeqs）须为数组、非空、全为更早的非负安全序号、无重复
+段落 校验表面标记 接收 事件项:
+  设 种类 为 事件项["类型"]
+  设 数据 为 事件项.获取("数据", 空)
+  设 原操作 为 空
+  如果 (是字典(数据) == 真) 且 (字典包含键(数据, "表面操作") == 真):
+    设 原操作 为 数据["表面操作"]
+  否则如果 (事件项.包含("表面操作") == 真):
+    设 原操作 为 事件项["表面操作"]
+  否则如果 (事件项.包含("surfaceOp") == 真):
+    设 原操作 为 事件项["surfaceOp"]
+  如果 (表面可入类型(种类) == 假):
+    # 非表面事件：未知可忽略事件可保留不透明元数据，但不得携带 surfaceOp / 来源事件序号
+    如果 (原操作 != 空):
+      抛出 新建 错误("session event \"" + 种类 + "\" is not surface-eligible and cannot carry surfaceOp")
+    如果 (事件项.包含("来源事件序号") == 真):
+      抛出 新建 错误("session event \"" + 种类 + "\" is not surface-eligible and cannot carry sourceEventSeqs")
+    返回 空
+  如果 (原操作 == 空):
+    抛出 新建 错误("session event \"" + 种类 + "\" is surface-eligible and requires a surfaceOp marker")
+  如果 (原操作 == "append"):
+    设 占 为 校验来源序号(事件项, 种类)  # 抑制L166
+    返回 "append"
+  如果 (是字典(原操作) == 假):
+    抛出 新建 错误("session event \"" + 种类 + "\" carries an invalid surfaceOp")
+  如果 (原操作.获取("op", "") != "replace"):
+    抛出 新建 错误("session event \"" + 种类 + "\" carries an invalid surfaceOp")
+  设 起 为 原操作.获取("startSeq", 空)
+  设 止 为 原操作.获取("endSeq", 空)
+  如果 (是非负安全序号(起) == 假) 或 (是非负安全序号(止) == 假):
+    抛出 新建 错误("session event \"" + 种类 + "\" carries an invalid replace surfaceOp")
+  如果 (起 >= 事件项["序号"]) 或 (止 >= 事件项["序号"]):
+    抛出 新建 错误("surface replace at seq " + 转字符串(事件项["序号"]) + ": startSeq and endSeq must reference earlier events")
+  # 来源事件序号 provenance（事件级部分；fold 级「须覆盖全部被遮蔽节点」由 fold 层负责）
+  设 占 为 校验来源序号(事件项, 种类)  # 抑制L166
+  返回 原操作
+
+# 来源事件序号 provenance 校验（align assertProvenance 事件级部分）：
+#   assistant/message 不得携带 来源事件序号；来源事件序号 须为数组、非空、全为更早的非负安全序号、无重复。
+段落 校验来源序号 接收 事件项, 种类:
+  如果 (种类 == "assistant/message") 且 (事件项.包含("来源事件序号") == 真):
+    抛出 新建 错误("assistant/message embeds its source stream and cannot carry sourceEventSeqs")
+  如果 (事件项.包含("来源事件序号") == 真):
+    设 源 为 事件项["来源事件序号"]
+    如果 (是列表(源) == 假):
+      抛出 新建 错误("sourceEventSeqs must be an array")
+    如果 (长度(源) == 0):
+      抛出 新建 错误("sourceEventSeqs must not be empty")
+    设 见 为 {}
+    遍历 序号 之 源:
+      如果 (是非负安全序号(序号) == 假):
+        抛出 新建 错误("sourceEventSeqs must contain non-negative safe integers")
+      如果 (序号 >= 事件项["序号"]):
+        抛出 新建 错误("sourceEventSeqs must reference earlier events: " + 转字符串(序号) + " >= current seq " + 转字符串(事件项["序号"]))
+      如果 (字典包含键(见, 序号) == 真):
+        抛出 新建 错误("sourceEventSeqs must not contain duplicates")
+      见[序号] 为 真
+  返回 真
+
+# 消息产生事件投影（align deriveMessages over surface）：返回非空的模型可见消息表
+#   复用 投影表面消息 的 消息表（节点0 系统消息前置 + 逐节点投影 + 遮蔽跳过）。
+段落 投影消息产生 接收 事件表:
+  设 结果 为 投影表面消息(事件表)
+  返回 结果["消息表"]
+
+# =====================================================================
+# 15. R48 任务4：V3 系统头/节点0 role 形状 + V2→V3 迁移补验
+#      （对齐 session-format-v2-to-v3/validation.ts：节点0 必须是 system/message 且 role 为 system；
+#       系统头保护：system/message 须落在开启的 step 内、首条 surface 须为受保护系统头、
+#       replace 须精确覆盖 head、非系统替换不得遮蔽 head）
+# =====================================================================
+# 节点0 role 形状校验：首个非遮蔽表面事件必须是 system/message 且其派生消息 role == "system"
+段落 校验节点0角色形状 接收 事件表:
+  设 节点0事件 为 空
+  设 已找 为 假
+  遍历 事件项 之 事件表:
+    如果 (已找 == 真):
+      继续
+    设 被遮蔽 为 事件项.包含("遮蔽") 且 事件项["遮蔽"]
+    如果 (被遮蔽 == 真):
+      继续
+    如果 (是表面事件(事件项) == 假):
+      继续
+    设 节点0事件 为 事件项
+    设 已找 为 真
+  如果 (节点0事件 == 空):
+    抛出 新建 错误("surface node 0 must be a system/message; no surface event found")
+  如果 (节点0事件["类型"] != "system/message"):
+    抛出 新建 错误("surface node 0 must be a system/message; got " + 节点0事件["类型"])
+  设 消息 为 投影节点消息(节点0事件)
+  如果 (消息 == 空):
+    抛出 新建 错误("surface node 0 system/message must produce a message")
+  如果 (消息.获取("角色", "") != "system"):
+    抛出 新建 错误("surface node 0 system/message role must be 'system'")
+  返回 真
+
+# V3 系统头保护（align restoreReleasedV3Artifact 系统头部分）：
+#   首条 surface 事件须为受保护系统头；system/message 须落在开启的 step 内；
+#   replace（system 或非 system）不得错误遮蔽 head。返回 真，违规抛错。
+段落 校验V3系统头 接收 事件表:
+  设 有表面 为 假
+  设 头 为 空
+  设 步 为 空
+  遍历 事件项 之 事件表:
+    设 种类 为 事件项["类型"]
+    设 数据 为 事件项.获取("数据", 空)
+    如果 (种类 == "step/start"):
+      如果 (是字典(数据) == 真):
+        设 步 为 ["turn": 数据.获取("turn", 空), "step": 数据.获取("step", 空)]
+      否则:
+        设 步 为 空
+    否则如果 (种类 == "step/end") 或 (种类 == "turn/end"):
+      设 步 为 空
+    如果 (种类 == "system/message"):
+      如果 (是字典(数据) == 真) 且 (字典包含键(数据, "turn") == 真) 且 (字典包含键(数据, "step") == 真):
+        如果 (步 == 空) 或 (步["turn"] != 数据["turn"]) 或 (步["step"] != 数据["step"]):
+          抛出 新建 错误("system/message does not match an open step")
+      设 操作 为 表面操作取值(事件项)
+      如果 (有表面 == 真) 且 (头 == 空):
+        抛出 新建 错误("system/message requires a protected first surface head")
+      如果 (操作 == "append"):
+        如果 (有表面 == 假):
+          设 头 为 事件项["序号"]
+      否则:
+        设 替换 为 操作
+        如果 (替换 == 空) 或 (是字典(替换) == 假):
+          抛出 新建 错误("system/message carries an invalid surfaceOp")
+        设 起 为 替换.获取("startSeq", 空)
+        设 止 为 替换.获取("endSeq", 空)
+        如果 (起 == 头) 或 (止 == 头):
+          如果 (起 != 头) 或 (止 != 头):
+            抛出 新建 错误("system/message must replace exactly the current system head")
+          设 头 为 事件项["序号"]
+    否则如果 (是表面事件(事件项) == 真) 且 (表面操作取值(事件项) != "append"):
+      设 替换 为 表面操作取值(事件项)
+      如果 (是字典(替换) == 真):
+        设 起 为 替换.获取("startSeq", 空)
+        设 止 为 替换.获取("endSeq", 空)
+        如果 (起 == 头) 或 (止 == 头):
+          抛出 新建 错误("surface replacement cannot shadow the protected system head")
+    如果 (是表面事件(事件项) == 真):
+      设 有表面 为 真
+  返回 真
+
+# V2→V3 迁移补验（align validateTargetHeader: assertReleasedV3Header + 系统提示提升完备性）：
+#   目标头须为 v3；目标事件序号须密集 0..n-1；目标须通过 V3 系统头校验；
+#   若源 v2 在 request/header 携带系统提示（系统提示/system），目标节点0 须反映该提示。
+#   返回 真，违规抛错。
+段落 补验V2V3迁移 接收 源头, 源事件表, 目标头, 目标事件表:
+  如果 (目标头["版本"]["主"] != 3) 或 (目标头["版本"]["次"] != 0):
+    抛出 新建 错误("v2->v3 migration target header must be format v3")
+  设 n 为 长度(目标事件表)
+  设 i 为 0
+  当 i < n:
+    如果 (目标事件表[i]["序号"] != i):
+      抛出 新建 错误("v2->v3 migration must emit dense seqs")
+    设 i 为 i + 1
+  设 占 为 校验V3系统头(目标事件表)  # 抑制L166
+  设 源提示 为 空
+  遍历 事件项 之 源事件表:
+    如果 (事件项["类型"] == "request/header"):
+      设 数据 为 事件项.获取("数据", 空)
+      如果 (是字典(数据) == 真):
+        如果 (字典包含键(数据, "系统提示") == 真) 且 (数据["系统提示"] != ""):
+          设 源提示 为 数据["系统提示"]
+        否则如果 (是字典(数据.获取("header", 空)) == 真) 且 (数据["header"].包含("system") == 真) 且 (数据["header"]["system"] != ""):
+          设 源提示 为 数据["header"]["system"]
+  如果 (源提示 != 空):
+    设 节点0 为 投影节点0(目标事件表)
+    如果 (节点0 != 源提示):
+      抛出 新建 错误("v2->v3 migration must promote system prompt to node 0")
+  返回 真
+
 # 导出清单
+导出 是追加表面事件, 是替换表面事件, 是非负安全序号, 校验表面标记, 投影消息产生
+导出 校验节点0角色形状, 校验V3系统头, 补验V2V3迁移
 导出 安全整数, 非负整数, 判版本, 版本文本, 同版本, 版本小, 校验快照
 导出 中断轮闭合器, 恢复码工具未启动, 恢复码结果未知
 导出 事件词汇表, 已知事件类型, 校验事件载荷

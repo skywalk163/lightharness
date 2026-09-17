@@ -1,0 +1,159 @@
+# test_R48_会话V3迁移.light —— R48 任务4：V3 系统头/节点0 role 形状 + V2→V3 迁移补验
+#
+# 上游依据（G:\github\deepseek-harness，0.1.5-rc.2）：
+#   packages/session/session-format-v2-to-v3/src/{migration.ts,validation.ts}
+#     emitSystem（系统提示提升为节点0 system/message）/ restoreReleasedV3Artifact（节点0 系统头保护）
+#
+# 覆盖：
+#   §1 节点0 role 形状校验（校验节点0角色形状）：首个表面事件须为 system/message 且 role == "system"
+#   §2 V3 系统头保护（校验V3系统头）：首条 surface 须为受保护系统头 / replace 须精确覆盖 head / 非系统替换不得遮蔽 head
+#   §3 V2→V3 迁移补验（补验V2V3迁移）：目标头须 v3 + 密集序号 + 节点0 反映源系统提示
+#
+# 反跑判据：把任一 断言真 的期望值改成「应抛错却通过」即红；把抛错分支的文案断言改反即红。
+# 运行：cd lightharness && python 运行.py examples/test_R48_会话V3迁移.light
+
+从 会话格式 导入 造事件, 造头
+从 会话格式 导入 校验节点0角色形状, 校验V3系统头, 补验V2V3迁移
+从 JSON 导入 序列化JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 (实际 != 期望):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 (条件 == 假):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]")
+
+# 含子串（判据文案核对用）
+段落 含子串 接收 原文, 子串:
+  设 n 为 长度(原文)
+  设 m 为 长度(子串)
+  如果 m == 0:
+    返回 真
+  设 i 为 0
+  当 i + m <= n:
+    如果 原文[i:(i+m)] == 子串:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+段落 主程:
+  # ================= §1 节点0 role 形状校验 =================
+  # 1a 节点0 = system/message（本地形状）→ 通过
+  设 表a 为 []
+  列表追加(表a, 造事件("system/message", 0, 1, ["系统": "S", "表面操作": "append"]))
+  断言真(校验节点0角色形状(表a), "1a 节点0 system 通过")
+
+  # 1b 节点0 = user/message → 抛「must be a system/message」
+  设 表b 为 []
+  列表追加(表b, 造事件("user/message", 0, 1, ["消息": ["角色": "user", "content": [["type": "text", "text": "hi"]]]]))
+  设 文b 为 ""
+  尝试:
+    设 占b 为 校验节点0角色形状(表b)
+    抛出 新建 错误("反跑判据失败[1b]：应抛错却通过")
+  捕获 异常 eb:
+    设 文b 为 转字符串(eb)
+  断言真(含子串(文b, "must be a system/message"), "1b 节点0 非 system 抛错")
+
+  # 1c 节点0 = system/message 但 role != system（canonical 形状）→ 抛「role must be 'system'」
+  设 表c 为 []
+  列表追加(表c, 造事件("system/message", 0, 1, ["消息": ["角色": "user", "content": [["type": "text", "text": "x"]]]]))
+  设 文c 为 ""
+  尝试:
+    设 占c 为 校验节点0角色形状(表c)
+    抛出 新建 错误("反跑判据失败[1c]：应抛错却通过")
+  捕获 异常 ec:
+    设 文c 为 转字符串(ec)
+  断言真(含子串(文c, "role must be 'system'"), "1c 节点0 role 非 system 抛错")
+
+  # 1d 空事件表 → 抛「no surface event found」
+  设 表d 为 []
+  设 文d 为 ""
+  尝试:
+    设 占d 为 校验节点0角色形状(表d)
+    抛出 新建 错误("反跑判据失败[1d]：应抛错却通过")
+  捕获 异常 ed:
+    设 文d 为 转字符串(ed)
+  断言真(含子串(文d, "no surface event found"), "1d 无表面事件抛错")
+
+  # ================= §2 V3 系统头保护 =================
+  # 2a 仅节点0 system/message（append）→ 通过
+  设 表e 为 []
+  列表追加(表e, 造事件("system/message", 0, 1, ["系统": "S", "表面操作": "append"]))
+  断言真(校验V3系统头(表e), "2a 仅系统头通过")
+
+  # 2b 首条 surface 为用户消息，其后 system/message → 抛「requires a protected first surface head」
+  设 表f 为 []
+  列表追加(表f, 造事件("user/message", 0, 1, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]]]))
+  列表追加(表f, 造事件("system/message", 1, 2, ["系统": "S", "表面操作": "append"]))
+  设 文f 为 ""
+  尝试:
+    设 占f 为 校验V3系统头(表f)
+    抛出 新建 错误("反跑判据失败[2b]：应抛错却通过")
+  捕获 异常 ef:
+    设 文f 为 转字符串(ef)
+  断言真(含子串(文f, "requires a protected first surface head"), "2b 首条须为系统头抛错")
+
+  # 2c system replace 范围未精确覆盖 head（startSeq=0,endSeq=1）→ 抛「must replace exactly the current system head」
+  设 表g 为 []
+  列表追加(表g, 造事件("system/message", 0, 1, ["系统": "S0", "表面操作": "append"]))
+  列表追加(表g, 造事件("system/message", 1, 2, ["系统": "S1", "表面操作": ["op": "replace", "startSeq": 0, "endSeq": 1]]))
+  设 文g 为 ""
+  尝试:
+    设 占g 为 校验V3系统头(表g)
+    抛出 新建 错误("反跑判据失败[2c]：应抛错却通过")
+  捕获 异常 eg:
+    设 文g 为 转字符串(eg)
+  断言真(含子串(文g, "must replace exactly the current system head"), "2c replace 须精确覆盖 head 抛错")
+
+  # 2d 非系统替换恰好遮蔽 head（startSeq=endSeq=0）→ 抛「cannot shadow the protected system head」
+  设 表h 为 []
+  列表追加(表h, 造事件("system/message", 0, 1, ["系统": "S0", "表面操作": "append"]))
+  列表追加(表h, 造事件("user/message", 1, 2, ["消息": ["角色": "user", "content": [["type": "text", "text": "u"]]],
+    "表面操作": ["op": "replace", "startSeq": 0, "endSeq": 0]]))
+  设 文h 为 ""
+  尝试:
+    设 占h 为 校验V3系统头(表h)
+    抛出 新建 错误("反跑判据失败[2d]：应抛错却通过")
+  捕获 异常 eh:
+    设 文h 为 转字符串(eh)
+  断言真(含子串(文h, "cannot shadow the protected system head"), "2d 非系统替换不得遮蔽 head 抛错")
+
+  # ================= §3 V2→V3 迁移补验 =================
+  # 3a 合法：源 v2 带系统提示，目标 v3 节点0 反映该提示 → 通过
+  设 源头 为 造头(2, 0, "v3s", 100, ".", 空, 空, 假)
+  设 源事件 为 []
+  列表追加(源事件, 造事件("request/header", 0, 1, ["配置": ["model": "x"], "系统提示": "你是助手"]))
+  列表追加(源事件, 造事件("tool/call", 1, 2, ["名称": "t", "输入": {}]))
+  设 目标头 为 造头(3, 0, "v3t", 100, ".", 空, 空, 假)
+  设 目标事件 为 []
+  列表追加(目标事件, 造事件("system/message", 0, 1, ["系统": "你是助手", "表面操作": "append"]))
+  列表追加(目标事件, 造事件("tool/call", 1, 2, ["名称": "t", "输入": {}]))
+  断言真(补验V2V3迁移(源头, 源事件, 目标头, 目标事件), "3a 迁移补验通过")
+
+  # 3b 目标头非 v3 → 抛「must be format v3」
+  设 坏头 为 造头(2, 0, "v3b", 100, ".", 空, 空, 假)
+  设 文b2 为 ""
+  尝试:
+    设 占 为 补验V2V3迁移(源头, 源事件, 坏头, 目标事件)
+    抛出 新建 错误("反跑判据失败[3b]：应抛错却通过")
+  捕获 异常 e1:
+    设 文b2 为 转字符串(e1)
+  断言真(含子串(文b2, "must be format v3"), "3b 目标头须 v3 抛错")
+
+  # 3c 目标节点0 未反映源系统提示 → 抛「must promote system prompt to node 0」
+  设 目标事件坏 为 []
+  列表追加(目标事件坏, 造事件("system/message", 0, 1, ["系统": "别的提示", "表面操作": "append"]))
+  列表追加(目标事件坏, 造事件("tool/call", 1, 2, ["名称": "t", "输入": {}]))
+  设 文c2 为 ""
+  尝试:
+    设 占 为 补验V2V3迁移(源头, 源事件, 目标头, 目标事件坏)
+    抛出 新建 错误("反跑判据失败[3c]：应抛错却通过")
+  捕获 异常 e2:
+    设 文c2 为 转字符串(e2)
+  断言真(含子串(文c2, "must promote system prompt to node 0"), "3c 节点0 须反映系统提示抛错")
+
+  写 "test_R48_会话V3迁移: 全部用例通过"
+  返回 真
+
+主程()
