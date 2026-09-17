@@ -2721,6 +2721,15 @@
    "状态": "已完成",
    "完成轮次": "第52轮",
    "备注": "任务4。TerminalView/Issue/RenderFrame/State+TerminalFollower/CloseRequests。不接真实PTY。双平台rc=0。"
+  },
+  {
+   "编号": 192,
+   "功能": "L-172编译器静默阻断修复（模块级裸引用入口名抑制主()自动调用）",
+   "原模块": "编译器codegen入口自动调用判定",
+   "光明模块": "light-merge/src/code_generator.py + cli/light.py",
+   "状态": "已完成",
+   "完成轮次": "第53轮",
+   "备注": "任务1/2。修复_module_invokes_entry/_node_calls_name把裸引用Identifier误判为已启动入口的bug，改为只认真正的ParagraphCall调用；带形参入口改为编译期告警不再静默跳过。复现用例examples/test_L172.light红绿双向取证。全量pytest零新增红，0.82跨平台通过。"
   }
  ]
 }
