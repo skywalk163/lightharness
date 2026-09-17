@@ -2,7 +2,7 @@
   "schema": 3,
   "round": "R55",
   "mode": "gate",
-  "generated_at": "2026-09-18T00:33:41+0800",
+  "generated_at": "2026-09-18T00:43:47+0800",
   "local_platform": {
     "os": "Windows",
     "release": "10",
@@ -16,7 +16,7 @@
     "socket_ipv6": true
   },
   "local": {
-    "baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\本机lh基线_2026-09-18-003341.json",
+    "baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\本机lh基线_2026-09-18-004347.json",
     "totals": {
       "total": 1272,
       "failure": 7,
@@ -29,8 +29,8 @@
       "duration_sec": 1493.722
     },
     "diff": {
-      "base_generated_at": "2026-09-18T00:32:36+08:00",
-      "new_generated_at": "2026-09-18T00:33:41+08:00",
+      "base_generated_at": "2026-09-18T00:30:14+08:00",
+      "new_generated_at": "2026-09-18T00:43:47+08:00",
       "base_total": 1272,
       "new_total": 1272,
       "base_failed": 7,
@@ -54,7 +54,7 @@
     "first_run": false
   },
   "remote": {
-    "baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_2026-09-18-005728.json",
+    "baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_2026-09-18-010728.json",
     "totals": {
       "total": 7806,
       "failure": 107,
@@ -64,11 +64,11 @@
       "xpassed": 0,
       "passed": 7597,
       "failed": 116,
-      "duration_sec": 1418.197
+      "duration_sec": 1419.509
     },
     "diff": {
       "base_generated_at": "2026-09-18T00:24:28+08:00",
-      "new_generated_at": "2026-09-18T00:57:28+08:00",
+      "new_generated_at": "2026-09-18T01:07:28+08:00",
       "base_total": 7806,
       "new_total": 7806,
       "base_failed": 117,
@@ -200,14 +200,14 @@
       "ok": true
     },
     "ok": true,
-    "elapsed_sec": 1426.0,
+    "elapsed_sec": 1426.7,
     "first_run": false
   },
   "gate": {
     "local_ok": true,
     "remote_ok": true,
     "ok": true,
-    "elapsed_sec": 1426.1,
+    "elapsed_sec": 1426.8,
     "judge": "两侧各自与自身上一份基线比新增红，均为 0 才通过"
   }
 }
