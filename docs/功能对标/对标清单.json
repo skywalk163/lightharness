@@ -409,9 +409,9 @@
   {
    "编号": 20,
    "功能": "代码执行运行时（code-runtime）",
-   "原版包": "packages/code-runtime",
+   "原版包": "packages/ptc-runtime（0.1.6-alpha.1 起由 packages/code-runtime 改名；0.1.5 时为 packages/code-runtime）",
    "光明模块": "src/代码运行时.light",
-   "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植",
+   "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植",
    "证据": [
     "src/代码运行时.light",
     "examples/test_代码运行时.light",
@@ -426,7 +426,7 @@
    "功能": "e2b 云沙箱客户端（e2b）",
    "原版包": "packages/e2b",
    "光明模块": "src/e2b客户端.light",
-   "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植",
+   "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应",
    "证据": [
     "src/e2b客户端.light",
     "examples/test_e2b.light",
@@ -1074,7 +1074,7 @@
    "功能": "e2b 沙箱配套纯逻辑（e2b：转义外壳实参/受控环境变量 HOME 随机路径/配置校验 validate；subprocess-e2b：按时收讫 withinMs 投影、命令文本 commandText 编码器行+重定向+引导脚本+argv 引号、输出解码器 base64 帧解析、输出读者 maxBytes/maxSpillBytes/偏移/lossy；fs-e2b：行尾归一化/解码文本/解码规范路径/字面编辑/FS_TOO_LARGE 预算）",
    "原版包": "packages/e2b/e2b/src/index.ts + subprocess-e2b/src/(process.ts+output.ts) + fs-e2b/src/index.ts",
    "光明模块": "src/e2b配套.light",
-   "状态": "done；0.1.5登记：e2b 配套宿主变更未移植；0.1.5第5轮确认：e2b 配套宿主维持登记不移植",
+   "状态": "done；0.1.5登记：e2b 配套宿主变更未移植；0.1.5第5轮确认：e2b 配套宿主维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b，e2b 配套宿主变更的「维持登记不移植」记账作废，改记「上游已移除」",
    "证据": [
     "src/e2b配套.light",
     "examples/test_e2b配套.light"
@@ -1589,9 +1589,9 @@
   {
    "编号": 84,
    "功能": "experimental/code-runtime-python 协议层（fd3 JSON-lines 帧编解码 + 无损校验）",
-   "原版包": "experimental/code-runtime-python/src/protocol.ts",
+   "原版包": "experimental/ptc-runtime-python/src/protocol.ts（0.1.6-alpha.1 起由 experimental/code-runtime-python 改名）",
    "光明模块": "src/代码运行时协议.light",
-   "状态": "done；0.1.5第12轮：PROTOCOL_FD=3 消息族（Boot/Run/BootAck/Call/Log/Done）帧编解码 + 方向判别（ChildToHost vs Reply Ok/Err）+ WIRE_FRAME_FIELDS 字段名册必填/可选校验 + 无损 JSON 编码（encodeJsonPlain/checkDoneValue 超预算与 non-lossless 拒绝/截断标记/数值无损性）；第11轮遗留「code-runtime-python 协议」收口",
+   "状态": "done；0.1.5第12轮：PROTOCOL_FD=3 消息族（Boot/Run/BootAck/Call/Log/Done）帧编解码 + 方向判别（ChildToHost vs Reply Ok/Err）+ WIRE_FRAME_FIELDS 字段名册必填/可选校验 + 无损 JSON 编码（encodeJsonPlain/checkDoneValue 超预算与 non-lossless 拒绝/截断标记/数值无损性）；第11轮遗留「code-runtime-python 协议」收口；0.1.6记账（R51任务4）：上游包改名为 experimental/ptc-runtime-python，协议层语义不变（fd3 JSON-lines 帧面已由 #84 覆盖）；0.1.6 新增的 ptc-runtime/ptc-runtime 保留字表+PtcRun 契约见 #187",
    "证据": [
     "src/代码运行时协议.light",
     "examples/test_代码运行时协议.light"
@@ -2658,6 +2658,33 @@
    "状态": "已完成",
    "完成轮次": "第50轮",
    "备注": "任务1。5轮真HTTP往返+4次真工具调用（bash echo/写文件/读文件/bash cat），工具结果回LLM续跑。修：Windows无cat命令改两层一致；沙箱路径提取。双平台rc=0。"
+  },
+  {
+   "编号": 185,
+   "功能": "image/offload事件+图像卸载投影（0.1.6 P0硬兼容）",
+   "原模块": "compaction/compaction-image-offload",
+   "光明模块": "lightharness/src/会话格式.light + src/压缩.light",
+   "状态": "已完成",
+   "完成轮次": "第51轮",
+   "备注": "任务1。认识image/offload事件+offloadOldestImages纯函数+投影。不做就读不了0.1.6日志。双平台rc=0。"
+  },
+  {
+   "编号": 186,
+   "功能": "mcp-resources（renderResourceResult+资源工具）",
+   "原模块": "mcp/mcp-resources",
+   "光明模块": "lightharness/src/mcp客户端.light",
+   "状态": "已完成",
+   "完成轮次": "第51轮",
+   "备注": "任务2。renderResourceResult→ContentBlock[]+资源工具请求构造。不接真实MCP网络IO。双平台rc=0。"
+  },
+  {
+   "编号": 187,
+   "功能": "ptc-runtime保留字表+PtcRun契约",
+   "原模块": "ptc-runtime/ptc-runtime",
+   "光明模块": "lightharness/src/代码运行时.light",
+   "状态": "已完成",
+   "完成轮次": "第51轮",
+   "备注": "任务3。PORTABLE_RESERVED_WORDS保留字表+PtcRunRequest/Spec/Sandbox/Failure/Result契约。不改#84已覆盖protocol。双平台rc=0。"
   }
  ]
 }

@@ -1,0 +1,167 @@
+# test_R51_mcp资源.light —— R51 任务2：MCP 资源域（renderResourceResult + 资源工具请求构造）
+#
+# 上游依据（G:\github\deepseek-harness，0.1.6-alpha.1 = ea53423b60 / fork 合并 c47b24803e）：
+#   packages/mcp/mcp-resources/src/render.ts  — renderResourceResult(server, value): ContentBlock[]
+#   packages/mcp/mcp-resources/src/tools.ts   — list_mcp_resources / list_mcp_resource_templates /
+#                                               read_mcp_resource 的参数模式与请求构造
+#   packages/mcp/mcp-resources/src/index.ts   — McpResourceRequest / 系统提示段文案 / 作用域不可用文案
+#
+# 覆盖：
+#   §1 二进制占位与递归替换（blob 字符串 → 占位；非字符串 blob 不动）
+#   §2 紧凑 JSON 分隔符（逐字对齐 JSON.stringify：无空格）
+#   §3 渲染资源结果（单文本块 + "MCP server: <名>\n" 前缀）
+#   §4 三个资源工具的元数据（名称顺序/描述/方法）
+#   §5 参数模式（server 必选；read 额外 uri 必选）
+#   §6 请求构造（list / templates / read；cursor 给出才带）
+#   §7 系统提示段（空表不渲染；名称升序；文案逐字）
+#   §8 作用域不可用文案
+#   §9 注册装配（假注册表 3 个定义 + 端到端：模型参数 → 请求字典 → 渲染块表）
+#
+# 反跑判据：把任一 断言相等 的期望文案改反即红；把 blob 占位的字符数改错即红。
+# 运行：cd lightharness && python 运行.py examples/test_R51_mcp资源.light
+
+从 mcp客户端 导入 资源二进制占位, 替换资源二进制, 紧凑JSON, 渲染资源结果
+从 mcp客户端 导入 资源工具名表, 是资源工具名, 资源工具描述, 资源工具方法, 资源工具参数模式
+从 mcp客户端 导入 造资源请求, 资源服务器系统提示段, 资源服务器不可用消息, 注册资源工具
+从 JSON 导入 序列化JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 (实际 != 期望):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真 接收 条件, 标签:
+  如果 (条件 == 假):
+    抛出 新建 错误("反跑判据失败[" + 标签 + "]")
+
+# 假注册表：只记录定义，验证装配面
+类 假注册表:
+  属性 定义表 等于 空
+  段落 构造:
+    设 己.定义表 为 []
+  段落 注册 接收 工具定义项:
+    己.定义表.追加(工具定义项)
+    返回 真
+
+# 桩：记录收到的 (服务器, 请求) 并返回固定 JSON 值
+类 桩请求:
+  属性 记录 等于 空
+  段落 构造:
+    设 己.记录 为 []
+  段落 执行 接收 服务器, 请求:
+    己.记录.追加(["服务器": 服务器, "请求": 请求])
+    如果 请求["method"] == "resources/read":
+      返回 ["contents": [["uri": 请求["uri"], "mimeType": "text/plain", "text": "hello"]]]
+    返回 ["resources": [["uri": "file:///a", "name": "a"]]]
+
+段落 主程:
+  # =====================================================================
+  # §1 二进制占位
+  # =====================================================================
+  断言相等(资源二进制占位("AAAA"), "[binary resource: 4 base64 characters; available to programmatic callers]", "1a_占位文案")
+  设 值1 为 ["blob": "AAAA", "uri": "file:///a", "内容": ["blob": "BB"]]
+  设 改写1 为 替换资源二进制(值1)
+  断言相等(改写1["blob"], 资源二进制占位("AAAA"), "1b_顶层 blob 被替换")
+  断言相等(改写1["uri"], "file:///a", "1c_非 blob 键不动")
+  断言相等(改写1["内容"]["blob"], 资源二进制占位("BB"), "1d_嵌套 blob 被替换")
+  断言相等(值1["blob"], "AAAA", "1e_原值不被就地改写")
+  设 值2 为 ["blob": 123, "表": [["blob": "CC"]]]
+  设 改写2 为 替换资源二进制(值2)
+  断言相等(改写2["blob"], 123, "1f_非字符串 blob 不替换")
+  断言相等(改写2["表"][0]["blob"], 资源二进制占位("CC"), "1g_列表内嵌套 blob 被替换")
+
+  # =====================================================================
+  # §2 紧凑 JSON（对齐 JSON.stringify 默认分隔符）
+  # =====================================================================
+  断言相等(紧凑JSON(["a": 1, "b": [1, 2]]), "{\"a\":1,\"b\":[1,2]}", "2a_字典与列表无空格")
+  断言相等(紧凑JSON([1, 2, 3]), "[1,2,3]", "2b_列表无空格")
+  断言相等(紧凑JSON("x"), "\"x\"", "2c_字符串带引号")
+  断言相等(紧凑JSON(真), "true", "2d_布尔小写")
+  断言相等(紧凑JSON(空), "null", "2e_空为 null")
+  断言相等(紧凑JSON([["a": "中"]]), "[{\"a\":\"中\"}]", "2f_非 ASCII 不转义")
+
+  # =====================================================================
+  # §3 渲染资源结果
+  # =====================================================================
+  设 块表 为 渲染资源结果("demo", ["contents": [["uri": "file:///a", "text": "hi"]]])
+  断言相等(长度(块表), 1, "3a_单块")
+  断言相等(块表[0]["type"], "text", "3b_文本块")
+  断言相等(块表[0]["text"], "MCP server: demo\n{\"contents\":[{\"uri\":\"file:///a\",\"text\":\"hi\"}]}", "3c_前缀+紧凑体")
+  设 块表2 为 渲染资源结果("img", ["blob": "QUJD"])
+  断言相等(块表2[0]["text"], "MCP server: img\n{\"blob\":\"[binary resource: 4 base64 characters; available to programmatic callers]\"}", "3d_blob 出历史")
+
+  # =====================================================================
+  # §4 工具元数据
+  # =====================================================================
+  断言相等(资源工具名表(), ["list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"], "4a_三工具名与顺序")
+  断言真(是资源工具名("read_mcp_resource"), "4b_识别资源工具")
+  断言真(是资源工具名("tools/list") == 假, "4c_非资源工具不识别")
+  断言相等(资源工具描述("list_mcp_resources"), "List resources available from an MCP server.", "4d_描述逐字")
+  断言相等(资源工具描述("list_mcp_resource_templates"), "List parameterized resource URI templates from an MCP server.", "4e_模板工具描述")
+  断言相等(资源工具描述("read_mcp_resource"), "Read an MCP resource by URI from the named server. Use a listed URI or an expanded resource template.", "4f_读取工具描述")
+  断言相等(资源工具方法("list_mcp_resources"), "resources/list", "4g_列表方法")
+  断言相等(资源工具方法("list_mcp_resource_templates"), "resources/templates/list", "4h_模板方法")
+  断言相等(资源工具方法("read_mcp_resource"), "resources/read", "4i_读取方法")
+
+  # =====================================================================
+  # §5 参数模式
+  # =====================================================================
+  设 模式甲 为 资源工具参数模式("list_mcp_resources")
+  断言相等(模式甲["required"], ["server"], "5a_列表仅 server 必选")
+  断言相等(模式甲["properties"]["server"]["description"], "Configured MCP server name.", "5b_server 描述")
+  断言相等(模式甲["properties"]["cursor"]["description"], "Continuation cursor returned by this server.", "5c_cursor 描述")
+  设 模式乙 为 资源工具参数模式("read_mcp_resource")
+  断言相等(模式乙["required"], ["server", "uri"], "5d_读取 server+uri 必选")
+  断言相等(模式乙["properties"]["uri"]["description"], "Resource URI to read.", "5e_uri 描述")
+
+  # =====================================================================
+  # §6 请求构造
+  # =====================================================================
+  断言相等(造资源请求("list_mcp_resources", ["server": "demo"]), ["method": "resources/list"], "6a_无光标")
+  断言相等(造资源请求("list_mcp_resources", ["server": "demo", "cursor": "c1"]), ["method": "resources/list", "cursor": "c1"], "6b_带光标")
+  断言相等(造资源请求("list_mcp_resource_templates", ["server": "demo"]), ["method": "resources/templates/list"], "6c_模板方法")
+  断言相等(造资源请求("read_mcp_resource", ["server": "demo", "uri": "file:///a"]), ["method": "resources/read", "uri": "file:///a"], "6d_读取请求")
+  断言相等(造资源请求("list_mcp_resources", 空), ["method": "resources/list"], "6e_无参数")
+  断言相等(长度(造资源请求("list_mcp_resources", ["cursor": 空])), 1, "6f_光标为空时省略")
+  设 文6 为 ""
+  尝试:
+    设 占 为 造资源请求("tools/list", 空)
+    抛出 新建 错误("反跑判据失败[6g]：应抛错却通过")
+  捕获 异常 e6:
+    设 文6 为 转字符串(e6)
+  断言真(长度(文6) > 0, "6g_未知工具名抛错")
+
+  # =====================================================================
+  # §7 系统提示段
+  # =====================================================================
+  断言相等(资源服务器系统提示段([]), "", "7a_无服务器不渲染")
+  设 提示段文 为 资源服务器系统提示段(["zeta", "alpha"])
+  断言相等(提示段文, "## MCP resource servers\n\nUse list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: [\"alpha\",\"zeta\"].", "7b_升序且文案逐字")
+
+  # =====================================================================
+  # §8 不可用文案
+  # =====================================================================
+  断言相等(资源服务器不可用消息("demo"), "MCP resource server \"demo\" is unavailable in this agent's scope", "8a_不可用文案")
+
+  # =====================================================================
+  # §9 注册装配 + 端到端（模型参数 → 请求字典 → 渲染块表）
+  # =====================================================================
+  设 注册表 为 新建 假注册表()
+  设 桩 为 新建 桩请求()
+  设 已注册 为 注册资源工具(注册表, 桩.执行)
+  断言相等(已注册, ["list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"], "9a_注册三个工具")
+  断言相等(长度(注册表.定义表), 3, "9b_注册表收到三个定义")
+  断言相等(注册表.定义表[0]["name"], "list_mcp_resources", "9c_定义名")
+  断言相等(注册表.定义表[0]["description"], 资源工具描述("list_mcp_resources"), "9d_定义描述")
+  断言相等(注册表.定义表[2]["parameters"]["required"], ["server", "uri"], "9e_读取定义参数")
+  设 执行函数 为 注册表.定义表[2]["execute"]
+  设 块表3 为 执行函数(["server": "demo", "uri": "file:///a"])
+  断言相等(长度(桩.记录), 1, "9f_桩被调用一次")
+  断言相等(桩.记录[0]["请求"], ["method": "resources/read", "uri": "file:///a"], "9g_请求字典正确")
+  断言相等(块表3[0]["text"], "MCP server: demo\n{\"contents\":[{\"uri\":\"file:///a\",\"mimeType\":\"text/plain\",\"text\":\"hello\"}]}", "9h_端到端渲染")
+  设 块表4 为 执行函数(["server": "demo", "uri": "file:///a"])
+  断言真(长度(桩.记录) == 2, "9i_可重复调用")
+
+  写 "test_R51_mcp资源: 全部用例通过"
+  返回 真
+
+主程()

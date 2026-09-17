@@ -493,3 +493,188 @@
       字典设置(已见光标, 下一, 真)
     设 序号 为 序号 + 1
   返回 结果
+
+# ============================================================
+# v2 资源域（R51 任务2）：对齐上游 0.1.6 packages/mcp/mcp-resources
+#
+#   上游来源（提交 ea53423b60 / fork 合并 c47b24803e）：
+#     src/render.ts   —— renderResourceResult(server, value): ContentBlock[]
+#     src/tools.ts    —— 三个共享资源工具 list_mcp_resources / list_mcp_resource_templates /
+#                        read_mcp_resource 的参数模式与请求构造
+#     src/index.ts    —— McpResourceRequest 契约 / 系统提示段文案 / 作用域不可用文案
+#
+#   纯逻辑面（本段）：结果渲染（二进制出历史、仅程序化可用）、工具元数据与请求构造、
+#     系统提示段、作用域不可用文案。
+#   宿主面维持不移植：Cordis Service/作用域分层（ScopedLayers/NamedEntries）、
+#     真实连接代次、工具注册的生命周期解绑器。
+#
+# ⚠️ 本地适配（登记为行为差异）：上游 parameters 用自有描述符 { type, required: true }，
+#   本仓工具注册表沿 JSON Schema 惯例（"properties" + "required" 数组），
+#   参数名/描述文案逐字对齐，仅描述符形状适配。
+# ============================================================
+
+# ---- 渲染：二进制载荷只在程序化调用可见，模型历史里只留描述 ----
+# 上游 replacer：key === 'blob' 且值为字符串 → 占位文案
+段落 资源二进制占位 接收 原文:
+  返回 "[binary resource: " + 转字符串(长度(原文)) + " base64 characters; available to programmatic callers]"
+
+# 递归替换任意层级的 blob 字符串（对齐 JSON.stringify 的 replacer 作用域：逐键、仅字符串）
+段落 替换资源二进制 接收 值:
+  如果 (是字典(值) == 真):
+    设 结果 为 {}
+    遍历 键 之 字典键列表(值):
+      设 子 为 值[键]
+      如果 (键 == "blob") 且 (是字符串(子) == 真):
+        字典设置(结果, 键, 资源二进制占位(子))
+      否则:
+        字典设置(结果, 键, 替换资源二进制(子))
+    返回 结果
+  如果 (是列表(值) == 真):
+    设 结果表 为 []
+    遍历 项 之 值:
+      列表追加(结果表, 替换资源二进制(项))
+    返回 结果表
+  返回 值
+
+# 紧凑 JSON（对齐 JS JSON.stringify 的默认分隔符：无空格）
+# 本仓 序列化JSON 走 Python json.dumps（", " / ": " 带空格），资源渲染需逐字对齐上游，故自备。
+段落 紧凑JSON 接收 值:
+  如果 (是字典(值) == 真):
+    设 部 为 []
+    遍历 键 之 字典键列表(值):
+      列表追加(部, 序列化JSON(键) + ":" + 紧凑JSON(值[键]))
+    返回 "{" + 连接字符串(部, ",") + "}"
+  如果 (是列表(值) == 真):
+    设 部 为 []
+    遍历 项 之 值:
+      列表追加(部, 紧凑JSON(项))
+    返回 "[" + 连接字符串(部, ",") + "]"
+  返回 序列化JSON(值)
+
+# 渲染资源结果（对齐 upstream renderResourceResult）：单文本块，前缀带服务器归属
+段落 渲染资源结果 接收 服务器, 值:
+  设 改写 为 替换资源二进制(值)
+  返回 [["type": "text", "text": "MCP server: " + 服务器 + "\n" + 紧凑JSON(改写)]]
+
+# ---- 三个共享资源工具的元数据（名称/描述逐字对齐）----
+设 资源工具表 为 [
+  ["名称": "list_mcp_resources",
+   "描述": "List resources available from an MCP server.",
+   "方法": "resources/list",
+   "形态": "列表"],
+  ["名称": "list_mcp_resource_templates",
+   "描述": "List parameterized resource URI templates from an MCP server.",
+   "方法": "resources/templates/list",
+   "形态": "列表"],
+  ["名称": "read_mcp_resource",
+   "描述": "Read an MCP resource by URI from the named server. Use a listed URI or an expanded resource template.",
+   "方法": "resources/read",
+   "形态": "读取"]
+]
+
+段落 资源工具名表:
+  设 名表 为 []
+  遍历 项 之 资源工具表:
+    列表追加(名表, 项["名称"])
+  返回 名表
+
+段落 是资源工具名 接收 名:
+  返回 列表包含(资源工具名表(), 名)
+
+段落 资源工具项 接收 名:
+  遍历 项 之 资源工具表:
+    如果 项["名称"] == 名:
+      返回 项
+  返回 空
+
+段落 资源工具描述 接收 名:
+  设 项 为 资源工具项(名)
+  如果 项 == 空:
+    返回 ""
+  返回 项["描述"]
+
+段落 资源工具方法 接收 名:
+  设 项 为 资源工具项(名)
+  如果 项 == 空:
+    返回 ""
+  返回 项["方法"]
+
+# 参数模式（JSON Schema 形状；参数名与描述逐字对齐上游）
+段落 资源工具参数模式 接收 名:
+  设 服务器属性 为 ["type": "string", "description": "Configured MCP server name."]
+  如果 名 == "read_mcp_resource":
+    设 属性 为 {}
+    字典设置(属性, "server", 服务器属性)
+    字典设置(属性, "uri", ["type": "string", "description": "Resource URI to read."])
+    返回 ["type": "object", "properties": 属性, "required": ["server", "uri"]]
+  设 属性 为 {}
+  字典设置(属性, "server", 服务器属性)
+  字典设置(属性, "cursor", ["type": "string", "description": "Continuation cursor returned by this server."])
+  返回 ["type": "object", "properties": 属性, "required": ["server"]]
+
+# 构造资源请求（对齐 upstream 三个 execute 的请求形状）
+#   list_mcp_resources            → { method: "resources/list" }            (+cursor 若给出)
+#   list_mcp_resource_templates   → { method: "resources/templates/list" } (+cursor 若给出)
+#   read_mcp_resource             → { method: "resources/read", uri }
+段落 造资源请求 接收 名, 参数:
+  设 方法 为 资源工具方法(名)
+  如果 方法 == "":
+    抛出 新建 错误("未知 MCP 资源工具: " + 名)
+  如果 方法 == "resources/read":
+    设 取值 为 ""
+    如果 (是字典(参数) == 真) 且 (字典包含键(参数, "uri") == 真):
+      设 取值 为 参数["uri"]
+    返回 ["method": "resources/read", "uri": 取值]
+  设 请求 为 ["method": 方法]
+  如果 (是字典(参数) == 真) 且 (字典包含键(参数, "cursor") == 真):
+    设 光标 为 参数["cursor"]
+    如果 光标 != 空:
+      字典设置(请求, "cursor", 光标)
+  返回 请求
+
+# ---- 系统提示段（对齐 upstream systemPrompt.section 文案）----
+# 名称升序（对齐 [...names].sort()）；无服务器 → 空串（不渲染该段）
+段落 排序名表 接收 名表:
+  设 表 为 []
+  遍历 名 之 名表:
+    列表追加(表, 名)
+  设 i 为 0
+  当 i < 长度(表):
+    设 j 为 i + 1
+    当 j < 长度(表):
+      如果 表[j] < 表[i]:
+        设 临时 为 表[i]
+        表[i] 为 表[j]
+        表[j] 为 临时
+      设 j 为 j + 1
+    设 i 为 i + 1
+  返回 表
+
+段落 资源服务器系统提示段 接收 名表:
+  设 排序后 为 排序名表(名表)
+  如果 长度(排序后) == 0:
+    返回 ""
+  返回 "## MCP resource servers\n\nUse list_mcp_resources, list_mcp_resource_templates, or read_mcp_resource with one of these names as the server argument: " + 紧凑JSON(排序后) + "."
+
+# 作用域内不可用文案（对齐 upstream resolveRequest 的拒绝）
+段落 资源服务器不可用消息 接收 服务器:
+  返回 "MCP resource server \"" + 服务器 + "\" is unavailable in this agent's scope"
+
+# ---- 装配：把三个资源工具注册进本地工具注册表（对齐 registerResourceTools）----
+# 执行请求(服务器, 请求字典) → JSON 值（由调用方提供真实或桩实现；本层不接网络）
+段落 绑定资源调用 接收 执行请求, 名:
+  段落 调用函数 接收 参数:
+    设 服务器 为 ""
+    如果 (是字典(参数) == 真) 且 (字典包含键(参数, "server") == 真):
+      设 服务器 为 参数["server"]
+    设 结果 为 执行请求(服务器, 造资源请求(名, 参数))
+    返回 渲染资源结果(服务器, 结果)
+  返回 调用函数
+
+段落 注册资源工具 接收 注册表, 执行请求:
+  设 已注册 为 []
+  遍历 名 之 资源工具名表():
+    设 执行函数 为 绑定资源调用(执行请求, 名)
+    注册表.注册(造工具定义(名, 资源工具描述(名), 资源工具参数模式(名), 执行函数))
+    列表追加(已注册, 名)
+  返回 已注册

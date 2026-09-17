@@ -1,0 +1,174 @@
+# test_R51_ptc契约.light —— 第51轮 任务3（ptc-runtime 保留字表 + PtcRun 契约，#187 面）
+#
+# 运行：cd lightharness && python 运行.py examples/test_R51_ptc契约.light
+# 退出码 0 = 全部断言通过；任一断言失败 → 抛出 错误 → 非零退出。
+#
+# 上游：deepseek-harness 0.1.6-alpha.1（ea53423b60）
+#   packages/ptc-runtime/ptc-runtime/src/index.ts（词表常量）
+#   packages/ptc-runtime/ptc-runtime/src/types.ts（PtcRun 契约族）
+#
+# 覆盖（纯逻辑面，不接真实子进程/网络）：
+#   词表 —— PORTABLE_RESERVED_WORDS 71 词（ES 48 + Python 23，软关键字 type/_ 安全保留）、
+#           RESERVED_BINDING_GLOBALS 5 名、RESERVED_ERROR_MEMBERS 6 名、dunder 形式判定
+#   命名 —— 便携标识符全串规则；global/错误类名三支拒绝（invalid/reserved-word/reserved-global）；
+#           错误成员名四支拒绝（非串/空/保留成员/dunder）
+#   契约 —— PtcJsonValue 无损递归（含非有限浮点拒绝、深度上限）、绑定命名空间/错误类形状、
+#           PtcRunRequest 形状、resolve 纯化（默认预算/无限期/正有限/上限封顶/cwd 必填）、
+#           PtcRunFailure 八类 taxonomy、PtcRunResult（错误是字段而非拒绝路径）
+#
+# 命名避坑：断言助手 检相等/检真/检空串/抛错数，避开与被导入模块段同名。
+
+从 代码运行时 导入 便携保留字表, 保留全局表, 错误成员保留表, 是dunder成员, 是便携标识符
+从 代码运行时 导入 校验命名空间名, 校验错误类名, 校验错误成员名
+从 代码运行时 导入 是无损JSON值, 是错误类形状, 是绑定命名空间, 是运行请求, 造运行规约
+从 代码运行时 导入 运行失败种类表, 是运行失败, 是运行沙箱, 是运行结果
+
+段落 检相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 检真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件为假")
+  返回 真
+
+段落 主:
+  打印 "===== 第51轮 任务3：ptc-runtime 保留字表 + PtcRun 契约 ====="
+
+  # ============ 1) 词表 ============
+  检相等(长(便携保留字表()), 71, "词_保留字71词")
+  # ECMAScript 支：关键字 + 严格模式保留名（arguments/eval/let/static…）
+  遍历 词 之 ["await", "class", "enum", "implements", "arguments", "eval", "yield", "let", "null", "true"]:
+    检真(列表包含(便携保留字表(), 词), "词_ES支含" + 词)
+  # Python 支：关键字 + 软关键字（type/_ 安全保留）
+  遍历 词 之 ["False", "None", "and", "lambda", "nonlocal", "match", "type", "_"]:
+    检真(列表包含(便携保留字表(), 词), "词_Py支含" + 词)
+  # 跨语言并集口径：JS 后端也要拒 lambda（否则单后端校验会放过 Python 端非法名）
+  检真(列表包含(便携保留字表(), "lambda"), "词_软关键字lambda在表")
+  # 保留全局 5 名：console 与 Python 后端自有槽位；__debug__ 因编译期常量另列
+  检相等(长(保留全局表()), 5, "词_保留全局5名")
+  检真(列表包含(保留全局表(), "console"), "词_保留全局含console")
+  检真(列表包含(保留全局表(), "__debug__"), "词_保留全局含__debug__")
+  # 错误成员 6 名：JS Error 排除 + Python 异常协议成员
+  检相等(错误成员保留表(), ["name", "message", "stack", "args", "with_traceback", "add_note"], "词_错误成员6名")
+
+  # ============ 2) dunder 形式（/__.+__/ 语义） ============
+  检真(是dunder成员("__init__"), "dunder_形如__x__")
+  检真(是dunder成员("__x__"), "dunder_单字中段")
+  检真(是dunder成员("__物件__"), "dunder_中文中段")
+  检真(是dunder成员("____") == 假, "dunder_空中段不匹配")
+  检真(是dunder成员("x__") == 假, "dunder_无前缀")
+  检真(是dunder成员("__x") == 假, "dunder_无后缀")
+  检真(是dunder成员("___x_") == 假, "dunder_单下划线尾不匹配")
+  检真(是dunder成员(7) == 假, "dunder_非串拒绝")
+
+  # ============ 3) 命名与成员校验 ============
+  # 便携标识符：全串匹配
+  检真(是便携标识符("tools"), "识_合法")
+  检真(是便携标识符("_x1"), "识_下划线起头")
+  检真(是便携标识符("$tools") == 假, "识_JS风格拒绝")
+  检真(是便携标识符("1tool") == 假, "识_数字起头拒绝")
+  检真(是便携标识符("好名") == 假, "识_非ASCII拒绝")
+  # global/错误类名三支拒绝
+  检相等(校验命名空间名("tools"), "", "名_合法空诊断")
+  检相等(校验命名空间名("$x"), "invalid portable identifier", "名_非法标识符")
+  检相等(校验命名空间名("lambda"), "reserved word", "名_保留字")
+  检相等(校验命名空间名("console"), "reserved binding global", "名_保留全局")
+  检相等(校验命名空间名("__name__"), "reserved binding global", "名_Python自有槽位")
+  检相等(校验错误类名("ToolsError"), "", "名_错误类名合法")
+  检相等(校验错误类名("type"), "reserved word", "名_软关键字作类名拒绝")
+  # 错误成员名四支拒绝
+  检相等(校验错误成员名("member"), "", "员_合法空诊断")
+  检相等(校验错误成员名("name"), "reserved error member", "员_JS排除name")
+  检相等(校验错误成员名("with_traceback"), "reserved error member", "员_Py协议成员")
+  检相等(校验错误成员名("__dict__"), "dunder member name", "员_dunder整体拒绝")
+  检相等(校验错误成员名(""), "member name must be non-empty", "员_空串拒绝")
+  检相等(校验错误成员名(5), "member name must be a string", "员_非串拒绝")
+
+  # ============ 4) PtcJsonValue 无损递归 ============
+  检真(是无损JSON值(空), "值_空")
+  检真(是无损JSON值(真), "值_布尔")
+  检真(是无损JSON值(42), "值_整数")
+  检真(是无损JSON值(1.5), "值_有限浮点")
+  检真(是无损JSON值("文本"), "值_串")
+  检真(是无损JSON值([1, "x", 空, {"a": [真]}]), "值_嵌套组合")
+  检真(是无损JSON值({"外": {"内": [1, 2]}}), "值_嵌套字典")
+  # 非串键字典在光明不可表达；函数/对象等跨语言引用天然不是字典/列表 → 拒绝（用断言函数对象作替身）
+  检真(是无损JSON值(检相等) == 假, "值_非JSON类型拒绝")
+  # 防御性深度上限 128（实现登记：防循环结构递归爆栈）
+  设 深值 为 1
+  设 层 为 0
+  当 层 < 200:
+    设 深值 为 [深值]
+    设 层 为 层 + 1
+  检真(是无损JSON值(深值) == 假, "值_超深拒绝")
+
+  # ============ 5) 绑定命名空间与错误类形状 ============
+  设 好错误类 为 {"name": "ToolsError", "memberNameProperty": "member"}
+  检真(是错误类形状(好错误类), "形_错误类合法")
+  检真(是错误类形状({"name": "console", "memberNameProperty": "member"}) == 假, "形_错误类名保留拒绝")
+  检真(是错误类形状({"name": "ToolsError"}) == 假, "形_缺成员属性拒绝")
+  设 好命名空间 为 {"global": "tools", "functions": {"查询": 1, "写入": 2}}
+  检真(是绑定命名空间(好命名空间), "形_命名空间合法")
+  检真(是绑定命名空间({"global": "tools", "functions": {"查询": 1}, "errorClass": 好错误类}), "形_带错误类合法")
+  检真(是绑定命名空间({"global": "lambda", "functions": {}}) == 假, "形_保留字全局拒绝")
+  检真(是绑定命名空间({"global": "tools"}) == 假, "形_缺functions拒绝")
+  检真(是绑定命名空间({"global": "tools", "functions": {"": 1}}) == 假, "形_空函数名拒绝")
+  检真(是绑定命名空间({"global": "tools", "functions": {}, "errorClass": {"name": "Bad"}}) == 假, "形_坏错误类拒绝")
+
+  # ============ 6) PtcRunRequest / resolve 纯化 ============
+  设 好请求 为 {"program": "return await tools.查询(1)", "bindings": [好命名空间], "cwd": "/工作区", "timeoutMs": 3000}
+  检真(是运行请求(好请求), "求_请求合法")
+  检真(是运行请求({"program": "", "bindings": []}) == 假, "求_空程序拒绝")
+  检真(是运行请求({"program": "x", "bindings": [{"global": "坏", "functions": {}}]}) == 假, "求_坏命名空间拒绝")
+  检真(是运行请求({"program": "x", "bindings": [], "timeoutMs": "长"}) == 假, "求_预算非数拒绝")
+  # resolve：默认预算 / null 无限期 / 正有限校验 / 上限封顶 / cwd 必填
+  设 判 为 造运行规约(好请求, 60000, 600000)
+  检真(判["错误"] == "", "规_合法请求通过")
+  检相等(判["规约"]["timeoutMs"], 3000, "规_显式预算保留")
+  检相等(判["规约"]["cwd"], "/工作区", "规_目录透传")
+  设 无预算请求 为 {"program": "1", "bindings": [], "cwd": "/w"}
+  设 判 为 造运行规约(无预算请求, 60000, 600000)
+  检相等(判["规约"]["timeoutMs"], 60000, "规_缺省用提供方默认")
+  设 永续请求 为 {"program": "1", "bindings": [], "cwd": "/w", "timeoutMs": 空}
+  设 判 为 造运行规约(永续请求, 60000, 600000)
+  检真(判["规约"]["timeoutMs"] == 空, "规_null为无限期")
+  设 零预算 为 {"program": "1", "bindings": [], "cwd": "/w", "timeoutMs": 0}
+  设 判 为 造运行规约(零预算, 60000, 600000)
+  检相等(判["错误"], "timeoutMs must be a positive finite budget", "规_零预算拒绝")
+  设 负预算 为 {"program": "1", "bindings": [], "cwd": "/w", "timeoutMs": -5}
+  设 判 为 造运行规约(负预算, 60000, 600000)
+  检相等(判["错误"], "timeoutMs must be a positive finite budget", "规_负预算拒绝")
+  设 超帽预算 为 {"program": "1", "bindings": [], "cwd": "/w", "timeoutMs": 600001}
+  设 判 为 造运行规约(超帽预算, 60000, 600000)
+  检相等(判["错误"], "timeoutMs exceeds the provider cap", "规_超上限拒绝")
+  设 无目录 为 {"program": "1", "bindings": []}
+  设 判 为 造运行规约(无目录, 60000, 600000)
+  检相等(判["错误"], "run spec requires a resolved cwd", "规_缺目录拒绝")
+  设 判 为 造运行规约({"program": ""}, 60000, 600000)
+  检相等(判["错误"], "invalid run request", "规_非法请求整拒绝")
+
+  # ============ 7) PtcRunFailure 八类 taxonomy 与结果形状 ============
+  检相等(运行失败种类表(), ["exception", "timeout", "abort", "worker-exit", "invalid-output", "output-limit", "protocol", "sandbox-unavailable"], "败_八类词表")
+  遍历 类 之 运行失败种类表():
+    检真(是运行失败({"kind": 类, "message": "详情"}), "败_" + 类)
+  检真(是运行失败({"kind": "玄学", "message": "x"}) == 假, "败_未知类拒绝")
+  检真(是运行失败({"kind": "timeout"}) == 假, "败_缺message拒绝")
+  # 沙箱形状：mode 串 + denied 布尔（SandboxMode 为上游沙包串词汇，纯形状）
+  检真(是运行沙箱({"mode": "workspace-write", "denied": 假}), "沙_合法")
+  检真(是运行沙箱({"mode": 3, "denied": 假}) == 假, "沙_mode非串拒绝")
+  检真(是运行沙箱({"mode": "off", "denied": 1}) == 假, "沙_denied非布尔拒绝")
+  # 结果：错误是字段而非拒绝路径；无值运行 value 缺省
+  设 好结果 为 {"logs": ["步1", "步2"], "value": {"答案": 42}, "sandbox": {"mode": "off", "denied": 假}}
+  检真(是运行结果(好结果), "果_完整合法")
+  检真(是运行结果({"logs": []}), "果_仅logs合法")
+  检真(是运行结果({"logs": ["x"], "error": {"kind": "abort", "message": "已中止"}}), "果_失败是字段")
+  检真(是运行结果({"logs": ["x"], "error": {"kind": "玄学", "message": "x"}}) == 假, "果_坏错误拒绝")
+  检真(是运行结果({"logs": ["x"], "value": 检相等}) == 假, "果_非无损值拒绝")
+  检真(是运行结果({}) == 假, "果_缺logs拒绝")
+  检真(是运行结果({"logs": [1]}) == 假, "果_日志非串拒绝")
+
+  打印 "R51 ptc契约：词表71/dunder/三支拒绝/无损JSON/契约形状/八类taxonomy 全部通过"
+
+主()

@@ -18,6 +18,7 @@
 
 导入 subprocess
 从 工具 导入 造工具定义
+从 正则表达式 导入 搜索
 
 类 代码运行时:
   属性 超时秒 等于 30
@@ -106,3 +107,258 @@
     设 结果文本 为 运行时.执行取文本(代码)
     返回 [["type": "text", "text": 结果文本]]
   返回 造工具定义(工具名, 描述, ["type": "object", "properties": ["代码": ["type": "string"]]], 执行函数)
+
+# =====================================================================
+# 第51轮 任务3 追加：ptc-runtime 保留字表 + PtcRun 契约（对标 0.1.6-alpha.1）
+#
+# 上游（只读）：G:\github\deepseek-harness（ea53423b60 = 0.1.6-alpha.1）
+#   packages/ptc-runtime/ptc-runtime/src/index.ts
+#     → RESERVED_BINDING_GLOBALS / RESERVED_ERROR_MEMBERS / DUNDER_MEMBER /
+#       PORTABLE_RESERVED_WORDS（ECMAScript ∪ Python 可移植保留字并集）
+#   packages/ptc-runtime/ptc-runtime/src/types.ts
+#     → PtcJsonValue / PtcBindingNamespace / PtcBindingErrorClass /
+#       PtcRunRequest / PtcRunSpec / PtcRunSandbox / PtcRunFailure / PtcRunResult
+#
+# 与既有面的关系：
+#   src/代码运行时协议.light（#84，只读不动）覆盖 fd-3 线缆帧语义（protocol.ts）；
+#   本节补的是 0.1.6 新包的「词表 + 执行缝契约」纯逻辑面（types.ts + index.ts 常量），
+#   两者不重叠。纯逻辑化：宿主函数（PtcBindingFunction）不可跨语言判型，
+#   functions 只按「字典且键为非空串」的形状校验；沙箱模式按字符串接受。
+#
+# 命名纪律（沿本模块既有风格）：布尔链拆成顺序如果；标识符避开关键字与词根
+#   （匹配/回调/排序/继续/事件/类型/返回/新建/导入/导出/包含 等一律不用作段名）。
+# =====================================================================
+
+# ---- 词表（index.ts 常量，逐词对齐） ----
+
+# RESERVED_BINDING_GLOBALS：每个后端都拒绝的绑定全局名（某后端自有槽位）
+段落 保留全局表:
+  返回 ["console", "__dsh_main__", "__builtins__", "__name__", "__debug__"]
+
+# RESERVED_ERROR_MEMBERS：错误类 memberNameProperty 全后端拒绝名
+# （JS Error 排除 + Python 异常协议成员；dunder 形式另由 是dunder成员 整体拒绝）
+段落 错误成员保留表:
+  返回 ["name", "message", "stack", "args", "with_traceback", "add_note"]
+
+# PORTABLE_RESERVED_WORDS：ECMAScript 保留字/严格模式保留名 ∪ Python 3 关键字
+# 与软关键字（'type'、'_' 为软关键字，按安全口径一并保留）——共 71 词。
+# 一份并集而非每语言各查各的：保证同一命名空间表在任意后端都合法。
+段落 便携保留字表:
+  返回 ["await", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true", "try", "typeof", "var", "void", "while", "with", "yield", "let", "static", "implements", "interface", "package", "private", "protected", "public", "arguments", "eval", "False", "None", "True", "and", "as", "assert", "async", "def", "del", "elif", "except", "from", "global", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "match", "type", "_"]
+
+# DUNDER_MEMBER（/^__.+__$/）：对象协议槽位（中间非空的 __x__ 形式）
+段落 是dunder成员 接收 名:
+  如果 是字符串(名) == 假:
+    返回 假
+  如果 字符串长度(名) < 5:
+    返回 假
+  如果 开头(名, "__") == 假:
+    返回 假
+  设 尾段 为 截取(名, 字符串长度(名) - 2, 字符串长度(名))
+  如果 尾段 != "__":
+    返回 假
+  设 中段 为 截取(名, 2, 字符串长度(名) - 2)
+  返回 字符串长度(中段) > 0
+
+# 便携标识符：[A-Za-z_][A-Za-z0-9_]* 全串匹配（锚定正则）
+段落 是便携标识符 接收 名:
+  如果 是字符串(名) == 假:
+    返回 假
+  如果 是空(搜索("^[A-Za-z_][A-Za-z0-9_]*$", 名)) == 假:
+    返回 真
+  返回 假
+
+# ---- 命名/成员校验（诊断串风格：空 = 合法） ----
+
+# PtcBindingNamespace.global 与 PtcBindingErrorClass.name 的统一规则：
+# 便携标识符 且 非保留字 且 非保留全局（三支拒绝缘由分立，便于诊断）
+段落 校验命名空间名 接收 名:
+  如果 是便携标识符(名) == 假:
+    返回 "invalid portable identifier"
+  如果 列表包含(便携保留字表(), 名):
+    返回 "reserved word"
+  如果 列表包含(保留全局表(), 名):
+    返回 "reserved binding global"
+  返回 ""
+
+# PtcBindingErrorClass.name：与命名空间名同规则
+段落 校验错误类名 接收 名:
+  返回 校验命名空间名(名)
+
+# PtcBindingErrorClass.memberNameProperty：非空串 且 非保留成员 且 非 dunder 形式
+# （dunder 整体拒绝——若干是受限 CPython 描述符，构造拒绝实例时 setattr 即抛；
+#   具体集合是解释器版本细节，故按形式拒绝而非按名单）
+段落 校验错误成员名 接收 名:
+  如果 是字符串(名) == 假:
+    返回 "member name must be a string"
+  如果 字符串长度(名) == 0:
+    返回 "member name must be non-empty"
+  如果 列表包含(错误成员保留表(), 名):
+    返回 "reserved error member"
+  如果 是dunder成员(名):
+    返回 "dunder member name"
+  返回 ""
+
+# ---- 契约形状（types.ts 谓词化） ----
+
+# PtcJsonValue：无损 JSON（null/布尔/有限数/串/数组/串键字典），防御性深度上限 128
+段落 是有限浮点 接收 值:
+  设 文本 为 转字符串(值)
+  如果 字符串包含(文本, "inf") == 真:
+    返回 假
+  如果 字符串包含(文本, "nan") == 真:
+    返回 假
+  返回 真
+
+段落 是无损JSON值 接收 值:
+  返回 是无损JSON深层(值, 0)
+
+段落 是无损JSON深层 接收 值, 深度:
+  如果 深度 > 128:
+    返回 假
+  如果 值 == 空:
+    返回 真
+  如果 isinstance(值, bool):
+    返回 真
+  如果 是字符串(值):
+    返回 真
+  如果 是整数(值):
+    返回 真
+  如果 是浮点(值):
+    返回 是有限浮点(值)
+  如果 是列表(值):
+    遍历 项 之 值:
+      如果 是无损JSON深层(项, 深度 + 1) == 假:
+        返回 假
+    返回 真
+  如果 是字典(值):
+    遍历 键 之 字典键列表(值):
+      如果 是字符串(键) == 假:
+        返回 假
+      如果 是无损JSON深层(值[键], 深度 + 1) == 假:
+        返回 假
+    返回 真
+  返回 假
+
+# PtcBindingErrorClass：{name 合法, memberNameProperty 合法}
+段落 是错误类形状 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 校验错误类名(字典获取(值, "name", 空)) != "":
+    返回 假
+  返回 校验错误成员名(字典获取(值, "memberNameProperty", 空)) == ""
+
+# PtcBindingNamespace：{global 合法, functions 字典且键非空串, errorClass? 合法}
+# functions 的值是宿主函数引用，跨语言不可判型，只做键形状校验（纯逻辑化登记）
+段落 是绑定命名空间 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 校验命名空间名(字典获取(值, "global", 空)) != "":
+    返回 假
+  如果 是字典(字典获取(值, "functions", 空)) == 假:
+    返回 假
+  遍历 键 之 字典键列表(值["functions"]):
+    如果 是字符串(键) == 假:
+      返回 假
+    如果 字符串长度(键) == 0:
+      返回 假
+  如果 字典包含键(值, "errorClass") == 真:
+    如果 值["errorClass"] != 空:
+      返回 是错误类形状(值["errorClass"])
+  返回 真
+
+# PtcRunFailure.kind 词表（八类正交终态；预算过期不是异常、中止不是超时、
+# 底座死亡二者皆非）
+段落 运行失败种类表:
+  返回 ["exception", "timeout", "abort", "worker-exit", "invalid-output", "output-limit", "protocol", "sandbox-unavailable"]
+
+# PtcRunFailure：{kind ∈ 八类, message 串}
+段落 是运行失败 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 列表包含(运行失败种类表(), 字典获取(值, "kind", 空)) == 假:
+    返回 假
+  返回 是字符串(字典获取(值, "message", 空))
+
+# PtcRunSandbox：{mode 串, denied 布尔, enforcement?}（SandboxMode 为上游沙包字符串词汇）
+段落 是运行沙箱 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "mode", 空)) == 假:
+    返回 假
+  如果 isinstance(字典获取(值, "denied", 空), bool) == 假:
+    返回 假
+  返回 真
+
+# PtcRunResult：{logs 串列表, sandbox?, value?, error?}——错误是字段而非拒绝路径
+段落 是运行结果 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是列表(字典获取(值, "logs", 空)) == 假:
+    返回 假
+  遍历 项 之 值["logs"]:
+    如果 是字符串(项) == 假:
+      返回 假
+  如果 字典包含键(值, "sandbox") == 真:
+    如果 值["sandbox"] != 空:
+      如果 是运行沙箱(值["sandbox"]) == 假:
+        返回 假
+  如果 字典包含键(值, "value") == 真:
+    如果 值["value"] != 空:
+      如果 是无损JSON值(值["value"]) == 假:
+        返回 假
+  如果 字典包含键(值, "error") == 真:
+    如果 值["error"] != 空:
+      如果 是运行失败(值["error"]) == 假:
+        返回 假
+  返回 真
+
+# PtcRunRequest：{program 非空串, bindings 全为合法命名空间, cwd?/timeoutMs?/sandboxPolicy?}
+段落 是运行请求 接收 值:
+  如果 是字典(值) == 假:
+    返回 假
+  设 程序 为 字典获取(值, "program", 空)
+  如果 是字符串(程序) == 假:
+    返回 假
+  如果 字符串长度(程序) == 0:
+    返回 假
+  如果 是列表(字典获取(值, "bindings", 空)) == 假:
+    返回 假
+  遍历 项 之 值["bindings"]:
+    如果 是绑定命名空间(项) == 假:
+      返回 假
+  如果 字典包含键(值, "timeoutMs") == 真:
+    如果 值["timeoutMs"] != 空:
+      如果 是整数(值["timeoutMs"]) == 假:
+        如果 是浮点(值["timeoutMs"]) == 假:
+          返回 假
+  返回 真
+
+# resolve 纯化（PtcRunRequest → PtcRunSpec）：
+#   cwd 缺失拒绝（spec 绝不带缺省目录）；timeoutMs 缺省 → 提供方默认毫秒；
+#   null → 无限期；数值须为正有限且不超上限。返回 {"规约", "错误"}，错误非空即拒绝。
+段落 造运行规约 接收 请求, 默认毫秒, 上限毫秒:
+  如果 是运行请求(请求) == 假:
+    返回 {"规约": 空, "错误": "invalid run request"}
+  设 目录 为 字典获取(请求, "cwd", 空)
+  如果 目录 == 空:
+    返回 {"规约": 空, "错误": "run spec requires a resolved cwd"}
+  设 预算 为 空
+  如果 字典包含键(请求, "timeoutMs") == 假:
+    设 预算 为 默认毫秒
+  否则:
+    如果 请求["timeoutMs"] == 空:
+      设 预算 为 空
+    否则:
+      设 预算 为 请求["timeoutMs"]
+      如果 预算 <= 0:
+        返回 {"规约": 空, "错误": "timeoutMs must be a positive finite budget"}
+      设 预算文本 为 转字符串(预算)
+      如果 字符串包含(预算文本, "inf") == 真:
+        返回 {"规约": 空, "错误": "timeoutMs must be a positive finite budget"}
+      如果 字符串包含(预算文本, "nan") == 真:
+        返回 {"规约": 空, "错误": "timeoutMs must be a positive finite budget"}
+      如果 预算 > 上限毫秒:
+        返回 {"规约": 空, "错误": "timeoutMs exceeds the provider cap"}
+  设 规约 为 {"program": 请求["program"], "bindings": 请求["bindings"], "cwd": 目录, "timeoutMs": 预算}
+  返回 {"规约": 规约, "错误": ""}
