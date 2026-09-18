@@ -109,6 +109,27 @@ python scripts/安全替换.py --self-test
 3. 确保退出码为 0（pytest 回归套件会自动收集）
 4. 如果是预期失败的用例（未修复缺陷），在 `tests/test_回归.py` 的 `EXPECT_RED` 中登记
 
+## 缺陷复现用例必须同时挂 `tests/`（R57 起的硬惯例）
+
+> **只放 `examples/` 不算进全量门。**
+
+背景（R54 的 test_L170.light 教训，G7）：light-merge 仓库的全量 pytest 只收集
+`tests/`，`examples/*.light` 完全不被 pytest 收集——只把缺陷复现用例写到
+examples/，门禁对它**零感知**，修复被回退/破坏时全量门不会红。
+
+硬性要求（两个仓库同口径）：
+
+1. 每个语言/编译器缺陷的复现用例，除了运行期自校验的 `.light`
+   （examples/ 可留作人工复核载体），**必须同时**在 `tests/` 落一个 pytest 用例：
+   - 编译器缺陷 → 挂 `light-merge/tests/`（被 0.82 全量门收集），
+     参照 `tests/test_R57_L170回归.py`（源码内嵌 + run/product 双腿 + 运行时断言）；
+   - 词法/切词行为 → token 层钉桩挂 `lightharness/tests/`，
+     参照 `tests/test_R57_复现回归.py`（`Lexer(text, deterministic=True).tokenize()`
+     直接断言 token 流）+ 运行层真跑 example 断 rc==0；
+2. 用例必须能在**修复前**红、**修复后**绿（先取证报错原文，修复后作为钉桩）；
+3. 钉桩需顺带断言修复不许破坏的既有语义（如 R26 的 21 个单字语句关键字
+   词首必须切分、L-155 嵌入块吞并语义），红即报警。
+
 ## 平台说明
 
 - CI 运行在 `ubuntu-latest`，光明编译器和 lightharness 均为跨平台 Python 实现

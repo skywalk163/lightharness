@@ -1,0 +1,1425 @@
+{
+ "meta": {
+  "source_baseline": "reports/082_lightmerge基线_2026-09-18-072454.json (R55 round 字段, generated 2026-09-18T07:24:54+08:00, fast, py3.12 并行, 7806 用例/100 红)",
+  "source_junitxml": "reports/_082_lm_results_2026-09-18-072453.xml（与基线同一次跑，100 红逐条一致，id 归一后集合相等）",
+  "cross_runs": [
+   "_082_lm_results_2026-09-18-002428.xml",
+   "_082_lm_results_2026-09-18-005728.xml",
+   "_082_lm_results_2026-09-18-010728.xml",
+   "_082_lm_results_2026-09-18-070457.xml",
+   "_082_lm_results_2026-09-18-071350.xml",
+   "_082_lm_results_2026-09-18-072453.xml"
+  ],
+  "note_101": "R56「101 条存量红」口径还原：071350 轮 117 红 − 16 条 phase9（R54 引入的 `错误` 红）= 101，即基线 100 + cross_platform 1"
+ },
+ "baseline_reds": [
+  {
+   "id": "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用",
+   "file": "tests/unit/test_地板搬迁_列表_S2.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]      At index 0 diff: '冻结' != '列'   Left contains 3 more items, first extra item: '副本'   Use -v to get more diff",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_公历转农历",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_农历转公历",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_日期时间转农历",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_日期转农历",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_春节日期",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_中秋日期",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_端午日期",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_datetime.py::test_中国节假日",
+   "file": "tests/test_datetime.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "lunardate",
+   "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer.py::TestLexer::test_chinese_number",
+   "file": "tests/unit/test_lexer.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: 0 != 2",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer.py::TestLexer::test_number_prefix_still_split_when_rest_is_keyword",
+   "file": "tests/unit/test_lexer.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: Tuples differ: ('IDENTIFIER', '那么大') != ('KEYWORD', '那么')  First differing element 0: 'IDENTIFIER' 'KEYWORD'  - ('IDENTIFIER', '那么大') + ('KEYWORD', '那么')",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer.py::TestLexer::test_simple_tokenize",
+   "file": "tests/unit/test_lexer.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: <TokenType.CHINESE_NUM: 5> not found in [<TokenType.KEYWORD: 7>, <TokenType.IDENTIFIER: 6>, <TokenType.PERIOD: 10>, <TokenType.EOF: 43>]",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call",
+   "file": "tests/unit/test_parser.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: 'n乘阶乘' == 'n乘阶乘'",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_native_leg_capability.py::test_内置函数清单与代码一致",
+   "file": "tests/unit/test_native_leg_capability.py",
+   "junit_status": "failure",
+   "category": "语义债-内置清单同步",
+   "subcategory": "内置函数/运行时符号清单与代码不同步",
+   "message": "AssertionError: 内置函数清单与代码不一致:     代码有但 JSON 没有: ['is_bool', 'is_dict', 'is_float', 'is_int', 'is_integer', 'is_list', 'is_map', 'is_number', 'is_str', 'is_string', '是列表', '是字典', '是字符串', '是布尔', '是数值', '是数字', '是数组', '是整数', '是浮点', '是浮点数']     JSON 有但代码没有: [] assert {'?.', '??', ...ception', ...} == fro",
+   "expected_action": "低垂果实：重跑清单再生成脚本对齐 JSON（3 条）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位",
+   "file": "tests/unit/test_native_leg_capability.py",
+   "junit_status": "failure",
+   "category": "语义债-内置清单同步",
+   "subcategory": "内置函数/运行时符号清单与代码不同步",
+   "message": "AssertionError: 内置函数证据行号问题:   ?.: codegen_typed.py:2912 那一行没有这个名字：   ??: codegen_typed.py:2903 那一行没有这个名字：slot1 = self._store_dv(args[1])   ArithmeticError: codegen_typed.py:1857 那一行没有这个名字：'读取错误', '请求错误', 'Exception', 'RuntimeException', 'ValueError   Base64编码: codegen_typed.py:2510 那一行没有这个名字：# 以避免「段",
+   "expected_action": "低垂果实：重跑清单再生成脚本对齐 JSON（3 条）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_native_leg_capability.py::test_运行时符号清单与代码一致",
+   "file": "tests/unit/test_native_leg_capability.py",
+   "junit_status": "failure",
+   "category": "语义债-内置清单同步",
+   "subcategory": "内置函数/运行时符号清单与代码不同步",
+   "message": "AssertionError: 运行时符号清单与代码不一致:     代码有但 JSON 没有: ['strcmp']     JSON 有但代码没有: [] assert {'_setjmp', '...nd_file', ...} == frozenset({'_...d_file', ...})      Extra items in the left set:   'strcmp'   Use -v to get more diff",
+   "expected_action": "低垂果实：重跑清单再生成脚本对齐 JSON（3 条）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lexer.py::test_basic_keywords",
+   "file": "tests/test_lexer.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "R36 钉现状：无空格 设甲为三 期望整体成词（与 G5 修复方向需对表）",
+   "message": "AssertionError: R36 钉现状失败：无空格 设甲为三 应整体成一个标识符，得到 ['设', '甲为三', '。'] assert ['设', '甲为三', '。'] == ['设甲为三', '。']      At index 0 diff: '设' != '设甲为三'   Left contains one more item: '。'   Use -v to get more diff",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "受任务1a 影响：R36 钉现状期望 设甲为三 整体成词，与 smoke 期望方向需对表，可能转绿或需改钉",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_member_access",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... return _v\\n\\n# LIGHT_SRC:1\\nclass P:\\n    x = 0\\n\\n# LIGHT_SRC:3\\np = P()\\n# LIGHT_SRC:4\\nv = _light_attr_get(p, 'x')\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_mixed_period_and_dot",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...:1\\nclass P:\\n    x = 0\\n\\n# LIGHT_SRC:3\\np = P()\\n# LIGHT_SRC:4\\nv = _light_attr_get(p, 'x')\\n# LIGHT_SRC:5\\nprint(v)\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_no_period_no_dot_ambiguity",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'p.x = 3' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n# LIGHT_SRC:6\\n_light_attr_set(p, 'y', (_light_attr_get(p, 'x') + 1))\\n# LIGHT_SRC:7\\nprint(_light_attr_get(p, 'y'))\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_period_in_class_body",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'self.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\nclass A:\\n    x = 10\\n    def get(self, self):\\n        # LIGHT_SRC:4\\n        return _light_attr_get(self, 'x')\\n\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_access_after_new_keyword",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'a.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... return _v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    x = 0\\n\\n# LIGHT_SRC:3\\na = A()\\n# LIGHT_SRC:4\\nv = _light_attr_get(a, 'x')\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestL2OOPCodegen::test_自_param_and_body_both_self",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'self.姓名 = 姓名' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\nfrom abc import ABC, abstractmethod\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nim...n (\"学生\" + _light_attr_get(self, \\'学号\\'))\\n\\n    def 自报(self) -> str:\\n        return _light_attr_get(self, \\'学号\\')\\n\\n'",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_a24_泛型类真跑",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "AssertionError: [run] 退出码 1:   [运行错误] name '己项' is not defined       assert 1 == 0",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_a24_多参数泛型类",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "AssertionError: [run] 退出码 1:   [运行错误] name '己左' is not defined       assert 1 == 0",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestAwaitMemberAccess::test_await_chained_member",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'await 甲.乙.丙()' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\nasync def 主():\\n    # LIGHT_SRC:2\\n    await _light_attr_get(甲, '乙').丙()\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestL0SingleCharClassKeywords::test_继承链可用",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己名称' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_dot_plain_method",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己名称' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己名称' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_de_form",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己名称' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_stdlib_phase3.py::Test网络请求::test_HTTP错误响应",
+   "file": "tests/test_stdlib_phase3.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: <bound method 响应.是否成功 of <网络请求.响应 object at 0xc08342046e0>> is not false",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_stdlib_phase3.py::Test网络请求::test_URL编码解码",
+   "file": "tests/test_stdlib_phase3.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: '???world' != '你好 world' - ???world + 你好 world",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_stdlib_phase3.py::Test网络请求::test_响应对象",
+   "file": "tests/test_stdlib_phase3.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: <bound method 响应.文本 of <网络请求.响应 object at 0xc08362ad340>> != '{\"key\": \"value\"}'",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_stdlib_phase3.py::Test网络请求::test_拼接URL",
+   "file": "tests/test_stdlib_phase3.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "TypeError: 拼接URL() takes 2 positional arguments but 4 were given",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_stdlib_phase3.py::Test网络请求::test_解析查询串",
+   "file": "tests/test_stdlib_phase3.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "NameError: name '新建字典' is not defined",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_除类型错误",
+   "file": "tests/unit/test_lexer_compound_safe_alignment.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: ('IDENTIFIER', '除') not found in [('KEYWORD', '捕'), ('IDENTIFIER', '除类型错误'), ('IDENTIFIER', '印')]",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_a25_两个嵌套类且外层成员不被吞",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "AssertionError: [run] 退出码 1:   [运行错误] name '己号' is not defined       assert 1 == 0",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u8bfb\\u53d6\\u4e8c\\u8fdb\\u5236]",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-异步修饰符",
+   "subcategory": "`异步` 被当值用且报错信息未指出根因",
+   "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步读取二进制' is not defined       assert '修饰符' in (\"[运行错误] name '异步读取二进制' is not defined\\n\" + '')",
+   "expected_action": "语义轮：报错信息质量（未指出「异步被当值用」根因）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u5199\\u5165\\u4e8c\\u8fdb\\u5236]",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-异步修饰符",
+   "subcategory": "`异步` 被当值用且报错信息未指出根因",
+   "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步写入二进制' is not defined       assert '修饰符' in (\"[运行错误] name '异步写入二进制' is not defined\\n\" + '')",
+   "expected_action": "语义轮：报错信息质量（未指出「异步被当值用」根因）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u7b49\\u5f85]",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-异步修饰符",
+   "subcategory": "`异步` 被当值用且报错信息未指出根因",
+   "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步任务等待' is not defined       assert '修饰符' in (\"[运行错误] name '异步任务等待' is not defined\\n\" + '')",
+   "expected_action": "语义轮：报错信息质量（未指出「异步被当值用」根因）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u53d6\\u6d88]",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-异步修饰符",
+   "subcategory": "`异步` 被当值用且报错信息未指出根因",
+   "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步任务取消' is not defined       assert '修饰符' in (\"[运行错误] name '异步任务取消' is not defined\\n\" + '')",
+   "expected_action": "语义轮：报错信息质量（未指出「异步被当值用」根因）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u53d6\\u6570]",
+   "file": "tests/test_frontend_blockers_run.py",
+   "junit_status": "failure",
+   "category": "语义债-异步修饰符",
+   "subcategory": "`异步` 被当值用且报错信息未指出根因",
+   "message": "AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步取数' is not defined       assert '修饰符' in (\"[运行错误] name '异步取数' is not defined\\n\" + '')",
+   "expected_action": "语义轮：报错信息质量（未指出「异步被当值用」根因）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestJueyiE遍历为连接词::test_为搭配函数调用",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "AssertionError: assert '==' not in '# 由光明编译器生成\\...    print(i)'      '==' is contained here:     at) and v == 0.0 and __import__('math').copysign(1.0, v) < 0.0),   ?           ++     ]:         if not hasattr(_light_builtin, _light_n):             setattr(_light_builtin, _light_n, _light_f)...      ",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_level6_types.py::TestTypeScenarioClass::test_class_instantiation",
+   "file": "tests/test_level6_types.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己当前' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_HTTP提交",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_HTTP获取",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_URL编码解码",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_导入",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_拼接URL",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_lightpub_bridge.py::TestHTTP客户端Bridge::test_获取JSON",
+   "file": "tests/test_lightpub_bridge.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "requests",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT",
+   "file": "tests/unit/test_doc_examples_gate.py",
+   "junit_status": "failure",
+   "category": "文档门债",
+   "subcategory": "docs 示例门（ROT/噪声块计数）",
+   "message": "AssertionError: Lists differ: [] != [('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf[221 chars]68')]  Second list contains 6 additional elements. First extra element 0: ('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf')  - [] + [('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf'), +  ('docs/L1_白话体语法规范_v4.0.md', 'ac13282",
+   "expected_action": "文档轮：清理 docs 违规块（ROT/噪声块）后对表",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_噪声类总数不许涨",
+   "file": "tests/unit/test_doc_examples_gate.py",
+   "junit_status": "failure",
+   "category": "文档门债",
+   "subcategory": "docs 示例门（ROT/噪声块计数）",
+   "message": "AssertionError: 19 not less than or equal to 18 : 噪声块从 18 涨到 19：新写的文档又混进了 REPL 记录/伪代码/箭头注解/转义污染。非代码块请改用 ```text 标签。",
+   "expected_action": "文档轮：清理 docs 违规块（ROT/噪声块）后对表",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_match_elif_import_aliases.py::TestMatchSingleCharAliases::test_pi_is_compound_safe",
+   "file": "tests/unit/test_match_elif_import_aliases.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '匹' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_async_class_method.py::TestAsyncClassMethod::test_03_async_method读写己属性",
+   "file": "tests/test_async_class_method.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "AssertionError: assert ('self.值 = (self.值 + 1)' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...    # LIGHT_SRC:7\\n        return self.值\\n\\n    async def 取值(self):\\n        # LIGHT_SRC:10\\n        return self.值\\n\\n' or 'self",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性赋值",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'self.姓名 = 姓名' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...LIGHT_SRC:2\\nclass 人:\\n    def __init__(self, 姓名):\\n        # LIGHT_SRC:4\\n        _light_attr_set(self, '姓名', 姓名)\\n\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性带索引赋值",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'self.成绩[科目] = 分数' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...HT_SRC:2\\nclass 人:\\n    def 录入(self, 科目, 分数):\\n        # LIGHT_SRC:4\\n        _light_attr_get(self, '成绩')[科目] = 分数\\n\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_普通标识符之成员赋值",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'obj.字段 = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...tattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:2\\ndef 甲(obj):\\n    # LIGHT_SRC:3\\n    _light_attr_set(obj, '字段', 1)\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_点号成员赋值未被破坏",
+   "file": "tests/test_context_manager.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'obj.字段 = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...tattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:2\\ndef 甲(obj):\\n    # LIGHT_SRC:3\\n    _light_attr_set(obj, '字段', 1)\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_edge_cases.py::TestEdgeCasesClasses::test_class_with_multiple_methods",
+   "file": "tests/test_edge_cases.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "RuntimeError: 执行错误: name '己初始值' is not defined 生成的Python代码: # 由光明编译器生成 # 源文件: 光明代码  def _light_trunc_div(a, b):     return a / b  import sys import os import ctypes from typing import Any, Callable, Optional import math import random try:     sys.stdout.reconfigure(encoding='utf-8', errors='replace'",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_eq",
+   "file": "tests/unit/test_v34_syntax_sugar.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'self.x = 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    def f(self, self):\\n        # LIGHT_SRC:3\\n        _light_attr_set(self, 'x', 1)\\n\\n\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_等于",
+   "file": "tests/unit/test_v34_syntax_sugar.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert ('self.x == 1' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    def f(self, self):\\n        # LIGHT_SRC:3\\n        _light_attr_set(self, 'x', 1)\\n\\n\" or 'self.x = 1' in \"# 由光明编译器生成\\n# ",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_obj_attr_eq",
+   "file": "tests/unit/test_v34_syntax_sugar.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'p.x = 10' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n        setattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\np = 点(3, 4)\\n# LIGHT_SRC:2\\n_light_attr_set(p, 'x', 10)\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_dot_access_still_works",
+   "file": "tests/unit/test_v34_syntax_sugar.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'p.x' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...\\n        setattr(_o, _k, _v)\\n    return _v\\n\\n# LIGHT_SRC:1\\np = 点(3, 4)\\n# LIGHT_SRC:2\\nx = _light_attr_get(p, 'x')\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_tls_light.py::test_缺cryptography必须响亮降级",
+   "file": "tests/test_tls_light.py",
+   "junit_status": "failure",
+   "category": "环境红-缺依赖",
+   "subcategory": "cryptography",
+   "message": "Failed: 本机缺 cryptography（No module named 'cryptography'）：TLS 测试无法生成自签证书，本文件的 TLS 覆盖为零。 修法二选一：装上 cryptography（测试侧依赖，不进 .light 实现，不破坏「运行时零第三方依赖」）；或确认要放弃这轮 TLS 覆盖时显式设LIGHT_ALLOW_SKIP_TLS_TEST=1。**不许靠 importorskip 静默转绿。**",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_六雷区_整体成词",
+   "file": "tests/unit/test_lexer_p0a_deterministic.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]  First differing element 0: ('KEYWORD', '导出') ('IDENTIFIER', '导出事件表')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '事件表')  - [('KEYWORD', '导出'), ('IDENTIFIER', '",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_同构复合词_整体成词",
+   "file": "tests/unit/test_lexer_p0a_deterministic.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: Lists differ: [('KEYWORD', '外部'), ('IDENTIFIER', '命令')] != [('IDENTIFIER', '外部命令')]  First differing element 0: ('KEYWORD', '外部') ('IDENTIFIER', '外部命令')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '命令')  - [('KEYWORD', '外部'), ('IDENTIFIER', '命令')",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_清空白名单后仍整体成词",
+   "file": "tests/unit/test_lexer_p0a_deterministic.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "",
+   "message": "AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]  First differing element 0: ('KEYWORD', '导出') ('IDENTIFIER', '导出事件表')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '事件表')  - [('KEYWORD', '导出'), ('IDENTIFIER', '",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_two_level_attr_assign",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert ('b.a.x = 42' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...b = B()\\n# LIGHT_SRC:6\\n_light_attr_set(b, 'a', A())\\n# LIGHT_SRC:7\\n_light_attr_set(_light_attr_get(b, 'a'), 'x', 42)\" or '.x = 42' in \"# 由光明编译器生成\\n# 源文件:",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_self_chain_assign",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert ('self.inner.val' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... set_val(self, self, v):\\n        # LIGHT_SRC:4\\n        _light_attr_set(_light_attr_get(self, 'inner'), 'val', v)\\n\\n\" or '.inner.val' in \"# 由光明编译器生成\\",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_three_level_attr_assign",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert ('a.b.c.val = 99' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...attr_get(a, 'b'), 'c', C())\\n# LIGHT_SRC:10\\n_light_attr_set(_light_attr_get(_light_attr_get(a, 'b'), 'c'), 'val', 99)\" or '.val = 99' in \"# 由光明编译器生成\\n",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_attr_assign_with_expr",
+   "file": "tests/unit/test_v35_chained_call.py",
+   "junit_status": "failure",
+   "category": "语义债-代码生成断言",
+   "subcategory": "",
+   "message": "assert 'a.x = ' in \"# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro... _v\\n\\n# LIGHT_SRC:1\\nclass A:\\n    x = 0\\n\\n# LIGHT_SRC:3\\na = A()\\n# LIGHT_SRC:4\\n_light_attr_set(a, 'x', (10 + 20))\"",
+   "expected_action": "语义轮：codegen 字符串断言族（点号/句号、成员赋值形态）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call",
+   "file": "tests/_test_null_safety.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 原因: 发现 2 个语法错误（下面详列前 2 个，建议从第 1 个开始修）:  错误 1/2:  ┌─ 语法错误 │ 位置: 行 1, 列 11 │ 原因: 无法识别的语法元素：'：'。请检查语句是否正确，或参考光明语法文档。 │ 附近: '：' └─  ---  错误 2/2:  ┌─ 语法错误 │ 位置: 行 2, 列 1 │ 原因: 缩进不正确：这一行的缩进层级没有对应的语句块。请检查上一条语句是否以「：」结尾、或本行缩进是否多/少了一级。 │ 附近: '4' └─ └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/integration/test_class_system.py::TestClassInheritance::test_constructor_with_inheritance",
+   "file": "tests/integration/test_class_system.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己名字' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_async_io_light.py::TestTLS异步读腿::test_tls异步读体拿到完整体且不占用事件循环",
+   "file": "tests/test_async_io_light.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "cryptography",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_async_io_light.py::TestTLS异步读腿::test_两路TLS串行与并发的关系",
+   "file": "tests/test_async_io_light.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "cryptography",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_async_io_light.py::TestTLS异步读腿::test_tls异步腿的读超时抛读取错误",
+   "file": "tests/test_async_io_light.py",
+   "junit_status": "error",
+   "category": "环境红-缺依赖",
+   "subcategory": "cryptography",
+   "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\"",
+   "expected_action": "环境红：永久豁免（0.82 不装第三方库为既定口径）；若环境决策改变（装 cryptography/lunardate/requests）可整类解锁",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/_test_null_safety.py::TestNullSafetyBasic::test_unwrap_on_nullable_variable",
+   "file": "tests/_test_null_safety.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: unexpectedly None",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码",
+   "file": "tests/unit/test_原生腿_R13C_对拍扩展.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "Failed: 实际=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=光明'] 期望=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=奥楥']",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestVariableDeclaration::test_variable_with_expression",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 8 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestExpressions::test_arithmetic_expression",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 8 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestExpressions::test_nested_expression",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 10 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestFunctionDefinition::test_function_with_body",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 2, 列 10 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_l0_char_alias_async_yi.py::TestAsyncCharAliasTables::test_异_进复合词保护表",
+   "file": "tests/unit/test_l0_char_alias_async_yi.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '异' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_l0_char_alias_const_chang.py::TestConstModifierTables::test_常_进复合词保护表",
+   "file": "tests/unit/test_l0_char_alias_const_chang.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '常' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_modifier_await_aliases.py::TestAliasTableMembership::test_等_已进复合词安全表",
+   "file": "tests/unit/test_modifier_await_aliases.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '等' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/_test_null_safety.py::TestNullSafetyArithmetic::test_operation_without_unwrap",
+   "file": "tests/_test_null_safety.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AssertionError: False is not true : 期望可空值参与运算时报错，但得到: []",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/integration/test_class_system.py::TestClassBasic::test_class_with_attributes",
+   "file": "tests/integration/test_class_system.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己姓名' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/integration/test_class_system.py::TestMethodOverride::test_method_override",
+   "file": "tests/integration/test_class_system.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己半径' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/integration/test_class_system.py::TestClassAdvanced::test_self_method_call",
+   "file": "tests/integration/test_class_system.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己值' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg",
+   "file": "tests/_test_null_safety.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 原因: 发现 2 个语法错误（下面详列前 2 个，建议从第 1 个开始修）:  错误 1/2:  ┌─ 语法错误 │ 位置: 行 1, 列 13 │ 原因: 无法识别的语法元素：'：'。请检查语句是否正确，或参考光明语法文档。 │ 附近: '：' └─  ---  错误 2/2:  ┌─ 语法错误 │ 位置: 行 2, 列 1 │ 原因: 缩进不正确：这一行的缩进层级没有对应的语句块。请检查上一条语句是否以「：」结尾、或本行缩进是否多/少了一级。 │ 附近: '4' └─ └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_原生腿_R13B_能力扩展.py::Test行政区划扩展::test_O0_行政区划代码_对拍与扩展",
+   "file": "tests/unit/test_原生腿_R13B_能力扩展.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestFunctionCall::test_call_in_expression",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "语义债-其他",
+   "subcategory": "",
+   "message": "assert False  +  where False = isinstance(《设结果为段落计算》(甲, 乙), VarDecl)",
+   "expected_action": "逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/test_parser.py::TestNoSpaceCode::test_no_space_variable",
+   "file": "tests/test_parser.py",
+   "junit_status": "failure",
+   "category": "解析层-语法错误",
+   "subcategory": "「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因",
+   "message": "parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 7 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─",
+   "expected_action": "疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_break_continue_aliases.py::TestBreakContinueAliasTables::test_断_跃_已进复合词安全表",
+   "file": "tests/unit/test_break_continue_aliases.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '断' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_interface_aliases.py::TestImplementsAliasTables::test_现_已进复合词安全表",
+   "file": "tests/unit/test_interface_aliases.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '现' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_l0_char_aliases_paradigm_ac.py::TestParadigmACTablesUntouched::test_引_本来就是关键字",
+   "file": "tests/unit/test_l0_char_aliases_paradigm_ac.py",
+   "junit_status": "failure",
+   "category": "词法层-单字保护/安全表",
+   "subcategory": "单字别名未进复合词安全表（frozenset() 为空）",
+   "message": "AssertionError: '引' not found in frozenset()",
+   "expected_action": "需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置",
+   "task1_impact": "",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_correctness_smoke",
+   "file": "tests/unit/test_lexer_perf.py",
+   "junit_status": "failure",
+   "category": "词法层-切词行为",
+   "subcategory": "G5 同源：`甲为三` 未切分、`为` 丢失",
+   "message": "AssertionError: '为' not found in ['设', '甲为三', '。', '打印', '甲', '加', 5, '。', None]",
+   "expected_action": "词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）",
+   "task1_impact": "预计转绿（条件：`甲为三` 由任务1a 顺带修；否则保持红并登记）",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_performance_10000_lines",
+   "file": "tests/unit/test_lexer_perf.py",
+   "junit_status": "failure",
+   "category": "性能断言-墙钟",
+   "subcategory": "G4：并行下墙钟假红（3.6s/2.5s > 2.0s 阈值）",
+   "message": "AssertionError: 2.544814493972808 not less than 2.0 : 词法分析耗时 2.5448 秒，超过 2.0 秒限制",
+   "expected_action": "本轮 R57 任务2 处置（阈值放宽/相对度量，留痕）",
+   "task1_impact": "任务2 处置（本轮）",
+   "stable_6of6": false
+  },
+  {
+   "id": "tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output",
+   "file": "tests/unit/test_examples_run.py",
+   "junit_status": "failure",
+   "category": "examples 聚合门",
+   "subcategory": "examples 运行异常聚合（含 4 例词法红在内）",
+   "message": "AssertionError: Lists differ: [] != [\"hello.light: 运行异常 -> \\n┌─ 语法错误\\n│ 位置: 行 [1216 chars]ned\"]  Second list contains 9 additional elements. First extra element 0: \"hello.light: 运行异常 -> \\n┌─ 语法错误\\n│ 位置: 行 18, 列 9\\n│ 原因: 期望'为'或'等于'，但得到 「\\n」\\n│ 附近: '\\n'\\n└─\"  Diff is 1643 characters long. Set self.max",
+   "expected_action": "R57 任务1 落地后复查（聚合 9 例 example 异常，含 4 例词法红，可能部分转绿）",
+   "task1_impact": "部分受任务1 影响：聚合 9 例 example 异常，4 例词法红修复后是否全绿取决于其余 5 例",
+   "stable_6of6": true
+  },
+  {
+   "id": "tests/integration/test_class_system.py::TestMultipleClasses::test_multiple_classes_in_one_file",
+   "file": "tests/integration/test_class_system.py",
+   "junit_status": "failure",
+   "category": "语义债-类/成员访问",
+   "subcategory": "「己」成员名未定义（己X 族）",
+   "message": "NameError: name '己品牌' is not defined",
+   "expected_action": "语义轮：`己X` 未定义族归因（类/成员访问链路）",
+   "task1_impact": "",
+   "stable_6of6": true
+  }
+ ],
+ "outside_baseline_reds": [
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言失败异常",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_集合断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言为假",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_链式断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_类型断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言不相等",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言正数负数零",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言相等",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_对象断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_异常断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_字符串断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_自定义断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言在范围内",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言接近",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_集合操作断言",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_cross_platform.py::test_stdlib_modules_importable",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/test_stdlib_phase9.py::test_断言为真",
+   "runs_red_of_5": 5,
+   "all_5_red": true,
+   "note": "5/5 稳定红（基线那次全绿属反常，真基线低估存量）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[hello.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[class_complete.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/test_distributed_eval_light.py::test_重派与心跳_杀节点后重派且无静默丢条",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "已知 flaky（R57 任务2 处置）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[Z\\u9636\\u6bb5_\\u53ef\\u9009\\u7c7b\\u578b\\u7cfb\\u7edf/Z7_\\u7c7b\\u4e0e\\u63a5\\u53e3\\u7c7b\\u578b\\u6807\\u6ce8.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[Z\\u9636\\u6bb5_\\u53ef\\u9009\\u7c7b\\u578b\\u7cfb\\u7edf/Z7_\\u7c7b\\u4e0e\\u63a5\\u53e3\\u7c7b\\u578b\\u6807\\u6ce8.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo1_sql.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L0_core/06_\\u7c7b_\\u9762\\u5411\\u5bf9\\u8c61.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo1_sql.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[class_access_control.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[_test_nested_closure.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo2_pandas_csv.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_module_e2e.py::test_class_import_simulation",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[class_access_control.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[test_L068.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/all_in_one_L3_demo.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[student_management.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[test_L068.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[basic.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[basic.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[calculator.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/all_in_one_demo.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[class_static.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L0_core/06_\\u7c7b_\\u9762\\u5411\\u5bf9\\u8c61.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/all_in_one_L3_demo.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[class_complete.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[class_example.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[_test_nested_closure.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[student_management.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[calculator.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[class_example.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_run[class_static.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  },
+  {
+   "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[hello.light]",
+   "runs_red_of_5": 1,
+   "all_5_red": false,
+   "note": "真抖动/口径差异（e2e 33 例集中自 070457 轮，该轮收集总数 8109 与其他 7806 不同，判据不可比）"
+  }
+ ]
+}

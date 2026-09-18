@@ -41,6 +41,7 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -139,6 +140,50 @@ def _stamp() -> str:
     return time.strftime("%Y-%m-%d-%H%M%S")
 
 
+def _stream_proc(cmd, cwd, env, timeout, label="proc"):
+    """Popen 逐行转发子进程 stdout/stderr 到本机终端，返回 (rc, 全部输出文本)。
+
+    解决 gate 长任务（本机 6~7 分钟、0.82 全量 25~45 分钟）原来
+    capture_output=True 把输出憋到结束才吐、长跑期间完全看不到进度的问题。
+    超时保护保留：超 timeout 秒 kill 子进程并返回 rc=124。PYTHONUNBUFFERED=1
+    强制子进程无缓冲，保证逐行实时可见（否则 Python 对管道块缓冲会攒批）。
+    """
+    env = dict(env if env is not None else os.environ)
+    env["PYTHONUNBUFFERED"] = "1"
+    p = subprocess.Popen(
+        cmd, cwd=cwd, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        bufsize=1, text=True, encoding="utf-8", errors="replace",
+    )
+    buf = []
+
+    def _pump():
+        try:
+            while True:
+                line = p.stdout.readline()
+                if not line:
+                    break
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                buf.append(line)
+        except Exception:
+            pass
+
+    thr = threading.Thread(target=_pump, daemon=True)
+    thr.start()
+    try:
+        rc = p.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        try:
+            p.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            pass
+        rc = 124
+    thr.join(timeout=10)
+    return rc, "".join(buf)
+
+
 def gate_local(args, result: dict, base_lib) -> bool:
     """本机快门：lightharness 全量 pytest（串行）→ 基线 → 与上一份比新增红。"""
     REPORTS.mkdir(parents=True, exist_ok=True)
@@ -157,19 +202,15 @@ def gate_local(args, result: dict, base_lib) -> bool:
         env.setdefault("LIGHT_MERGE", str(ROOT.parent / "light-merge"))
         t0 = time.monotonic()
         print(f"[本机] lightharness 全量 pytest（串行，超时 {args.timeout}s）…")
-        try:
-            p = subprocess.run([python_cmd(), *LOCAL_PYTEST, "--junitxml", str(xml)],
-                               cwd=ROOT, env=env, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=args.timeout)
-            rc = p.returncode
-            tail = normalize(p.stdout or "").strip().splitlines()[-5:]
-        except subprocess.TimeoutExpired:
-            rc = 124
-            tail = [f"本机 pytest 超时 {args.timeout}s"]
+        rc, out = _stream_proc([python_cmd(), *LOCAL_PYTEST, "--junitxml", str(xml)],
+                               cwd=ROOT, env=env, timeout=args.timeout, label="本机")
         elapsed = round(time.monotonic() - t0, 1)
+        tail = normalize(out).strip().splitlines()[-5:]
         print(f"[本机] pytest rc={rc}，耗时 {elapsed}s")
         for ln in tail:
             print("   |", ln)
+        if rc == 124:
+            print(f"[本机] ⚠️ 本机 pytest 超时 {args.timeout}s（已 kill）")
         if not xml.exists():
             print("[本机] ❌ 没有产出 junitxml")
             result["local"] = {"error": "no junitxml", "ok": False}
@@ -202,23 +243,38 @@ def gate_local(args, result: dict, base_lib) -> bool:
 
 def gate_remote(args, result: dict, base_lib, cli=None, sync_mod=None) -> bool:
     """0.82 基准：调 082全量回归.py test 跑 light-merge 全量，再比新增红。"""
+    # R57 任务3（G8）：透传 --py（默认仍 3.12）。此前门远端腿写死默认解释器，
+    # 想用 3.11 对照跑（无 xdist、串行口径）只能绕过门脚本手工调 082全量回归.py。
     cmd = [python_cmd(), str(REG082_SCRIPT), "test", "--mode", args.mode_082,
+           "--py", args.py_082,
            "--timeout-sec", str(args.remote_timeout)]
     print("[0.82] 调用：%s" % " ".join(Path(c).name if Path(c).exists() else c for c in cmd))
     t0 = time.monotonic()
-    before = sorted(p for p in REPORTS.glob("082_lightmerge基线_*.json")
-                    if p.name != "082_lightmerge基线_latest.json")
-    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=args.remote_timeout + 600)
+    # ⚠️ 必须按 mtime 排序，不能按文件名：R56 任务4 产出的对拍基线叫
+    # `082_lightmerge基线_R53回退_<ts>.json`，字面序 'R' > '2' → 它排在所有
+    # `..._2026-*` 之后，按名字取「最后一个」会拿到它，于是门拿同一份基线自比 → **假 PASS**。
+    def _by_mtime():
+        return sorted((q for q in REPORTS.glob("082_lightmerge基线_*.json")
+                       if q.name != "082_lightmerge基线_latest.json"),
+                      key=lambda p: p.stat().st_mtime)
+
+    before = _by_mtime()
+    rc, out = _stream_proc(cmd, cwd=ROOT, env=os.environ.copy(),
+                           timeout=args.remote_timeout + 600, label="0.82")
     elapsed = round(time.monotonic() - t0, 1)
-    tail = normalize(p.stdout or p.stderr or "").strip().splitlines()[-8:]
+    tail = normalize(out or "").strip().splitlines()[-8:]
     for ln in tail:
         print("   |", ln)
-    after = sorted(q for q in REPORTS.glob("082_lightmerge基线_*.json")
-                   if q.name != "082_lightmerge基线_latest.json")
-    if p.returncode != 0 or len(after) <= len(before):
-        print(f"[0.82] ❌ 全量回归未产出新基线（rc={p.returncode}，耗时 {elapsed}s）")
-        result["remote"] = {"ok": False, "rc": p.returncode, "elapsed_sec": elapsed}
+    after = _by_mtime()
+    if before and after and before[-1].name == after[-1].name:
+        # 兜底断言：跑完了却没多出新基线，说明取基线的逻辑又出问题，别再给假 PASS
+        print(f"[0.82] ❌ 没有产出新基线（最新仍是 {after[-1].name}）")
+        result["remote"] = {"ok": False, "rc": rc, "elapsed_sec": elapsed,
+                            "reason": "no new baseline produced"}
+        return False
+    if rc != 0 or len(after) <= len(before):
+        print(f"[0.82] ❌ 全量回归未产出新基线（rc={rc}，耗时 {elapsed}s）")
+        result["remote"] = {"ok": False, "rc": rc, "elapsed_sec": elapsed}
         return False
 
     cur = base_lib.load_baseline(after[-1])
@@ -408,6 +464,10 @@ def main() -> int:
                     help="gate：复用已跑完的本机 junitxml，跳过本机重跑")
     ap.add_argument("--mode-082", choices=["fast", "full"], default="fast",
                     help="gate：0.82 侧 fast（-m 'not slow'）/ full")
+    ap.add_argument("--py", dest="py_082", default="/usr/local/bin/python3.12",
+                    help="gate：0.82 侧解释器（默认 /usr/local/bin/python3.12，带 xdist；"
+                         "传 3.11 时 082全量回归.py 会按其口径置空 addopts 串行跑）。"
+                         "R57 任务3（G8）：门远端腿此前写死默认值，不透传此参数。")
     args = ap.parse_args()
 
     result = {"schema": 3, "round": "R55", "mode": args.mode,
