@@ -58,7 +58,7 @@ EXCLUDE_SUFFIX = {".pyc", ".pyo", ".pyd", ".so", ".dylib"}
 #    `_taskR11B_test_<8位随机>`（由 tests/unit/test_原生腿_R11B_中文工具.py:148
 #    的 tempfile.TemporaryDirectory(prefix="_taskR11B_test_") 产生，未跟踪）。
 #    注意：该测试运行时会**重新创建**这些目录，排除只影响打包，不影响用例。
-EXCLUDE_DIR_PREFIXES = ("_taskR11B_test_",)
+EXCLUDE_DIR_PREFIXES = ("_taskR11B_test_", "_082_lm_results_")
 
 # 2) 相对仓根的**精确路径前缀**规则（元组为路径分量序列；目录/文件皆可）。
 #    均为「只在本地留档、0.82 副本不需要」的产物，已实测无任何测试引用
@@ -69,7 +69,12 @@ EXCLUDE_REL_PREFIXES = (
     ("2026-09-11-d613c31d",),    # light-merge：历史任务输出目录 10.9MB
     ("light_verify.tar.gz",),    # light-merge：未跟踪打包产物 5.8MB
     ("data", "finetune"),        # lightharness：微调语料 9.9MB（全仓 grep 零测试引用）
+    # ── R65 任务3：再压一轮（30.3MB → ~25MB）────────────────────────────
+    ("sessions",),               # lightharness：会话日志 2.56MB（R40 用例只碰自己的沙箱临时根）
+    (".ci",),                    # light-merge：仅 report_local.xml 1.15MB（非 CI 配置，配置在 .gitea/.github/.gitcode）
+    ("light.egg-info",),         # light-merge：1.65MB（git 未跟踪，tests/ 零引用）
 )
+# `_082_lm_results_*.xml`（1.23MB/份）是 pytest 结果落盘，只写不读 → 走前缀规则排除。
 # 保持不排除（0.82 跑测试必需 / 报告类小文件）：docs/功能对标/、docs/语言缺陷账.md、
 # scripts/、reports/、两仓根下 _task*_R*.md 报告。
 

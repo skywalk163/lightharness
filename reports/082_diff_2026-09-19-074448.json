@@ -1,0 +1,18 @@
+{
+  "diff": {
+    "base_generated_at": "2026-09-19T05:19:50+08:00",
+    "new_generated_at": "2026-09-19T07:43:03+08:00",
+    "base_total": 7884,
+    "new_total": 7884,
+    "base_failed": 0,
+    "new_failed": 0,
+    "new_red": [],
+    "recorded": [],
+    "fixed": [],
+    "unchanged_red": [],
+    "first_run": false,
+    "ok": true
+  },
+  "new_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_latest.json",
+  "base_baseline": "reports/082_lightmerge基线_2026-09-19-051950.json"
+}

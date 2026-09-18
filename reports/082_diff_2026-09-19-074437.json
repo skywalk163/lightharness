@@ -1,0 +1,32 @@
+{
+  "diff": {
+    "base_generated_at": "2026-09-19T07:17:48+08:00",
+    "new_generated_at": "2026-09-19T07:43:03+08:00",
+    "base_total": 7884,
+    "new_total": 7884,
+    "base_failed": 13,
+    "new_failed": 0,
+    "new_red": [],
+    "recorded": [],
+    "fixed": [
+      "tests/test_async_io_light.py::test_两路LLM流式并发比串行快",
+      "tests/test_async_io_light.py::test_异步增量与同步增量逐字相等[\\u5de5\\u5177]",
+      "tests/test_async_io_light.py::test_异步增量与同步增量逐字相等[\\u6587\\u672c]",
+      "tests/test_async_io_light.py::test_异步增量与同步增量逐字相等[\\u663e\\u5f0fnull]",
+      "tests/test_async_io_light.py::test_异步腿的工具调用按index累积",
+      "tests/test_async_io_light.py::test_异步腿的文本增量拼出完整回复",
+      "tests/test_async_io_light.py::test_异步腿遇4xx同样抛HTTP错误",
+      "tests/test_async_io_light.py::test_类上的异步入口返回async生成器对象且不提前发起IO",
+      "tests/test_harness_real_channel_light.py::test_并发比串行快",
+      "tests/test_harness_real_channel_light.py::test_并发跑通且每条请求各占一条连接",
+      "tests/test_harness_real_channel_light.py::test_鉴权头是非空Bearer",
+      "tests/unit/test_codegen_safename_multimodule_O0.py::test_统计light导出最小值而非数据最小值",
+      "tests/unit/test_原生腿_R11B_中文工具.py::test_中文分词_O0对拍"
+    ],
+    "unchanged_red": [],
+    "first_run": false,
+    "ok": true
+  },
+  "new_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_2026-09-19-074303.json",
+  "base_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_2026-09-19-071748.json"
+}
