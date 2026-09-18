@@ -1,0 +1,28 @@
+{
+  "diff": {
+    "base_generated_at": "2026-09-18T20:15:45+08:00",
+    "new_generated_at": "2026-09-18T23:33:30+08:00",
+    "base_total": 7871,
+    "new_total": 7884,
+    "base_failed": 4,
+    "new_failed": 4,
+    "new_red": [
+      "tests/test_ffi_phase2.py::test_ffi_full_workflow",
+      "tests/test_lightpub_bridge.py::test_获取JSON",
+      "tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位",
+      "tests/unit/test_原生腿_R11B_中文工具.py::test_中文分词_O0对拍"
+    ],
+    "recorded": [],
+    "fixed": [
+      "tests/_test_null_safety.py::test_paragraph_call",
+      "tests/test_R40_语言支撑配套.py::test_现状钉桩_R22_接收字合并",
+      "tests/test_R40_语言支撑配套.py::test_现状钉桩_全角逗号不是这两个回归的原因",
+      "tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍"
+    ],
+    "unchanged_red": [],
+    "first_run": false,
+    "ok": false
+  },
+  "new_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_latest.json",
+  "base_baseline": "reports/082_lightmerge基线_2026-09-18-201545.json"
+}

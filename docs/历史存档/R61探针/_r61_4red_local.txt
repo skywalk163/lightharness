@@ -1,0 +1,11 @@
+﻿
+no tests ran in 6.83s
+python.exe : ERROR: not found: G:\dswork\duan-light-merge\light-merge\tests\test_lightpub_bridge.py::test_获取JSON
+所在位置 行:1 字符: 87
++ ... NG="utf-8"; & ".venv\Scripts\python.exe" -m pytest "tests/test_ffi_ph ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ERROR: not foun...py::test_获取JSON:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(no match in any of [<Module test_lightpub_bridge.py>])
+

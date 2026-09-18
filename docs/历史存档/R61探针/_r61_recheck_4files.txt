@@ -1,0 +1,9 @@
+﻿........................................                                 [100%]
+============================== warnings summary ===============================
+tests/unit/test_R61_中文数字转换_hook腿.py: 26 warnings
+tests/_test_null_safety.py: 2 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+40 passed, 28 warnings in 45.23s

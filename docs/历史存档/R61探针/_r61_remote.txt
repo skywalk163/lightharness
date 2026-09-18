@@ -1,0 +1,8 @@
+﻿gitcode	https://gitcode.com/skywalk163/light (fetch)
+gitcode	https://gitcode.com/skywalk163/light (push)
+gitea	http://skywalk@192.168.1.5:3000/skywalk/light.git (fetch)
+gitea	http://skywalk@192.168.1.5:3000/skywalk/light.git (push)
+github	https://github.com/skywalk163/light.git (fetch)
+github	https://github.com/skywalk163/light.git (push)
+origin	g:\github\light (fetch)
+origin	g:\github\light (push)

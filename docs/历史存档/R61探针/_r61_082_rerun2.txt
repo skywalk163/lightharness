@@ -1,0 +1,16 @@
+﻿[同步0.82] 垫片就绪 /tmp/r44-shim/python -> /usr/local/bin/python3.11
+远端副本 /tmp/r44-20260918-232308
+
+=== ffi ===
+.                                                                        [100%]
+1 passed in 0.39s
+rc=0
+  | .                                                                        [100%]
+  | 1 passed in 0.39s
+
+=== lightpub ===
+.                                                                        [100%]
+1 passed, 19 deselected in 12.73s
+rc=0
+  | .                                                                        [100%]
+  | 1 passed, 19 deselected in 12.73s

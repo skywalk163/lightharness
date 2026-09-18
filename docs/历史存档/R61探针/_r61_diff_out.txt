@@ -1,0 +1,10 @@
+﻿[082全量] 对比：082_lightmerge基线_latest.json  ⟵  reports/082_lightmerge基线_2026-09-18-201545.json
+[082全量] 失败数 4 → 4（7871 → 7884 用例）
+[082全量] 新增红 4 ｜ 已修复 4 ｜ 持平 0
+[082全量]   已修复样例：['tests/_test_null_safety.py::test_paragraph_call', 'tests/test_R40_语言支撑配套.py::test_现状钉桩_R22_接收字合并', 'tests/test_R40_语言支撑配套.py::test_现状钉桩_全角逗号不是这两个回归的原因', 'tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍']
+[082全量]   ❌ 新增红清单（前 30 条）：
+[082全量]     tests/test_ffi_phase2.py::test_ffi_full_workflow
+[082全量]     tests/test_lightpub_bridge.py::test_获取JSON
+[082全量]     tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位
+[082全量]     tests/unit/test_原生腿_R11B_中文工具.py::test_中文分词_O0对拍
+[082全量] 对比报告 reports\082_diff_2026-09-18-233339.json

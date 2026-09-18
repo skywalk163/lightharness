@@ -1,0 +1,336 @@
+﻿.FF                                                                      [100%]
+================================== FAILURES ===================================
+______________________________ test_内置函数证据行号可定位 _______________________________
+
+    def test_内置函数证据行号可定位():
+        """JSON 清单里每条 builtin 的 evidence 行号必须**真指到注册它的那一行**。
+    
+        两条判据（都可反跑）：
+        1. 行号落在 `_gen_typed_builtin` 方法体的行区间内 —— 挡「行号随手填个数」；
+        2. 那一行的文本里出现该内置名 —— 挡「行号在区间内但指错行」。
+    
+        合并期收紧：B7 原稿只断「1 <= 行号 <= 文件总行数」并把真判据注释掉
+        （「放宽：只要行号在合理范围内即可」）。codegen_typed.py 四千行，任何
+        数字都过，那条判据等于不存在——正是「上界断言」这一假绿形态。
+        """
+        data = _加载清单()
+        src = _源码()
+        src_lines = src.splitlines()
+        起, 止 = _方法行区间(src, '_gen_typed_builtin')
+        errors = []
+        for e in data['tables']['builtin_functions']['entries']:
+            ev = e.get('evidence', '')
+            m = re.search(r'codegen_typed\.py:(\d+)', ev)
+            if not m:
+                errors.append(f"{e['name']}: evidence 格式不对: {ev}")
+                continue
+            lineno = int(m.group(1))
+            if not (起 <= lineno <= 止):
+                errors.append(
+                    f"{e['name']}: 行号 {lineno} 在 _gen_typed_builtin "
+                    f"区间 [{起}, {止}] 之外")
+                continue
+            if e['name'] not in src_lines[lineno - 1]:
+                errors.append(
+                    f"{e['name']}: codegen_typed.py:{lineno} 那一行没有这个名字："
+                    f"{src_lines[lineno - 1].strip()[:60]}")
+>       assert not errors, '内置函数证据行号问题:\n' + '\n'.join(errors)
+E       AssertionError: 内置函数证据行号问题:
+E         ?.: codegen_typed.py:2936 那一行没有这个名字：if name in ('空合并', 'null_coalesce', '??'):
+E         ??: codegen_typed.py:2927 那一行没有这个名字：self.emit(f'{result} = call i32 @dv_is_null(ptr {slot})')
+E         Base64编码: codegen_typed.py:2511 那一行没有这个名字：
+E         Base64解码: codegen_typed.py:2526 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         HMAC_SHA256: codegen_typed.py:2602 那一行没有这个名字：out = self.new_register()
+E         MD5: codegen_typed.py:2537 那一行没有这个名字：str_ptr = self.new_register()
+E         SHA1: codegen_typed.py:2552 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         SHA256: codegen_typed.py:2567 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         SHA512: codegen_typed.py:2584 那一行没有这个名字：len_i32 = self.new_register()
+E         UUID3: codegen_typed.py:2624 那一行没有这个名字：if name in ('UUID5', 'uuid5', '生成UUID5内建'):
+E         UUID5: codegen_typed.py:2615 那一行没有这个名字：salt_ptr = self.new_register()
+E         _b64_decode: codegen_typed.py:2526 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         _b64_encode: codegen_typed.py:2511 那一行没有这个名字：
+E         _hmac_sha256: codegen_typed.py:2602 那一行没有这个名字：out = self.new_register()
+E         _md5: codegen_typed.py:2537 那一行没有这个名字：str_ptr = self.new_register()
+E         _round: codegen_typed.py:2634 那一行没有这个名字：if len(args) >= 2:
+E         _sha1: codegen_typed.py:2552 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         _sha256: codegen_typed.py:2567 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         _sha512: codegen_typed.py:2584 那一行没有这个名字：len_i32 = self.new_register()
+E         abs_path: codegen_typed.py:2705 那一行没有这个名字：return self._call_dv_func('dv_path_dirname', args[0]), 'dv'
+E         abspath: codegen_typed.py:2705 那一行没有这个名字：return self._call_dv_func('dv_path_dirname', args[0]), 'dv'
+E         await_io: codegen_typed.py:3123 那一行没有这个名字：if resume_label:
+E         b64decode: codegen_typed.py:2526 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         b64encode: codegen_typed.py:2511 那一行没有这个名字：
+E         base64_decode: codegen_typed.py:2526 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         base64_encode: codegen_typed.py:2511 那一行没有这个名字：
+E         basename: codegen_typed.py:2699 那一行没有这个名字：return self._call_dv_func('dv_path_join', args[0], args[1]),
+E         bool: codegen_typed.py:2816 那一行没有这个名字：# …,3 取 str 字段（列表为 NULL）→ dv_str_join(legacy "list:" 解析器)
+E         count: codegen_typed.py:2777 那一行没有这个名字：if name in ('反向查找', 'rfind', 'str_rfind'):
+E         dict: codegen_typed.py:2850 那一行没有这个名字：self.emit(f'call void @dv_get_type_name(ptr {obj_slot}, ptr 
+E         dirname: codegen_typed.py:2693 那一行没有这个名字：if len(args) >= 2:
+E         ends_with: codegen_typed.py:2757 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         endswith: codegen_typed.py:2757 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         find: codegen_typed.py:2480 那一行没有这个名字：safe_len = self.new_register()
+E         implode: codegen_typed.py:2805 那一行没有这个名字：# （能力边界：连续空白会产生空段，与 Python str.split() 的
+E         instance_of: codegen_typed.py:2821 那一行没有这个名字：empty_sep = self._create_str_dv(self.gen_string_constant("")
+E         is_null: codegen_typed.py:2914 那一行没有这个名字：return self._load_dv(slot0), 'dv'
+E         isinstance: codegen_typed.py:2821 那一行没有这个名字：empty_sep = self._create_str_dv(self.gen_string_constant("")
+E         join: codegen_typed.py:2805 那一行没有这个名字：# （能力边界：连续空白会产生空段，与 Python str.split() 的
+E         join_path: codegen_typed.py:2688 那一行没有这个名字：return self._call_dv_func('dv_str_rstrip', args[0],
+E         lower: codegen_typed.py:2503 那一行没有这个名字：self.emit(f'{i64_val} = call i64 @dv_str_rfind(ptr {slot0}, 
+E         lstrip: codegen_typed.py:2651 那一行没有这个名字：res = self._load_dv(res_slot)
+E         make_dir: codegen_typed.py:2711 那一行没有这个名字：return self._call_dv_func('dv_path_basename', args[0]), 'dv'
+E         makedirs: codegen_typed.py:2711 那一行没有这个名字：return self._call_dv_func('dv_path_basename', args[0]), 'dv'
+E         md5: codegen_typed.py:2537 那一行没有这个名字：str_ptr = self.new_register()
+E         mkdir: codegen_typed.py:2711 那一行没有这个名字：return self._call_dv_func('dv_path_basename', args[0]), 'dv'
+E         null?: codegen_typed.py:2914 那一行没有这个名字：return self._load_dv(slot0), 'dv'
+E         null_coalesce: codegen_typed.py:2927 那一行没有这个名字：self.emit(f'{result} = call i32 @dv_is_null(ptr {slot})')
+E         path_basename: codegen_typed.py:2699 那一行没有这个名字：return self._call_dv_func('dv_path_join', args[0], args[1]),
+E         path_dirname: codegen_typed.py:2693 那一行没有这个名字：if len(args) >= 2:
+E         path_join: codegen_typed.py:2688 那一行没有这个名字：return self._call_dv_func('dv_str_rstrip', args[0],
+E         poller_backend: codegen_typed.py:3280 那一行没有这个名字：err_ptr = self.new_register()
+E         poller_count: codegen_typed.py:3285 那一行没有这个名字：err_ptr = self.new_register()
+E         poller_create: codegen_typed.py:3036 那一行没有这个名字：
+E         poller_destroy: codegen_typed.py:3052 那一行没有这个名字：# 内联设置 type=8 和 str 字段
+E         poller_last_error: codegen_typed.py:3275 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         poller_register: codegen_typed.py:3058 那一行没有这个名字：self.emit(f'store ptr {poller_ptr}, ptr {s_ptr}')
+E         poller_wait: codegen_typed.py:3076 那一行没有这个名字：ev_i32 = self.new_register()
+E         poller后端: codegen_typed.py:3280 那一行没有这个名字：err_ptr = self.new_register()
+E         poller计数: codegen_typed.py:3285 那一行没有这个名字：err_ptr = self.new_register()
+E         poller错误: codegen_typed.py:3275 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         remove_dir: codegen_typed.py:2723 那一行没有这个名字：path_ptr = self.new_register()
+E         repeat: codegen_typed.py:2683 那一行没有这个名字：
+E         replace: codegen_typed.py:2786 那一行没有这个名字：if name in ('计数', 'count', 'str_count'):
+E         rfind: codegen_typed.py:2489 那一行没有这个名字：if name in ('查找', 'find', 'str_find'):
+E         rmdir: codegen_typed.py:2723 那一行没有这个名字：path_ptr = self.new_register()
+E         rstrip: codegen_typed.py:2675 那一行没有这个名字：# 语义对齐 Python str.title()（非字母重置、字母序列首大余小）。
+E         run_event_loop: codegen_typed.py:3095 那一行没有这个名字：self.emit(f'{ev_arr} = alloca i32, i32 256')
+E         safe_get: codegen_typed.py:2936 那一行没有这个名字：if name in ('空合并', 'null_coalesce', '??'):
+E         sha1: codegen_typed.py:2552 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         sha256: codegen_typed.py:2567 那一行没有这个名字：# dv_str_len 入参是 LightValue*（需先 _store_dv 取指针）；编码函数仍用 data_p
+E         sha512: codegen_typed.py:2584 那一行没有这个名字：len_i32 = self.new_register()
+E         sleep: codegen_typed.py:3099 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         socket_close: codegen_typed.py:3010 那一行没有这个名字：mb_i64 = self.new_register()
+E         socket_connect: codegen_typed.py:2963 那一行没有这个名字：t_i32 = self.new_register()
+E         socket_create: codegen_typed.py:2946 那一行没有这个名字：if len(args) >= 2:
+E         socket_last_error: codegen_typed.py:3023 那一行没有这个名字：fd_i32 = self.new_register()
+E         socket_last_error_code: codegen_typed.py:3028 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         socket_recv: codegen_typed.py:2995 那一行没有这个名字：self.emit(f'{fd_i32} = trunc i64 {fd_i64} to i32')
+E         socket_send: codegen_typed.py:2981 那一行没有这个名字：port_i32 = self.new_register()
+E         socket错误: codegen_typed.py:3023 那一行没有这个名字：fd_i32 = self.new_register()
+E         socket错误码: codegen_typed.py:3028 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         split: codegen_typed.py:2791 那一行没有这个名字：self.emit(f'{r} = call i64 @dv_str_count(ptr {s0}, ptr {s1})
+E         starts_with: codegen_typed.py:2746 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         startswith: codegen_typed.py:2746 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         str_contains: codegen_typed.py:2735 那一行没有这个名字：path_ptr = self.new_register()
+E         str_count: codegen_typed.py:2777 那一行没有这个名字：if name in ('反向查找', 'rfind', 'str_rfind'):
+E         str_find: codegen_typed.py:2480 那一行没有这个名字：safe_len = self.new_register()
+E         str_join: codegen_typed.py:2805 那一行没有这个名字：# （能力边界：连续空白会产生空段，与 Python str.split() 的
+E         str_lstrip: codegen_typed.py:2651 那一行没有这个名字：res = self._load_dv(res_slot)
+E         str_repeat: codegen_typed.py:2683 那一行没有这个名字：
+E         str_replace: codegen_typed.py:2786 那一行没有这个名字：if name in ('计数', 'count', 'str_count'):
+E         str_rfind: codegen_typed.py:2489 那一行没有这个名字：if name in ('查找', 'find', 'str_find'):
+E         str_rstrip: codegen_typed.py:2675 那一行没有这个名字：# 语义对齐 Python str.title()（非字母重置、字母序列首大余小）。
+E         str_split: codegen_typed.py:2791 那一行没有这个名字：self.emit(f'{r} = call i64 @dv_str_count(ptr {s0}, ptr {s1})
+E         str_strip: codegen_typed.py:2646 那一行没有这个名字：res_slot = self._new_dv_slot()
+E         strip: codegen_typed.py:2646 那一行没有这个名字：res_slot = self._new_dv_slot()
+E         title: codegen_typed.py:2663 那一行没有这个名字：# _r12c_lstrip（单遍状态机，libc isspace）。
+E         tls_add_trusted_cert: codegen_typed.py:3260 那一行没有这个名字：en_i32 = self.new_register()
+E         tls_flush: codegen_typed.py:3177 那一行没有这个名字：self.emit(f'{s_ptr} = getelementptr inbounds {LIGHTVALUE_STR
+E         tls_free: codegen_typed.py:3240 那一行没有这个名字：if args:
+E         tls_handshake: codegen_typed.py:3174 那一行没有这个名字：self.emit(f'{t_ptr} = getelementptr inbounds {LIGHTVALUE_STR
+E         tls_is_ready: codegen_typed.py:3176 那一行没有这个名字：s_ptr = self.new_register()
+E         tls_last_error: codegen_typed.py:3270 那一行没有这个名字：if args:
+E         tls_recv: codegen_typed.py:3217 那一行没有这个名字：len_i32 = self.new_register()
+E         tls_recv_status: codegen_typed.py:3229 那一行没有这个名字：mb_i64 = self.new_register()
+E         tls_send: codegen_typed.py:3190 那一行没有这个名字：if args:
+E         tls_send_n: codegen_typed.py:3201 那一行没有这个名字：t_ptr = self._extract_ptr_from_dv(args[0])
+E         tls_set_verify: codegen_typed.py:3246 那一行没有这个名字：return self._create_int_dv(ret_i64), 'dv'
+E         tls_want_event: codegen_typed.py:3175 那一行没有这个名字：self.emit(f'store i32 8, ptr {t_ptr}')
+E         tls_wrap: codegen_typed.py:3153 那一行没有这个名字：else:
+E         to_bool: codegen_typed.py:2816 那一行没有这个名字：# …,3 取 str 字段（列表为 NULL）→ dv_str_join(legacy "list:" 解析器)
+E         to_lower: codegen_typed.py:2503 那一行没有这个名字：self.emit(f'{i64_val} = call i64 @dv_str_rfind(ptr {slot0}, 
+E         to_upper: codegen_typed.py:2498 那一行没有这个名字：if name in ('rfind', '右查找', 'str_rfind'):
+E         trim: codegen_typed.py:2646 那一行没有这个名字：res_slot = self._new_dv_slot()
+E         type: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         type_name: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         typeof: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         upper: codegen_typed.py:2498 那一行没有这个名字：if name in ('rfind', '右查找', 'str_rfind'):
+E         uuid3: codegen_typed.py:2624 那一行没有这个名字：if name in ('UUID5', 'uuid5', '生成UUID5内建'):
+E         uuid5: codegen_typed.py:2615 那一行没有这个名字：salt_ptr = self.new_register()
+E         以开头: codegen_typed.py:2746 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         以结尾: codegen_typed.py:2757 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         信任证书tls: codegen_typed.py:3260 那一行没有这个名字：en_i32 = self.new_register()
+E         关闭socket: codegen_typed.py:3010 那一行没有这个名字：mb_i64 = self.new_register()
+E         冲刷tls: codegen_typed.py:3177 那一行没有这个名字：self.emit(f'{s_ptr} = getelementptr inbounds {LIGHTVALUE_STR
+E         分割: codegen_typed.py:2791 那一行没有这个名字：self.emit(f'{r} = call i64 @dv_str_count(ptr {s0}, ptr {s1})
+E         分割字符串: codegen_typed.py:2791 那一行没有这个名字：self.emit(f'{r} = call i64 @dv_str_count(ptr {s0}, ptr {s1})
+E         创建poller: codegen_typed.py:3036 那一行没有这个名字：
+E         创建socket: codegen_typed.py:2946 那一行没有这个名字：if len(args) >= 2:
+E         创建列表: codegen_typed.py:2866 那一行没有这个名字：return self._gen_type_predicate(args, ('int',))
+E         创建字典: codegen_typed.py:2870 那一行没有这个名字：return self._gen_type_predicate(args, ('bool',))
+E         创建目录: codegen_typed.py:2711 那一行没有这个名字：return self._call_dv_func('dv_path_basename', args[0]), 'dv'
+E         删除目录: codegen_typed.py:2723 那一行没有这个名字：path_ptr = self.new_register()
+E         前缀是: codegen_typed.py:2746 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         包含字符串: codegen_typed.py:2735 那一行没有这个名字：path_ptr = self.new_register()
+E         包装tls: codegen_typed.py:3153 那一行没有这个名字：else:
+E         去除空格: codegen_typed.py:2646 那一行没有这个名字：res_slot = self._new_dv_slot()
+E         去除空白: codegen_typed.py:2646 那一行没有这个名字：res_slot = self._new_dv_slot()
+E         反向查找: codegen_typed.py:2768 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         发送socket: codegen_typed.py:2981 那一行没有这个名字：port_i32 = self.new_register()
+E         发送tls: codegen_typed.py:3190 那一行没有这个名字：if args:
+E         发送tls长度: codegen_typed.py:3201 那一行没有这个名字：t_ptr = self._extract_ptr_from_dv(args[0])
+E         取类型: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         右去除: codegen_typed.py:2675 那一行没有这个名字：# 语义对齐 Python str.title()（非字母重置、字母序列首大余小）。
+E         右查找: codegen_typed.py:2489 那一行没有这个名字：if name in ('查找', 'find', 'str_find'):
+E         后缀是: codegen_typed.py:2757 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         大写: codegen_typed.py:2498 那一行没有这个名字：if name in ('rfind', '右查找', 'str_rfind'):
+E         字典: codegen_typed.py:2870 那一行没有这个名字：return self._gen_type_predicate(args, ('bool',))
+E         字典创建: codegen_typed.py:2870 那一行没有这个名字：return self._gen_type_predicate(args, ('bool',))
+E         字典删除: codegen_typed.py:2900 那一行没有这个名字：return self._call_dv_func('dv_null'), 'dv'
+E         字典包含键: codegen_typed.py:2893 那一行没有这个名字：if name in ('字典获取',):
+E         字典有键: codegen_typed.py:2893 那一行没有这个名字：if name in ('字典获取',):
+E         字典添加: codegen_typed.py:2874 那一行没有这个名字：
+E         字典移除: codegen_typed.py:2900 那一行没有这个名字：return self._call_dv_func('dv_null'), 'dv'
+E         字典获取: codegen_typed.py:2884 那一行没有这个名字：if len(args) >= 3:
+E         字典设置: codegen_typed.py:2874 那一行没有这个名字：
+E         字典键: codegen_typed.py:2908 那一行没有这个名字：# 字典化时删除键用，行为对齐 Python dict.pop(key) 的静默缺失语义）。
+E         字典键列表: codegen_typed.py:2908 那一行没有这个名字：# 字典化时删除键用，行为对齐 Python dict.pop(key) 的静默缺失语义）。
+E         字符串包含: codegen_typed.py:2735 那一行没有这个名字：path_ptr = self.new_register()
+E         字符串重复: codegen_typed.py:2683 那一行没有这个名字：
+E         安全获取: codegen_typed.py:2936 那一行没有这个名字：if name in ('空合并', 'null_coalesce', '??'):
+E         小写: codegen_typed.py:2503 那一行没有这个名字：self.emit(f'{i64_val} = call i64 @dv_str_rfind(ptr {slot0}, 
+E         就绪tls: codegen_typed.py:3176 那一行没有这个名字：s_ptr = self.new_register()
+E         左去除: codegen_typed.py:2651 那一行没有这个名字：res = self._load_dv(res_slot)
+E         开头: codegen_typed.py:2746 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         接收socket: codegen_typed.py:2995 那一行没有这个名字：self.emit(f'{fd_i32} = trunc i64 {fd_i64} to i32')
+E         接收tls: codegen_typed.py:3217 那一行没有这个名字：len_i32 = self.new_register()
+E         接收状态tls: codegen_typed.py:3229 那一行没有这个名字：mb_i64 = self.new_register()
+E         握手tls: codegen_typed.py:3174 那一行没有这个名字：self.emit(f'{t_ptr} = getelementptr inbounds {LIGHTVALUE_STR
+E         文件名: codegen_typed.py:2699 那一行没有这个名字：return self._call_dv_func('dv_path_join', args[0], args[1]),
+E         新建字典: codegen_typed.py:2870 那一行没有这个名字：return self._gen_type_predicate(args, ('bool',))
+E         是否实例: codegen_typed.py:2821 那一行没有这个名字：empty_sep = self._create_str_dv(self.gen_string_constant("")
+E         是实例: codegen_typed.py:2821 那一行没有这个名字：empty_sep = self._create_str_dv(self.gen_string_constant("")
+E         是空: codegen_typed.py:2914 那一行没有这个名字：return self._load_dv(slot0), 'dv'
+E         是类实例: codegen_typed.py:2821 那一行没有这个名字：empty_sep = self._create_str_dv(self.gen_string_constant("")
+E         替换: codegen_typed.py:2786 那一行没有这个名字：if name in ('计数', 'count', 'str_count'):
+E         替换字符串: codegen_typed.py:2786 那一行没有这个名字：if name in ('计数', 'count', 'str_count'):
+E         查找: codegen_typed.py:2480 那一行没有这个名字：safe_len = self.new_register()
+E         校验tls: codegen_typed.py:3246 那一行没有这个名字：return self._create_int_dv(ret_i64), 'dv'
+E         每个单词首字母大写: codegen_typed.py:2663 那一行没有这个名字：# _r12c_lstrip（单遍状态机，libc isspace）。
+E         注册poller: codegen_typed.py:3058 那一行没有这个名字：self.emit(f'store ptr {poller_ptr}, ptr {s_ptr}')
+E         生成UUID3内建: codegen_typed.py:2624 那一行没有这个名字：if name in ('UUID5', 'uuid5', '生成UUID5内建'):
+E         生成UUID5内建: codegen_typed.py:2615 那一行没有这个名字：salt_ptr = self.new_register()
+E         目录名: codegen_typed.py:2693 那一行没有这个名字：if len(args) >= 2:
+E         睡眠: codegen_typed.py:3099 那一行没有这个名字：self.emit(f'{ret_i64} = sext i32 {ret} to i64')
+E         空合并: codegen_typed.py:2927 那一行没有这个名字：self.emit(f'{result} = call i32 @dv_is_null(ptr {slot})')
+E         等待事件tls: codegen_typed.py:3175 那一行没有这个名字：self.emit(f'store i32 8, ptr {t_ptr}')
+E         类型: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         类型名: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         结尾: codegen_typed.py:2757 那一行没有这个名字：s0 = self._store_dv(args[0])
+E         绝对路径: codegen_typed.py:2705 那一行没有这个名字：return self._call_dv_func('dv_path_dirname', args[0]), 'dv'
+E         获取类型: codegen_typed.py:2833 那一行没有这个名字：class_name_ptr = self.new_register()
+E         计数: codegen_typed.py:2777 那一行没有这个名字：if name in ('反向查找', 'rfind', 'str_rfind'):
+E         词首大写: codegen_typed.py:2663 那一行没有这个名字：# _r12c_lstrip（单遍状态机，libc isspace）。
+E         转大写: codegen_typed.py:2498 那一行没有这个名字：if name in ('rfind', '右查找', 'str_rfind'):
+E         转小写: codegen_typed.py:2503 那一行没有这个名字：self.emit(f'{i64_val} = call i64 @dv_str_rfind(ptr {slot0}, 
+E         转布尔: codegen_typed.py:2816 那一行没有这个名字：# …,3 取 str 字段（列表为 NULL）→ dv_str_join(legacy "list:" 解析器)
+E         运行事件循环: codegen_typed.py:3095 那一行没有这个名字：self.emit(f'{ev_arr} = alloca i32, i32 256')
+E         连接socket: codegen_typed.py:2963 那一行没有这个名字：t_i32 = self.new_register()
+E         连接字符串: codegen_typed.py:2805 那一行没有这个名字：# （能力边界：连续空白会产生空段，与 Python str.split() 的
+E         连接路径: codegen_typed.py:2688 那一行没有这个名字：return self._call_dv_func('dv_str_rstrip', args[0],
+E         释放tls: codegen_typed.py:3240 那一行没有这个名字：if args:
+E         重复: codegen_typed.py:2683 那一行没有这个名字：
+E         销毁poller: codegen_typed.py:3052 那一行没有这个名字：# 内联设置 type=8 和 str 字段
+E         错误tls: codegen_typed.py:3270 那一行没有这个名字：if args:
+E         是列表: codegen_typed.py:2847 那一行没有这个名字：self.emit(f'{buf_ptr} = alloca [256 x i8]')
+E         是数组: codegen_typed.py:2847 那一行没有这个名字：self.emit(f'{buf_ptr} = alloca [256 x i8]')
+E         is_list: codegen_typed.py:2847 那一行没有这个名字：self.emit(f'{buf_ptr} = alloca [256 x i8]')
+E         是字典: codegen_typed.py:2849 那一行没有这个名字：self.emit(f'{buf_cast} = getelementptr inbounds [256 x i8], 
+E         is_dict: codegen_typed.py:2849 那一行没有这个名字：self.emit(f'{buf_cast} = getelementptr inbounds [256 x i8], 
+E         is_map: codegen_typed.py:2849 那一行没有这个名字：self.emit(f'{buf_cast} = getelementptr inbounds [256 x i8], 
+E         是字符串: codegen_typed.py:2851 那一行没有这个名字：return self._create_str_dv(buf_cast), 'dv'
+E         is_str: codegen_typed.py:2851 那一行没有这个名字：return self._create_str_dv(buf_cast), 'dv'
+E         is_string: codegen_typed.py:2851 那一行没有这个名字：return self._create_str_dv(buf_cast), 'dv'
+E         是数值: codegen_typed.py:2853 那一行没有这个名字：
+E         是数字: codegen_typed.py:2853 那一行没有这个名字：
+E         is_number: codegen_typed.py:2853 那一行没有这个名字：
+E         是整数: codegen_typed.py:2856 那一行没有这个名字：if name in ('是列表', '是数组', 'is_list'):
+E         is_int: codegen_typed.py:2856 那一行没有这个名字：if name in ('是列表', '是数组', 'is_list'):
+E         is_integer: codegen_typed.py:2856 那一行没有这个名字：if name in ('是列表', '是数组', 'is_list'):
+E         是浮点: codegen_typed.py:2858 那一行没有这个名字：if name in ('是字典', 'is_dict', 'is_map'):
+E         是浮点数: codegen_typed.py:2858 那一行没有这个名字：if name in ('是字典', 'is_dict', 'is_map'):
+E         is_float: codegen_typed.py:2858 那一行没有这个名字：if name in ('是字典', 'is_dict', 'is_map'):
+E         是布尔: codegen_typed.py:2860 那一行没有这个名字：if name in ('是字符串', 'is_str', 'is_string'):
+E         is_bool: codegen_typed.py:2860 那一行没有这个名字：if name in ('是字符串', 'is_str', 'is_string'):
+E       assert not ["?.: codegen_typed.py:2936 那一行没有这个名字：if name in ('空合并', 'null_coalesce', '??'):", "??: codegen_typed.py:2927 那一行没有这个名...y:2602 那一行没有这个名字：out = self.new_register()', 'MD5: codegen_typed.py:2537 那一行没有这个名字：str_ptr = self.new_register()', ...]
+
+tests\unit\test_native_leg_capability.py:222: AssertionError
+_______________________________ test_中文分词_O0对拍 ________________________________
+
+    def test_中文分词_O0对拍():
+        src = """从 中文分词 导入 分词 添加自定义词 加载词典
+    段落 主:
+      设 r0 为 分词("今天天气真不错")
+      输出("C0=" 加上 转字符串(长(r0)))
+      设 i0 为 0
+      遍历 t 之 r0:
+        输出("T0_" 加上 转字符串(i0) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i0 为 i0 加上 1
+      设 r1 为 分词("你好世界人工智能")
+      输出("C1=" 加上 转字符串(长(r1)))
+      设 i1 为 0
+      遍历 t 之 r1:
+        输出("T1_" 加上 转字符串(i1) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i1 为 i1 加上 1
+      设 r2 为 分词("abcd")
+      输出("C2=" 加上 转字符串(长(r2)))
+      设 i2 为 0
+      遍历 t 之 r2:
+        输出("T2_" 加上 转字符串(i2) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i2 为 i2 加上 1
+      设 r3 为 分词("")
+      输出("C3=" 加上 转字符串(长(r3)))
+      设 r4 为 分词("我1995年在北京")
+      输出("C4=" 加上 转字符串(长(r4)))
+      设 i4 为 0
+      遍历 t 之 r4:
+        输出("T4_" 加上 转字符串(i4) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i4 为 i4 加上 1
+      添加自定义词("光明语言")
+      设 r5 为 分词("光明语言很棒")
+      输出("C5=" 加上 转字符串(长(r5)))
+      设 i5 为 0
+      遍历 t 之 r5:
+        输出("T5_" 加上 转字符串(i5) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i5 为 i5 加上 1
+      加载词典(["深圳大学", "计算机科学"])
+      设 r6 为 分词("深圳大学计算机科学专业")
+      输出("C6=" 加上 转字符串(长(r6)))
+      设 i6 为 0
+      遍历 t 之 r6:
+        输出("T6_" 加上 转字符串(i6) 加上 "=" 加上 转字符串(长(t)) 加上 ":" 加上 t)
+        设 i6 为 i6 加上 1
+    """
+        out = _native_run(src)
+    
+        def seq(prefix, n):
+            items = {}
+            for k, v in out.items():
+                if k.startswith(prefix):
+                    items[int(k[len(prefix):])] = v
+            return [items[i] for i in range(n)]
+    
+        ref = _load_py("中文分词", "_py_ref_cfz0")
+        for i, s in enumerate(["今天天气真不错", "你好世界人工智能", "abcd", "", "我1995年在北京"]):
+            exp = ref.分词(s)
+>           assert int(out[f"C{i}"]) == len(exp), f"分词len[{s}]"
+E           AssertionError: 分词len[今天天气真不错]
+E           assert 3 == 4
+E            +  where 3 = int('3')
+E            +  and   4 = len(['今天', '天气', '真', '不错'])
+
+tests\unit\test_原生腿_R11B_中文工具.py:634: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位
+FAILED tests/unit/test_原生腿_R11B_中文工具.py::test_中文分词_O0对拍 - Assert...
+2 failed, 1 passed in 8.73s
