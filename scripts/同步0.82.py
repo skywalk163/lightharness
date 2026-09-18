@@ -49,6 +49,30 @@ EXCLUDE_DIRS = {
 }
 EXCLUDE_SUFFIX = {".pyc", ".pyo", ".pyd", ".so", ".dylib"}
 
+# ── R62 任务1：中间产物/历史档案进排除（sync 包 120.3MB → 30MB 量级）─────────
+# 背景：R61 拆分后文件数 -87%（41197→5312）但包体 +291%（30.71→120.24MB），
+# 真因是本地中间产物（R59 测试遗留、历史探针档案、媒体/打包产物）被一起打包。
+# 这些产物 0.82 跑测试根本用不到，却让拆分红利被体积吃掉。
+#
+# 1) 目录名**前缀**规则：EXCLUDE_DIRS 是精确匹配，无法枚举 49 个随机名
+#    `_taskR11B_test_<8位随机>`（由 tests/unit/test_原生腿_R11B_中文工具.py:148
+#    的 tempfile.TemporaryDirectory(prefix="_taskR11B_test_") 产生，未跟踪）。
+#    注意：该测试运行时会**重新创建**这些目录，排除只影响打包，不影响用例。
+EXCLUDE_DIR_PREFIXES = ("_taskR11B_test_",)
+
+# 2) 相对仓根的**精确路径前缀**规则（元组为路径分量序列；目录/文件皆可）。
+#    均为「只在本地留档、0.82 副本不需要」的产物，已实测无任何测试引用
+#    （tests/ 内对 docs/历史存档 的唯一出现是 test_回归.py:51 的注释）。
+EXCLUDE_REL_PREFIXES = (
+    ("docs", "历史存档"),        # lightharness：R57~R61 历史探针档案 92.9MB / 732 文件
+    ("demo_video",),             # light-merge：Cinematic_*.mp4 12.7MB
+    ("2026-09-11-d613c31d",),    # light-merge：历史任务输出目录 10.9MB
+    ("light_verify.tar.gz",),    # light-merge：未跟踪打包产物 5.8MB
+    ("data", "finetune"),        # lightharness：微调语料 9.9MB（全仓 grep 零测试引用）
+)
+# 保持不排除（0.82 跑测试必需 / 报告类小文件）：docs/功能对标/、docs/语言缺陷账.md、
+# scripts/、reports/、两仓根下 _task*_R*.md 报告。
+
 # --with-git 时把 .git 一并带上：远端副本就成了真正的 git 工作树，
 # `tests/test_R21_词法确定性_超集.py` 里 `git archive HEAD` 才不会退化成 skip
 # （第45轮：0.82 已装 git 2.54.0，但 /tmp 副本此前没有 .git，2 条用例只能跳过）。
@@ -76,7 +100,15 @@ def load_env() -> tuple[str, str]:
 
 # ---------------------------------------------------------------- 打包
 def _should_skip(path: Path) -> bool:
-    for part in path.parts:
+    parts = tuple(path.parts)
+    # R62：相对仓根的精确路径前缀（先判，命中即排除）
+    for pref in EXCLUDE_REL_PREFIXES:
+        if parts[:len(pref)] == pref:
+            return True
+    for part in parts:
+        # R62：目录名前缀（_taskR11B_test_<随机> 这类无法枚举的中间产物）
+        if any(part.startswith(p) for p in EXCLUDE_DIR_PREFIXES):
+            return True
         if part == ".git":
             if INCLUDE_GIT:
                 continue          # --with-git：保留 .git，其余排除照旧
@@ -89,7 +121,11 @@ def _should_skip(path: Path) -> bool:
 
 
 def build_tarball(out_path: Path) -> int:
-    """把 lightharness/ 与 light-merge/ 打成一个 tar.gz（顶层即这两个目录名）。"""
+    """把 lightharness/ 与 light-merge/ 打成一个 tar.gz（顶层即这两个目录名）。
+
+    R62：改用 os.walk + **目录剪枝**（原 rglob 仍会递归进 143MB 的
+    `_taskR11B_test_*` 与 92.9MB 的 docs/历史存档 再逐条丢弃，白走一遍树）。
+    """
     n = 0
     with tarfile.open(out_path, "w:gz", compresslevel=1) as tf:  # 1=最快，体积换时间
         for base in (LIGHTHARNESS, LIGHT_MERGE):
@@ -97,17 +133,26 @@ def build_tarball(out_path: Path) -> int:
                 print(f"[同步0.82] 警告：缺失 {base}，跳过")
                 continue
             arc_root = base.name
-            for p in base.rglob("*"):
-                rel = p.relative_to(base)
-                if _should_skip(rel):
-                    continue
-                if p.is_dir():
-                    continue
-                try:
-                    tf.add(p, arcname=str(Path(arc_root) / rel).replace("\\", "/"))
-                    n += 1
-                except (OSError, PermissionError) as e:
-                    print(f"[同步0.82] 跳过（无法读取）：{p} -> {e}")
+            for dirpath, dirnames, filenames in os.walk(base):
+                rel_dir = Path(dirpath).relative_to(base)
+                # ── 目录剪枝：整棵子树不必再走 ──
+                keep = []
+                for d in dirnames:
+                    rel_sub = (rel_dir / d) if str(rel_dir) != "." else Path(d)
+                    if _should_skip(rel_sub):
+                        continue
+                    keep.append(d)
+                dirnames[:] = keep
+                for fn in filenames:
+                    rel = (rel_dir / fn) if str(rel_dir) != "." else Path(fn)
+                    if _should_skip(rel):
+                        continue
+                    p = Path(dirpath) / fn
+                    try:
+                        tf.add(p, arcname=str(Path(arc_root) / rel).replace("\\", "/"))
+                        n += 1
+                    except (OSError, PermissionError) as e:
+                        print(f"[同步0.82] 跳过（无法读取）：{p} -> {e}")
     return n
 
 
@@ -175,8 +220,10 @@ def cmd_sync(args) -> int:
     remote_dir = f"{REMOTE_BASE}/r44-{ts}"
     tar_path = ROOT / "_r44_sync.tar.gz"
 
-    print(f"[同步0.82] 打包中（排除 {sorted(EXCLUDE_DIRS)}"
-          f"{'，但包含 .git' if INCLUDE_GIT else ''}）…")
+    print(f"[同步0.82] 打包中（目录排除 {sorted(EXCLUDE_DIRS)}；"
+          f"前缀排除 {list(EXCLUDE_DIR_PREFIXES)}；"
+          f"路径排除 {['/'.join(p) for p in EXCLUDE_REL_PREFIXES]}"
+          f"{'；但包含 .git' if INCLUDE_GIT else ''}）…")
     t0 = time.time()
     n = build_tarball(tar_path)
     size_mb = tar_path.stat().st_size / 1024 / 1024

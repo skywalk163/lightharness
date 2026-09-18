@@ -4,7 +4,8 @@
 > 前置：`_task1_R61_拆分提速量化.md`（light-merge 侧已删 `.github/workflows/eval.yml`、
 > `.gitcode/workflows/eval.yml` 并移除 gitea 的积木库门禁 step）
 > 本轮：**在 lighting 仓补齐三平台流水线**，并修掉迁移时暴露的 4 个拆分遗留缺陷
-> 状态：未 commit / 未 push（**lighting 仓需要单独提交**，见 §6）
+> 状态：**已提交 `c3161d6e`（19 files, +386/−56）**；**未 push**（lighting `main` 无上游配置，无 `-u` 不会误推）
+> 已提交态复验：工作树 == HEAD 时复跑门禁 **24/24 全绿，rc=0**
 
 ---
 
@@ -192,18 +193,32 @@ cd lighting && export LIGHT_MERGE="…/light-merge" && python 评估/ci_eval.py 
 | `.gitignore` | + `评估/_冒烟写.txt`、`_冒烟工位*.light` |
 | `评估/{ci_eval,兜底待审,兜底跑分,兜底首跑,压测,安全审计,接线跑分,真实跑分,跑分}.py`、`demo/server.py`、`兜底生成器.py` | docstring/用法示例里的 `积木库/…` 过期路径（40 处，纯文本） |
 
-### 6.3 提交建议
+### 6.3 提交记录（已完成）
+
+**`c3161d6e`** `ci(R61): 积木库三平台流水线迁入本仓 + 修拆分遗留的编译器/根/体检/索引路径`
+—— 19 files changed, 386 insertions(+), 56 deletions(-)
+
+```
+ .gitcode/workflows/eval.yml |  68 +++    .gitea/workflows/ci.yml    | 118 +++    .github/workflows/eval.yml |  81 +++
+ .gitignore 5 | demo/server.py 2 | 兜底生成器.py 2 | 索引.json 12 | 组合.py 32
+ 评估/{ci_eval,体检,兜底待审,兜底跑分,兜底首跑,冒烟,压测,安全审计,接线跑分,真实跑分,跑分}.py
+```
+
+暂存方式：**显式列 19 个路径**，未用 `git add .`；R60 遗留的 3 个未跟踪探针
+（`_r60_gh_view.txt`、`_r60_gitea_public_out.txt`、`_r60_make_public_out.txt`）**未纳入**本次范围。
+提交前已确认工作树相对 HEAD 只有这 3 个未跟踪文件；提交后在同样的工作树上复跑门禁 → 24/24 全绿。
 
 ```bash
-# lighting 仓：显式列文件，勿 git add .
-git -C lighting add .gitea/workflows/ci.yml .github/workflows/eval.yml .gitcode/workflows/eval.yml \
-  .gitignore 组合.py 索引.json \
+# 实际执行的暂存（留档）
+git add .gitignore demo/server.py 兜底生成器.py 索引.json 组合.py \
   评估/冒烟.py 评估/体检.py 评估/ci_eval.py 评估/兜底待审.py 评估/兜底跑分.py 评估/兜底首跑.py \
   评估/压测.py 评估/安全审计.py 评估/接线跑分.py 评估/真实跑分.py 评估/跑分.py \
-  demo/server.py 兜底生成器.py
-# 未跟踪的 _r60_gh_view.txt / _r60_gitea_public_out.txt / _r60_make_public_out.txt 属 R60 遗留探针，不在本次范围
+  .gitea/workflows/ci.yml .github/workflows/eval.yml .gitcode/workflows/eval.yml
+# 未做：git push（lighting main 未设上游）
 ```
 
 > ⚠️ R60 拆分提交 `be178387` 之后，lighting 仓此前**从未有过 CI**；这是它的第一条流水线。
 > 建议 push 后先在 gitea 侧手动 `workflow_dispatch` 跑一次，确认 runner 上编译器 clone 与
 > devpi 依赖可用（本机无法覆盖 runner 环境）。
+> 三个远端都已配好（`gitea` / `github` / `gitcode`），但 `main` 未设上游，推送需显式指定，例如
+> `git push gitea main`。
