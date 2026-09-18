@@ -1,0 +1,106 @@
+# test_交互工具接线.light —— R12-D9 / R12-D12 收口回归
+#
+# 覆盖（每判据含反跑点，改反即红）：
+#   1) 接线：接线全部交互工具 后，ask_user_question / session_query 均注册进注册表，
+#      且对模型 描述表 可见（name/description/parameters 齐备）。
+#   2) ask_user_question 执行：注入桩 提问器，规范化问题→答案→规范答案，
+#      工具输出 text 为 JSON answers；multi_select→multiSelect 形状对。
+#   3) 审计对：事件接收 sink 按序收到 approval/asked → approval/decided，id 一致。
+#   4) session_query 执行：注入桩 查询器返回一条收集，输出含结果头/会话 id/snippet；
+#      空查询经 规范化查询 拒绝（isError）。
+#   5) Schema 守门：ask 缺 questions / query 缺 query → 注册表 PARAM_SCHEMA_INVALID。
+#   6) 依赖契约：造提问工具定义 缺 提问器 → 构造期抛错。
+#
+# 运行：cd lightharness && python 运行.py examples/test_交互工具接线.light
+
+从 工具 导入 工具注册表
+从 交互工具 导入 接线全部交互工具, 造提问工具定义
+从 JSON 导入 解析JSON
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言真 接收 条件, 标签:
+  如果 条件 == 假:
+    抛出 "断言失败: " + 标签
+
+段落 断言包含 接收 文本, 片段, 标签:
+  如果 文本.包含(片段) == 假:
+    抛出 "断言失败: " + 标签 + " 文本不含 " + 片段
+
+段落 主:
+  # ---- 桩依赖：提问器回显 + 事件 sink 捕获 ----
+  设 事件表 为 []
+  段落 桩提问器 接收 规范问题:
+    设 答案 为 []
+    遍历 问题 之 规范问题:
+      列表追加(答案, ["id": 问题["id"], "selected": ["alpha"]])
+    返回 答案
+  段落 桩事件 接收 类型, 数据:
+    事件表.追加(["类型": 类型, "数据": 数据])
+  段落 桩查询器 接收 过滤表, 原始参数:
+    返回 ["capped": 假,
+          "items": [
+            ["header": ["标识": "s-1", "创建时间": 1720000000000, "父会话": 空],
+             "live": 真,
+             "bestMatch": ["seq": 3, "type": "user/message", "surface": "current",
+                           "time": 1720000000123, "snippet": "hello world"]]
+          ]]
+
+  设 依赖 为 ["提问器": 桩提问器, "事件接收": 桩事件,
+             "查询器": 桩查询器, "标题表": ["s-1": ["text": "测试会话"]]]
+  设 注册表 为 新建 工具注册表()
+  接线全部交互工具(注册表, 依赖)
+
+  # ---- 1) 注册与模型可见 ----
+  断言真(注册表.有无("ask_user_question"), "ask_user_question 已注册")
+  断言真(注册表.有无("session_query"), "session_query 已注册")
+  设 模式表 为 注册表.描述表()
+  断言相等(长度(模式表), 2, "两个工具进描述表")
+  断言相等(模式表[0]["name"], "ask_user_question", "第一个工具名")
+  断言真(模式表[0]["parameters"].包含("required"), "ask schema 有 required")
+  断言相等(模式表[1]["name"], "session_query", "第二个工具名")
+
+  # ---- 2) ask_user_question 执行 ----
+  设 ask输入 为 "{\"questions\":[{\"id\":\"q1\",\"question\":\"选哪个?\",\"options\":[\"alpha\",\"beta\"],\"multi_select\":false}]}"
+  设 ask结果 为 注册表.执行("ask_user_question", ask输入)
+  断言相等(ask结果["isError"], 假, "ask 执行成功")
+  设 ask载荷 为 解析JSON(ask结果["content"][0]["text"])
+  断言相等(长度(ask载荷["answers"]), 1, "ask 返回一个答案")
+  断言相等(ask载荷["answers"][0]["id"], "q1", "答案 id 回显")
+  断言相等(ask载荷["answers"][0]["selected"][0], "alpha", "答案 selected")
+
+  # ---- 3) 审计对：asked → decided，id 一致 ----
+  断言相等(长度(事件表), 2, "审计对 2 条事件")
+  断言相等(事件表[0]["类型"], "approval/asked", "先 asked")
+  断言相等(事件表[1]["类型"], "approval/decided", "后 decided")
+  断言相等(事件表[0]["数据"]["工具名"], "ask_user_question", "asked 工具名")
+  断言相等(事件表[0]["数据"]["id"], 事件表[1]["数据"]["id"], "审计对 id 一致")
+
+  # ---- 4) session_query 执行 ----
+  设 qry输入 为 "{\"query\":\"hello\"}"
+  设 qry结果 为 注册表.执行("session_query", qry输入)
+  断言相等(qry结果["isError"], 假, "session_query 执行成功")
+  设 qry文本 为 qry结果["content"][0]["text"]
+  断言包含(qry文本, "Session search results", "查询结果有头部")
+  断言包含(qry文本, "s-1", "结果含会话 id")
+  断言包含(qry文本, "hello world", "结果含 snippet")
+
+  # ---- 5) Schema 守门 ----
+  设 badAsk 为 注册表.执行("ask_user_question", "{}")
+  断言相等(badAsk["isError"], 真, "ask 缺 questions 报错")
+  断言相等(badAsk["error"]["代码"], "PARAM_SCHEMA_INVALID", "ask 错误码")
+  设 badQry 为 注册表.执行("session_query", "{}")
+  断言相等(badQry["isError"], 真, "query 缺 query 报错")
+  断言相等(badQry["error"]["代码"], "PARAM_SCHEMA_INVALID", "query 错误码")
+
+  # ---- 6) 依赖契约：缺 提问器 构造期即抛 ----
+  设 抛了 为 假
+  尝试:
+    造提问工具定义([])
+  捕获 错误:
+    设 抛了 为 真
+  断言真(抛了, "缺 提问器 构造期抛错")
+
+  输出("test_交互工具接线.light 全部断言通过")

@@ -1,0 +1,153 @@
+# 交互工具.light —— R12-D9 / R12-D12 收口：把两个"形状已就绪、注册未接线"的交互工具
+# 通过依赖注入（DI）接进 工具注册表。
+#
+# 背景（docs/功能对标/行为差异清单.md）：
+#   R12-D9  ask_user_question：提问调用形状/答案规范已在 审批.light 就绪，
+#           但"未注册进 工具.light 注册表"，execute 依赖宿主交互面 → 一直移交待决策。
+#   R12-D12 tool-session-query：纯逻辑（schema/规范化/过滤构造/结果呈现）已在
+#           查询工具.light 就绪，但 execute 需宿主会话存储访问 → 同样未注册。
+#   R12-D7  approval/* 事件词汇已于第13轮在 会话格式.light 补登（approval/policy/
+#           asked/decided），本模块直接复用，不再新增词汇。
+#
+# 青出于蓝的做法（相对上游 Cordis 硬编码 defineTool）：
+#   1) 依赖包入参化：宿主面（向用户提问 / 查会话存储）只暴露两个纯段落函数回调——
+#      提问器(normalized_questions)→answers、查询器(filters,params)→收集。
+#      纯逻辑面（JSON Schema 校验 / 入参规范化 / 审计对落盘形状）全部在本模块内，
+#      无需真 LLM、真用户、真磁盘即可端到端对拍。
+#   2) 接线即收口：接线提问工具/接线会话查询工具/接线全部交互工具 三个词汇，
+#      宿主拿到 注册表+依赖包 一行注册，工具描述表即对模型可见。
+#   3) 审计对自动配对：ask_user_question 执行时自动 emit approval/asked → 交互 →
+#      approval/decided，复用第13轮词汇表，轮封闭审计与上游一致。
+#
+# 契约（依赖包 = 字典）：
+#   提问工具依赖：
+#     "提问器"   : 段落函数，接收 造提问调用 规范化后的 questions，返回 answers 列表
+#                  （每项 ["id":..,"selected":[..],"custom"?:..]）。必填。
+#     "事件接收" : 可选段落函数，接收 (事件类型字符串, 数据字典)；落 approval/* 审计对。
+#     "调用"     : 可选字符串，审批 callId（桥接 tool/call 序号）。
+#   会话查询工具依赖：
+#     "查询器"   : 段落函数，接收 (过滤表, 原始参数)，返回 收集 ["items":[..],"capped":假]。必填。
+#     "标题表"   : 可选 字典 id→视图，缺省空。
+#     "授权父表" : 可选 列表，缺省空。
+
+从 工具 导入 工具注册表, 造工具定义, 造工具结果
+从 审批 导入 造提问调用, 规范提问答案, 提问工具描述, 生成审批id, 结果允许一次
+从 查询工具 导入 规范化查询, 构造会话过滤器, 格式化会话搜索
+从 JSON 导入 序列化JSON
+
+# =====================================================================
+# 工具参数 Schema（工具.light 校验器支持的 JSON Schema 强制子集）
+# =====================================================================
+
+# ask_user_question：questions[{id,question,header?,options?,multi_select?}]
+设 提问工具模式 为 [
+  "type": "object",
+  "properties": [
+    "questions": [
+      "type": "array",
+      "minItems": 1,
+      "items": [
+        "type": "object",
+        "required": ["id", "question"],
+        "properties": [
+          "id": ["type": "string"],
+          "question": ["type": "string"],
+          "header": ["type": "string"],
+          "options": ["type": "array", "items": ["type": "string"]],
+          "multi_select": ["type": "boolean"]
+        ]
+      ]
+    ]
+  ],
+  "required": ["questions"]
+]
+
+# tool-session-query：query 必填，其余为可选过滤（仅暴露常用面，全量见 查询工具.light）
+设 会话查询模式 为 [
+  "type": "object",
+  "required": ["query"],
+  "properties": [
+    "query": ["type": "string"],
+    "session_ids": ["type": "array", "items": ["type": "string"]],
+    "created_at_from": ["type": "string"],
+    "created_at_to": ["type": "string"],
+    "availability": ["type": "array", "items": ["type": "string", "enum": ["live", "persisted"]]],
+    "event_seq_from": ["type": "integer"],
+    "event_seq_to": ["type": "integer"]
+  ]
+]
+
+# 会话查询工具的模型面描述（中文写就，模型可直接理解用途）
+设 会话查询工具描述 为 "Search prior session history by free-text query. Returns matching sessions with best-match event snippets. Use when you need to recall what was discussed or decided earlier."
+
+# =====================================================================
+# ask_user_question 工具（R12-D9 收口）
+# =====================================================================
+段落 造提问工具定义 接收 依赖:
+  如果 字典包含键(依赖, "提问器") == 假:
+    抛出 "造提问工具定义: 依赖包缺少必需回调 提问器"
+  设 提问器 为 依赖["提问器"]
+  设 事件接收 为 字典获取(依赖, "事件接收", 空)
+  设 调用 为 字典获取(依赖, "调用", 空)
+
+  段落 执行 接收 参数:
+    设 规范问题 为 造提问调用(参数["questions"])
+    设 审批id 为 生成审批id()
+    # 审计对前半：approval/asked（复用第13轮词汇：必选 id/工具名，可选 callId）
+    如果 事件接收 != 空:
+      设 已问 为 ["id": 审批id, "工具名": "ask_user_question"]
+      如果 调用 != 空:
+        已问["callId"] 为 调用
+      事件接收("approval/asked", 已问)
+    # 宿主交互面：把规范化后的问题交给注入的 提问器，取回答案
+    设 答案 为 提问器(规范问题)
+    设 规范答案 为 规范提问答案(答案)
+    # 审计对后半：approval/decided（必选 id/结果）
+    如果 事件接收 != 空:
+      事件接收("approval/decided", ["id": 审批id, "结果": 结果允许一次])
+    设 文本 为 序列化JSON(规范答案)
+    返回 造工具结果([["type": "text", "text": 文本]], 假)
+
+  返回 造工具定义("ask_user_question", 提问工具描述, 提问工具模式, 执行, "exclusive")
+
+# =====================================================================
+# tool-session-query 工具（R12-D12 收口）
+# =====================================================================
+段落 造会话查询工具定义 接收 依赖:
+  如果 字典包含键(依赖, "查询器") == 假:
+    抛出 "造会话查询工具定义: 依赖包缺少必需回调 查询器"
+  设 查询器 为 依赖["查询器"]
+  设 标题表 为 字典获取(依赖, "标题表", {})
+  设 授权父表 为 字典获取(依赖, "授权父表", [])
+
+  段落 执行 接收 参数:
+    # 纯逻辑入参校验：空/含NUL/纯空白查询在此抛 SESSION_QUERY_INVALID_QUERY
+    规范化查询(参数["query"])
+    # 纯逻辑过滤构造（与上游 buildSessionFilters 对齐）
+    设 过滤表 为 构造会话过滤器(参数)
+    # 宿主存储面：注入的 查询器 执行真实检索，返回收集
+    设 收集 为 查询器(过滤表, 参数)
+    设 文本 为 格式化会话搜索(收集, 标题表, 授权父表)
+    返回 造工具结果([["type": "text", "text": 文本]], 假)
+
+  返回 造工具定义("session_query", 会话查询工具描述, 会话查询模式, 执行, "exclusive")
+
+# =====================================================================
+# 接线词汇（宿主一行接入）
+# =====================================================================
+段落 接线提问工具 接收 注册表, 依赖:
+  注册表.注册(造提问工具定义(依赖))
+  返回 真
+
+段落 接线会话查询工具 接收 注册表, 依赖:
+  注册表.注册(造会话查询工具定义(依赖))
+  返回 真
+
+段落 接线全部交互工具 接收 注册表, 依赖:
+  接线提问工具(注册表, 依赖)
+  接线会话查询工具(注册表, 依赖)
+  返回 真
+
+导出 提问工具模式, 会话查询模式, 会话查询工具描述
+导出 造提问工具定义, 造会话查询工具定义
+导出 接线提问工具, 接线会话查询工具, 接线全部交互工具
