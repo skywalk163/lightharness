@@ -10,6 +10,11 @@
   * 0.82 无 `python`/`python3` 命令（`test_回归.py` 子进程硬编码 `['python', 运行器, …]`）
     → 远端建 /tmp/r44-shim/python{,3} 垫片，经 PATH 注入。**R43 首轮 402 failed 即垫片初版
     参数被置空所致**，本轮用 `exec ... "$@"` 正确转发参数。
+    **注意**：垫片 `/tmp/r44-shim/python`（及 `python3`）固定指向 `PY = /usr/local/bin/python3.11`
+    （仅 pytest 9.1.1，无 xdist / 无 pytest-timeout）。若要在 0.82 用 3.12（带 xdist +
+    pytest-timeout）跑 light-merge 全量，**必须传绝对路径** `/usr/local/bin/python3.12`，
+    不能依赖 `python`/`python3` 命令（那会落到 3.11，导致 addopts 的 `-n`/`--timeout`
+    找不到插件而 ARGERROR）。`082全量回归.py` 的 `--py` 参数已封装此选择。
   * 运行需同时有 lightharness 与 light-merge（`LIGHT_MERGE` 指向后者）→ 两个都打包。
   * 凭据只从工作区 `.env` 读（SSH_USER_AI / SSH_PASS_AI），值不入档、不落日志。
 

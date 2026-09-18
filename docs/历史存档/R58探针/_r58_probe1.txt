@@ -1,0 +1,46 @@
+=== 表规模 ===
+  COMMON_COMPOUND_WORDS                  len=0
+  _COMPOUND_SAFE_SINGLE_KEYWORDS         len=0
+  _EMBED_MAX_MATCH_KEYWORDS              len=3
+  _VALUE_LITERAL_KEYWORDS                len=3
+  _AWAIT_KEYWORDS                        len=2
+  _P0A_HEAD_MERGE_SINGLE                 = ['余', '例', '出', '列', '则', '到', '对', '常', '引', '接', '断', '是', '末', '步', '段', '的', '类', '自', '至', '试', '跳', '过', '配', '长', '首']
+  _P0A_HEAD_MERGE_DUAL                   = ['乘', '减', '到', '加', '模', '真', '空', '除']
+  _R27_BCLASS                            = ['列', '对', '是', '段', '的', '类', '自', '配']
+  _P0A_TAIL_CUT_SINGLE                   = ['列']
+  _P0A_HEAD_SPLIT_SINGLE                 = ['与', '且', '为', '之', '乘', '于', '从', '假', '减', '加', '匹', '否', '在', '宏', '导', '己', '幂', '并', '异', '当', '或', '承', '抛', '捕', '掷', '模', '父', '现', '真', '空', '等', '终', '若', '设', '跃', '返', '遍', '除', '非']
+  _R26_STMT_HEAD_SINGLE                  = ['从', '匹', '否', '宏', '导', '己', '并', '异', '当', '承', '抛', '捕', '掷', '父', '现', '终', '若', '设', '跃', '返', '遍']
+  Lexer._P0A_MERGE_WHOLE = ['整理模型消息', '记录类型']
+  Lexer._TRAILING_ALIAS_CLASS = ['从', '余', '例', '出', '列', '则', '到', '匹', '否', '宏', '对', '导', '己', '常', '并', '异', '引', '当', '承', '抛', '捕', '接', '掷', '断', '是', '末', '步', '段', '父', '现', '的', '类', '终', '自', '至', '若', '设', '试', '跃', '跳', '过', '返', '遍', '配', '长', '首']
+  Lexer._P0A_OP = ['不大于', '不小于', '不等于', '与', '为', '之', '乘', '乘以', '于', '减', '减去', '加', '加上', '包含', '在', '大于', '大于等于', '小于', '小于等于', '幂', '等于', '除', '除以']
+  Lexer._P0A_SUFFIX_SPLIT_SINGLE = ['与', '且', '为', '之', '乘', '于', '假', '减', '加', '在', '幂', '或', '模', '真', '空', '等', '除', '非']
+  Lexer._P0A_NEVER_SPLIT = []
+
+=== 目标 9 单字 成员矩阵 ===
+  除: CS=False HM=False DUAL=True F=False AWAIT=False ALL_KW=False 1char_kw=True
+  匹: CS=False HM=False DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  异: CS=False HM=False DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  常: CS=False HM=True DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  等: CS=False HM=False DUAL=False F=False AWAIT=True ALL_KW=True 1char_kw=True
+  断: CS=False HM=True DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  跃: CS=False HM=False DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  现: CS=False HM=False DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+  引: CS=False HM=True DUAL=False F=True AWAIT=False ALL_KW=True 1char_kw=True
+
+=== token 流实测 ===
+  '设甲为三。'                            -> [('KEYWORD', '设'), ('IDENTIFIER', '甲为三'), ('PERIOD', '。')]
+  '三加五'                              -> [('IDENTIFIER', '三加五')]
+  '九十那么大'                            -> [('CHINESE_NUM', 90), ('IDENTIFIER', '那么大')]
+  '三加'                               -> [('CHINESE_NUM', 3), ('KEYWORD', '加')]
+  '导出事件表'                            -> [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')]
+  '整理模型消息'                           -> [('IDENTIFIER', '整理模型消息')]
+  '返回码'                              -> [('KEYWORD', '返回'), ('IDENTIFIER', '码')]
+  '退出码'                              -> [('IDENTIFIER', '退出码')]
+  '接收参数'                             -> [('KEYWORD', '接收'), ('IDENTIFIER', '参数')]
+  '非空块'                              -> [('KEYWORD', '非'), ('IDENTIFIER', '空块')]
+  '外部命令'                             -> [('KEYWORD', '外部'), ('IDENTIFIER', '命令')]
+  '排序依据'                             -> [('IDENTIFIER', '排序依据')]
+  '输出块表'                             -> [('IDENTIFIER', '输出块表')]
+  '捕 除类型错误：\n    印 1。\n'             -> [('KEYWORD', '捕'), ('IDENTIFIER', '除类型错误'), ('COLON', '：'), ('NEWLINE', '\n'), ('INDENT', 4), ('IDENTIFIER', '印'), ('NUMBER', 1), ('PERIOD', '。'), ('NEWLINE', '\n'), ('DEDENT', 0)]
+  '设 匹配度 为 1'                        -> [('KEYWORD', '设'), ('IDENTIFIER', '匹配度'), ('KEYWORD', '为'), ('NUMBER', 1)]
+  '设 甲 为 1。\n打印 甲加5。'                -> [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('NUMBER', 1), ('PERIOD', '。'), ('NEWLINE', '\n'), ('KEYWORD', '打印'), ('IDENTIFIER', '甲'), ('KEYWORD', '加'), ('NUMBER', 5), ('PERIOD', '。')]

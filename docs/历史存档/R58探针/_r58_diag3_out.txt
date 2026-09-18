@@ -1,0 +1,28 @@
+﻿=== stdlib 含「断言」文件: ['断言工具.light', '断言工具.py', '断言工具轻量.light']
+=== _light_import_hook.py 行数: 287
+--- .py 21 处 ---
+  5 光明标准库的绝大多数模块是「.light 清单 + 同名 .py 实现」的组合：
+  6 `.light` 只声明导出名，真正的实现在 `.py` 里。这类模块靠 CPython
+  9 但光明也允许**纯光明模块**——只有 `.light`、没有 `.py`（例如
+  12 `.py/.pyc`，于是运行期直接报 `ModuleNotFoundError`——模块等于不存在。
+  19 1. **`.py` 优先**：若同名 `.py` 存在，直接放行给标准机制。
+  39 # 本模块（_light_import_hook.py）物理上就住在 <安装根>/stdlib 里，
+  70 在 `light run` 场景下 cli 已经加过了；独立运行生成的 .py 时没有，需要这里补。
+  81 修法：以**本模块自身位置**为权威锚点再兜一层。_light_import_hook.py 就住在
+--- 同名 12 处 ---
+  5 光明标准库的绝大多数模块是「.light 清单 + 同名 .py 实现」的组合：
+  19 1. **`.py` 优先**：若同名 `.py` 存在，直接放行给标准机制。
+  53 # 都必须走真 CPython，不能让钩子去编译同名 .light 影子——否则
+  61 # 否则编译期 import 标准库会触发编译同名 .light 影子（如 inspect.light）。
+  137 钩子将优先加载它并无视同名 .py 的存在。该机制用于「自举率」：
+  138 让真正由光明写成的实现不再被同名 .py 兜底遮蔽。
+  217 # （规避 CPython 同名标准库在 sys.modules 里的缓存抢名），这里把前缀
+  225 # 直接 import 一个与 Python 标准库同名的模块时，绝不让钩子去编译同名 .light
+--- exists 4 处 ---
+  148 def _exists_exact(base: str, name: str) -> bool:
+  241 if not any(_exists_exact(b, realname + '.py') for b in self.search_paths):
+  246 if not _exists_exact(base, realname + '.light'):
+  250 if _exists_exact(base, realname + '.py'):
+--- find_spec 2 处 ---
+  212 def find_spec(self, fullname, path=None, target=None):  # noqa: D102
+  277 # 我们的 find_spec 对「无 .light 文件」或「非纯光明且同名 .py 存在」返回 None，

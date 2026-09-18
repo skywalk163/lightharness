@@ -1,0 +1,35 @@
+﻿=== test_http_client.py 存在: True | mtime: 1788867054.800608
+git status: (clean/tracked)
+ls-files: 'tests/test_http_client.py'
+--- 头部 20 行 ---
+"""
+HTTP 客户端模块测试
+
+测试 lightpub/HTTP客户端.py 增强版的所有功能：
+- 基本 HTTP 方法（GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS）
+- 超时配置
+- Cookie 管理
+- 会话管理（Session）
+- 文件上传/下载
+- SSL/TLS 验证
+- 代理支持
+- 重定向跟随
+- 流式响应
+- 错误处理
+- 异步客户端
+"""
+
+import os
+import sys
+import json
+--- 含 aiohttp/skip 的行 ---
+  30 pytest.importorskip("requests")
+
+=== test_stdlib_phase9.py 行数: 514
+--- 关键词 断言工具 : 18 处 ---
+  392 class 测试断言工具(unittest.TestCase):
+  393 """测试断言工具模块"""
+  396 from 断言工具 import 断言为真, 必为真
+  401 from 断言工具 import 断言为假, 必为假
+  406 from 断言工具 import 断言相等, 必相等
+  411 from 断言工具 import 断言不相等, 必不相等

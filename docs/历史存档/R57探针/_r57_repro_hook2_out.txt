@@ -1,0 +1,10 @@
+﻿[1] 钩子已安装
+[2] import 断言工具 成功
+    模块文件: G:\dswork\duan-light-merge\light-merge\stdlib\断言工具.light
+    __light_source__: G:\dswork\duan-light-merge\light-merge\stdlib\断言工具.light
+    有 断言失败异常: True
+    断言失败异常 MRO: ['断言失败异常', 'Exception', 'BaseException', 'object']
+
+[3] 对照：不装钩子直接 import（清 sys.modules 后）
+    成功，模块文件: G:\dswork\duan-light-merge\light-merge\stdlib\断言工具.light
+    断言失败异常 MRO: ['断言失败异常', 'Exception', 'BaseException', 'object']

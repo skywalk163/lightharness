@@ -1,0 +1,51 @@
+﻿产物总行数: 730
+53 except Exception:
+60 except Exception:
+62     class _LightFFIUnavailable:
+92         _light_builtin.写入错误 = lambda t: (sys.stderr.write(t), sys.stderr.flush()) and None
+93         _light_builtin.打印错误 = lambda t: print(t, file=sys.stderr, flush=True)
+145     _light_builtin.写入错误 = lambda t: (sys.stderr.write(t), sys.stderr.flush()) and None
+146     _light_builtin.打印错误 = lambda t: print(t, file=sys.stderr, flush=True)
+230     except Exception:
+277 class 断言失败异常(错误):
+288         _light_exc = 断言失败异常("断言失败")
+289         raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+292         _light_exc = 断言失败异常(消息)
+293         raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+309             _light_exc = 断言失败异常("断言失败: 条件不为真")
+310             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+313             _light_exc = 断言失败异常(消息)
+314             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+323             _light_exc = 断言失败异常("断言失败: 条件不为假")
+324             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+327             _light_exc = 断言失败异常(消息)
+328             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+337             _light_exc = 断言失败异常("断言失败: 值不为 None")
+338             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+341             _light_exc = 断言失败异常(消息)
+342             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+351             _light_exc = 断言失败异常("断言失败: 值为 None")
+352             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+355             _light_exc = 断言失败异常(消息)
+356             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+365             _light_exc = 断言失败异常("断言失败: 两值不相等")
+366             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+369             _light_exc = 断言失败异常(消息)
+370             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+379             _light_exc = 断言失败异常("断言失败: 两值相等")
+380             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+383             _light_exc = 断言失败异常(消息)
+384             raise _light_exc if isinstance(_light_exc, BaseException) else Exception(_light_exc)
+728 __all__ = ['断言类型', '断言实例', '断言子类', '测试开始', '测试结束', '测试运行', '断言失败异常']
+=== 277 行附近 ===
+271 
+272 # LIGHT_SRC:14
+273 from 字符串工具 import 子串查找
+274 # LIGHT_SRC:15
+275 from 正则表达式 import 完全匹配
+276 # LIGHT_SRC:18
+277 class 断言失败异常(错误):
+278     def __init__(self, 消息=""):
+279         # LIGHT_SRC:20
+280         super().__init__(消息)
+281 

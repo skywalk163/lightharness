@@ -1,0 +1,8 @@
+﻿2669 '        if all_bases:'
+2670 '            # Generic[...] 已经是完整表达式，不能再过 _sanitize_name（它只处理裸名）'
+2671 '            # R57 任务1b：类继承基类名走 _resolve_exception_type，把光明异常名'
+2672 '            # （如 错误→Exception）映射成 Python 异常。此前只 _sanitize_name，'
+2673 '            # `类 X 继承 错误:` 编译成 `class X(错误):`，纯光明 stdlib 经'
+2674 '            # _light_import_hook 编译加载时运行期 NameError（phase9 16 条）。'
+2675 "            bases = ', '.join("
+CRLF: True

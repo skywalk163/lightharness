@@ -1,0 +1,422 @@
+{
+ "meta": "R58 任务3 归因明细（A/B/C 合并；A 组来自 _r58_task3_A.json，已随探针移档 docs/历史存档/R58探针/）",
+ "汇总": {
+  "总条数": 35,
+  "测试期望过时": 21,
+  "codegen缺陷-粘连己X读取不展开": 14,
+  "需语义评审": 0,
+  "待验证": 0,
+  "R59修复路径": "① 21 条改测试断言（小）；② 14 条共用同一 codegen 修复：类方法内粘连 己X/自X 读取位展开（src+unified 两后端 _resolve_* 同步加分支，按类属性表/就近绑定防误伤），改后互举反跑+0.82 定向验证",
+  "L-175交叉核对": "35 条在 100010 与 072454 中 message 实质一致（31 全同、4 仅空白差异），与 L-175 无关"
+ },
+ "groups": {
+  "A": {
+   "group": "A_dot_attr_codegen",
+   "meta": "R58任务3-A组：13条点号/成员访问 codegen 字符串断言红因归因。证据源：light-merge/tests/unit/test_v35_chained_call.py、light-merge/tests/unit/test_v34_syntax_sugar.py（测试断言原文）、light-merge/src/code_generator.py:1329-1344（_light_attr_get/_light_attr_set 定义与 L-096 注释）、code_generator.py:1681-1693（成员赋值发射分支）、code_generator.py:3819-3822（属性访问发射分支）、code_generator.py:2349/2374/2671-2677（_resolve_exception_type 仅用于异常映射，与成员访问无关）。",
+   "items": [
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_member_access",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:164-168）断言 assert 'p.x' in py；实际生成代码（底表 message 实录）为「v = _light_attr_get(p, 'x')」，产物中不存在子串 'p.x'，断言失败。",
+     "根因": "codegen 发射侧【有意】把属性访问统一改为助手调用：code_generator.py:3819-3822 属性访问分支注释明确写「L-096（E批次）：属性访问统一走字典安全 helper……类实例/模块对象回落原生 getattr」，无条件 return f\"_light_attr_get({obj}, {expr.member!r})\"，不存在直发点号的守卫分支或开关；助手定义 code_generator.py:1329-1336 的 L-096 注释解释了动机：dict 原生不支持 .键，dict 走键访问（缺键返回空），类实例走原生 getattr 行为不变。即对类实例运行期语义与旧直发等价，仅产物文本形态改变。测试仍按旧的直接点号输出风格做子串断言，属测试期望过时（语义债），非 codegen 缺陷。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：把 assert 'p.x' in py 更新为 assert \"_light_attr_get(p, 'x')\" in py（或同时接受两种形态），并在测试 docstring 注明 L-096 语义。",
+     "改动面": "小",
+     "改动面理由": "仅改一条测试断言字符串，不动 codegen；类实例路径运行期语义未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_mixed_period_and_dot",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:177-181）断言 assert 'p.x' in py；实际产物含「v = _light_attr_get(p, 'x')」，'p.x' 子串不存在。",
+     "根因": "与上条同源：code_generator.py:3819-3822 有意将全部属性访问（含句号结尾语句、混合句号场景，解析层已正确拆分 PERIOD/DOT，本例产物正常输出了 LIGHT_SRC:4-5 的 v 赋值与 print）发到 _light_attr_get。句号与点号拆分本身工作正常（L-096 改的是发射形态，不是 token 拆分），测试断言停留在旧直发文本形态。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言更新为 \"_light_attr_get(p, 'x')\" in py；如需继续覆盖 DOT/PERIOD 拆分，可补一条断言产物中无「。」残留在标识符位置。",
+     "改动面": "小",
+     "改动面理由": "只改断言字符串；DOT/PERIOD 拆分功能未被本红因否定。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_no_period_no_dot_ambiguity",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:183-188）断言 'p.x = 3' in py 和 'p.y' in py；实际产物为「_light_attr_set(p, 'y', (_light_attr_get(p, 'x') + 1))」「print(_light_attr_get(p, 'y'))」，两条断言均失败。",
+     "根因": "两个发射点都来自 L-096 的有意改动：成员赋值走 code_generator.py:1687-1693（Assignment 且 target 为 MemberAccess 时发射 _light_attr_set(obj, 'member', value)，注释明确「类实例目标走原生 setattr」），成员读走 code_generator.py:3822。p.x/p.y 均为类 P 实例属性，setattr/getattr 语义与旧直发等价（含 p.y = p.x + 1 的读改写链），仅文本形态不同。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：改为断言 \"_light_attr_set(p, 'y', (_light_attr_get(p, 'x') + 1))\" in py（或宽松匹配 _light_attr_set(p, 与 _light_attr_get(p,），覆盖'成员赋值+读'两形态。",
+     "改动面": "小",
+     "改动面理由": "仅改断言；该用例原意（点号仅用于成员访问、不与句号混淆）在产物中仍成立。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_period_in_class_body",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:215-220）断言 'self.x' in py；实际产物为「return _light_attr_get(self, 'x')」，且 'self.x' 子串不存在（产物中 self 仅作为参数名出现，后跟逗号而非点号）。",
+     "根因": "方法体内成员读同样走 code_generator.py:3822 的统一 _light_attr_get 发射（L-096 有意改动，注释含「类实例/模块对象回落原生 getattr」）。另注意到产物中方法签名被生成为 def get(self, self)（self 被当作普通形参重复收集），这是另一个已存在现象，但与本条断言失败无因果——本条失败纯粹是 'self.x' 文本形态断言过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_get(self, 'x')\" in py；def get(self, self) 现象建议另立工作项核查（不影响本条归因）。",
+     "改动面": "小",
+     "改动面理由": "改断言即可转绿；类体句号解析本身正常（class/return 均已生成）。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_access_after_new_keyword",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:222-226）断言 'a.x' in py；实际产物为「v = _light_attr_get(a, 'x')」，'a.x' 子串不存在。",
+     "根因": "同族：code_generator.py:3819-3822 有意统一发射 _light_attr_get，'令 v = a.x' 解析与类 A 定义、实例化均正常（产物含 class A、a = A()），仅成员访问文本形态变化。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言更新为 \"_light_attr_get(a, 'x')\" in py。",
+     "改动面": "小",
+     "改动面理由": "仅改断言字符串，无需动 codegen 或 parser。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_eq",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v34_syntax_sugar.py:291-295）断言 'self.x = 1' in py；实际产物为「_light_attr_set(self, 'x', 1)」，断言失败。",
+     "根因": "成员赋值发射走 code_generator.py:1687-1693 的 L-096（E批次）有意分支：Assignment.target 为 MemberAccess 时无条件发射 _light_attr_set(_obj_code, member, _value_code)，无直发点号回退分支。注释同时强调「绝不能把 _light_attr_get(...) 放在赋值左侧（cannot assign to function call）」，说明该形态是刻意设计。类实例 self 走 setattr，语义与 self.x = 1 等价。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_set(self, 'x', 1)\" in py。",
+     "改动面": "小",
+     "改动面理由": "改一条断言即可；self 属性赋值运行期行为未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_等于",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v34_syntax_sugar.py:297-301）断言 ('self.x == 1' in py) or ('self.x = 1' in py)；实际产物只有「_light_attr_set(self, 'x', 1)」，两个备选均不命中。",
+     "根因": "源码是 self.x 等于 1，语义为成员赋值（同底表内 test_ling_equal_等于 把 x 等于 10 当重赋值一致），codegen 按 L-096 分支发射 _light_attr_set(self, 'x', 1)。断言里的 'self.x == 1' 备选本身就不应出现（等于在语句位置是赋值而非比较），真正有效的备选 'self.x = 1' 因发射形态改为助手调用而过时。属测试期望过时；建议顺带删除 '==' 备选以免误导后续维护。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：只保留 \"_light_attr_set(self, 'x', 1)\" in py 一个断言，去掉 'self.x == 1' 备选。",
+     "改动面": "小",
+     "改动面理由": "仅改断言；'等于'成员赋值语义在产物中已正确实现。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_obj_attr_eq",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v34_syntax_sugar.py:303-307）断言 'p.x = 10' in py；实际产物为「p = 点(3, 4)」「_light_attr_set(p, 'x', 10)」，断言失败。",
+     "根因": "同 code_generator.py:1687-1693 的 L-096 有意成员赋值发射分支。普通对象 p 的成员赋值经 setattr，语义等价。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_set(p, 'x', 10)\" in py。",
+     "改动面": "小",
+     "改动面理由": "改断言即可；对象属性赋值运行期行为未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_dot_access_still_works",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v34_syntax_sugar.py:309-313）断言 'p.x' in py；实际产物为「x = _light_attr_get(p, 'x')」，断言失败。同文件 test_method_call_still_works（:315-319）因断言宽松（'s' in py 兜底）未红，侧面证明只有'直接点号文本形态'断言族受影响。",
+     "根因": "code_generator.py:3819-3822 有意统一发射 _light_attr_get（L-096）。注意方法调用路径（code_generator.py:3806 return f\"{obj}.{mapped_member}({args_str})\"）仍直发点号，说明 codegen 并未全局放弃点号形态，只对'纯属性访问/赋值'改走 helper 以兼容 dict——这进一步支持'有意语义选择、测试过时'的判定。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_get(p, 'x')\" in py（用例名'still works'的语义意图在产物中确实成立）。",
+     "改动面": "小",
+     "改动面理由": "改断言即可；属性访问功能完好。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_two_level_attr_assign",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:128-132）断言 'b.a.x = 42' in py or '.x = 42' in py；实际产物为「_light_attr_set(b, 'a', A())」「_light_attr_set(_light_attr_get(b, 'a'), 'x', 42)」，两个备选均不命中（'.x = 42' 因 ', 'x', 42' 带引号逗号而不匹配）。",
+     "根因": "链式成员赋值 b.a.x = 42 被解析为两层 MemberAccess 目标，赋值分支（code_generator.py:1687-1693）先对 target.obj（即 b.a，一个 MemberAccess）递归 _generate_expr，命中 3822 行发 _light_attr_get(b, 'a')，再发 _light_attr_set(..., 'x', 42)。这是 L-096 有意设计的自然嵌套结果：对类实例链 getattr+setattr 与旧直发 b.a.x = 42 语义等价（先取子对象再 setattr）。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_set(_light_attr_get(b, 'a'), 'x', 42)\" in py。",
+     "改动面": "小",
+     "改动面理由": "改断言即可；两级链赋值运行期语义未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_self_chain_assign",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:134-138）断言 'self.inner.val' in py or '.inner.val' in py；实际产物为「_light_attr_set(_light_attr_get(self, 'inner'), 'val', v)」，两个备选均不命中。",
+     "根因": "同上：self.inner.val 三段链，赋值分支取 target.obj=self.inner 走 3822 发 _light_attr_get(self, 'inner')，最外层 member 'val' 发 _light_attr_set（code_generator.py:1687-1693）。L-096 有意设计，类实例语义等价。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_set(_light_attr_get(self, 'inner'), 'val', v)\" in py。",
+     "改动面": "小",
+     "改动面理由": "改断言即可。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_three_level_attr_assign",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:140-144）断言 'a.b.c.val = 99' in py or '.val = 99' in py；实际产物为「_light_attr_set(a, 'b', B())」「_light_attr_set(_light_attr_get(a, 'b'), 'c', C())」「_light_attr_set(_light_attr_get(_light_attr_get(a, 'b'), 'c'), 'val', 99)」，均不命中。",
+     "根因": "三级链 a.b.c.val：赋值分支（code_generator.py:1687-1693）对 target.obj=a.b.c 递归求值，逐层命中 3822 行 _light_attr_get，形成三层嵌套。与旧直发 a.b.c.val = 99 在类实例上语义等价（逐级 getattr 后 setattr）。L-096 有意设计的自然结果，测试期望过时。备注：若目标链中途是 dict，_light_attr_get 对 dict 缺键返回 None 再 setattr(None,...) 会 AttributeError，而旧直发也会 AttributeError，行为等价，不构成缺陷。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：断言改为 \"_light_attr_set(_light_attr_get(_light_attr_get(a, 'b'), 'c'), 'val', 99)\" in py（或对 _light_attr_set/get 计数做结构断言）。",
+     "改动面": "小",
+     "改动面理由": "改断言即可；三级链赋值语义未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    },
+    {
+     "id": "tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_attr_assign_with_expr",
+     "category": "语义债-代码生成断言",
+     "红因": "测试（test_v35_chained_call.py:146-151）断言 'a.x = ' in py（第二条 '10 + 20' in py 可满足）；实际产物为「_light_attr_set(a, 'x', (10 + 20))」，'a.x = ' 子串不存在，第一条断言失败。",
+     "根因": "属性赋值目标是表达式时同样走 code_generator.py:1687-1693 的 L-096 有意分支，右侧表达式 (10 + 20) 完整保留，仅赋值左侧形态由 a.x = 变为 _light_attr_set(a, 'x', ...)。测试期望过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改测试期望：第一条断言改为 \"_light_attr_set(a, 'x', (10 + 20))\" in py（保留第二条 10 + 20 断言）。",
+     "改动面": "小",
+     "改动面理由": "改断言即可；表达式求值与赋值语义未变。",
+     "与L-175相关性": "无关（100010 交叉核对 message 未变化）"
+    }
+   ],
+   "汇总": {
+    "R59可修": 13,
+    "测试期望更新": 13,
+    "需语义评审": 0,
+    "待验证": 0,
+    "一句话总结": "13 条全部同源：codegen 在 L-096（E批次）中有意把纯属性访问/成员赋值统一发射为 _light_attr_get/_light_attr_set（code_generator.py:1329-1344 定义、1687-1693 赋值分支、3819-3822 访问分支，注释明示 dict→键访问、类实例→getattr/setattr 的语义守卫），类实例路径运行期语义与旧直发点号完全等价，仅产物文本形态变化；13 条测试均按旧的直接点号输出风格做子串断言，属测试期望过时，R59 只需更新测试断言（小改动面），无需改 codegen；方法调用路径（:3806）仍直发点号，证明发射逻辑无缺陷、非 L-175（异常映射）回归。"
+   }
+  },
+  "B": {
+   "group": "B_context_manager",
+   "items": [
+    {
+     "id": "tests/test_context_manager.py::TestL2OOPCodegen::test_自_param_and_body_both_self",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'self.姓名 = 姓名' in 产物；实测发射 _light_attr_set(self, '姓名', 姓名)（本机复现）",
+     "根因": "手工 AST 的 Assignment(MemberAccess(自,姓名),…) 走 L-096 属性赋值发射（code_generator.py:1684-1693）；helper 定义处注释（:1329-1344）说明 dict→键访问、类实例→setattr 是有意设计，运行期语义等价。期望停留在旧直发文本。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 _light_attr_set 形态，或改行为断言（exec 后实例属性正确）",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestAwaitMemberAccess::test_await_chained_member",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'await 甲.乙.丙()' in 产物；实测 'await _light_attr_get(甲, '乙').丙()'（本机复现）",
+     "根因": "await 链式成员的属性读取走 L-096 helper（code_generator.py:3819-3822），方法调用 .丙() 仍直发（:3806）。getattr(甲,'乙').丙() ≡ 甲.乙.丙()，语义等价，断言文本过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言接受 _light_attr_get 形态或行为断言",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestJueyiE遍历为连接词::test_为搭配函数调用",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 '==' not in 产物 失败；实测 for i in range(1, 10): 发射正确，'==' 来自产物头部运行时预置（内置 lambda 表，如『是负零』: isinstance(v, float) and v == 0.0 …，本机定位到具体行）",
+     "根因": "『为 被吞成 ==』的防线本体没坏，是全产物子串断言过宽：内置预置随版本增长（含合法 ==），子串断言失控。",
+     "根因类别": "测试期望过时",
+     "修复建议": "断言收窄到循环行（或检查产物不含 'in range(1, 10) =='），不动 codegen",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性赋值",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'self.姓名 = 姓名' in 产物；实测 _light_attr_set(self, '姓名', 姓名)",
+     "根因": "带点/之 形态的赋值目标走 L-096 发射（code_generator.py:1684-1693），setattr 语义等价。断言过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 helper 形态或行为断言",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性带索引赋值",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'self.成绩[科目] = 分数' in 产物；实测 _light_attr_get(self,'成绩')[科目] = 分数",
+     "根因": "L-096 读取 helper + 原生下标赋值，运行期等价。断言过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 helper 形态或行为断言",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_普通标识符之成员赋值",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'obj.字段 = 1' in 产物；实测 _light_attr_set(obj, '字段', 1)",
+     "根因": "L-096 属性赋值统一发射（code_generator.py:1684-1693），语义等价。断言过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 helper 形态或行为断言",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_点号成员赋值未被破坏",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'obj.字段 = 1' in 产物；实测 _light_attr_set(obj, '字段', 1)",
+     "根因": "同上：L-096 形态，『未被破坏』由 setattr 保证。断言过时。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 helper 形态或行为断言",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestL0SingleCharClassKeywords::test_继承链可用",
+     "category": "语义债-类/成员访问",
+     "红因": "运行期 NameError: name '己名称' is not defined（exec 生成代码时；源码 返 己名称）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "在 _resolve_identifier_name（src 后端 :4342）与 _resolve_name（unified :586）同加：类方法内 name 以 己/自 开头且剩余部分 ∈ _class_attr_names → self.剩余；改后互举反跑 + 定向验证",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_dot_plain_method",
+     "category": "语义债-类/成员访问",
+     "红因": "运行期 NameError: name '己名称' is not defined（exec 时，源码 返 己名称）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form",
+     "category": "语义债-类/成员访问",
+     "红因": "运行期 NameError: name '己名称' is not defined（超 之 形态，同源）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。（超 之 构/描述 与 父 同路，红因与超 无关，仍是 粘连 己名称 读取位不展开）",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_context_manager.py::TestChaoSuper::test_chao_de_form",
+     "category": "语义债-类/成员访问",
+     "红因": "运行期 NameError: name '己名称' is not defined（超 的 形态，同源）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。（超 的 形态同理）",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    }
+   ]
+  },
+  "C": {
+   "group": "C_runtime_class_member",
+   "items": [
+    {
+     "id": "tests/test_frontend_blockers_run.py::test_a24_泛型类真跑",
+     "category": "语义债-类/成员访问",
+     "红因": "[run] 退出码 1: [运行错误] name '己项' is not defined（本机 AST 复现：构造里 己项 为 列表创建() → self.项 正确；列表追加(己项, 值) 实参位发射裸 己项）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_frontend_blockers_run.py::test_a24_多参数泛型类",
+     "category": "语义债-类/成员访问",
+     "红因": "[run] 退出码 1: name '己左' is not defined（返回 己左 读取位）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_frontend_blockers_run.py::test_a25_两个嵌套类且外层成员不被吞",
+     "category": "语义债-类/成员访问",
+     "红因": "[run] 退出码 1: name '己号' is not defined（返回 己号 读取位）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/integration/test_class_system.py::TestClassInheritance::test_constructor_with_inheritance",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己名字' is not defined",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/integration/test_class_system.py::TestClassBasic::test_class_with_attributes",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己姓名' is not defined（打印 己姓名 读取位）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/integration/test_class_system.py::TestMethodOverride::test_method_override",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己半径' is not defined（己半径 乘 己半径 表达式位）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/integration/test_class_system.py::TestClassAdvanced::test_self_method_call",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己值' is not defined",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/integration/test_class_system.py::TestMultipleClasses::test_multiple_classes_in_one_file",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己品牌' is not defined",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_level6_types.py::TestTypeScenarioClass::test_class_instantiation",
+     "category": "语义债-类/成员访问",
+     "红因": "NameError: name '己当前' is not defined",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_edge_cases.py::TestEdgeCasesClasses::test_class_with_multiple_methods",
+     "category": "语义债-类/成员访问",
+     "红因": "RuntimeError: 执行错误: name '己初始值' is not defined（message 内附完整生成代码可复核）",
+     "根因": "粘连 self 前缀「己X」只在语句位被展开：parser_stmt.py:959 _parse_self_assignment → SelfAssignment → code_generator.py:2531-2535 发射 self.X = …（本机复现：赋值位正确）。而表达式/实参位置的「己X」经 lexer 整词成单个 IDENTIFIER（实测 tokenize('列表追加(己项, 值)') → IDENTIFIER '己项'），读取位无任何一层展开：unified code_generator_unified.py:586-611 _resolve_name 只匹配裸 己/自 与 己./自. 前缀，且该后端无类属性回退分支；src 后端 code_generator.py:4342-4359 的类属性分支（:4356）按整名 raw_name in _class_attr_names 匹配，『己名称』不在（表里是『名称』）同样落空 → 发射裸名 → 运行期 NameError。读写两侧不对称是直接根因。",
+     "根因类别": "codegen缺陷",
+     "修复建议": "同 test_继承链可用（一条修复同时转绿）",
+     "改动面": "中",
+     "改动面理由": "需动两个 codegen 后端的 _resolve_* 并互举反跑，防误伤『己方/自己』类普通标识符",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    },
+    {
+     "id": "tests/test_async_class_method.py::TestAsyncClassMethod::test_03_async_method读写己属性",
+     "category": "语义债-代码生成断言",
+     "红因": "断言 'self.值 = (self.值 + 1)' in 产物；实测 _light_attr_set(self, '值', (self.值 + 1))；读取侧 return self.值 已正确（本机复现）",
+     "根因": "带点 己.值 读写正常，仅写入语句走 L-096 helper 形态。断言文本过时，exec+asyncio 行为本身可过。",
+     "根因类别": "测试期望过时",
+     "修复建议": "改断言为 helper 形态（exec 行为断言保留）",
+     "改动面": "小",
+     "改动面理由": "只改测试断言/期望文本，不动编译器源码",
+     "与L-175相关性": "无关（已用 R57 终跑 100010 junitxml 交叉核对：35 条 message 与 072454 基线实质一致——31 条全同、4 条仅空白差异，未变化）"
+    }
+   ]
+  }
+ }
+}

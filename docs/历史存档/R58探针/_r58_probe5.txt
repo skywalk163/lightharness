@@ -1,0 +1,54 @@
+=== ① 关键字表核对 ===
+  因为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  认为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  称为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  记为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  数为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  因为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  为      in ALL_KEYWORDS_WITH_VERBS=True in ALL_KEYWORDS=True
+  作为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  行为     in ALL_KEYWORDS_WITH_VERBS=False in ALL_KEYWORDS=False
+  Lexer._match_keyword("因为百分数",0) = (None, 0)
+  Lexer._match_keyword("甲为三",0)    = (None, 0)
+
+=== ② user_definitions 实测 ===
+  '设甲为三。\n打印 甲。\n' -> user_definitions=['甲']
+      is_han(因为)=x
+  '设 甲为三。\n打印 甲。\n' -> user_definitions=['甲']
+      is_han(因为)=x
+  '设 甲 为 三。\n' -> user_definitions=['甲']
+      is_han(因为)=x
+
+=== ③ 全语料 `为` 紧跟中文数字 的语境 ===
+  共 31 种汉字段形态 / 54 处
+    除数不能为零           x5    e.g. 错误: 除数不能为零")\n\n   | light-merge\examples\calculator.light
+    判断是否为零           x3    e.g.  文本（判断是否为零）\n导出 零 | light-merge\积木库\blocks\数据\零判.light
+    将多个空格压缩为一个       x3    e.g. （将多个空格压缩为一个）\n导出 压 | light-merge\积木库\blocks\文本\压缩空格.light
+    验证是否为零           x3    e.g.  逻辑（验证是否为零）\n导出 零 | light-merge\积木库\blocks\验证\零验证.light
+    是否为零             x3    e.g. ---\n设 是否为零 为 假\n断 | lightharness\examples\test_R24_运算符单字守卫.light
+    检查是否为十六进制数字      x2    e.g. ) - 检查是否为十六进制数字\n  是八进 | light-merge\bootstrap\release\stdlib\字符串常量.light
+    检查是否为八进制数字       x2    e.g. ) - 检查是否为八进制数字\n  字符列 | light-merge\bootstrap\release\stdlib\字符串常量.light
+    之前服务端为零          x2    e.g. S1 之前服务端为零（contr | light-merge\stdlib\HTTP服务端.light
+    不该因为一次           x2    e.g. 新建连接）不该因为一次 setso | light-merge\stdlib\HTTP服务端.light
+    是否为一次性           x2    e.g.  处理器, 是否为一次性]\n# 存在 | light-merge\stdlib\事件总线.light
+    为一组              x2    e.g. tool 消息 为一组\n  段落  | light-merge\stdlib\代理循环.light
+    格式化为百分比          x2    e.g. 为浮点数 格式化为百分比 格式化为科 | light-merge\stdlib\字符串处理.light
+    转换为五级制评分         x2    e.g.  输出 数（转换为五级制评分）\n导出 五 | light-merge\积木库\blocks_v4\教育\五级制.light
+    判断是否为二分图         x2    e.g. 出 数（判断是否为二分图）\n导出 图 | light-merge\积木库\blocks_v4\计算机\图二分图判断.light
+    场配置上限为零          x2    e.g. 段落 场配置上限为零:\n  校验 | lightharness\examples\test_会话引用深化.light
+    场配置上限为四          x2    e.g. 段落 场配置上限为四:\n  校验 | lightharness\examples\test_会话引用深化.light
+    设格式化为百分比         x1    e.g. 数)\n\n设格式化为百分比(值,小数位 | light-merge\bootstrap\release\stdlib\字符串处理.light
+    与标识符字符紧邻时整串作为一个标识符 x1    e.g. 字符紧邻时整串作为一个标识符，不再拆分。 | light-merge\examples\test_L056.light
+    设甲为五             x1    e.g. 连接》。\n\n设甲为五。\n打印甲。 | light-merge\examples\modules\main.light
+    步长不能为零           x1    e.g. 错误("步长不能为零")\n  设 | light-merge\stdlib\随机.light
+    索引实参行为一致         x1    e.g. 变量/索引实参行为一致。\n\n设 数 | lightharness\examples\test_L044.light
+    上限为零应抛           x1    e.g. 查抛错含("上限为零应抛", "ma | lightharness\examples\test_会话引用深化.light
+    上限为四应抛           x1    e.g. 查抛错含("上限为四应抛", "ma | lightharness\examples\test_会话引用深化.light
+    候选为零应抛           x1    e.g. 查抛错含("候选为零应抛", "ca | lightharness\examples\test_会话引用深化.light
+    上限为零             x1    e.g. 检查抛码("上限为零", "TE | lightharness\examples\test_团队服务.light
+    行为一              x1    e.g. # ---- 行为一：JS 式缺 | lightharness\examples\_repro_L135.light
+    行为二              x1    e.g. # ---- 行为二：光明安全取 | lightharness\examples\_repro_L135.light
+    行为三              x1    e.g. # ---- 行为三：缺失键多段 | lightharness\examples\_repro_L135.light
+    单个字符是否为十进制数字     x1    e.g. # 单个字符是否为十进制数字\n段落 字符 | lightharness\src\会话日志深化.light
+    组合多个错误为一条链消息     x1    e.g. ）：组合多个错误为一条链消息\n段落 错误 | lightharness\src\错误增强.light
+    故重命名为零回归         x1    e.g. #   故重命名为零回归（无引用需更 | lightharness\stdlib\代理运行时.light

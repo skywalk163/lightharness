@@ -12,16 +12,28 @@ xdist 并行会 INTERNALERROR、串行又要 1 小时以上，所以**统一去 
     all     sync + test + diff 一条龙（默认入口）
 
 实测要点（本轮踩坑固化，别踩回去）：
-  * 0.82 只装了 pytest 9.1.1，**没有 xdist、没有 pytest-timeout**
-    → addopts 必须 `-o addopts=` 置空，否则 `-n auto` / `--timeout=60` 直接 ARGERROR。
-  * 没有 pytest-timeout 就用 FreeBSD 自带的 `timeout(1)` 兜一层，防止 hang 死。
+  * 0.82 上**有两个解释器**：
+      - `/usr/local/bin/python3.11`：pytest 9.1.1，**仅 pytest，无 xdist、无 pytest-timeout**；
+      - `/usr/local/bin/python3.12`：pytest 8.4.2，**带 xdist + pytest-timeout + psutil**。
+    light-merge 的 `pyproject.toml` 自带
+    `addopts = "--tb=short --durations=15 --ignore=tests/archive --timeout=60 -n auto --dist=loadscope"`。
+  * **是否置空 addopts 跟随所选解释器自动决定**（关键设计点，不写死）：
+      - `--py` 指向 3.12 且能 `import xdist` → 保留原版 addopts（插件齐全，
+        `-n auto`/`--timeout=60` 都生效），并显式补 `-n auto --dist=loadscope` 双保险；
+      - `--py` 指向 3.11（或所选解释器无 xdist）→ addopts 必须 `-o addopts=` 置空，
+        否则 `-n`/`--timeout` 找不到插件直接 ARGERROR；同时 `-p no:xdist`，
+        用 FreeBSD `timeout(1)` 兜硬超时（无 pytest-timeout 时防 hang 死）。
+  * `--parallel` 语义升级为「按远端所选解释器是否装了 xdist 自动判定」（默认即探测）；
+    `--serial` 强制串行。探针：`python -c "import xdist"`，rc=0 才算有。
   * 结果用 pytest 内建的 `--junitxml` 结构化落盘再 sftp 拉回，不靠解析终端文本。
   * 判据沿用 CI 口径：**新增红**（本轮失败集合 − 基线失败集合）为空才算通过。
 
 用法：
     python scripts/082全量回归.py all
-    python scripts/082全量回归.py all --mode full          # 连 slow 用例一起跑
-    python scripts/082全量回归.py test --parallel           # 0.82 装了 xdist 时可试并行
+    python scripts/082全量回归.py all --mode full                        # 连 slow 用例一起跑
+    python scripts/082全量回归.py test --py /usr/local/bin/python3.12    # 默认，带并行
+    python scripts/082全量回归.py test --py /usr/local/bin/python3.11    # 置空 addopts
+    python scripts/082全量回归.py test --serial                          # 强制串行
     python scripts/082全量回归.py test --timeout-sec 3600
     python scripts/082全量回归.py diff
     python scripts/082全量回归.py diff --base reports/082_lightmerge基线_2026-09-17-235900.json
@@ -46,9 +58,11 @@ SYNC_SCRIPT = SCRIPTS / "同步0.82.py"
 BASELINE_PREFIX = "082_lightmerge基线_"
 LATEST = REPORTS / f"{BASELINE_PREFIX}latest.json"
 
-# pytest 参数：addopts 必须置空（远端无 xdist / pytest-timeout 插件）
-PYTEST_BASE = ["-m", "pytest", "tests/", "-q", "--tb=no", "-rfE",
-               "-o", "addopts=", "-p", "no:cacheprovider"]
+# pytest 公共参数（addopts 是否置空由所选解释器动态决定，见 cmd_test）：
+#   * 3.12（有 xdist）：保留 light-merge 自带 addopts（含 -n auto/--timeout=60）；
+#   * 3.11（无 xdist）：改为 `-o addopts=` 置空并 `-p no:xdist`。
+PYTEST_COMMON = ["-m", "pytest", "tests/", "-q", "--tb=no", "-rfE",
+                 "-p", "no:cacheprovider"]
 
 
 def _load_sync_module():
@@ -75,10 +89,18 @@ def _stamp() -> str:
 
 
 def list_baselines() -> list[Path]:
+    """按**文件 mtime** 排序，不能按文件名字符串排。
+
+    R56 踩的坑：任务4 产出的对拍基线叫 `082_lightmerge基线_R53回退_<ts>.json`，
+    字面序上 'R' > '2'，于是它排在所有 `..._2026-*` 之后，被当成「最新基线」——
+    门因此拿同一份 R53 回退基线自比，得出**假 PASS**（实际那轮的新基线被排到它前面忽略了）。
+    基线的时间顺序只看 mtime，不看名字。
+    """
     if not REPORTS.exists():
         return []
-    return sorted(p for p in REPORTS.glob(f"{BASELINE_PREFIX}*.json")
-                  if p.name != LATEST.name)
+    return sorted((p for p in REPORTS.glob(f"{BASELINE_PREFIX}*.json")
+                   if p.name != LATEST.name),
+                  key=lambda p: p.stat().st_mtime)
 
 
 def has_remote(mod, cli, expr: str) -> bool:
@@ -113,28 +135,37 @@ def cmd_test(args) -> int:
         rd = mod.load_remote_dir()
         print(f"[082全量] 远端副本 {rd}")
 
-        # 1) 能力探测：xdist 是否可用、FreeBSD timeout(1) 是否存在
-        parallel = False
+        # 0) 选解释器：--py 默认 3.12（带 xdist+pytest-timeout）；可选 3.11（仅 pytest）
+        py = args.py
+
+        # 1) 能力探测：所选解释器能否 import xdist（决定保留 addopts 与并行）；
+        #    FreeBSD timeout(1) 是否可用（无 pytest-timeout 时的硬超时兜底）
+        has_xdist = False
         if not args.serial:
-            parallel = has_remote(mod, cli, f"{mod.PY} -c 'import xdist'")
+            has_xdist = has_remote(mod, cli, f"{_q(py)} -c 'import xdist'")
         has_timeout = has_remote(mod, cli, "command -v timeout")
         nproc = 1
         _, out = mod.run_remote(cli, "sysctl -n hw.ncpu", quiet=True)
         if out.strip().isdigit():
             nproc = int(out.strip().split()[0])
-        print(f"[082全量] 远端能力：xdist={'可用' if parallel else '缺失'}，"
+        print(f"[082全量] 解释器 {py}：xdist={'可用' if has_xdist else '缺失'}，"
               f"timeout(1)={'可用' if has_timeout else '缺失'}，ncpu={nproc}")
 
-        # 2) 组装 pytest 命令
+        # 2) 组装 pytest 命令（是否置空 addopts 跟随所选解释器）
         xml_remote = f"{rd}/lm_results_{args.mode}.xml"
-        pytest_argv = list(PYTEST_BASE) + ["--junitxml", xml_remote]
+        pytest_argv = list(PYTEST_COMMON) + ["--junitxml", xml_remote]
         if args.mode == "fast":
             pytest_argv += ["-m", "not slow"]
-        if parallel:
+        if has_xdist:
+            # 保留 light-merge 自带 addopts（含 -n auto --dist=loadscope 与 --timeout=60，
+            # 所选解释器装了 xdist 通常也装了 pytest-timeout）；显式补 -n auto 双保险
             pytest_argv += ["-n", "auto", "--dist", "loadscope"]
         else:
-            pytest_argv += ["-p", "no:xdist"]
-        runner_cmd = f"cd {rd}/light-merge && {mod.PY} " + " ".join(
+            # 无 xdist：addopts 的 -n/--timeout 找不到插件会 ARGERROR → 必须置空，
+            # 并显式关掉 xdist；硬超时靠 FreeBSD timeout(1)
+            pytest_argv += ["-o", "addopts=", "-p", "no:xdist"]
+        parallel = has_xdist
+        runner_cmd = f"cd {rd}/light-merge && {py} " + " ".join(
             _q(a) for a in pytest_argv)
         if has_timeout:
             runner_cmd = f"timeout {args.timeout_sec} sh -c {_q(runner_cmd)}"
@@ -300,9 +331,15 @@ def build_parser() -> argparse.ArgumentParser:
     def common(p):
         p.add_argument("--mode", choices=["fast", "full"], default="fast",
                        help="fast=-m 'not slow'（默认，跳过慢用例）；full=全量")
+        p.add_argument("--py", default="/usr/local/bin/python3.12",
+                       help="0.82 上跑 pytest 的 python 绝对路径。默认 3.12（带 xdist"
+                            "+ pytest-timeout，保留 addopts 并并行）；可选 "
+                            "/usr/local/bin/python3.11（仅 pytest 9.1.1，需置空 addopts）。"
+                            "是否置空 addopts 与是否并行均跟随该解释器自动判定")
         p.add_argument("--parallel", action="store_true",
-                       help="0.82 上有 xdist 时启用 -n auto（默认：探测到才用）")
-        p.add_argument("--serial", action="store_true", help="强制串行")
+                       help="请求并行（默认即按所选解释器是否 import xdist 自动判定；"
+                            "无 xdist 或 --serial 时不并行）")
+        p.add_argument("--serial", action="store_true", help="强制串行（关 xdist）")
         p.add_argument("--timeout-sec", type=int, default=2700,
                        help="远端硬超时秒数（默认 2700 = 45min）")
         return p
@@ -332,7 +369,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    for k in ("mode", "parallel", "serial", "timeout_sec"):
+    for k in ("mode", "parallel", "serial", "timeout_sec", "py"):
         if not hasattr(args, k):
             setattr(args, k, None)
     args.timeout_sec = args.timeout_sec or 2700

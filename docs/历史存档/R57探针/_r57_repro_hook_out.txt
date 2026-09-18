@@ -1,0 +1,22 @@
+﻿[1] 钩子已安装
+[2] import 断言工具 失败: NameError name '错误' is not defined
+python.exe : Traceback (most recent call last):
+所在位置 行:1 字符: 1
++ & "G:\dswork\duan-light-merge\light-merge\.venv\Scripts\python.exe" " ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "G:\dswork\duan-light-merge\lightharness\_r57_repro_hook.py", line 18, in <module>
+    import 断言工具
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "G:\dswork\duan-light-merge\light-merge\stdlib\_light_import_hook.py", line 188, in exec_module
+    exec(compile(code, self.light_path, 'exec'), module.__dict__)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "G:\dswork\duan-light-merge\light-merge\stdlib\断言工具.light", line 277, in <module>
+NameError: name '错误' is not defined
+
+[3] 对照：不装钩子直接 import（清 sys.modules 后）
+    失败: NameError name '错误' is not defined

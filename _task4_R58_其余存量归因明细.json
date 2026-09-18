@@ -1,0 +1,296 @@
+{
+  "meta": {
+    "round": "R58",
+    "task": "任务4：解析层/语义债其他/异步/内置清单/文档门/examples 30条存量红逐条归因",
+    "source_baseline": "reports/_task4_R57_存量红明细_072454.json（baseline_reds）",
+    "baseline_run": "082_lightmerge基线_2026-09-18-100010.json（7807用例/99红）",
+    "date": "2026-09-18",
+    "read_only": true,
+    "categories": {
+      "解析层-语法错误": 7,
+      "语义债-其他": 12,
+      "语义债-异步修饰符": 5,
+      "语义债-内置清单同步": 3,
+      "文档门债": 2,
+      "examples 聚合门": 1
+    },
+    "summary": {
+      "r59_fixable_small": 12,
+      "needs_semantic_review_medium": 8,
+      "depends_on_task1_L174_recheck": 8,
+      "test_source_outdated": 2
+    }
+  },
+  "items": [
+    {
+      "id": "tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call",
+      "category": "解析层-语法错误",
+      "root_cause": "测试源码用旧式函数定义语法 `段落相加(甲, 乙)：`（类C括号形参），当前解析器只支持 `段落 名 接收 参数：` 新式语法；且「段落」与「相加」之间无空格，词法层将「段落相加」整体切成标识符，解析器看不到「段落」关键字，块头末尾全角冒号无法识别为块开始（行2列1缩进错误为级联）。",
+      "red_reason": "ParseError 行1列11「无法识别的语法元素：'：'」",
+      "fix_suggestion": "改测试源码为新式 `段落 相加 接收 甲, 乙：`，或修词法层让无空格「段落」后仍能切出关键字。改测试更小。",
+      "change_size": "小",
+      "relevance_to_r57": "R57 L-173「段落」分支无空格回退只认「接收」，但不覆盖旧式括号形参语法。"
+    },
+    {
+      "id": "tests/test_parser.py::TestVariableDeclaration::test_variable_with_expression",
+      "category": "解析层-语法错误",
+      "root_cause": "`设结果为三加五。` 中「为」与「三」无空格，嵌入块分支（_EMBED_MAX_MATCH_KEYWORDS 含「为」）将「为三加五」整体吞并为 IDENTIFIER，「为」关键字丢失；解析器在变量名「结果」后期望「为」/「等于」却遇到句号。与 L-174 同源。",
+      "red_reason": "ParseError 行1列8「期望'为'或'等于'，但得到「。」」",
+      "fix_suggestion": "任务1修 L-174（无空格赋值尾「为」切出）后应转绿。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源，R57 登记未修，本轮任务1范围。"
+    },
+    {
+      "id": "tests/test_parser.py::TestExpressions::test_arithmetic_expression",
+      "category": "解析层-语法错误",
+      "root_cause": "`设结果为甲加乙。` 中「为甲」无空格，嵌入块吞并「为」关键字。与 L-174 同源。",
+      "red_reason": "ParseError 行1列8「期望'为'或'等于'，但得到「。」」",
+      "fix_suggestion": "任务1修 L-174 后转绿。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/test_parser.py::TestExpressions::test_nested_expression",
+      "category": "解析层-语法错误",
+      "root_cause": "`设结果为甲加乙乘丙。` 中「为甲」无空格，嵌入块吞并「为」关键字。与 L-174 同源。",
+      "red_reason": "ParseError 行1列10同上",
+      "fix_suggestion": "任务1修 L-174 后转绿。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/test_parser.py::TestFunctionDefinition::test_function_with_body",
+      "category": "解析层-语法错误",
+      "root_cause": "块头 `段落 计算 接收 甲, 乙：` 解析成功（有空格），但块内 `设结果为甲加乙。` 中「为甲」无空格导致嵌入块吞并。与 L-174 同源。",
+      "red_reason": "ParseError 行2列10「期望'为'或'等于'，但得到「。」」",
+      "fix_suggestion": "任务1修 L-174 后转绿。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg",
+      "category": "解析层-语法错误",
+      "root_cause": "`段落展示内容接收内容:数：` 中「段落」与「展示内容」无空格，词法层合并「段落展示内容」为标识符，函数定义块头失败。另有半角冒号类型标注 `内容:数` 需确认解析器支持。",
+      "red_reason": "ParseError 行1列13「无法识别的语法元素：'：'」",
+      "fix_suggestion": "改测试源码加空格 `段落 展示内容 接收 内容:数：`；若半角冒号类型标注不被支持则去掉。",
+      "change_size": "小",
+      "relevance_to_r57": "R57「段落」分支守卫不覆盖无空格合并。"
+    },
+    {
+      "id": "tests/test_parser.py::TestNoSpaceCode::test_no_space_variable",
+      "category": "解析层-语法错误",
+      "root_cause": "`设甲为三加五。` —— L-174 典型场景，任务书 G1 明确点名。无空格赋值尾「为」被嵌入块吞并。",
+      "red_reason": "ParseError 行1列7同上",
+      "fix_suggestion": "任务1核心修复对象。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174，R57 登记未修。"
+    },
+    {
+      "id": "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用",
+      "category": "语义债-其他",
+      "root_cause": "`stdlib/内置核心列表.light` 编译生成的 `__all__` 混入了非本模块段落（'冻结' 等额外项），与 builtins.py 的 11 个名字不一致。可能是导出语句多行覆盖或 codegen 收集了全局符号。",
+      "red_reason": "sorted(__all__) 首元素 '冻结' != '列'，多3项（首extra='副本'）",
+      "fix_suggestion": "检查 .light 源文件导出语句是否单行、是否只导出目标段落；检查 codegen 的 __all__ 生成逻辑是否混入其他 stdlib 模块符号。",
+      "change_size": "中",
+      "relevance_to_r57": "无直接关系。"
+    },
+    {
+      "id": "tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call",
+      "category": "语义债-其他",
+      "root_cause": "`n乘阶乘(n减1)` 中「乘」运算符前后无空格，词法层将「n乘阶乘」整体切成标识符，解析为 ParagraphCall('n乘阶乘') 而非 BinaryOp(n,'*',ParagraphCall('阶乘'))。紧凑写法下无空格运算符并入标识符。",
+      "red_reason": "assertNotEqual 失败：expr.name=='n乘阶乘'",
+      "fix_suggestion": "任务1切词面（数字/运算符边界规则）可能覆盖；或在解析器层对 IDENTIFIER(IDENTIFIER) 做歧义消歧。",
+      "change_size": "中",
+      "relevance_to_r57": "任务1切词行为面。"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::Test网络请求::test_HTTP错误响应",
+      "category": "语义债-其他",
+      "root_cause": "`响应`类的 `是否成功` 被定义为方法而非 @property。`r.是否成功` 返回 bound method 对象（truthy），assertFalse 失败。",
+      "red_reason": "bound method 是否成功 is not false",
+      "fix_suggestion": "把 网络请求.light 中 是否成功 改为 property/计算属性，或测试改为 r.是否成功()。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::Test网络请求::test_URL编码解码",
+      "category": "语义债-其他",
+      "root_cause": "URL 编码函数对非 ASCII 字符使用了 ASCII 编码（替换为 ?），未做 UTF-8 百分号转义。",
+      "red_reason": "'???world' != '你好 world'",
+      "fix_suggestion": "修 URL 编码实现用 UTF-8 encode 后百分号转义。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::Test网络请求::test_响应对象",
+      "category": "语义债-其他",
+      "root_cause": "同 test_HTTP错误响应：`文本` 被定义为方法而非 property。",
+      "red_reason": "bound method 文本 != '{\"key\": \"value\"}'",
+      "fix_suggestion": "同 test_HTTP错误响应，改为 property。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::Test网络请求::test_拼接URL",
+      "category": "语义债-其他",
+      "root_cause": "`拼接URL` 函数签名只接受 2 个参数（base, url），测试传了 4 个（base, 'path', 'to', 'page'），不支持可变长路径段拼接。",
+      "red_reason": "TypeError: 拼接URL() takes 2 positional arguments but 4 were given",
+      "fix_suggestion": "扩 拼接URL 为接受变长参数，或改测试为多次拼接。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::Test网络请求::test_解析查询串",
+      "category": "语义债-其他",
+      "root_cause": "`解析查询串` 内部调用 `新建字典` 但该函数未在当前模块导入/定义。",
+      "red_reason": "NameError: name '新建字典' is not defined",
+      "fix_suggestion": "在 网络请求.light 中补 `从 字典工具 导入 新建字典` 或改用已有字典构造。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/_test_null_safety.py::TestNullSafetyBasic::test_unwrap_on_nullable_variable",
+      "category": "语义债-其他",
+      "root_cause": "`设值为空。设值2为值!。` 中「为空」「为值」无空格，嵌入块吞并导致 VarDecl 未产出，符号表无 '值2'。与 L-174 同源。",
+      "red_reason": "assertIsNotNone(sym) unexpectedly None",
+      "fix_suggestion": "任务1修 L-174 后无空格赋值正常解析，符号表应有值2。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码",
+      "category": "语义债-其他",
+      "root_cause": "Python 原版 stdlib（_S.URL编码/解码）对中文「光明」往返编码有 bug（错误编码→「奥楥」乱码），测试把错误结果固化为期望值。光明版反而正确输出「光明」。",
+      "red_reason": "第3行实际 'path/to?q=光明' vs 期望 'path/to?q=奥楥'",
+      "fix_suggestion": "修 Python 原版 stdlib 的 URL 编解码编码为 UTF-8，或更新测试期望值为正确往返结果。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/_test_null_safety.py::TestNullSafetyArithmetic::test_operation_without_unwrap",
+      "category": "语义债-其他",
+      "root_cause": "`设结果为值加1。` 中「为值」无空格，VarDecl 未正确产出，类型推断链断裂，不触发可空运算检查。与 L-174 同源。",
+      "red_reason": "False is not true：期望可空值参与运算报错但 errors 为空",
+      "fix_suggestion": "任务1修 L-174 后赋值链正确建立，类型检查应报错。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/unit/test_原生腿_R13B_能力扩展.py::Test行政区划扩展::test_O0_行政区划代码_对拍与扩展",
+      "category": "语义债-其他",
+      "root_cause": "测试访问 `r._region_code_map`，但 ChinaRegion 类重构后该私有属性名被改名/移除。测试与实现不同步。",
+      "red_reason": "AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'",
+      "fix_suggestion": "更新测试访问当前公开属性名，或在 ChinaRegion 上补 _region_code_map 别名。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/test_parser.py::TestFunctionCall::test_call_in_expression",
+      "category": "语义债-其他",
+      "root_cause": "`设结果为段落计算(甲，乙)。` 中「为段落计算」无空格，嵌入块吞并「为」，解析器将整行解析为 ParagraphCall 而非 VarDecl。与 L-174 同源。",
+      "red_reason": "isinstance(《设结果为段落计算》(甲,乙), VarDecl) 为 False",
+      "fix_suggestion": "任务1修 L-174 后「为」正确切出，应解析为 VarDecl。",
+      "change_size": "中",
+      "relevance_to_r57": "L-174 同源。"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步读取二进制]",
+      "category": "语义债-异步修饰符",
+      "root_cause": "护栏只做到运行时 NameError（「异步」前缀标识符未定义），未在编译期识别「异步」修饰符被当值用并给出友好错误。测试期望错误信息含「修饰符」字样。",
+      "red_reason": "rc!=0 满足但 err 为 [运行错误] name '异步读取二进制' is not defined，不含「修饰符」",
+      "fix_suggestion": "在 _parse_primary 或语义检查阶段，对「异步」开头且不在复合词表的标识符给出编译错误「异步修饰符不能当值使用」。",
+      "change_size": "中",
+      "relevance_to_r57": "与词法层「异步」关键字分类相关。"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步写入二进制]",
+      "category": "语义债-异步修饰符",
+      "root_cause": "同上。",
+      "red_reason": "同上，name '异步写入二进制' is not defined",
+      "fix_suggestion": "同上。",
+      "change_size": "中",
+      "relevance_to_r57": "同上。"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步任务等待]",
+      "category": "语义债-异步修饰符",
+      "root_cause": "同上。",
+      "red_reason": "同上，name '异步任务等待' is not defined",
+      "fix_suggestion": "同上。",
+      "change_size": "中",
+      "relevance_to_r57": "同上。"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步任务取消]",
+      "category": "语义债-异步修饰符",
+      "root_cause": "同上。",
+      "red_reason": "同上，name '异步任务取消' is not defined",
+      "fix_suggestion": "同上。",
+      "change_size": "中",
+      "relevance_to_r57": "同上。"
+    },
+    {
+      "id": "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步取数]",
+      "category": "语义债-异步修饰符",
+      "root_cause": "同上（自造名「异步取数」）。",
+      "red_reason": "同上，name '异步取数' is not defined",
+      "fix_suggestion": "同上。",
+      "change_size": "中",
+      "relevance_to_r57": "同上。"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_内置函数清单与代码一致",
+      "category": "语义债-内置清单同步",
+      "root_cause": "代码新增了 20 个 is_xxx 类型判断函数（is_bool/is_dict/... + 中文名是列表/是字典/...）但 JSON builtin_functions 未收录。",
+      "red_reason": "代码有但 JSON 没有: 20 个 is_xxx/是xxx 函数",
+      "fix_suggestion": "重跑清单再生成脚本（tools/ci/），把 is_xxx 系列补入 JSON。低垂果实。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位",
+      "category": "语义债-内置清单同步",
+      "root_cause": "JSON 中 evidence 行号（codegen_typed.py:2912 等）在当前文件中对不上——codegen_typed.py 新增代码导致行号偏移。",
+      "red_reason": "多条 evidence 行号指向的行不含该函数名",
+      "fix_suggestion": "同上前项，重跑清单再生成脚本自动更新行号。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/unit/test_native_leg_capability.py::test_运行时符号清单与代码一致",
+      "category": "语义债-内置清单同步",
+      "root_cause": "代码新增 strcmp 运行时符号但 JSON runtime_symbols 未收录。",
+      "red_reason": "代码有但 JSON 没有: ['strcmp']",
+      "fix_suggestion": "同上前两项，重跑清单再生成脚本。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT",
+      "category": "文档门债",
+      "root_cause": "docs/L1_白话体语法规范_v4.0.md 中有 6 个编不过的 ```light 代码块（ROT），不在基线 base_map 中。",
+      "red_reason": "new_rot 含 6 条 ('docs/L1_白话体语法规范_v4.0.md', hash=...)",
+      "fix_suggestion": "清理该文档中违规代码块（改为 ```text 或修好代码），然后重生成基线。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_噪声类总数不许涨",
+      "category": "文档门债",
+      "root_cause": "噪声块（REPL/ESCAPED/PSEUDO/ANNOTATED）从 18 涨到 19，新文档混入噪声块。",
+      "red_reason": "19 not <= 18",
+      "fix_suggestion": "非代码块改用 ```text 标签，或重生成基线。",
+      "change_size": "小",
+      "relevance_to_r57": "无。"
+    },
+    {
+      "id": "tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output",
+      "category": "examples 聚合门",
+      "root_cause": "9 例 example 运行异常，首条 hello.light 行18「期望'为'或'等于'，但得到换行」。任务书标注含 4 例词法红（与 L-174 同源），任务1修词法后可能部分转绿。",
+      "red_reason": "failures 列表含 9 项，首项 hello.light 行18 ParseError",
+      "fix_suggestion": "任务1修词法后复跑；剩余非词法异常逐条排查。",
+      "change_size": "小到中",
+      "relevance_to_r57": "部分与 L-174 同源。"
+    }
+  ]
+}

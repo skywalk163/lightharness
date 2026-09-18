@@ -1,0 +1,4 @@
+﻿=== 100010 中 test_http_client 相关 testcase ===
+
+=== 100010 中 测试断言工具 相关 testcase ===
+  通过(自闭合)数: 16

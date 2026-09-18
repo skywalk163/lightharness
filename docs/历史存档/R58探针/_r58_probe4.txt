@@ -1,0 +1,59 @@
+SAME '因为百分数'
+SAME '因为'
+SAME '认为三'
+SAME '甲因为三'
+SAME '因为三'
+DIFF '三加五'
+     base: [('IDENTIFIER', '三加五')]
+     new : [('CHINESE_NUM', 3), ('KEYWORD', '加'), ('CHINESE_NUM', 5)]
+DIFF '设甲为三。'
+     base: [('KEYWORD', '设'), ('IDENTIFIER', '甲为三'), ('PERIOD', '。')]
+     new : [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('CHINESE_NUM', 3), ('PERIOD', '。')]
+SAME '甲为三'
+SAME '设 甲为三'
+SAME '因为百分数很高'
+SAME '不是为空'
+SAME '是否为空'
+SAME '设为三'
+SAME '甲为二'
+SAME '称为三'
+SAME '认为是真'
+SAME '因为是真'
+SAME '设 甲为百'
+SAME '甲为百'
+SAME '记为三'
+SAME '数为三'
+SAME '甲为十'
+SAME '因为十个'
+SAME '检查是否为十六进制数字'
+SAME '检查是否为八进制数字'
+SAME '设 是否为零 为 假'
+SAME '是否为零'
+DIFF '设甲为五。'
+     base: [('KEYWORD', '设'), ('IDENTIFIER', '甲为五'), ('PERIOD', '。')]
+     new : [('KEYWORD', '设'), ('IDENTIFIER', '甲'), ('KEYWORD', '为'), ('CHINESE_NUM', 5), ('PERIOD', '。')]
+DIFF '导出事件表'
+     base: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')]
+     new : [('IDENTIFIER', '导出事件表')]
+DIFF '返回码'
+     base: [('KEYWORD', '返回'), ('IDENTIFIER', '码')]
+     new : [('IDENTIFIER', '返回码')]
+DIFF '接收参数'
+     base: [('KEYWORD', '接收'), ('IDENTIFIER', '参数')]
+     new : [('IDENTIFIER', '接收参数')]
+DIFF '非空块'
+     base: [('KEYWORD', '非'), ('IDENTIFIER', '空块')]
+     new : [('IDENTIFIER', '非空块')]
+DIFF '外部命令'
+     base: [('KEYWORD', '外部'), ('IDENTIFIER', '命令')]
+     new : [('IDENTIFIER', '外部命令')]
+SAME '退出码'
+SAME '排序依据'
+SAME '输出块表'
+SAME '记录类型'
+SAME '甲.返回码'
+SAME '整理模型消息'
+SAME '设格式化为百分比(值, 小数位)'
+SAME '为一组'
+
+DIFF 8 / 41

@@ -1,0 +1,180 @@
+﻿===== [语义债-其他] tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]      At index 0 diff: '冻结' != '列'   Left contains 3 more items, first extra item: '副本'   Use -v to get more diff
+
+===== [语义债-其他] tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: 'n乘阶乘' == 'n乘阶乘'
+
+===== [语义债-内置清单同步] tests/unit/test_native_leg_capability.py::test_内置函数清单与代码一致 =====
+subcategory: 内置函数/运行时符号清单与代码不同步
+stable_6of6: True
+expected_action: 低垂果实：重跑清单再生成脚本对齐 JSON（3 条）
+message: AssertionError: 内置函数清单与代码不一致:     代码有但 JSON 没有: ['is_bool', 'is_dict', 'is_float', 'is_int', 'is_integer', 'is_list', 'is_map', 'is_number', 'is_str', 'is_string', '是列表', '是字典', '是字符串', '是布尔', '是数值', '是数字', '是数组', '是整数', '是浮点', '是浮点数']     JSON 有但代码没有: [] assert {'?.', '??', ...ception', ...} == fro
+
+===== [语义债-内置清单同步] tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位 =====
+subcategory: 内置函数/运行时符号清单与代码不同步
+stable_6of6: True
+expected_action: 低垂果实：重跑清单再生成脚本对齐 JSON（3 条）
+message: AssertionError: 内置函数证据行号问题:   ?.: codegen_typed.py:2912 那一行没有这个名字：   ??: codegen_typed.py:2903 那一行没有这个名字：slot1 = self._store_dv(args[1])   ArithmeticError: codegen_typed.py:1857 那一行没有这个名字：'读取错误', '请求错误', 'Exception', 'RuntimeException', 'ValueError   Base64编码: codegen_typed.py:2510 那一行没有这个名字：# 以避免「段
+
+===== [语义债-内置清单同步] tests/unit/test_native_leg_capability.py::test_运行时符号清单与代码一致 =====
+subcategory: 内置函数/运行时符号清单与代码不同步
+stable_6of6: True
+expected_action: 低垂果实：重跑清单再生成脚本对齐 JSON（3 条）
+message: AssertionError: 运行时符号清单与代码不一致:     代码有但 JSON 没有: ['strcmp']     JSON 有但代码没有: [] assert {'_setjmp', '...nd_file', ...} == frozenset({'_...d_file', ...})      Extra items in the left set:   'strcmp'   Use -v to get more diff
+
+===== [语义债-其他] tests/test_stdlib_phase3.py::Test网络请求::test_HTTP错误响应 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: <bound method 响应.是否成功 of <网络请求.响应 object at 0xc08342046e0>> is not false
+
+===== [语义债-其他] tests/test_stdlib_phase3.py::Test网络请求::test_URL编码解码 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: '???world' != '你好 world' - ???world + 你好 world
+
+===== [语义债-其他] tests/test_stdlib_phase3.py::Test网络请求::test_响应对象 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: <bound method 响应.文本 of <网络请求.响应 object at 0xc08362ad340>> != '{"key": "value"}'
+
+===== [语义债-其他] tests/test_stdlib_phase3.py::Test网络请求::test_拼接URL =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: TypeError: 拼接URL() takes 2 positional arguments but 4 were given
+
+===== [语义债-其他] tests/test_stdlib_phase3.py::Test网络请求::test_解析查询串 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: NameError: name '新建字典' is not defined
+
+===== [语义债-异步修饰符] tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236] =====
+subcategory: `异步` 被当值用且报错信息未指出根因
+stable_6of6: True
+expected_action: 语义轮：报错信息质量（未指出「异步被当值用」根因）
+message: AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步读取二进制' is not defined       assert '修饰符' in ("[运行错误] name '异步读取二进制' is not defined\n" + '')
+
+===== [语义债-异步修饰符] tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236] =====
+subcategory: `异步` 被当值用且报错信息未指出根因
+stable_6of6: True
+expected_action: 语义轮：报错信息质量（未指出「异步被当值用」根因）
+message: AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步写入二进制' is not defined       assert '修饰符' in ("[运行错误] name '异步写入二进制' is not defined\n" + '')
+
+===== [语义债-异步修饰符] tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85] =====
+subcategory: `异步` 被当值用且报错信息未指出根因
+stable_6of6: True
+expected_action: 语义轮：报错信息质量（未指出「异步被当值用」根因）
+message: AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步任务等待' is not defined       assert '修饰符' in ("[运行错误] name '异步任务等待' is not defined\n" + '')
+
+===== [语义债-异步修饰符] tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88] =====
+subcategory: `异步` 被当值用且报错信息未指出根因
+stable_6of6: True
+expected_action: 语义轮：报错信息质量（未指出「异步被当值用」根因）
+message: AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步任务取消' is not defined       assert '修饰符' in ("[运行错误] name '异步任务取消' is not defined\n" + '')
+
+===== [语义债-异步修饰符] tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570] =====
+subcategory: `异步` 被当值用且报错信息未指出根因
+stable_6of6: True
+expected_action: 语义轮：报错信息质量（未指出「异步被当值用」根因）
+message: AssertionError: 报错没指出根因（`异步` 被当值用）:   [运行错误] name '异步取数' is not defined       assert '修饰符' in ("[运行错误] name '异步取数' is not defined\n" + '')
+
+===== [文档门债] tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT =====
+subcategory: docs 示例门（ROT/噪声块计数）
+stable_6of6: True
+expected_action: 文档轮：清理 docs 违规块（ROT/噪声块）后对表
+message: AssertionError: Lists differ: [] != [('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf[221 chars]68')]  Second list contains 6 additional elements. First extra element 0: ('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf')  - [] + [('docs/L1_白话体语法规范_v4.0.md', '30b8918966cf'), +  ('docs/L1_白话体语法规范_v4.0.md', 'ac13282
+
+===== [文档门债] tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_噪声类总数不许涨 =====
+subcategory: docs 示例门（ROT/噪声块计数）
+stable_6of6: True
+expected_action: 文档轮：清理 docs 违规块（ROT/噪声块）后对表
+message: AssertionError: 19 not less than or equal to 18 : 噪声块从 18 涨到 19：新写的文档又混进了 REPL 记录/伪代码/箭头注解/转义污染。非代码块请改用 ```text 标签。
+
+===== [解析层-语法错误] tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 原因: 发现 2 个语法错误（下面详列前 2 个，建议从第 1 个开始修）:  错误 1/2:  ┌─ 语法错误 │ 位置: 行 1, 列 11 │ 原因: 无法识别的语法元素：'：'。请检查语句是否正确，或参考光明语法文档。 │ 附近: '：' └─  ---  错误 2/2:  ┌─ 语法错误 │ 位置: 行 2, 列 1 │ 原因: 缩进不正确：这一行的缩进层级没有对应的语句块。请检查上一条语句是否以「：」结尾、或本行缩进是否多/少了一级。 │ 附近: '4' └─ └─
+
+===== [语义债-其他] tests/_test_null_safety.py::TestNullSafetyBasic::test_unwrap_on_nullable_variable =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: unexpectedly None
+
+===== [语义债-其他] tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: Failed: 实际=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=光明'] 期望=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=奥楥']
+
+===== [解析层-语法错误] tests/test_parser.py::TestVariableDeclaration::test_variable_with_expression =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 8 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─
+
+===== [解析层-语法错误] tests/test_parser.py::TestExpressions::test_arithmetic_expression =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 8 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─
+
+===== [解析层-语法错误] tests/test_parser.py::TestExpressions::test_nested_expression =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 10 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─
+
+===== [解析层-语法错误] tests/test_parser.py::TestFunctionDefinition::test_function_with_body =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 2, 列 10 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─
+
+===== [语义债-其他] tests/_test_null_safety.py::TestNullSafetyArithmetic::test_operation_without_unwrap =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AssertionError: False is not true : 期望可空值参与运算时报错，但得到: []
+
+===== [解析层-语法错误] tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 原因: 发现 2 个语法错误（下面详列前 2 个，建议从第 1 个开始修）:  错误 1/2:  ┌─ 语法错误 │ 位置: 行 1, 列 13 │ 原因: 无法识别的语法元素：'：'。请检查语句是否正确，或参考光明语法文档。 │ 附近: '：' └─  ---  错误 2/2:  ┌─ 语法错误 │ 位置: 行 2, 列 1 │ 原因: 缩进不正确：这一行的缩进层级没有对应的语句块。请检查上一条语句是否以「：」结尾、或本行缩进是否多/少了一级。 │ 附近: '4' └─ └─
+
+===== [语义债-其他] tests/unit/test_原生腿_R13B_能力扩展.py::Test行政区划扩展::test_O0_行政区划代码_对拍与扩展 =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'
+
+===== [语义债-其他] tests/test_parser.py::TestFunctionCall::test_call_in_expression =====
+subcategory: 
+stable_6of6: True
+expected_action: 逐条归因：stdlib_phase3 网络运行时行为、URL 编码、null_safety 断言、R13B/R13C 对拍等
+message: assert False  +  where False = isinstance(《设结果为段落计算》(甲, 乙), VarDecl)
+
+===== [解析层-语法错误] tests/test_parser.py::TestNoSpaceCode::test_no_space_variable =====
+subcategory: 「期望'为'或'等于'，但得到「。」」——疑与 G5（赋值无空格）同源，需归因
+stable_6of6: True
+expected_action: 疑与 G5（赋值无空格）同源：R57 任务1 顺带评估后复查，不许扩大改动面
+message: parser_core.ParseError:  ┌─ 语法错误 │ 位置: 行 1, 列 7 │ 原因: 期望'为'或'等于'，但得到 「。」 │ 附近: '。' │ 建议: 句号「。」用于结束语句。如果这不是语句结尾，请检查表达式是否完整。 └─
+
+===== [examples 聚合门] tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output =====
+subcategory: examples 运行异常聚合（含 4 例词法红在内）
+stable_6of6: True
+expected_action: R57 任务1 落地后复查（聚合 9 例 example 异常，含 4 例词法红，可能部分转绿）
+message: AssertionError: Lists differ: [] != ["hello.light: 运行异常 -> \n┌─ 语法错误\n│ 位置: 行 [1216 chars]ned"]  Second list contains 9 additional elements. First extra element 0: "hello.light: 运行异常 -> \n┌─ 语法错误\n│ 位置: 行 18, 列 9\n│ 原因: 期望'为'或'等于'，但得到 「\n」\n│ 附近: '\n'\n└─"  Diff is 1643 characters long. Set self.max
+

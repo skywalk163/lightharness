@@ -1,0 +1,161 @@
+总 baseline_reds=100  其中词法层=16
+
+### [01] tests/unit/test_lexer.py::TestLexer::test_chinese_number
+    file: tests/unit/test_lexer.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: 0 != 2
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [02] tests/unit/test_lexer.py::TestLexer::test_number_prefix_still_split_when_rest_is_keyword
+    file: tests/unit/test_lexer.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: Tuples differ: ('IDENTIFIER', '那么大') != ('KEYWORD', '那么')  First differing element 0: 'IDENTIFIER' 'KEYWORD'  - ('IDENTIFIER', '那么大') + ('KEYWORD', '那么')
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [03] tests/unit/test_lexer.py::TestLexer::test_simple_tokenize
+    file: tests/unit/test_lexer.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: <TokenType.CHINESE_NUM: 5> not found in [<TokenType.KEYWORD: 7>, <TokenType.IDENTIFIER: 6>, <TokenType.PERIOD: 10>, <TokenType.EOF: 43>]
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [04] tests/test_lexer.py::test_basic_keywords
+    file: tests/test_lexer.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: R36 钉现状：无空格 设甲为三 期望整体成词（与 G5 修复方向需对表）
+    message: AssertionError: R36 钉现状失败：无空格 设甲为三 应整体成一个标识符，得到 ['设', '甲为三', '。'] assert ['设', '甲为三', '。'] == ['设甲为三', '。']      At index 0 diff: '设' != '设甲为三'   Left contains one more item: '。'   Use -v to get more diff
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 受任务1a 影响：R36 钉现状期望 设甲为三 整体成词，与 smoke 期望方向需对表，可能转绿或需改钉
+    stable_6of6: True
+
+### [05] tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_除类型错误
+    file: tests/unit/test_lexer_compound_safe_alignment.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: ('IDENTIFIER', '除') not found in [('KEYWORD', '捕'), ('IDENTIFIER', '除类型错误'), ('IDENTIFIER', '印')]
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [06] tests/unit/test_match_elif_import_aliases.py::TestMatchSingleCharAliases::test_pi_is_compound_safe
+    file: tests/unit/test_match_elif_import_aliases.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '匹' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [07] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_六雷区_整体成词
+    file: tests/unit/test_lexer_p0a_deterministic.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]  First differing element 0: ('KEYWORD', '导出') ('IDENTIFIER', '导出事件表')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '事件表')  - [('KEYWORD', '导出'), ('IDENTIFIER', '
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [08] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_同构复合词_整体成词
+    file: tests/unit/test_lexer_p0a_deterministic.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: Lists differ: [('KEYWORD', '外部'), ('IDENTIFIER', '命令')] != [('IDENTIFIER', '外部命令')]  First differing element 0: ('KEYWORD', '外部') ('IDENTIFIER', '外部命令')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '命令')  - [('KEYWORD', '外部'), ('IDENTIFIER', '命令')
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [09] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_清空白名单后仍整体成词
+    file: tests/unit/test_lexer_p0a_deterministic.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: 
+    message: AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')]  First differing element 0: ('KEYWORD', '导出') ('IDENTIFIER', '导出事件表')  First list contains 1 additional elements. First extra element 1: ('IDENTIFIER', '事件表')  - [('KEYWORD', '导出'), ('IDENTIFIER', '
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 
+    stable_6of6: True
+
+### [10] tests/unit/test_l0_char_alias_async_yi.py::TestAsyncCharAliasTables::test_异_进复合词保护表
+    file: tests/unit/test_l0_char_alias_async_yi.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '异' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [11] tests/unit/test_l0_char_alias_const_chang.py::TestConstModifierTables::test_常_进复合词保护表
+    file: tests/unit/test_l0_char_alias_const_chang.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '常' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [12] tests/unit/test_modifier_await_aliases.py::TestAliasTableMembership::test_等_已进复合词安全表
+    file: tests/unit/test_modifier_await_aliases.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '等' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [13] tests/unit/test_break_continue_aliases.py::TestBreakContinueAliasTables::test_断_跃_已进复合词安全表
+    file: tests/unit/test_break_continue_aliases.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '断' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [14] tests/unit/test_interface_aliases.py::TestImplementsAliasTables::test_现_已进复合词安全表
+    file: tests/unit/test_interface_aliases.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '现' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [15] tests/unit/test_l0_char_aliases_paradigm_ac.py::TestParadigmACTablesUntouched::test_引_本来就是关键字
+    file: tests/unit/test_l0_char_aliases_paradigm_ac.py
+    junit_status: failure
+    category: 词法层-单字保护/安全表
+    subcategory: 单字别名未进复合词安全表（frozenset() 为空）
+    message: AssertionError: '引' not found in frozenset()
+    expected_action: 需归因：8 条断言 frozenset() 为空，疑运行期表构造/加载问题，词法轮处置
+    task1_impact: 
+    stable_6of6: True
+
+### [16] tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_correctness_smoke
+    file: tests/unit/test_lexer_perf.py
+    junit_status: failure
+    category: 词法层-切词行为
+    subcategory: G5 同源：`甲为三` 未切分、`为` 丢失
+    message: AssertionError: '为' not found in ['设', '甲为三', '。', '打印', '甲', '加', 5, '。', None]
+    expected_action: 词法轮：与 R57 任务1 同族，逐条归因（含 R36 钉现状对表）
+    task1_impact: 预计转绿（条件：`甲为三` 由任务1a 顺带修；否则保持红并登记）
+    stable_6of6: True

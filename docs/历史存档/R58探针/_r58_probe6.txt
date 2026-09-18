@@ -1,0 +1,23 @@
+==============================================================================
+### light-merge/bootstrap/release/stdlib/字符串常量.light   (token 393 -> 397)
+  [replace] base[136:137] new[136:139]
+      base: ["IDENTIFIER '字符'", "RPAREN ')'", "MINUS '-'", "IDENTIFIER '检查是否为十六进制数字'", "NEWLINE '\\n'", "IDENTIFIER '是八进制'", "LPAREN '('"]
+      new : ["IDENTIFIER '字符'", "RPAREN ')'", "MINUS '-'", "IDENTIFIER '检查是否'", "KEYWORD '为'", "IDENTIFIER '十六进制数字'", "NEWLINE '\\n'", "IDENTIFIER '是八进制'", "LPAREN '('"]
+  [replace] base[143:144] new[145:148]
+      base: ["IDENTIFIER '字符'", "RPAREN ')'", "MINUS '-'", "IDENTIFIER '检查是否为八进制数字'", "NEWLINE '\\n'", "IDENTIFIER '字符列表全部是'", "LPAREN '('"]
+      new : ["IDENTIFIER '字符'", "RPAREN ')'", "MINUS '-'", "IDENTIFIER '检查是否'", "KEYWORD '为'", "IDENTIFIER '八进制数字'", "NEWLINE '\\n'", "IDENTIFIER '字符列表全部是'", "LPAREN '('"]
+
+==============================================================================
+### light-merge/examples/modules/main.light   (token 67 -> 69)
+  [replace] base[30:31] new[30:33]
+      base: ["NEWLINE '\\n'", "NEWLINE '\\n'", "KEYWORD '设'", "IDENTIFIER '甲为五'", "PERIOD '。'", "NEWLINE '\\n'", "KEYWORD '打印'"]
+      new : ["NEWLINE '\\n'", "NEWLINE '\\n'", "KEYWORD '设'", "IDENTIFIER '甲'", "KEYWORD '为'", 'CHINESE_NUM 5', "PERIOD '。'", "NEWLINE '\\n'", "KEYWORD '打印'"]
+
+==============================================================================
+### lightharness/examples/test_R24_运算符单字守卫.light   (token 352 -> 356)
+  [replace] base[335:336] new[335:338]
+      base: ["NEWLINE '\\n'", "NEWLINE '\\n'", "KEYWORD '设'", "IDENTIFIER '是否为零'", "KEYWORD '为'", "KEYWORD '假'", "NEWLINE '\\n'"]
+      new : ["NEWLINE '\\n'", "NEWLINE '\\n'", "KEYWORD '设'", "IDENTIFIER '是否'", "KEYWORD '为'", 'CHINESE_NUM 0', "KEYWORD '为'", "KEYWORD '假'", "NEWLINE '\\n'"]
+  [replace] base[341:342] new[343:346]
+      base: ["NEWLINE '\\n'", "IDENTIFIER '断言相等'", "LPAREN '('", "IDENTIFIER '是否为零'", "COMMA ','", "KEYWORD '假'", "COMMA ','"]
+      new : ["NEWLINE '\\n'", "IDENTIFIER '断言相等'", "LPAREN '('", "IDENTIFIER '是否'", "KEYWORD '为'", 'CHINESE_NUM 0', "COMMA ','", "KEYWORD '假'", "COMMA ','"]

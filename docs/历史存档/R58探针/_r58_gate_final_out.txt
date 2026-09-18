@@ -1,0 +1,6 @@
+﻿__RC__=0
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+126 passed, 1 xfailed, 132 warnings in 6.42s
+

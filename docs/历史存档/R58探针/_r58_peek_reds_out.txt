@@ -1,0 +1,81 @@
+﻿词法层共 16 条:
+[词法层-切词行为] tests/unit/test_lexer.py::TestLexer::test_chinese_number
+      AssertionError: 0 != 2
+[词法层-切词行为] tests/unit/test_lexer.py::TestLexer::test_number_prefix_still_split_when_rest_is_keyword
+      AssertionError: Tuples differ: ('IDENTIFIER', '那么大') != ('KEYWORD', '那么')  First differing element 0
+[词法层-切词行为] tests/unit/test_lexer.py::TestLexer::test_simple_tokenize
+      AssertionError: <TokenType.CHINESE_NUM: 5> not found in [<TokenType.KEYWORD: 7>, <TokenType.IDENTIFI
+[词法层-切词行为] tests/test_lexer.py::test_basic_keywords
+      AssertionError: R36 钉现状失败：无空格 设甲为三 应整体成一个标识符，得到 ['设', '甲为三', '。'] assert ['设', '甲为三', '。'] == ['设甲为三
+[词法层-单字保护/安全表] tests/unit/test_lexer_compound_safe_alignment.py::TestDropSignaturesFixed::test_除类型错误
+      AssertionError: ('IDENTIFIER', '除') not found in [('KEYWORD', '捕'), ('IDENTIFIER', '除类型错误'), ('IDENT
+[词法层-单字保护/安全表] tests/unit/test_match_elif_import_aliases.py::TestMatchSingleCharAliases::test_pi_is_compound_safe
+      AssertionError: '匹' not found in frozenset()
+[词法层-切词行为] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_六雷区_整体成词
+      AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')
+[词法层-切词行为] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_同构复合词_整体成词
+      AssertionError: Lists differ: [('KEYWORD', '外部'), ('IDENTIFIER', '命令')] != [('IDENTIFIER', '外部命令')] 
+[词法层-切词行为] tests/unit/test_lexer_p0a_deterministic.py::TestP0A复合词压力::test_清空白名单后仍整体成词
+      AssertionError: Lists differ: [('KEYWORD', '导出'), ('IDENTIFIER', '事件表')] != [('IDENTIFIER', '导出事件表')
+[词法层-单字保护/安全表] tests/unit/test_l0_char_alias_async_yi.py::TestAsyncCharAliasTables::test_异_进复合词保护表
+      AssertionError: '异' not found in frozenset()
+[词法层-单字保护/安全表] tests/unit/test_l0_char_alias_const_chang.py::TestConstModifierTables::test_常_进复合词保护表
+      AssertionError: '常' not found in frozenset()
+[词法层-单字保护/安全表] tests/unit/test_modifier_await_aliases.py::TestAliasTableMembership::test_等_已进复合词安全表
+      AssertionError: '等' not found in frozenset()
+[词法层-单字保护/安全表] tests/unit/test_break_continue_aliases.py::TestBreakContinueAliasTables::test_断_跃_已进复合词安全表
+      AssertionError: '断' not found in frozenset()
+[词法层-单字保护/安全表] tests/unit/test_interface_aliases.py::TestImplementsAliasTables::test_现_已进复合词安全表
+      AssertionError: '现' not found in frozenset()
+[词法层-单字保护/安全表] tests/unit/test_l0_char_aliases_paradigm_ac.py::TestParadigmACTablesUntouched::test_引_本来就是关键字
+      AssertionError: '引' not found in frozenset()
+[词法层-切词行为] tests/unit/test_lexer_perf.py::TestLexerPerformance::test_lexer_correctness_smoke
+      AssertionError: '为' not found in ['设', '甲为三', '。', '打印', '甲', '加', 5, '。', None]
+
+语义债-代码生成断言 21 条:
+  tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_member_access
+  tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_mixed_period_and_dot
+  tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_no_period_no_dot_ambiguity
+  tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_period_in_class_body
+  tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_access_after_new_keyword
+  tests/test_context_manager.py::TestL2OOPCodegen::test_自_param_and_body_both_self
+  tests/test_context_manager.py::TestAwaitMemberAccess::test_await_chained_member
+  tests/test_context_manager.py::TestJueyiE遍历为连接词::test_为搭配函数调用
+  tests/test_async_class_method.py::TestAsyncClassMethod::test_03_async_method读写己属性
+  tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性赋值
+  tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性带索引赋值
+  tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_普通标识符之成员赋值
+  tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_点号成员赋值未被破坏
+  tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_eq
+  tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_等于
+  tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_obj_attr_eq
+  tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_dot_access_still_works
+  tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_two_level_attr_assign
+  tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_self_chain_assign
+  tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_three_level_attr_assign
+  tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_attr_assign_with_expr
+
+语义债-类/成员访问 14 条:
+  tests/test_frontend_blockers_run.py::test_a24_泛型类真跑
+  tests/test_frontend_blockers_run.py::test_a24_多参数泛型类
+  tests/test_context_manager.py::TestL0SingleCharClassKeywords::test_继承链可用
+  tests/test_context_manager.py::TestChaoSuper::test_chao_dot_plain_method
+  tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form
+  tests/test_context_manager.py::TestChaoSuper::test_chao_de_form
+  tests/test_frontend_blockers_run.py::test_a25_两个嵌套类且外层成员不被吞
+  tests/test_level6_types.py::TestTypeScenarioClass::test_class_instantiation
+  tests/test_edge_cases.py::TestEdgeCasesClasses::test_class_with_multiple_methods
+  tests/integration/test_class_system.py::TestClassInheritance::test_constructor_with_inheritance
+  tests/integration/test_class_system.py::TestClassBasic::test_class_with_attributes
+  tests/integration/test_class_system.py::TestMethodOverride::test_method_override
+  tests/integration/test_class_system.py::TestClassAdvanced::test_self_method_call
+  tests/integration/test_class_system.py::TestMultipleClasses::test_multiple_classes_in_one_file
+
+解析层-语法错误 7 条:
+  tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call
+  tests/test_parser.py::TestVariableDeclaration::test_variable_with_expression
+  tests/test_parser.py::TestExpressions::test_arithmetic_expression
+  tests/test_parser.py::TestExpressions::test_nested_expression
+  tests/test_parser.py::TestFunctionDefinition::test_function_with_body
+  tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg
+  tests/test_parser.py::TestNoSpaceCode::test_no_space_variable
