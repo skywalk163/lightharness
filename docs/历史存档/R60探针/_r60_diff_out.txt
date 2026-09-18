@@ -1,0 +1,9 @@
+﻿[082全量] 对比：082_lightmerge基线_latest.json  ⟵  reports\082_lightmerge基线_2026-09-18-172617.json
+[082全量] 失败数 13 → 4（7854 → 7871 用例）
+[082全量] 新增红 3 ｜ 已修复 12 ｜ 持平 1
+[082全量]   已修复样例：['tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg', 'tests/test_R40_语言支撑配套.py::test_现状钉桩_R19_为字整串合并', 'tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u53d6\\u6d88]', 'tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u7b49\\u5f85]', 'tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u5199\\u5165\\u4e8c\\u8fdb\\u5236]']
+[082全量]   ❌ 新增红清单（前 30 条）：
+[082全量]     tests/test_R40_语言支撑配套.py::test_现状钉桩_R22_接收字合并
+[082全量]     tests/test_R40_语言支撑配套.py::test_现状钉桩_全角逗号不是这两个回归的原因
+[082全量]     tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍
+[082全量] 对比报告 reports\082_diff_2026-09-18-203010.json

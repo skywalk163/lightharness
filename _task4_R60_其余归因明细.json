@@ -1,0 +1,65 @@
+{
+  "round": "R60",
+  "task": "任务4（只读归因，不改代码）",
+  "generated_at": "2026-09-18",
+  "baseline": "lightharness/reports/082_lightmerge基线_2026-09-18-172617.json（13 红）",
+  "discipline": "4A 只读归因；4B 定向复跑确认；本任务未修改任何代码文件",
+  "items": [
+    {
+      "id": "tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call",
+      "status": "still_red",
+      "category": "词法层/R21上下文合并（_ctx_call 误吞定义头关键字）+ 解析层连带缩进错误",
+      "root_cause_review": "紧凑定义「段落相加(甲, 乙)：」中，R21 的 _ctx_call 分支（整串后紧随 '(' → 函数名语境 → 关键字前缀整串并入）把形参表左括号误判为调用语境，语句关键字「段落」与名「相加」并成单标识符 IDENTIFIER('段落相加')；解析器将「段落相加(甲, 乙)」当普通调用表达式，语句级尾随全角冒号'：'无法识别（行1列11），连带行2缩进不正确。与 R59 任务1 已修的「设结果为段落计算(甲，乙)」（设 头触发豁免）完全同族，「段落」缺同款头触发豁免。",
+      "evidence": [
+        "token 取证（R60 词法器与基线一致）：IDENTIFIER('段落相加') LPAREN IDENTIFIER('甲') COMMA(',') IDENTIFIER('乙') RPAREN COLON('：')",
+        "ParseError 复现：行1列11「无法识别的语法元素：'：'」+ 行2列1「缩进不正确」",
+        "对照实验：段落相加(甲，乙)：（紧凑+全角逗号）FAIL 列10 同机制 → 逗号宽度非根因",
+        "对照实验：段落 相加(甲, 乙)：（空格+半角逗号）OK；段落 相加(甲，乙)：OK；含 打印相加(1, 2)。 调用亦 OK → 半角逗号/半角冒号均非根因",
+        "修正 R59 归因线索：原线索「半角冒号+缩进/语法元素无法识别」不准，唯一阻塞是紧凑形态下「段落」被 _ctx_call 吞并"
+      ],
+      "r61_fix_path": "与 R59 任务1「设」头触发同款：把定义头语句关键字「段落」（可一并评估 函数/类型/接口/结构体）加入 R21 _ctx_call 与词首触发豁免（lexer 层，改面最小、口径统一）；护栏照 R60 任务1 流程：全语料 token A/B（38091 文件逐条取证）+ 互举反跑 0 新增 + 本机/0.82 定向",
+      "effort": "小（判据约10行 + 半天护栏验证；可复用 R60 任务1 的 A/B 转储与互举反跑脚本）",
+      "risk": "低：需 A/B 排查语料中名为「段落X」的合法标识符调用（user_definitions 前置保护 _match_mixed_user_definition 理论上已兜底，落证即可）"
+    },
+    {
+      "id": "tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg",
+      "status": "greened_by_task1",
+      "category": "词法层/R21词首动词并入（接收内容 粘连）",
+      "root_cause_review": "基线 token：KEYWORD('段落') IDENTIFIER('展示内容') IDENTIFIER('接收内容') COLON(':') IDENTIFIER('数') COLON('：')——R21 词首多字动词并入把「接收」+形参「内容」并成单标识符，「接收」关键字丢失，解析器无法识别其后半角冒号类型标注「:数」→ ParseError 行1列13。R59 线索「半角冒号类型标注存疑」可排除：类型标注本身被支持，阻塞仅在「接收」被吞。",
+      "evidence": [
+        "HEAD 词法器复跑 = FAIL（基线复现）；R60 任务1 词法器 = PASS",
+        "R60 token 对照：KEYWORD('段落') IDENTIFIER('展示内容') KEYWORD('接收') IDENTIFIER('内容') COLON(':') IDENTIFIER('数') COLON('：')",
+        "转绿机制 = R60 任务1 修复B（src/lexer.py R21 判据的「接收」+形参豁免，判据：余部已声明且整串后紧随 ，/：）",
+        "转绿后可空推断链路正常：形参非可空 ← 实参为空 按测试期望产出可空错误，断言通过"
+      ],
+      "r61_fix_path": "无需处理：已随 R60 任务1 交付转绿（详见 light-merge/_task1_R60_compact词法与examples连带.md 2.2 节）",
+      "effort": "无",
+      "risk": "无"
+    }
+  ],
+  "confirmations_4b": [
+    {
+      "id": "tests/test_R40_语言支撑配套.py::Test现状钉桩_既有词法回归::test_现状钉桩_R19_为字整串合并",
+      "local": "passed",
+      "remote_082": "passed",
+      "note": "R59 钉桩 R19 转正更新稳定"
+    },
+    {
+      "id": "tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍",
+      "local": "passed",
+      "remote_082": "passed",
+      "note": "R59 参数解析.light L136 长(词) 截取修复稳定"
+    },
+    {
+      "id": "tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍",
+      "local": "passed",
+      "remote_082": "passed",
+      "note": "R59 编码解码.light L373 长(对) 截取修复稳定"
+    }
+  ],
+  "gate_impact_note": "基线 13 红中任务4A 范畴原记 2 条存量红；实测 1 条（test_paragraph_call）仍红、1 条已随任务1 转绿 → R60 全量对拍 172617 的预期终态应修正为「剩 1 条存量红」；门判据「新增红 0」不变。另：任务2 的 parser_expr.py「异步*」IDENTIFIER 一律拦截在互举反跑口径下新增 3 条解析失败（异步作用域/异步接受/异步信号量，均为合法已定义名），需任务2 agent 收窄，详见 light-merge/_task1_R60_compact词法与examples连带.md 第一节。",
+  "verification_env": {
+    "local": "light-merge .venv Python 3.13, pytest -o addopts= -p no:cacheprovider",
+    "remote_082": "/tmp/r44-20260918-190439/light-merge, /usr/local/bin/python3.12"
+  }
+}

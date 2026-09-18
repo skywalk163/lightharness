@@ -1,0 +1,33 @@
+﻿bringing up nodes...
+bringing up nodes...
+
+F                                                                        [100%]
+================================== FAILURES ===================================
+____________________________ test_O0_颜色_解析格式化操作_对拍 ____________________________
+[gw0] win32 -- Python 3.13.14 G:\dswork\duan-light-merge\light-merge\.venv\Scripts\python.exe
+tests\unit\test_原生腿_T6C_向量复数颜色参数编码.py:309: in test_O0_颜色_解析格式化操作_对拍
+    _断言对拍(code, 期望, 标签='颜色解析格式化操作')
+tests\unit\test_原生腿_T6C_向量复数颜色参数编码.py:85: in _断言对拍
+    assert rc == 0, f"O0 {标签} 段错误 rc={rc} (0x{rc & 0xFFFFFFFF:08X})\nstderr={err}"
+E   AssertionError: O0 颜色解析格式化操作 段错误 rc=1 (0x00000001)
+E     stderr=未捕获的异常: 运行时错误: 
+
+E     调用栈:
+
+E         at RGB解析
+
+E         at 主
+E   assert 1 == 0
+============================== warnings summary ===============================
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py: 78 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================ slowest 15 durations =============================
+3.40s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ===========================
+FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+1 failed, 78 warnings in 10.06s

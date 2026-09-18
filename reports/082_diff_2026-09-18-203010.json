@@ -1,0 +1,37 @@
+{
+  "diff": {
+    "base_generated_at": "2026-09-18T17:26:17+08:00",
+    "new_generated_at": "2026-09-18T20:15:45+08:00",
+    "base_total": 7854,
+    "new_total": 7871,
+    "base_failed": 13,
+    "new_failed": 4,
+    "new_red": [
+      "tests/test_R40_语言支撑配套.py::test_现状钉桩_R22_接收字合并",
+      "tests/test_R40_语言支撑配套.py::test_现状钉桩_全角逗号不是这两个回归的原因",
+      "tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍"
+    ],
+    "recorded": [],
+    "fixed": [
+      "tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg",
+      "tests/test_R40_语言支撑配套.py::test_现状钉桩_R19_为字整串合并",
+      "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u53d6\\u6d88]",
+      "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u4efb\\u52a1\\u7b49\\u5f85]",
+      "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u5199\\u5165\\u4e8c\\u8fdb\\u5236]",
+      "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u53d6\\u6570]",
+      "tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\\u5f02\\u6b65\\u8bfb\\u53d6\\u4e8c\\u8fdb\\u5236]",
+      "tests/unit/test_examples_run.py::test_all_examples_output",
+      "tests/unit/test_parser.py::test_compact_binary_expr_with_call",
+      "tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍",
+      "tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍",
+      "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用"
+    ],
+    "unchanged_red": [
+      "tests/_test_null_safety.py::test_paragraph_call"
+    ],
+    "first_run": false,
+    "ok": false
+  },
+  "new_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_latest.json",
+  "base_baseline": "reports\\082_lightmerge基线_2026-09-18-172617.json"
+}

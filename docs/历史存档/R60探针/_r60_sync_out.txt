@@ -1,0 +1,12 @@
+﻿[同步0.82] 打包中（排除 ['.git', '.idea', '.mypy_cache', '.pytest_cache', '.venv', '.vscode', '__pycache__', 'build', 'dist', 'node_modules', 'venv']）…
+[同步0.82] 打包完成：42283 文件，126.5 MB，耗时 67.3s
+[同步0.82] 垫片就绪 /tmp/r44-shim/python -> /usr/local/bin/python3.11
+[同步0.82] 上传 → /tmp/r44-20260918-200721/sync.tar.gz
+[同步0.82] 上传完成，耗时 6.8s
+[同步0.82] 远端解压…
+/tmp/r44-20260918-200721/light-merge
+/tmp/r44-20260918-200721/lightharness
+/tmp/r44-20260918-200721/light-merge
+/tmp/r44-20260918-200721/lightharness
+[同步0.82] 远端 examples 数量 = 420
+[同步0.82] ✅ 完成：远程副本 /tmp/r44-20260918-200721（指针 lightharness\reports\同步0.82_远程目录.txt）

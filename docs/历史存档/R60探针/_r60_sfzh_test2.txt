@@ -1,0 +1,10 @@
+﻿bringing up nodes...
+bringing up nodes...
+
+..                                                                       [100%]
+============================ slowest 15 durations =============================
+3.74s call     tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍
+3.55s call     tests/unit/test_原生腿_R11B_中文工具.py::test_手机号校验_O0对拍
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+2 passed in 14.17s

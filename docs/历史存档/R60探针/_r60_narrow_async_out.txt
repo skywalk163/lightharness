@@ -1,0 +1,3 @@
+﻿PATCHED
+L650: _user_defs = getattr(self.lexer, 'user_definitions', None) or set()
+L654: and tok.value not in _user_defs):

@@ -1,0 +1,16 @@
+﻿bringing up nodes...
+bringing up nodes...
+
+..                                                                       [100%]
+============================== warnings summary ===============================
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py: 156 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================ slowest 15 durations =============================
+3.34s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+3.24s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_HSV_HSL_对拍
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+2 passed, 156 warnings in 13.35s

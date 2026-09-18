@@ -1,0 +1,34 @@
+﻿[同步0.82] 远端执行：cd /tmp/r44-20260918-202728/lightharness && export LIGHT_MERGE=/tmp/r44-20260918-202728/light-merge && export PATH=/tmp/r44-shim:$PATH && cd /tmp/r44-20260918-202728/light-merge && /usr/local/bin/python3.12 -m pytest tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍 tests/unit/test_原生腿_R11B_中文工具.py::test_手机号校验_O0对拍 tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py tests/test_R40_语言支撑配套.py::Test现状钉桩_既有词法回归 tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用 tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output tests/unit/test_地板搬迁_列表_S2.py -q -p no:cacheprovider --timeout 1800
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 43%]
+........................................................................ [ 87%]
+.....................                                                    [100%]
+=============================== warnings summary ===============================
+src/parser_stmt.py:500: 104 warnings
+tests/unit/test_parser.py: 1 warning
+tests/unit/test_examples_run.py: 50 warnings
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py: 5567 warnings
+  /tmp/r44-20260918-202728/light-merge/src/parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 15 durations =============================
+11.77s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_五模块联合导入
+9.21s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_位置标志计数_对拍
+9.15s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_获取简单解析快速获取_对拍
+9.12s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍
+3.50s call     tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍
+2.84s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_向量_加减点积_对拍
+2.26s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍
+2.24s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Hex_对拍
+2.20s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_字节字符集_对拍
+2.14s call     tests/unit/test_原生腿_R11B_中文工具.py::test_手机号校验_O0对拍
+2.14s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Base32_Base16_对拍
+2.12s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Base64_对拍
+2.11s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Unicode实体_对拍
+2.06s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_HSV_HSL_对拍
+2.00s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+165 passed, 5722 warnings in 71.52s (0:01:11)
+[同步0.82] rc=0

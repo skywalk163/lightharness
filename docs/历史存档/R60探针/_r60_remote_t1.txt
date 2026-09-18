@@ -1,0 +1,44 @@
+﻿[同步0.82] 远端执行：cd /tmp/r44-20260918-202231/lightharness && export LIGHT_MERGE=/tmp/r44-20260918-202231/light-merge && export PATH=/tmp/r44-shim:$PATH && cd /tmp/r44-20260918-202231/light-merge && /usr/local/bin/python3.12 -m pytest tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍 tests/unit/test_原生腿_R11B_中文工具.py::test_手机号校验_O0对拍 tests/test_R40_语言支撑配套.py::Test现状钉桩_既有词法回归 tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py -q -p no:cacheprovider --timeout 1800
+bringing up nodes...
+bringing up nodes...
+
+.............F...............                                            [100%]
+=================================== FAILURES ===================================
+____________________________ test_O0_颜色_解析格式化操作_对拍 _____________________________
+[gw0] freebsd15 -- Python 3.12.14 /usr/local/bin/python3.12
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py:309: in test_O0_颜色_解析格式化操作_对拍
+    _断言对拍(code, 期望, 标签='颜色解析格式化操作')
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py:85: in _断言对拍
+    assert rc == 0, f"O0 {标签} 段错误 rc={rc} (0x{rc & 0xFFFFFFFF:08X})\nstderr={err}"
+E   AssertionError: O0 颜色解析格式化操作 段错误 rc=1 (0x00000001)
+E     stderr=未捕获的异常: 运行时错误: 
+E     调用栈:
+E         at RGB解析
+E         at 主
+E   assert 1 == 0
+=============================== warnings summary ===============================
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py: 5567 warnings
+  /tmp/r44-20260918-202231/light-merge/src/parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 15 durations =============================
+11.44s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_五模块联合导入
+9.22s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_获取简单解析快速获取_对拍
+8.97s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_位置标志计数_对拍
+8.88s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍
+2.26s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Base32_Base16_对拍
+2.23s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Base64_对拍
+2.22s call     tests/unit/test_原生腿_R11B_中文工具.py::test_身份证校验_O0对拍
+2.19s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Hex_对拍
+2.15s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_Unicode实体_对拍
+2.15s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍
+2.11s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_字节字符集_对拍
+2.04s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_HSV_HSL_对拍
+2.03s call     tests/unit/test_原生腿_R11B_中文工具.py::test_手机号校验_O0对拍
+2.02s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+1.67s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_向量_加减点积_对拍
+=========================== short test summary info ============================
+FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_颜色_解析格式化操作_对拍
+1 failed, 28 passed, 5567 warnings in 67.84s (0:01:07)
+[同步0.82] rc=1
