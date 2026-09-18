@@ -1,0 +1,3 @@
+﻿rc=0
+stdout: '%E5%85%89\r\n37\r\n69\r\n53\r\n37\r\n56\r\n53\r\n37\r\n56\r\n57\r\n光\r\n'
+stderr: 

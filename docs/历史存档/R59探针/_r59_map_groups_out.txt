@@ -1,0 +1,17 @@
+﻿红数: 64
+
+=== 任务3 groups 结构探查 ===
+-- A: keys=['group', 'meta', 'items', '汇总']
+    group: A_dot_attr_codegen
+    meta: R58任务3-A组：13条点号/成员访问 codegen 字符串断言红因归因。证据源：light-merge/tests/unit/test_v35_chained_call.py、light-mer
+    汇总: {'R59可修': 13, '测试期望更新': 13, '需语义评审': 0, '待验证': 0, '一句话总结': '13 条全部同源：codegen 在 L-096（E批次）中有意把纯属性访问/成
+    items(13) 样例: {'id': 'tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_member_access', 'category': '语义债-代码生成断言', '红因': "测试（test_v35_chained_call.py:164-168）断言 assert 'p.x' in py；实际生成代码（底表 message 实
+-- B: keys=['group', 'items']
+    group: B_context_manager
+    items(11) 样例: {'id': 'tests/test_context_manager.py::TestL2OOPCodegen::test_自_param_and_body_both_self', 'category': '语义债-代码生成断言', '红因': "断言 'self.姓名 = 姓名' in 产物；实测发射 _light_attr_set(self, '姓名', 姓名)（本机复现）", '根因': '
+-- C: keys=['group', 'items']
+    group: C_runtime_class_member
+    items(11) 样例: {'id': 'tests/test_frontend_blockers_run.py::test_a24_泛型类真跑', 'category': '语义债-类/成员访问', '红因': "[run] 退出码 1: [运行错误] name '己项' is not defined（本机 AST 复现：构造里 己项 为 列表创建() → self.项 正确；列表追加(己项, 值) 实参位发射裸 己项）
+
+=== 任务4 items 样例 ===
+{'id': 'tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call', 'category': '解析层-语法错误', 'root_cause': '测试源码用旧式函数定义语法 `段落相加(甲, 乙)：`（类C括号形参），当前解析器只支持 `段落 名 接收 参数：` 新式语法；且「段落」与「相加」之间无空格，词法层将「段落相加」整体切成标识符，解析器看不到「段落」关键字，块头末尾全角冒号无法识别为块开始（行2列1缩进错误为级联）。', 'red_reason': "ParseError 行1列1

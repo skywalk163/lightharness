@@ -1,0 +1,11 @@
+﻿[光明编译运行] rc=0
+stdout: '%E5%85%89\r\na%20b%26c%3D1\r\npath/to%3Fq%3D%E5%85%89%E6%98%8E\r\n'
+stderr: 
+
+[.py 版] URL编码("光") = '%E5%85%89'
+[.py 版] URL编码("a b&c=1") = 'a%20b%26c%3D1'
+[.py 版] URL编码("path/to?q=光明") = 'path/to%3Fq%3D%E5%85%89%E6%98%8E'
+
+[钩子] 编码解码 模块 = G:\dswork\duan-light-merge\light-merge\stdlib\编码解码.py
+[钩子版] URL编码("光") = '%E5%85%89'
+[钩子版] URL编码("path/to?q=光明") = 'path/to%3Fq%3D%E5%85%89%E6%98%8E'

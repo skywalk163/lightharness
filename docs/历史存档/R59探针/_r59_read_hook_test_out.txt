@@ -1,0 +1,23 @@
+﻿3: test_pure_light_hook.py —— 验证 stdlib/_light_import_hook.py 的「纯光明实现」声明机制
+6: （自举率上不去的结构性原因）。C2-2 引入显式声明：.light 首行含魔数「纯光明实现」
+43: def test_list_tools_loads_light_version():
+55: def test_default_path_still_routes_to_py():
+63: def test_is_pure_light_helper():
+71: def test_datetime_still_resolves_to_py():
+74: C2 曾把一份 11 导出的纯光明实现写成 日期时间.light 并加魔数，于是它遮蔽了
+90: def test_时间管理_still_resolves_to_py():
+93: L-076：时间管理.light 曾在首两行声明纯光明实现，其 12 导出是同名
+105: "时间管理 被 .light 遮蔽（L-076 复发）：首两行不得声明纯光明实现"
+116: "时间管理.light 首两行重新声明了纯光明实现（L-076 复发）"
+125: # 凡 .light 内**任何位置**含「纯光明实现」但首两行没有的，一旦有人建了同名 .py，
+136: _MAGIC = "纯光明实现"
+139: def test_magic_number_in_first_two_lines():
+140: """防定时炸弹：含「纯光明实现」但首两行没有的 .light 必须打红。
+163: "以下 .light 含「纯光明实现」但不在首两行，会被同名 .py 静默遮蔽（新出现，须硬红）：%s"
+179: # C9 给 stdlib/JSON.light 加了「纯光明实现」魔数后，钩子原来的 os.path.isfile
+184: def test_标准库json不被同名不同壳的light劫持():
+194: def test_大写JSON仍走纯光明门面():
+202: def test_任何light都不许应答仅大小写不同的标准库名():
+228: def test_积木库导入的名字必须在纯光明门面的导出面内():
+350: def test_地板转发的函数在运行期真的取光明的返回值(名字):
+375: def test_分割字符串的三条口径不许被搬迁顺手改掉():

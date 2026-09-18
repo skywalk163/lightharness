@@ -1,0 +1,20 @@
+﻿=== 基线红数: 8
+  1. failed
+  2. generated_at
+  3. round
+  4. runner
+  5. schema
+  6. skipped
+  7. target
+  8. totals
+
+=== 任务3 归因结构 ===
+keys: ['meta', '汇总', 'groups']
+meta -> R58 任务3 归因明细（A/B/C 合并；A 组来自 _r58_task3_A.json，已随探针移档 docs/历史存档/R58探针/）
+汇总 -> {'总条数': 35, '测试期望过时': 21, 'codegen缺陷-粘连己X读取不展开': 14, '需语义评审': 0, '待验证': 0, 'R59修复路径': '① 21 条改测试断言（小）；② 14 条共用同一 codegen 修复：类方法内粘连 己X/自X 读取位展开（src+unified 两后端 _resolve_* 同步加分支，按类属性表/就近绑定防误伤），改后互举反跑+0.
+groups -> {'A': {'group': 'A_dot_attr_codegen', 'meta': 'R58任务3-A组：13条点号/成员访问 codegen 字符串断言红因归因。证据源：light-merge/tests/unit/test_v35_chained_call.py、light-merge/tests/unit/test_v34_syntax_sugar.py（测试断言原文）、light-
+
+=== 任务4 归因结构 ===
+keys: ['meta', 'items']
+meta -> {'round': 'R58', 'task': '任务4：解析层/语义债其他/异步/内置清单/文档门/examples 30条存量红逐条归因', 'source_baseline': 'reports/_task4_R57_存量红明细_072454.json（baseline_reds）', 'baseline_run': '082_lightmerge基线_2026-09-18-100010.
+items -> [{'id': 'tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call', 'category': '解析层-语法错误', 'root_cause': '测试源码用旧式函数定义语法 `段落相加(甲, 乙)：`（类C括号形参），当前解析器只支持 `段落 名 接收 参数：` 新式语法；且「段落」与「相加」

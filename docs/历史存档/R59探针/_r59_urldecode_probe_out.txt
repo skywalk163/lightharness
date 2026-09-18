@@ -1,0 +1,10 @@
+﻿[LLVM O0] rc=0
+stdout: '光\r\n光\r\npath/to?q=光明\r\n'
+stderr: 
+
+[Python 后端钩子] rc=0
+URL解码(%E5%85%89): '光'
+URL解码(URL编码(光)): '光'
+URL解码(URL编码(光明)): 'path/to?q=光明'
+
+

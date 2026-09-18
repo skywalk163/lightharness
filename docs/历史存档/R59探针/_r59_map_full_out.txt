@@ -1,0 +1,130 @@
+﻿=== 任务3 A 组（13 条）===
+   tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_member_access  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_mixed_period_and_dot  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_no_period_no_dot_ambiguity  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_period_in_class_body  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestDotPeriodSplit::test_dot_access_after_new_keyword  (非当前红)
+   tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_eq  (非当前红)
+   tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_self_attr_等于  (非当前红)
+   tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_obj_attr_eq  (非当前红)
+   tests/unit/test_v34_syntax_sugar.py::TestAttributeAssignment::test_dot_access_still_works  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_two_level_attr_assign  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_self_chain_assign  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_three_level_attr_assign  (非当前红)
+   tests/unit/test_v35_chained_call.py::TestChainedAttributeAssignment::test_attr_assign_with_expr  (非当前红)
+
+=== 任务3 B 组（11 条）===
+   tests/test_context_manager.py::TestL2OOPCodegen::test_自_param_and_body_both_self  (非当前红)
+   tests/test_context_manager.py::TestAwaitMemberAccess::test_await_chained_member  (非当前红)
+   tests/test_context_manager.py::TestJueyiE遍历为连接词::test_为搭配函数调用  (非当前红)
+   tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性赋值  (非当前红)
+   tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_自之属性带索引赋值  (非当前红)
+   tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_普通标识符之成员赋值  (非当前红)
+   tests/test_context_manager.py::TestJueyiOOP成员赋值目标::test_点号成员赋值未被破坏  (非当前红)
+   tests/test_context_manager.py::TestL0SingleCharClassKeywords::test_继承链可用  (非当前红)
+   tests/test_context_manager.py::TestChaoSuper::test_chao_dot_plain_method  (非当前红)
+   tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form  (非当前红)
+   tests/test_context_manager.py::TestChaoSuper::test_chao_de_form  (非当前红)
+
+=== 任务3 C 组（11 条）===
+   tests/test_frontend_blockers_run.py::test_a24_泛型类真跑  ★红
+   tests/test_frontend_blockers_run.py::test_a24_多参数泛型类  ★红
+   tests/test_frontend_blockers_run.py::test_a25_两个嵌套类且外层成员不被吞  ★红
+   tests/integration/test_class_system.py::TestClassInheritance::test_constructor_with_inheritance  (非当前红)
+   tests/integration/test_class_system.py::TestClassBasic::test_class_with_attributes  (非当前红)
+   tests/integration/test_class_system.py::TestMethodOverride::test_method_override  (非当前红)
+   tests/integration/test_class_system.py::TestClassAdvanced::test_self_method_call  (非当前红)
+   tests/integration/test_class_system.py::TestMultipleClasses::test_multiple_classes_in_one_file  (非当前红)
+   tests/test_level6_types.py::TestTypeScenarioClass::test_class_instantiation  (非当前红)
+   tests/test_edge_cases.py::TestEdgeCasesClasses::test_class_with_multiple_methods  (非当前红)
+   tests/test_async_class_method.py::TestAsyncClassMethod::test_03_async_method读写己属性  (非当前红)
+
+=== 任务4（30 条）===
+   tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call  (非当前红)
+   tests/test_parser.py::TestVariableDeclaration::test_variable_with_expression  (非当前红)
+   tests/test_parser.py::TestExpressions::test_arithmetic_expression  (非当前红)
+   tests/test_parser.py::TestExpressions::test_nested_expression  (非当前红)
+   tests/test_parser.py::TestFunctionDefinition::test_function_with_body  (非当前红)
+   tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg  (非当前红)
+   tests/test_parser.py::TestNoSpaceCode::test_no_space_variable  (非当前红)
+   tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用  ★红
+   tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call  (非当前红)
+   tests/test_stdlib_phase3.py::Test网络请求::test_HTTP错误响应  (非当前红)
+   tests/test_stdlib_phase3.py::Test网络请求::test_URL编码解码  (非当前红)
+   tests/test_stdlib_phase3.py::Test网络请求::test_响应对象  (非当前红)
+   tests/test_stdlib_phase3.py::Test网络请求::test_拼接URL  (非当前红)
+   tests/test_stdlib_phase3.py::Test网络请求::test_解析查询串  (非当前红)
+   tests/_test_null_safety.py::TestNullSafetyBasic::test_unwrap_on_nullable_variable  (非当前红)
+   tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码  ★红
+   tests/_test_null_safety.py::TestNullSafetyArithmetic::test_operation_without_unwrap  (非当前红)
+   tests/unit/test_原生腿_R13B_能力扩展.py::Test行政区划扩展::test_O0_行政区划代码_对拍与扩展  (非当前红)
+   tests/test_parser.py::TestFunctionCall::test_call_in_expression  (非当前红)
+   tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步读取二进制]  (非当前红)
+   tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步写入二进制]  (非当前红)
+   tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步任务等待]  (非当前红)
+   tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步任务取消]  (非当前红)
+   tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[异步取数]  (非当前红)
+   tests/unit/test_native_leg_capability.py::test_内置函数清单与代码一致  ★红
+   tests/unit/test_native_leg_capability.py::test_内置函数证据行号可定位  ★红
+   tests/unit/test_native_leg_capability.py::test_运行时符号清单与代码一致  ★红
+   tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT  (非当前红)
+   tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_噪声类总数不许涨  (非当前红)
+   tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output  (非当前红)
+
+=== 64 红未覆盖: 56 ===
+    tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg
+    tests/_test_null_safety.py::test_operation_without_unwrap
+    tests/_test_null_safety.py::test_paragraph_call
+    tests/_test_null_safety.py::test_unwrap_on_nullable_variable
+    tests/integration/test_class_system.py::test_class_with_attributes
+    tests/integration/test_class_system.py::test_constructor_with_inheritance
+    tests/integration/test_class_system.py::test_method_override
+    tests/integration/test_class_system.py::test_multiple_classes_in_one_file
+    tests/integration/test_class_system.py::test_self_method_call
+    tests/test_async_class_method.py::test_03_async_method读写己属性
+    tests/test_context_manager.py::test_await_chained_member
+    tests/test_context_manager.py::test_chao_de_form
+    tests/test_context_manager.py::test_chao_dot_plain_method
+    tests/test_context_manager.py::test_chao_zhi_form
+    tests/test_context_manager.py::test_为搭配函数调用
+    tests/test_context_manager.py::test_普通标识符之成员赋值
+    tests/test_context_manager.py::test_点号成员赋值未被破坏
+    tests/test_context_manager.py::test_继承链可用
+    tests/test_context_manager.py::test_自_param_and_body_both_self
+    tests/test_context_manager.py::test_自之属性带索引赋值
+    tests/test_context_manager.py::test_自之属性赋值
+    tests/test_edge_cases.py::test_class_with_multiple_methods
+    tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88]
+    tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85]
+    tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236]
+    tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570]
+    tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236]
+    tests/test_level6_types.py::test_class_instantiation
+    tests/test_parser.py::test_arithmetic_expression
+    tests/test_parser.py::test_call_in_expression
+    tests/test_parser.py::test_function_with_body
+    tests/test_parser.py::test_nested_expression
+    tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines
+    tests/test_stdlib_phase3.py::test_HTTP错误响应
+    tests/test_stdlib_phase3.py::test_URL编码解码
+    tests/test_stdlib_phase3.py::test_响应对象
+    tests/test_stdlib_phase3.py::test_拼接URL
+    tests/test_stdlib_phase3.py::test_解析查询串
+    tests/unit/test_doc_examples_gate.py::test_不许新增ROT
+    tests/unit/test_doc_examples_gate.py::test_噪声类总数不许涨
+    tests/unit/test_examples_run.py::test_all_examples_output
+    tests/unit/test_parser.py::test_compact_binary_expr_with_call
+    tests/unit/test_v34_syntax_sugar.py::test_dot_access_still_works
+    tests/unit/test_v34_syntax_sugar.py::test_obj_attr_eq
+    tests/unit/test_v34_syntax_sugar.py::test_self_attr_eq
+    tests/unit/test_v34_syntax_sugar.py::test_self_attr_等于
+    tests/unit/test_v35_chained_call.py::test_attr_assign_with_expr
+    tests/unit/test_v35_chained_call.py::test_dot_access_after_new_keyword
+    tests/unit/test_v35_chained_call.py::test_dot_member_access
+    tests/unit/test_v35_chained_call.py::test_mixed_period_and_dot
+    tests/unit/test_v35_chained_call.py::test_no_period_no_dot_ambiguity
+    tests/unit/test_v35_chained_call.py::test_period_in_class_body
+    tests/unit/test_v35_chained_call.py::test_self_chain_assign
+    tests/unit/test_v35_chained_call.py::test_three_level_attr_assign
+    tests/unit/test_v35_chained_call.py::test_two_level_attr_assign
+    tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_行政区划代码_对拍与扩展

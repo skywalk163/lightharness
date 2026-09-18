@@ -1,0 +1,52 @@
+﻿failed 元素结构示例:
+{
+ "id": "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用",
+ "cid": "tests.unit.test_地板搬迁_列表_S2::test_十个段落全部导出且两版都可调用",
+ "status": "failure",
+ "file": "tests/unit/test_地板搬迁_列表_S2.py",
+ "message": "AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]"
+}
+
+=== 网络请求相关红 message ===
+
+=== 地板搬迁 / examples / R13 / compact 红 message ===
+{
+ "id": "tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用",
+ "cid": "tests.unit.test_地板搬迁_列表_S2::test_十个段落全部导出且两版都可调用",
+ "status": "failure",
+ "file": "tests/unit/test_地板搬迁_列表_S2.py",
+ "message": "AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]"
+}
+---
+{
+ "id": "tests/unit/test_parser.py::test_compact_binary_expr_with_call",
+ "cid": "tests.unit.test_parser.TestParser::test_compact_binary_expr_with_call",
+ "status": "failure",
+ "file": "tests/unit/test_parser.py",
+ "message": "AssertionError: 'n乘阶乘' == 'n乘阶乘'"
+}
+---
+{
+ "id": "tests/unit/test_原生腿_R13C_对拍扩展.py::test_URL编码解码",
+ "cid": "tests.unit.test_原生腿_R13C_对拍扩展::test_URL编码解码",
+ "status": "failure",
+ "file": "tests/unit/test_原生腿_R13C_对拍扩展.py",
+ "message": "Failed: 实际=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=光明'] 期望=['a%20b%26c%3D1', 'a b&c=1', 'path/to?q=奥楥']"
+}
+---
+{
+ "id": "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_行政区划代码_对拍与扩展",
+ "cid": "tests.unit.test_原生腿_R13B_能力扩展.Test行政区划扩展::test_O0_行政区划代码_对拍与扩展",
+ "status": "failure",
+ "file": "tests/unit/test_原生腿_R13B_能力扩展.py",
+ "message": "AttributeError: 'ChinaRegion' object has no attribute '_region_code_map'"
+}
+---
+{
+ "id": "tests/unit/test_examples_run.py::test_all_examples_output",
+ "cid": "tests.unit.test_examples_run.TestExampleFilesRun::test_all_examples_output",
+ "status": "failure",
+ "file": "tests/unit/test_examples_run.py",
+ "message": "AssertionError: Lists differ: [] != [\"hello.light: 运行异常 -> \\n┌─ 语法错误\\n│ 位置: 行 [1216 chars]ned\"]"
+}
+---

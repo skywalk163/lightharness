@@ -1,0 +1,96 @@
+﻿===== [异步5] rc=1 =====
+      [运行错误] name '异步任务取消' is not defined
+    assert '修饰符' in ("[运行错误] name '异步任务取消' is not defined\n" + '')
+G:\dswork\duan-light-merge\light-merge\tests\test_frontend_blockers_run.py:1049: AssertionError: 报错没指出根因（`异步` 被当值用）:
+E   AssertionError: 报错没指出根因（`异步` 被当值用）:
+      [运行错误] name '异步取数' is not defined
+    assert '修饰符' in ("[运行错误] name '异步取数' is not defined\n" + '')
+G:\dswork\duan-light-merge\light-merge\tests\test_frontend_blockers_run.py:1049: AssertionError: 报错没指出根因（`异步` 被当值用）:
+=========================== short test summary info ===========================
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570]
+5 failed, 1 passed, 57 deselected in 6.86s
+
+===== [旧式语法2] rc=1 =====
+    └─
+    ---
+    错误 2/2:
+    ┌─ 语法错误
+    │ 位置: 行 2, 列 1
+    │ 原因: 缩进不正确：这一行的缩进层级没有对应的语句块。请检查上一条语句是否以「：」结尾、或本行缩进是否多/少了一级。
+    │ 附近: '4'
+    └─
+    └─
+G:\dswork\duan-light-merge\light-merge\src\parser_core.py:461: parser_core.ParseError:
+=========================== short test summary info ===========================
+FAILED tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call
+FAILED tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg
+2 failed in 0.66s
+
+===== [compact] rc=1 =====
+F                                                                        [100%]
+================================== FAILURES ===================================
+E   AssertionError: 'n乘阶乘' == 'n乘阶乘'
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\case.py:916: AssertionError: 'n乘阶乘' == 'n乘阶乘'
+============================== warnings summary ===============================
+tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call
+1 failed, 1 warning in 0.64s
+
+===== [R13B] rc=0 =====
+.                                                                        [100%]
+============================== warnings summary ===============================
+tests/unit/test_原生腿_R13B_能力扩展.py: 30 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 30 warnings in 9.66s
+
+===== [R13C] rc=0 =====
+.                                                                        [100%]
+============================== warnings summary ===============================
+tests/unit/test_原生腿_R13C_对拍扩展.py: 784 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 784 warnings in 8.54s
+
+===== [地板搬迁] rc=1 =====
+================================== FAILURES ===================================
+E   AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]
+      At index 0 diff: '冻结' != '列'
+      Left contains 3 more items, first extra item: '副本'
+      Use -v to get more diff
+G:\dswork\duan-light-merge\light-merge\tests\unit\test_地板搬迁_列表_S2.py:85: AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]
+============================== warnings summary ===============================
+src\parser_stmt.py:500: 13 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用
+1 failed, 13 warnings in 1.02s
+
+===== [examples聚合] rc=1 =====
+    First extra element 0:
+    "hello.light: 运行异常 -> name 'n乘阶乘' is not defined"
+    Diff is 989 characters long. Set self.maxDiff to None to see it.
+---------------------------- Captured stdout call -----------------------------
+uuuuuuuuuuuuuuuuuuuuuu
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\case.py:732: AssertionError: Lists differ: [] != ["hello.light: 运行异常 -> name 'n乘阶乘' is not [760 chars]ned"]
+============================== warnings summary ===============================
+tests/unit/test_examples_run.py: 61 warnings
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output
+1 failed, 61 warnings, 22 subtests passed in 1.47s
+

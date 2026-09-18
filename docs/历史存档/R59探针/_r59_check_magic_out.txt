@@ -1,0 +1,12 @@
+﻿总行数: 576
+L1: # 纯光明实现 —— 编码解码（取代同名 .py 壳）。
+L2: #
+L3: # 对齐 stdlib/编码解码.py 的 47 个导出。依赖拆解：
+L4: #   - Base64 编码解码：runtime builtin _b64_encode / _b64_decode（已注册）。
+L5: #   - Base32 / Base16 / Hex / URL / UTF8 / HTML 实体 / Unicode 转义：纯光明实现。
+L6: #   - codecs 字符集（GBK/GB2312/GB18030/BIG5）：原生腿无 codecs，且缺乏可移植的
+L7: #     码表，按能力边界返回空串占位（见 docs/known_issues.md T6C 章节）。
+L8: #   - 导出名「字符集转换为字符串」含关键字「为」会被词法切分（字符集转换 == 字符串(...)），
+字样 L1: # 纯光明实现 —— 编码解码（取代同名 .py 壳）。
+字样 L5: #   - Base32 / Base16 / Hex / URL / UTF8 / HTML 实体 / Unicode 转义：纯光明实现。
+字样 L262: # ── URL（urllib.parse.quote / unquote 纯光明实现）──

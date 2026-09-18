@@ -1,0 +1,557 @@
+﻿[同步0.82] 垫片就绪 /tmp/r44-shim/python -> /usr/local/bin/python3.11
+[082全量] 远端副本 /tmp/r44-20260918-171817
+[082全量] 解释器 /usr/local/bin/python3.12：xdist=可用，timeout(1)=可用，ncpu=8
+[082全量] 0.82 执行（mode=fast，串行=False，硬超时=2700s）：
+  export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260918-171817/light-merge && /usr/local/bin/python3.12 '\''-m'\'' '\''pytest'\'' '\''tests/'\'' '\''-q'\'' '\''--tb=no'\'' '\''-rfE'\'' '\''-p'\'' '\''no:cacheprovider'\'' '\''--junitxml'\'' '\''/tmp/r44-20260918-171817/lm_results_fast.xml'\'' '\''-m'\'' '\''not slow'\'' '\''-n'\'' '\''auto'\'' '\''--dist'\'' '\''loadscope'\'''
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  0%]
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+............................................F........................... [  6%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+..........x............................................................. [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+..................................x..x.................................. [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+.........................................s..........................x..x [ 52%]
+X.x.xx.................................................................. [ 53%]
+.............................................................s.......... [ 54%]
+........................................................................ [ 55%]
+...................F.................................................... [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 59%]
+.......................................................................F [ 60%]
+.....................................sssssssss.......................... [ 61%]
+........................................................................ [ 62%]
+......ss................................................................ [ 63%]
+..ss.................................................................... [ 64%]
+........................................................................ [ 65%]
+..............................................................s......... [ 66%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+..............................................s......................... [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+.....................FF..FF.F.................ssssss.................... [ 72%]
+............ss.s........................................F............... [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+......................s................................................. [ 76%]
+........................................................................ [ 77%]
+........................................................................ [ 77%]
+........................................................................ [ 78%]
+...................x.................................................... [ 79%]
+..sssss..........................................................x...x.. [ 80%]
+........................................................................ [ 81%]
+...................................s.................................... [ 82%]
+.......................................................................F [ 83%]
+....................................................................ssss [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 86%]
+................................s....................................... [ 87%]
+........................................................................ [ 88%]
+..............................x........F.......sss...................... [ 88%]
+........................................................................ [ 89%]
+...........................................................s..........F. [ 90%]
+...............sss...................................................... [ 91%]
+...s................sss.ssssss.......................................... [ 92%]
+........................................................................ [ 93%]
+.............................................s.......................... [ 94%]
+.............ss......................................................... [ 95%]
+........................................................................ [ 96%]
+........................ss................................s............. [ 97%]
+.sssss.s...................................................ss........... [ 98%]
+.................................................................s...... [ 99%]
+...................................ss.......F........................... [ 99%]
+....                                                                     [100%]
+=============================== warnings summary ===============================
+src/parser_stmt.py:3880: 424 warnings
+tests/unit/test_doc_examples_gate.py: 9 warnings
+tests/test_module_system_v4.py: 54 warnings
+tests/unit/test_package_manager.py: 54 warnings
+tests/test_concurrency_light.py: 16 warnings
+tests/test_feature_core_light.py: 1 warning
+tests/_test_package_system.py: 27 warnings
+  /tmp/r44-20260918-171817/light-merge/src/parser_stmt.py:3880: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    para = self._parse_paragraph_v2()
+
+src/parser_stmt.py:500: 4808 warnings
+tests/unit/test_地板搬迁_路径_S2.py: 48 warnings
+tests/test_exception.py: 1 warning
+tests/test_core_coverage.py: 6 warnings
+tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py: 5567 warnings
+tests/test_stdlib_phase4.py: 71 warnings
+tests/test_v3_compatibility.py: 3 warnings
+tests/test_level6_types.py: 135 warnings
+tests/test_p3_comprehensive.py: 11 warnings
+tests/test_self_host_bootstrap.py: 409 warnings
+tests/test_llvm_c3_expr.py: 1 warning
+tests/unit/test_T5a_数学统计排序_原生腿.py: 1674 warnings
+tests/unit/test_原生腿_R13C_对拍扩展.py: 18710 warnings
+tests/unit/test_llvm_stmt_coverage.py: 1 warning
+tests/unit/test_c_backend.py: 4 warnings
+tests/unit/test_parser.py: 2 warnings
+tests/unit/test_codegen_container_writeback_O0.py: 2 warnings
+tests/test_entry_function.py: 1 warning
+tests/unit/test_原生腿_T5C_集合随机.py: 690 warnings
+tests/unit/test_codegen_float_slot_O0.py: 637 warnings
+tests/test_stdlib_phase13.py: 60 warnings
+tests/unit/test_bootstrap_compiler.py: 13 warnings
+tests/unit/test_codegen_method_syntax_O0.py: 4 warnings
+tests/unit/test_codegen_ref_dict_O0.py: 408 warnings
+tests/unit/test_L041_L053_L059_L060_L063.py: 6 warnings
+tests/unit/test_codegen_unary_bool_O0.py: 1654 warnings
+tests/unit/test_原生腿_R11A_通用工具.py: 3156 warnings
+tests/test_stdlib_phase2.py: 81 warnings
+tests/unit/test_light_examples_run.py: 10 warnings
+tests/unit/test_runtime_builtin_O0.py: 123 warnings
+tests/unit/test_doc_examples_gate.py: 263 warnings
+tests/unit/test_原生腿_R11C_数据高级.py: 1821 warnings
+tests/test_context_manager.py: 4 warnings
+tests/test_edge_cases.py: 3 warnings
+tests/test_generics_c3.py: 2 warnings
+tests/test_stdlib_complete.py: 48 warnings
+tests/test_self_host.py: 455 warnings
+tests/unit/test_L055_L061_L062.py: 3 warnings
+tests/unit/test_uuid_v3v5_O0.py: 348 warnings
+tests/test_ffi_stdlib_mock.py: 105 warnings
+tests/unit/test_runtime_residual_O0.py: 818 warnings
+tests/unit/test_原生腿_R13B_能力扩展.py: 1065 warnings
+tests/test_module_system_v4.py: 2614 warnings
+tests/unit/test_L068_L073.py: 4 warnings
+tests/unit/test_T5B_编码哈希.py: 237 warnings
+tests/unit/test_ir_verify.py: 1 warning
+tests/unit/test_package_manager.py: 2619 warnings
+tests/integration/test_compiler_pipeline.py: 1 warning
+tests/test_e2e.py: 1 warning
+tests/test_llvm_optimizer.py: 1 warning
+tests/test_parser.py: 4 warnings
+tests/unit/test_L051_L052_L057_L064.py: 3 warnings
+tests/unit/test_lightpub_doc_importability.py: 81 warnings
+tests/unit/test_self_host.py: 637 warnings
+tests/test_codegen.py: 1 warning
+tests/test_cross_platform.py: 287 warnings
+tests/unit/test_codegen_safename_multimodule_O0.py: 1235 warnings
+tests/unit/test_对象池缓存_冒烟_O0.py: 180 warnings
+tests/test_stdlib_comprehensive.py: 124 warnings
+tests/unit/test_examples_run.py: 24 warnings
+tests/_test_package_system.py: 1307 warnings
+  /tmp/r44-20260918-171817/light-merge/src/parser_stmt.py:500: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+tests/unit/test_地板搬迁_路径_S2.py:236
+  /tmp/r44-20260918-171817/light-merge/tests/unit/test_地板搬迁_路径_S2.py:236: SyntaxWarning: invalid escape sequence '\c'
+    splitext 的 "a.b\c" 分歧**各版本一致**（3.10–3.14 实测都在），只写死在静态表里；
+
+tests/test_datetime.py::test_公历转农历
+tests/test_datetime.py::test_公历转农历
+tests/test_datetime.py::test_日期时间转农历
+tests/test_datetime.py::test_日期转农历
+  /tmp/r44-20260918-171817/light-merge/tests/../stdlib/日期时间.py:734: DeprecationWarning: fromSolarDate is deprecated, use from_solar_date instead
+    lunar = _LunarDate.fromSolarDate(年, 月, 日)
+
+tests/test_datetime.py::test_公历转农历
+tests/test_datetime.py::test_公历转农历
+tests/test_datetime.py::test_日期时间转农历
+tests/test_datetime.py::test_日期转农历
+  /home/ai/.local/lib/python3.12/site-packages/lunardate.py:143: DeprecationWarning: use is_leap_month
+    warnings.warn("use is_leap_month", DeprecationWarning)
+
+tests/test_datetime.py: 15 warnings
+  /tmp/r44-20260918-171817/light-merge/tests/../stdlib/日期时间.py:743: DeprecationWarning: toSolarDate is deprecated, use to_solar_date instead
+    solar = lunar.toSolarDate()
+
+tests/test_ffi_at_c.py::test_at_c_does_not_break_decorator
+  /tmp/r44-20260918-171817/light-merge/src/parser_stmt.py:5757: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    paragraph = self._parse_paragraph_v2()
+
+tests/test_llvm_exception.py::test_try_catch_basic
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_catch_basic returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_catch_exception
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_catch_exception returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_catch_with_type
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_catch_with_type returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_catch_wrong_type
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_catch_wrong_type returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_catch_finally
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_catch_finally returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_finally
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_finally returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_try_finally_exception
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_try_finally_exception returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_throw_basic
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_throw_basic returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_throw_in_function
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_throw_in_function returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_throw_string
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_throw_string returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_nested_try
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_nested_try returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_multi_catch
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_multi_catch returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_exception.py::test_exception_in_loop
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_exception.py::test_exception_in_loop returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_simple
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_simple returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_scope
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_scope returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_await
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_await returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_chain
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_chain returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_multiple_await
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_multiple_await returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_with_params
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_with_params returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_with_condition
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_with_condition returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_scope_results
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_scope_results returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_with_string
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_with_string returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_nested_scope
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_nested_scope returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_llvm_async.py::test_async_await_with_condition
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_llvm_async.py::test_async_await_with_condition returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_context_manager.py: 22 warnings
+  /tmp/r44-20260918-171817/light-merge/src/parser_expr.py:1352: DeprecationWarning: 「之」作为成员访问符已废弃，请改用「的」。如：对象.属性 → 对象的属性
+    return self._parse_postfix(Identifier(name))
+
+tests/test_context_manager.py: 1 warning
+tests/unit/test_doc_examples_gate.py: 21 warnings
+  /tmp/r44-20260918-171817/light-merge/src/parser_expr.py:1829: DeprecationWarning: 「之」作为成员访问符已废弃，请改用「的」。如：对象.属性 → 对象的属性
+    return self._parse_postfix(expr)
+
+tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form
+tests/test_context_manager.py::TestChaoSuper::test_chao_zhi_form
+  /tmp/r44-20260918-171817/light-merge/src/parser_expr.py:1169: DeprecationWarning: 「之」作为成员访问符已废弃，请改用「的」。如：对象.属性 → 对象的属性
+    return self._parse_postfix(Identifier("super()"))
+
+tests/test_file_io.py::test_read_write_file
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_read_write_file returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_file_exists
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_file_exists returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_directory_operations
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_directory_operations returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_path_operations
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_path_operations returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_string_operations
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_string_operations returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_list_operations
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_list_operations returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_file_io.py::test_compilation
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_file_io.py::test_compilation returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_find_module
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_find_module returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_parse_module
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_parse_module returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_dependency_graph
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_dependency_graph returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_circular_dependency
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_circular_dependency returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_topological_sort
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_topological_sort returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_full_resolution
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_full_resolution returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/test_module_resolver.py::test_module_loader
+  /usr/local/lib/python3.12/site-packages/_pytest/python.py:161: PytestReturnNotNoneWarning: Test functions should return None, but tests/test_module_resolver.py::test_module_loader returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+tests/unit/test_doc_examples_gate.py::TestDocExamplesGate::test_不许新增ROT
+  /tmp/r44-20260918-171817/light-merge/src/parser_stmt.py:687: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    paragraph = self._parse_paragraph_v2()
+
+tests/unit/test_link_libs_guard.py::test_测试里不许硬编码平台链接库
+tests/unit/test_capture_encoding_guard.py::test_被收集的模块里reconfigure必须显式给errors
+  <unknown>:236: SyntaxWarning: invalid escape sequence '\c'
+
+tests/test_core_coverage.py::TestTypeCheckerCoverage::test_strict_segment
+  /tmp/r44-20260918-171817/light-merge/src/parser_stmt.py:3892: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    para = self._parse_paragraph_v2()
+
+tests/test_pty_light.py::TestPOSIXOpenPTY::test_启动命令读到带ANSI的输出
+tests/test_pty_light.py::TestPOSIXOpenPTY::test_设窗口大小不炸
+tests/test_pty_light.py::TestPOSIXOpenPTY::test_优雅关闭长驻进程
+  /usr/local/lib/python3.12/pty.py:95: DeprecationWarning: This process (pid=96536) is multi-threaded, use of forkpty() may lead to deadlocks in the child.
+    pid, fd = os.forkpty()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------- generated xml file: /tmp/r44-20260918-171817/lm_results_fast.xml -------
+============================= slowest 15 durations =============================
+27.55s call     tests/unit/test_原生腿_R11B_中文工具.py::test_拼音转换_O0对拍
+27.14s call     tests/test_harness_e2e_light.py::Test单条超时::test_限时大于延迟时与不限时逐项等价
+26.26s call     tests/test_harness_agent_light.py::TestM18超时::test_限时宽松时与不限时同结论
+23.40s call     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_五模块联合导入
+22.75s call     tests/unit/test_原生腿_R11C_数据高级.py::Test中国传统节日::test_O0_春节日期_对拍
+22.53s call     tests/unit/test_原生腿_R13B_能力扩展.py::Test农历扩展::test_O0_扩展范围_逐日期对拍抽样
+22.44s call     tests/unit/test_原生腿_R13B_能力扩展.py::Test传统节日对齐::test_O0_农历节日_精确日期
+22.31s call     tests/unit/test_原生腿_R11C_数据高级.py::Test中国传统节日::test_O0_判断节日_对拍
+21.83s call     tests/unit/test_原生腿_R11C_数据高级.py::Test农历::test_O0_闰月判断_对拍
+21.71s call     tests/unit/test_原生腿_R13B_能力扩展.py::Test农历扩展::test_O0_扩展范围_春节锚点_对拍
+21.68s call     tests/unit/test_原生腿_R11C_数据高级.py::Test中国传统节日::test_O0_农历节日精确日期
+21.65s call     tests/unit/test_原生腿_R13B_能力扩展.py::Test传统节日对齐::test_O0_节日_扩展范围
+21.54s call     tests/unit/test_原生腿_R13B_能力扩展.py::Test农历扩展::test_O0_闰月判断_扩展对拍
+21.40s call     tests/unit/test_原生腿_R11C_数据高级.py::Test农历::test_O0_端午_对拍
+21.37s call     tests/unit/test_原生腿_R11C_数据高级.py::Test农历::test_O0_春节_对拍
+=========================== short test summary info ============================
+FAILED tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用
+FAILED tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call
+FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88]
+FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570]
+FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍
+FAILED tests/test_R40_语言支撑配套.py::Test现状钉桩_既有词法回归::test_现状钉桩_R19_为字整串合并
+FAILED tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call
+FAILED tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg
+FAILED tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output
+13 failed, 7754 passed, 74 skipped, 12 xfailed, 1 xpassed, 53305 warnings in 383.69s (0:06:23)
+[082全量] 远端 rc=1，耗时 386.4s
+   | =========================== short test summary info ============================
+   | FAILED tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用
+   | FAILED tests/unit/test_parser.py::TestParser::test_compact_binary_expr_with_call
+   | FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍
+   | FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236]
+   | FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236]
+   | FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85]
+   | FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88]
+   | FAILED tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570]
+   | FAILED tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍
+   | FAILED tests/test_R40_语言支撑配套.py::Test现状钉桩_既有词法回归::test_现状钉桩_R19_为字整串合并
+   | FAILED tests/_test_null_safety.py::TestBackwardsCompatibility::test_paragraph_call
+   | FAILED tests/_test_null_safety.py::TestNullSafetyFunctionCall::test_func_non_nullable_param_with_nullable_arg
+   | FAILED tests/unit/test_examples_run.py::TestExampleFilesRun::test_all_examples_output
+   | 13 failed, 7754 passed, 74 skipped, 12 xfailed, 1 xpassed, 53305 warnings in 383.69s (0:06:23)
+[082全量] 取回结果 reports\_082_lm_results_2026-09-18-172617.xml
+[082全量] 基线写入 reports\082_lightmerge基线_2026-09-18-172617.json（同步更新 latest）
+[082全量] 摘要：共 7854 用例，通过 7755，失败 13（failure 13 / error 0），跳过 74，xfail 12，pytest 自报耗时 382.3s
+[082全量] 失败清单（前 20 条）：
+   ✗ tests/unit/test_地板搬迁_列表_S2.py::test_十个段落全部导出且两版都可调用 — AssertionError: assert ['冻结', '列', '..., '列表弹出', ...] == ['列', '列表创建',..., '列表排序', ...]
+   ✗ tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍 — AssertionError: 参数解析选项默认类型对拍失败: 第2行: 实际=0.0 期望=7 diff=7.0
+   ✗ tests/unit/test_parser.py::test_compact_binary_expr_with_call — AssertionError: 'n乘阶乘' == 'n乘阶乘'
+   ✗ tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u8bfb\u53d6\u4e8c\u8fdb\u5236] — AssertionError: 报错没指出根因（`异步` 被当值用）:
+   ✗ tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u5199\u5165\u4e8c\u8fdb\u5236] — AssertionError: 报错没指出根因（`异步` 被当值用）:
+   ✗ tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u7b49\u5f85] — AssertionError: 报错没指出根因（`异步` 被当值用）:
+   ✗ tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u4efb\u52a1\u53d6\u6d88] — AssertionError: 报错没指出根因（`异步` 被当值用）:
+   ✗ tests/test_frontend_blockers_run.py::test_p0_异步修饰符不许当值用[\u5f02\u6b65\u53d6\u6570] — AssertionError: 报错没指出根因（`异步` 被当值用）:
+   ✗ tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍 — AssertionError: 编码解码URL对拍失败: 行数不匹配: 实际=9 期望=10
+   ✗ tests/test_R40_语言支撑配套.py::test_现状钉桩_R19_为字整串合并 — AssertionError: 现状已变（可能修好了 _EMBED 的 `为` 合并）。请更新本钉桩 + 关闭对应缺陷条目。实际=[('KEYWORD', '设'), ('IDENTIFIER', '结果'), ('KEYWORD', '为
+   ✗ tests/_test_null_safety.py::test_paragraph_call — parser_core.ParseError:
+   ✗ tests/_test_null_safety.py::test_func_non_nullable_param_with_nullable_arg — parser_core.ParseError:
+   ✗ tests/unit/test_examples_run.py::test_all_examples_output — AssertionError: Lists differ: [] != ["hello.light: 运行异常 -> name 'n乘阶乘' is not [760 chars]ned"]

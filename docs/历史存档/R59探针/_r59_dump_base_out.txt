@@ -1,0 +1,29 @@
+﻿=== 基线 JSON 顶层键 ===
+  schema: 1
+  round: R55
+  generated_at: 2026-09-18T13:37:01+08:00
+  target: dict len=5
+  runner: dict len=8
+  totals: dict len=9
+  failed: list len=64
+  skipped: list len=86
+--- skipped 前5条:
+    ::tests.test_comprehensive
+    ::tests.test_module_system
+    tests/test_stdlib_phase4.py::test_验证IP地址
+    tests/test_stdlib_phase4.py::test_验证JSON
+    tests/test_self_host_bootstrap.py::test_binary_mod
+
+=== xml 失败/错误数: 64 ===
+唯一失败名数: 64
+python.exe : Traceback (most recent call last):
+所在位置 行:1 字符: 1
++ & "G:\dswork\duan-light-merge\light-merge\.venv\Scripts\python.exe" " ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "G:\dswork\duan-light-merge\lightharness\_r59_dump_base.py", line 31, in <module>
+    for cn, nm, kind in sorted(seen):
+        ^^^^^^^^^^^^
+ValueError: too many values to unpack (expected 3)

@@ -1,0 +1,46 @@
+﻿124: # `_light_import_hook._is_pure_light()` 只读首两行（见 stdlib/_light_import_hook.py）。
+125: # 凡 .light 内**任何位置**含「纯光明实现」但首两行没有的，一旦有人建了同名 .py，
+126: # 这份 .light 会被静默遮蔽（行为倒退，且无任何报错）。
+127: #
+128: # 已知 5 个真实现魔数不在首两行，属 A3/B3 独占文件：
+129: #   伪终端.light:11 / 事件总线.light:4 / 插件.light:5 / 进程树.light:12 / 路径护栏.light:5
+130: # 本轮（D3）只加检查、不改文件；A3/B3 尚未合入 main，所以先按 **warn（xfail）**
+131: # 处理，不阻断 CI。A3/B3 合入并把魔数提到首两行后，本 warn 自动消失；
+132: # 若届时仍残留，应改为硬红并追问对应任务。
+133: _KNOWN_MAGIC_NOT_FIRST2 = {
+134:     "伪终端", "事件总线", "插件", "进程树", "路径护栏",
+135: }
+136: _MAGIC = "纯光明实现"
+137: 
+138: 
+139: def test_magic_number_in_first_two_lines():
+140:     """防定时炸弹：含「纯光明实现」但首两行没有的 .light 必须打红。
+141: 
+142:     已知 5 个（A3/B3 待修）→ 本次按 warn（xfail）；新出现的违反 → 硬红。
+143:     """
+144:     violations = []
+145:     for full in glob.glob(os.path.join(_STDLIB, "*.light")):
+146:         name = os.path.splitext(os.path.basename(full))[0]
+147:         try:
+148:             with open(full, encoding="utf-8", errors="replace") as fh:
+149:                 lines = fh.readlines()
+150:                 text = "".join(lines)
+151:         except OSError:
+152:             continue
+153:         if _MAGIC not in text:
+154:             continue
+155:         if _MAGIC in "".join(lines[:2]):
+156:             continue  # 魔数已在首两行，安全
+157:         violations.append(name)
+158: 
+159:     # 新出现的违反（不在已知 5 个里）一律硬红——这是本门禁的价值所在。
+160:     new = [v for v in violations if v not in _KNOWN_MAGIC_NOT_FIRST2]
+161:     if new:
+162:         pytest.fail(
+163:             "以下 .light 含「纯光明实现」但不在首两行，会被同名 .py 静默遮蔽（新出现，须硬红）：%s"
+164:             % new
+165:         )
+166: 
+167:     # 已知 5 个仍违规 → warn（xfail），不阻断 CI，但在报告里点名催 A3/B3 修。
+168:     # TODO(D3-5): A3 修 事件总线、B3 修其余 4 个，并把魔数提到首两行后，
+169:     #             本 xfail 会自动消失；若 A3/B3 合入后仍残留，改为硬红。

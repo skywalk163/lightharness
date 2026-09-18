@@ -1,0 +1,13 @@
+﻿[无钩子] rc=0
+'path/to%3Fq%3D%E5%85%89%E6%98%8E'
+'a b&c=1'
+MOD: G:\dswork\duan-light-merge\light-merge\stdlib\字符串工具.py
+
+
+[钩子] rc=0
+'path/to%3Fq%3D%E5%%%E6%%'
+'a b&c=1'
+MOD: G:\dswork\duan-light-merge\light-merge\stdlib\字符串工具.light
+
+
+[.light 编译异常] No module named 'llvm'

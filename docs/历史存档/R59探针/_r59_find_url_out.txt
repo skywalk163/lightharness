@@ -1,0 +1,8 @@
+﻿总行数: 767
+命中行数: 6
+L26: 从 编码解码 导入 Base64编码 Base64解码 URL编码 URL解码 HTML实体编码 HTML实体解码 十六进制编码 十六进制解码 字符串转二进制 二进制转字符串 文本转十六进制 十六进制转文本 UTF8转G
+L35: 导出 ASCII转Unicode Unicode转ASCII Base64编码 Base64解码 URL编码 URL解码。
+L401: 段落 URL编码 接收 文本:
+L402:   返回 编码解码.URL编码(文本)
+L404: 段落 URL解码 接收 文本:
+L405:   返回 编码解码.URL解码(文本)

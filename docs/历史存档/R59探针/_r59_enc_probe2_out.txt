@@ -1,0 +1,8 @@
+﻿[干净子进程·钩子加载] rc=0
+MOD: G:\dswork\duan-light-merge\light-merge\stdlib\编码解码.light
+URL编码(光): '%E5%85%89'
+URL编码(a b&c=1): 'a%20b%26c%3D1'
+URL编码(path/to?q=光明): 'path/to%3Fq%3D%E5%85%89%E6%98%8E'
+URL解码(a%20b%26c%3D1): 'a b&c=1'
+
+

@@ -1,0 +1,9 @@
+﻿[082全量] 对比：082_lightmerge基线_latest.json  ⟵  reports\082_lightmerge基线_2026-09-18-133701.json
+[082全量] 失败数 64 → 13（7854 → 7854 用例）
+[082全量] 新增红 3 ｜ 已修复 54 ｜ 持平 10
+[082全量]   已修复样例：['tests/_test_null_safety.py::test_operation_without_unwrap', 'tests/_test_null_safety.py::test_unwrap_on_nullable_variable', 'tests/integration/test_class_system.py::test_class_with_attributes', 'tests/integration/test_class_system.py::test_constructor_with_inheritance', 'tests/integration/test_class_system.py::test_method_override']
+[082全量]   ❌ 新增红清单（前 30 条）：
+[082全量]     tests/test_R40_语言支撑配套.py::test_现状钉桩_R19_为字整串合并
+[082全量]     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_参数解析_选项默认类型_对拍
+[082全量]     tests/unit/test_原生腿_T6C_向量复数颜色参数编码.py::test_O0_编码解码_URL_对拍
+[082全量] 对比报告 reports\082_diff_2026-09-18-172631.json
