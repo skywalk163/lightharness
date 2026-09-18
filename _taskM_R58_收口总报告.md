@@ -79,7 +79,7 @@
 - `docs/功能对标/对标清单.json`（#197）
 - `_task1/2/3/4/5_R58_*.md` + `_taskM_R58_收口总报告.md` + `_task3/4_R58_*归因明细.json/csv`
 - `docs/历史存档/R58探针/`（移档）
-- `reports/082_lightmerge基线_2026-09-18-131415.json`、`-133701.json`（latest）、`082_diff_*131431.json`、`-133838.json`、配套 xml
+- `reports/082_lightmerge基线_2026-09-18-131415.json`、`-133701.json`（latest）、`082_diff_2026-09-18-133838.json（首跑 131415 中间态未出 diff，仅保留 xml）`、`-133838.json`、配套 xml
 - `scripts/082全量回归.py`、`scripts/同步0.82.py`（R56 时代改进未提交，本次一并纳入——mtime 排序/--py 透传）
 
 **不提交（保持原状）**：`examples/harness/评测报告.md`（R56 阶段工作树改动，任务1 已还原）、light-merge 历史未跟踪探针（_ssh_*/_r24_*/_taskR11B_test_*/_tmp_* 等）、`.blocking_backup/`、`.bugfix/`、`docs/dataset_*`、`tools/convert_to_deepseek_r1_format.py` 等。
