@@ -1,40 +1,110 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-19T07:43:03+08:00",
+  "generated_at": "2026-09-20T01:33:37+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.82 FreeBSD 15.1",
     "host": "192.168.0.82",
-    "remote_dir": "/tmp/r44-20260919-073144",
-    "cwd": "/tmp/r44-20260919-073144/light-merge"
+    "remote_dir": "/tmp/r44-20260920-012717",
+    "cwd": "/tmp/r44-20260920-012717/light-merge"
   },
   "runner": {
     "mode": "fast",
     "parallel": true,
     "timeout_sec": 2700,
     "marker": "not slow",
-    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260919-073144/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260919-073144/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
-    "elapsed_sec": 483.0,
-    "pytest_rc": 0,
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260920-012717/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260920-012717/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
+    "elapsed_sec": 360.9,
+    "pytest_rc": 1,
     "timed_out": false
   },
   "totals": {
-    "total": 7884,
-    "failure": 0,
+    "total": 7885,
+    "failure": 10,
     "error": 0,
-    "skipped": 75,
-    "xfailed": 11,
+    "skipped": 74,
+    "xfailed": 10,
     "xpassed": 0,
-    "passed": 7798,
-    "failed": 0,
-    "duration_sec": 478.907
+    "passed": 7791,
+    "failed": 10,
+    "duration_sec": 357.357
   },
-  "failed": [],
+  "failed": [
+    {
+      "id": "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
+      "cid": "tests.test_pure_light_hook::test_magic_number_in_first_two_lines",
+      "status": "failure",
+      "file": "tests/test_pure_light_hook.py",
+      "message": "Failed: 以下 .light 含「纯光明实现」但不在首两行，会被同名 .py 静默遮蔽（新出现，须硬红）：['字节缓冲']"
+    },
+    {
+      "id": "tests/test_ffi_phase2.py::test_ffi_full_workflow",
+      "cid": "tests.test_ffi_phase2::test_ffi_full_workflow",
+      "status": "failure",
+      "file": "tests/test_ffi_phase2.py",
+      "message": "AttributeError: 'FakeLib' object has no attribute 'close'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_keyword_arg_accepted",
+      "cid": "tests.test_context_manager.TestBracketCallKeywordArgs::test_keyword_arg_accepted",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "AssertionError: assert 'sorted(学生列表, key=键函数)' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...(_sep, bytes) or not _sep:\\n        return [_b]\\n    return _b.split(_sep)\\n\\n# LIGHT_SRC:1\\n排名 = sorted(学生列表, 依据=键函数)'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_multiple_keyword_args",
+      "cid": "tests.test_context_manager.TestBracketCallKeywordArgs::test_multiple_keyword_args",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "AssertionError: assert 'sorted(xs, key=f, reverse=True)' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro...p, bytes) or not _sep:\\n        return [_b]\\n    return _b.split(_sep)\\n\\n# LIGHT_SRC:1\\nr = sorted(xs, 依据=f, 倒序=True)'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_keyword_arg_value_is_full_expression",
+      "cid": "tests.test_context_manager.TestBracketCallKeywordArgs::test_keyword_arg_value_is_full_expression",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "AssertionError: assert 'sorted(xs, key=(甲 + 乙))' in '# 由光明编译器生成\\n# 源文件: 光明代码\\n\\ndef _light_trunc_div(a, b):\\n    return a / b\\n\\nimport sys\\nimport os\\nimport ctypes\\nfro..._sep, bytes) or not _sep:\\n        return [_b]\\n    return _b.split(_sep)\\n\\n# LIGHT_SRC:1\\nr = sorted(xs, 依据=(甲 + 乙))'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_unified_interface_not_silently_dropped",
+      "cid": "tests.test_context_manager.TestBackendParity::test_unified_interface_not_silently_dropped",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "AttributeError: 'UnifiedCodeGenerator' object has no attribute '_map_return_type'"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_function_call_keyword_arg",
+      "cid": "tests.test_context_manager.TestBugAKeywordArg::test_function_call_keyword_arg",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '文' is not defined"
+    },
+    {
+      "id": "tests/test_context_manager.py::test_positional_and_keyword_mixed",
+      "cid": "tests.test_context_manager.TestBugAKeywordArg::test_positional_and_keyword_mixed",
+      "status": "failure",
+      "file": "tests/test_context_manager.py",
+      "message": "NameError: name '文' is not defined"
+    },
+    {
+      "id": "tests/unit/test_prescan_embed_semicolon_kwarg.py::test_段落调用具名实参",
+      "cid": "tests.unit.test_prescan_embed_semicolon_kwarg.TestKwargAtEveryBracketSite::test_段落调用具名实参",
+      "status": "failure",
+      "file": "tests/unit/test_prescan_embed_semicolon_kwarg.py",
+      "message": "AssertionError: 'key=' not found in '丙 = sorted(数组, 依据=键)'"
+    },
+    {
+      "id": "tests/test_async_class_method.py::test_04_negative_await_in_sync_method",
+      "cid": "tests.test_async_class_method.TestAsyncClassMethod::test_04_negative_await_in_sync_method",
+      "status": "failure",
+      "file": "tests/test_async_class_method.py",
+      "message": "code_generator.CodeGenError: 代码生成错误: 「等待」只能写在 异步 段落 里面；当前位于同步 段落，请把该 段落 改成「异步 段落」后再使用「等待」。 (节点类型: RunAsyncStmt)"
+    }
+  ],
   "skipped": [
     "::tests.test_comprehensive",
     "::tests.test_module_system",
-    "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
     "tests/test_stdlib_phase4.py::test_验证IP地址",
     "tests/test_stdlib_phase4.py::test_验证JSON",
     "tests/test_self_host_bootstrap.py::test_binary_mod",
@@ -67,16 +137,15 @@
     "tests/test_agent_tools_light.py::test_junction指向外部被拒",
     "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
     "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
-    "tests/test_lightpub_bridge.py::test_HTTP提交",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
     "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
     "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
     "tests/test_pty_light.py::test_设窗口大小不炸",
     "tests/test_pty_light.py::test_写输入不崩",
     "tests/test_pty_light.py::test_优雅关闭长驻进程",
     "tests/test_pty_light.py::test_平台缺失明确报错类存在",
-    "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
-    "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
     "tests/unit/test_light_examples_run.py::test_dict_word_count",
     "tests/integration/test_playground_api.py::test_parse_empty",
     "tests/integration/test_playground_api.py::test_parse_simple",
@@ -84,6 +153,9 @@
     "tests/integration/test_playground_api.py::test_tokenize_simple",
     "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
+    "tests/integration/test_playground_api.py::test_get_examples",
+    "tests/integration/test_playground_api.py::test_get_grammar",
+    "tests/integration/test_playground_api.py::test_get_stdlib",
     "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/test_llm_client_light.py::test_stream_chat",
     "tests/test_llm_client_light.py::test_nonstream_chat",
@@ -101,18 +173,15 @@
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
     "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
     "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
-    "tests/integration/test_playground_api.py::test_get_examples",
-    "tests/integration/test_playground_api.py::test_get_grammar",
-    "tests/integration/test_playground_api.py::test_get_stdlib",
     "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
     "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
     "tests/test_path_guard_light.py::test_junction指向外部被拒",
-    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
-    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
-    "tests/test_semantic.py::test_complete_program",
-    "tests/test_semantic.py::test_recursive_function",
     "tests/test_semantic.py::test_type_mismatch",
     "tests/test_semantic.py::test_duplicate_definition",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
     "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
     "tests/unit/test_light_examples_run.py::test_dict_placeholder",
