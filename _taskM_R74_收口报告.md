@@ -125,6 +125,36 @@ R74 改动面只有「括号式形参名解析」+ 测试文件，不触及切�
 
 ---
 
+### 7.5 L-180 修复：切片 step 误判（一次清掉 106 条）
+
+**根因**（调试实测 `args = [NumberLiteral(0), NumberLiteral(8), NullLiteral]`）：
+适配层把 v3 `SliceExpr` 转成 `FunctionCall('slice', start, stop, step)`，**未提供的分量填的是 `ast.NullLiteral` 节点**（表示 空/None），
+而 `src/llvm/codegen_typed.py::_gen_typed_slice` 的判据是 `args[2] is not None` —— `NullLiteral` 不是 Python 的 None，
+于是 `文本[0:8]` 被误判为「用户传了 step」→ 抛 NotImplementedError。
+
+**为何 R65 门时绿**：R65 之后切片解析改为恒定填充三元组；R70 先让这批用例整体**编译失败**（掩盖），
+R71-R73 修好编译失败后，问题才以「切片 step 误报」暴露。
+
+**修复**（`ce0f816d`，+16/−3，只动 LLVM 后端，不动 parser/AST）：
+新增 `TypedLLVMCodeGen._is_null_arg(a)` = `a is None or isinstance(a, ast.NullLiteral)`，start/stop/step 三处判据统一改用它。
+（顺带修掉 start/stop 同族隐患：旧判据下 NullLiteral 会被拿去 `_gen_expression` 生成值。）
+
+**验收**：
+- 本机 5 个原生腿文件：**565 passed / 1 skipped / 2 xfailed / 0 failed**（修复前这 5 文件 30+ 红）
+- 0.82 全量复跑：**失败 116 → 10**，`7885 用例 / 7791 通过 / 10 失败 / 358.37s`
+- diff 对 R65 基线：**新增红 116 → 10**（一次清掉 106 条）
+
+### 7.6 剩余 10 条新增红归因（已定位，待你决定是否继续清）
+
+| 条数 | 类别 | 性质 |
+|---|---|---|
+| **7** | 具名实参 keyword_arg（`test_context_manager.py` 6 条 + `test_prescan_embed_semicolon_kwarg.py::test_段落调用具名实参`） | 产物形态问题：`sorted(数组, 依据=键)`，而用例期望 `key=键`；另 2 条报 `NameError: name '文' is not defined`（标识符被切碎）。**需语义决策**：具名实参是否要映射成 Python 关键字名 |
+| **1** | `test_unified_interface_not_silently_dropped` — `AttributeError: 'UnifiedCodeGenerator' object has no attribute '_map_return_type'` | **纯漏写 bug**：`code_generator_unified.py:1503` 与 `:1931` 调用了该方法，但全文件**没有定义**（只有 `_map_type`）。修法明确：补一个包装 `_map_type` 的方法 |
+| 1 | `test_04_negative_await_in_sync_method` — 「等待」只能写在 异步 | R70-B `_require_async_context` 收紧的既有代价（用例本身写同步段落内 await） |
+| 1 | `test_magic_number_in_first_two_lines` — 「字节缓冲」含「纯光明实现」不在首两行 | L-176 魔数护栏命中真实违规 |
+
+---
+
 ## 八、本轮受阻项
 
 | 项 | 原因 | 影响 |
