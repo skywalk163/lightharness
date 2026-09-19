@@ -1,0 +1,192 @@
+# 套接字.light —— 纯光明实现：跨平台原生 socket API 封装（R66 子任务 66.1）
+#
+# 背景：lightharness 在 stdlib 层面一直没有原生 socket 封装（光明缺陷账 L-归档-03）。
+# 上游 deepseek-harness 的 Node 侧用内置 net/dgram；我们参考 Python socket 模块
+# （已验证可用）做同等能力的纯光明封装，Windows / Linux / FreeBSD 通用。
+#
+# 能力：
+#   - 套接字 类：TCP/UDP 创建、连接、绑定、监听、接受、发送、接收、关闭
+#   - 地址族常量：AF_INET / AF_INET6 / AF_UNIX（AF_UNIX 仅 POSIX，Windows 上为 空）
+#   - 类型常量：SOCK_STREAM / SOCK_DGRAM
+#   - 套接字选项：SO_REUSEADDR、TCP_NODELAY、SO_RCVBUF / SO_SNDBUF（设置+读取）
+#   - 阻塞 / 超时 / 非阻塞三种模式
+#   - 新建套接字对(AF_INET)：事件循环.light 的跨线程唤醒通道就靠它
+#     （Windows 的 select 只认 socket，os.pipe 管道进不了 selector，必须用 socketpair）
+#   - 字节层收发：收发一律是 bytes，不做字符层切割、不做解码——与 进程树.light
+#     采集器同口径（字节进字节出，解码留给调用方）
+#
+# 不做（明确边界，非遗漏）：
+#   - HTTP 协议解析（已有 网络请求.py）
+#   - TLS/SSL（移交后续轮次）
+#   - 字符层编解码（文件流.light / 进程树.light 已有统一解码口径）
+#
+# 注意：
+#   - 收发错误不做静默重试。愿等（EAGAIN/EWOULDBLOCK）的判定由 选择器.light 的
+#     是否愿等读/是否愿等写 承担，事件循环.light 据此回 selector；本模块只把异常
+#     原样抛出去，谁调用谁决定分类。
+导入 socket
+
+# ---- 地址族 / 类型 / 选项常量（只转发，不自造数字）----
+设 AF_INET 为 socket.AF_INET
+设 AF_INET6 为 socket.AF_INET6
+设 AF_UNIX 为 getattr(socket, "AF_UNIX", 空)
+设 SOCK_STREAM 为 socket.SOCK_STREAM
+设 SOCK_DGRAM 为 socket.SOCK_DGRAM
+设 SOL_SOCKET 为 socket.SOL_SOCKET
+设 SO_REUSEADDR 为 socket.SO_REUSEADDR
+设 SO_RCVBUF 为 socket.SO_RCVBUF
+设 SO_SNDBUF 为 socket.SO_SNDBUF
+设 TCP_NODELAY 为 getattr(socket, "TCP_NODELAY", 空)
+
+# ---- 工厂 ----
+# 统一入口：新建套接字(地址族, 类型)。常规 TCP/UDP 用下面两个便捷段落。
+段落 新建套接字(地址族, 类型):
+  设 原始 为 socket.socket(地址族, 类型)
+  返回 新建 套接字(原始)
+
+段落 新建TCP套接字():
+  返回 新建套接字(AF_INET, SOCK_STREAM)
+
+段落 新建UDP套接字():
+  返回 新建套接字(AF_INET, SOCK_DGRAM)
+
+# 新建套接字对(地址族, 是否非阻塞) → [甲端, 乙端]
+# 返回的是两个 套接字 实例；任何一端写出字节，另一端可读。
+段落 新建套接字对(地址族, 是否非阻塞):
+  设 对 为 socket.socketpair(地址族, socket.SOCK_STREAM)
+  设 甲 为 新建 套接字(对[0])
+  设 乙 为 新建 套接字(对[1])
+  如果 是否非阻塞:
+    甲.设置阻塞(假)
+    乙.设置阻塞(假)
+  返回 [甲, 乙]
+
+# ---- 套接字 类 ----
+类 套接字:
+  # 初始化 接收 原始：包装一个已存在的原始 socket 对象。
+  # 一般不直接 新建 套接字(原始)，用本模块的工厂段落。
+  段落 初始化(原始):
+    己.原始 为 原始
+    己.已关闭 为 假
+
+  # 底层文件号：给 selector 注册用（选择器.light 的 解析fd 兼容 fd 或带 fileno 的对象，
+  # 传 本实例 进去也能解析，但事件循环统一传 文件号() 的结果，语义更直白）
+  段落 文件号():
+    返回 己.原始.fileno()
+
+  # ---- 地址 ----
+  段落 绑定(主机, 端口):
+    己.原始.bind((主机, 端口))
+
+  # 本地地址() → [主机, 端口]；绑定 0 端口后用它取实际端口
+  段落 本地地址():
+    设 元 为 己.原始.getsockname()
+    返回 [元[0], 元[1]]
+
+  段落 对端地址():
+    设 元 为 己.原始.getpeername()
+    返回 [元[0], 元[1]]
+
+  # ---- 监听侧 ----
+  # 监听(积压)：积压是等待队列长度，服务端常规用 128
+  段落 监听(积压):
+    己.原始.listen(积压)
+
+  # 接受() → [新套接字, 对端主机, 对端端口]
+  # 非阻塞 socket 上没有连接时抛 EAGAIN——那是「愿等」不是错误，
+  # 调用方用 选择器.是否愿等读 分类后回 selector，不要在这里吞。
+  段落 接受():
+    设 对 为 己.原始.accept()
+    返回 [新建 套接字(对[0]), 对[1][0], 对[1][1]]
+
+  # ---- 连接侧 ----
+  段落 连接(主机, 端口):
+    己.原始.connect((主机, 端口))
+
+  # 连接限时(主机, 端口, 超时秒)：临时设超时做 connect，连完恢复原超时。
+  # 超时抛 socket.timeout，调用方自己分类。
+  段落 连接限时(主机, 端口, 超时秒):
+    设 旧超时 为 己.原始.gettimeout()
+    己.原始.settimeout(超时秒)
+    尝试:
+      己.原始.connect((主机, 端口))
+    捕获 异常 e:
+      己.原始.settimeout(旧超时)
+      抛出 e
+    己.原始.settimeout(旧超时)
+
+  # ---- 模式 ----
+  # 设置阻塞(真/假)：假 即非阻塞。非阻塞下 收/发送 没有 data 时立刻抛 EAGAIN。
+  段落 设置阻塞(是否阻塞):
+    己.原始.setblocking(是否阻塞)
+
+  # 设置超时(秒)：0 等价非阻塞，空 等价永久阻塞
+  段落 设置超时(超时秒):
+    己.原始.settimeout(超时秒)
+
+  段落 当前超时():
+    返回 己.原始.gettimeout()
+
+  # ---- 选项 ----
+  段落 设置选项(级别, 名, 值):
+    己.原始.setsockopt(级别, 名, 值)
+
+  段落 读取选项(级别, 名):
+    返回 己.原始.getsockopt(级别, 名)
+
+  # ---- 收发（字节层）----
+  # 接收(上限字节) → bytes；对端关闭返回 b""（这是「对端关闭」的权威信号，
+  # 事件循环.light 的 echo 服务器据此拆链）
+  段落 接收(上限字节):
+    返回 己.原始.recv(上限字节)
+
+  # 接收自(上限字节) → [bytes, 主机, 端口]（UDP）
+  段落 接收自(上限字节):
+    设 对 为 己.原始.recvfrom(上限字节)
+    返回 [对[0], 对[1][0], 对[1][1]]
+
+  # 发送(字节串) → 实际发出的字节数（可能小于请求值，尤其非阻塞下）
+  段落 发送(字节串):
+    返回 己.原始.send(字节串)
+
+  # 发送全部(字节串)：循环发到发完为止。阻塞 socket 上等价 sendall 语义；
+  # 非阻塞 socket 上缓冲满会抛 EAGAIN——发不完不静默，由调用方决定是否回 selector 等写。
+  段落 发送全部(字节串):
+    设 已发 为 0
+    设 总数 为 长度(字节串)
+    当 已发 < 总数:
+      设 n 为 己.原始.send(字节串[已发:])
+      如果 n == 0:
+        抛出 "发送停滞: 对端在 发送全部 中途返回 0 字节"
+      设 已发 为 已发 + n
+    返回 已发
+
+  # 发送到(字节串, 主机, 端口)（UDP）
+  段落 发送到(字节串, 主机, 端口):
+    返回 己.原始.sendto(字节串, (主机, 端口))
+
+  # ---- 关闭 ----
+  # 关闭是幂等的：重复关闭直接返回 假，不抛。
+  # 但关闭后的 收/发送 会抛 OSError——调用方管好自己的状态，本类只保证 已关闭 标志真实。
+  段落 关闭():
+    如果 己.已关闭:
+      返回 假
+    己.原始.close()
+    己.已关闭 为 真
+    返回 真
+
+导出 AF_INET
+导出 AF_INET6
+导出 AF_UNIX
+导出 SOCK_STREAM
+导出 SOCK_DGRAM
+导出 SOL_SOCKET
+导出 SO_REUSEADDR
+导出 SO_RCVBUF
+导出 SO_SNDBUF
+导出 TCP_NODELAY
+导出 套接字
+导出 新建套接字
+导出 新建TCP套接字
+导出 新建UDP套接字
+导出 新建套接字对
