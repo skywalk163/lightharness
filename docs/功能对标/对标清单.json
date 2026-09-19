@@ -1435,10 +1435,12 @@
       "功能": "sdk/protocol NDJSON JSON-RPC 2.0 传输层（JsonRpcLineTransport 行分隔端点：请求/响应/通知帧编码+判别+分派+增量行解码+错误码）",
       "原版包": "packages/sdk/protocol/src/{transport.ts,types.ts,index.ts}",
       "光明模块": "src/JSONRPC传输.light",
-      "状态": "done(纯逻辑层)；0.1.5第11轮任务4已跟随：帧编码(造请求/响应/通知/错误帧+帧编码NDJSON)+帧判别(id+method请求/仅id响应/仅method通知/非法)+NDJSON行解码器(半行合并/多行切分/收尾)+JSONRPC终端(无处理器-32601/处理器失败-32603/成功回result)+ID生成(req_前缀+三段随机整数)；pending请求表/AbortSignal/flush/流挂接 未移植（依赖node:stream+Promise，留后续轮宿主包）",
+      "状态": "done(纯逻辑层+一等异步等价实现)；R74路5B：缺口四项（pending 请求表 / 取消信号 / flush / 流挂接）已用光明现有一等 async/await（R70-B）与 src/中止.light 的中止令牌在纯逻辑层等价实现，不再挂「依赖 node:stream 宿主包」标签——pending 表按 id 挂号 asyncio.Future 并撮合（并发乱序不串味）、取消信号经 首个完成 竞速清理 pending 并抛明确取消异常、flush 强制落已挂接可读写字节流、流挂接经 内存字节流 使传输层脱离「只吃/吐字符串」",
       "证据": [
         "src/JSONRPC传输.light",
-        "examples/test_JSONRPC传输.light"
+        "examples/test_JSONRPC传输.light",
+        "examples/test_R74_路5_JSONRPC深化.light",
+        "_task5B_R74_JSONRPC.md"
       ],
       "本轮目标": "done：40+断言覆盖请求/响应/通知帧编码与params省略、错误帧code/message/data形状、帧编码以\\n结尾往返、三类帧判别(含数字id/非字典/非法)、归一化参数、增量解码(半行合并/多行一次入/多行同批出/收尾丢弃残行)、终端分派(-32601/-32603/成功回result)、通知分派与丢弃、非法行静默忽略、入站响应记录、ID req_前缀/两次不同/100个全唯一",
       "反跑判据": "_antirun_jsonrpc.py 3/3 PASS：A响应帧判别提前->id+method误判为响应红；B非法行忽略改外抛->坏JSON行红；C增量半行合并改无\\n残块当完整行吐红",
