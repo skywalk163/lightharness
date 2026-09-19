@@ -1,0 +1,123 @@
+# 沙箱策略.light —— R67.2：沙箱策略引擎（对齐原版 packages/sandbox/sandbox-policy）
+#
+# 纯逻辑策略层：一人拥有部署默认 mode、fallback 工作区根、以及每次能力调用的
+# 解析策略。强制层（文件沙箱 / 一次性 bash / 终端）都从这里读取同一份解析策略，
+# 上下文只描述策略而不清点能力；各后端保留自己的执行方言。
+#
+# 对照映射（与 upstream 逐一对齐）：
+#   - 模式词汇 三值闭集：read-only / workspace-write / danger-full-access（session-mode.ts SANDBOX_MODES）
+#   - 默认 mode = read-only（fail-safe 默认；想 workspace 可写需显式 opt-in）
+#   - 规范路径(路径)：canonicalPath = 绝对化 + 词法消解 ..（不变量：read-only 仍需 workspaceRoot）
+#   - 可写根(策略)：workspace-write 模式下返回可写根；其余返回 空
+#   - 危险全访问(策略)：模式 == danger-full-access 即 bypass
+#
+# 与上游差异：上游 canonicalPath 走 realpathSync.native（解析符号链接），纯逻辑层用
+#   词法消解 . / .. 等价；生产若需解析符号链接可在 规范路径 后叠加 os.path.realpath。
+#   本模块不依赖 OS 沙箱，Windows 上即可纯逻辑对拍。
+
+从 工作区路径 导入 是绝对工作区路径
+从 字符串处理 导入 匹配正则, 替换
+从 字符串工具轻量 导入 连接字符串
+从 内置核心列表 导入 列表包含
+从 内置核心字典 导入 字典包含键
+
+# 模式三值闭集（对齐 session-mode.ts SANDBOX_MODES）
+设 沙箱模式词汇 为 ["read-only", "workspace-write", "danger-full-access"]
+# fail-safe 默认模式（对齐 sandbox-policy Config.mode default = 'read-only'）
+设 默认沙箱模式 为 "read-only"
+
+# 模式是否合法
+段落 是有效模式 接收 模式:
+  如果 模式 == 空 或 长(模式) == 0:
+    返回 假
+  返回 列表包含(沙箱模式词汇, 模式)
+
+# 词法折叠绝对路径：统一分隔符、消解 . 与 ..（不触文件系统；.. 不能越过根）。
+# 返回 前缀(盘符/UNC/根斜杠) + 折叠后的组件串。
+段落 折叠绝对路径 接收 路径:
+  设 归一 为 替换(路径, "\\", "/")
+  设 是盘符 为 匹配正则(归一, "^[A-Za-z]:/")
+  设 前缀 为 ""
+  设 体 为 ""
+  如果 是盘符:
+    设 前缀 为 截取(归一, 0, 3)
+    设 体 为 截取(归一, 3, 长(归一))
+  否则 如果 归一.开头("//"):
+    设 前缀 为 "//"
+    设 体 为 截取(归一, 2, 长(归一))
+  否则:
+    设 前缀 为 "/"
+    设 体 为 截取(归一, 1, 长(归一))
+  设 段们 为 体.分割("/")
+  设 栈 为 []
+  遍历 段 之 段们:
+    如果 段 == "" 或 段 == ".":
+      继续
+    如果 段 == "..":
+      # .. 不能越过根；栈空则丢弃（保持根）
+      如果 长度(栈) > 0:
+        设 新栈 为 []
+        设 k 为 0
+        当 k < 长度(栈) - 1:
+          新栈.追加(栈[k])
+          设 k 为 k + 1
+        设 栈 为 新栈
+      继续
+    栈.追加(段)
+  返回 前缀 加上 连接字符串(栈, "/")
+
+# 规范路径（对齐 roots.ts canonicalPath）：绝对 + 词法消解 .. ；相对路径抛出。
+段落 规范路径 接收 路径:
+  如果 路径 == 空 或 长(路径) == 0:
+    抛出 "沙箱策略: 工作区根不能为空"
+  # 绝对性检查（POSIX /、Windows 盘符、UNC）——对齐 resolveWorkspaceRoot 的 isAbsolute 断言
+  如果 是绝对工作区路径(路径) == 假:
+    抛出 "沙箱策略: 工作区根必须是绝对执行世界路径: " + 转字符串(路径)
+  # 词法折叠；折叠后仍须绝对（防根被 .. 吃光——理论不会发生，因 .. 不越过根）
+  设 折叠 为 折叠绝对路径(路径)
+  如果 是绝对工作区路径(折叠) == 假:
+    抛出 "沙箱策略: 规范路径越过了文件系统根: " + 转字符串(路径)
+  返回 折叠
+
+# 规范策略（对齐 sandbox-policy resolve 的纯逻辑部分）：校验并规范化一次调用策略。
+#   入参原始策略形状：{"模式": string, "工作区根": string, "会话Id"?: string}
+#   不变量：read-only 模式下 workspaceRoot 仍必填（供 jail 挂载只读系统视图）。
+段落 规范策略 接收 原始:
+  如果 原始 == 空 或 字典包含键(原始, "模式") == 假:
+    抛出 "沙箱策略: 策略缺少模式"
+  设 模式 为 原始["模式"]
+  如果 是有效模式(模式) == 假:
+    抛出 "沙箱策略: 非法模式 " + 转字符串(模式) + "（应是 " + 连接字符串(沙箱模式词汇, "/") + " 之一）"
+  # 工作区根不变量：read-only 也需提供（供 jail 挂载）
+  如果 字典包含键(原始, "工作区根") == 假 或 原始["工作区根"] == 空 或 长(原始["工作区根"]) == 0:
+    抛出 "沙箱策略: 工作区根必填（read-only 模式也需提供以挂载 jail）"
+  设 根 为 规范路径(原始["工作区根"])
+  设 规范 为 {}
+  规范["模式"] 为 模式
+  规范["工作区根"] 为 根
+  # sessionId 可选透传
+  如果 字典包含键(原始, "会话Id"):
+    规范["会话Id"] 为 原始["会话Id"]
+  返回 规范
+
+# 可写根（对齐 roots.ts writableRoots 的 workspace-write 分支）：仅 workspace-write 返回根。
+段落 可写根 接收 策略:
+  如果 策略["模式"] != "workspace-write":
+    返回 空
+  如果 字典包含键(策略, "工作区根"):
+    返回 策略["工作区根"]
+  返回 空
+
+# 危险全访问（对齐 danger-full-access 逃生口判断）：是否 bypass 沙箱。
+段落 危险全访问 接收 策略:
+  返回 策略["模式"] == "danger-full-access"
+
+# 渲染策略上下文（对齐 sandbox-policy renderPolicyContext）：给模型的纯描述文本，不清点能力。
+段落 渲染策略上下文 接收 策略:
+  设 模式 为 策略["模式"]
+  如果 模式 == "read-only":
+    返回 "Current DSH file policy: read-only. Any available operation enforced by the DSH file sandbox cannot modify files in the standing mode. Do not refuse a required modification from this policy alone: try an available tool normally and follow any denial and escalation guidance it returns."
+  如果 模式 == "workspace-write":
+    设 根 为 策略["工作区根"]
+    返回 "Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under the session workspace: " + 转字符串(根) + ". Some platform temporary areas may also be writable."
+  返回 "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."

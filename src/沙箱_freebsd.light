@@ -1,0 +1,123 @@
+# 沙箱_freebsd.light —— R67.1：FreeBSD jail confine() 封装（对齐原版 sandbox-local freebsd-jail 分支）
+#
+# 纯逻辑封装层。内核级 jail(2) 后端由独立的 setuid-root C 二进制 dsh-jail-run 驱动
+# （freebsd/dsh-jail-run.c，直接编译使用，不重写）。本模块只负责：
+#   - 解析二进制路径（测试钩子 → 环境变量 DSH_JAIL_RUN_BIN → 默认 /usr/local/sbin/dsh-jail-run）
+#   - 构造约束 argv（[jailBin, --workspace, root, --mode, mode, --, command...]）
+#   - 运行时失败分类（allowedExitCodes=[125] + fatalSignatures=["dsh-jail-run: "]）
+#   - 工作目录/工作区根验证（绝对、词法无 ..、存在）
+#
+# 安全模型（对齐 C 文件注释，必须在文档中写清）：
+#   - setuid-root 仅用于创建 jail + 挂载只读系统视图；子进程内降权到调用者 uid/gid。
+#   - workspace 是唯一可写宿主目录；其余只读 nullfs 或 tmpfs；jail 默认无网络。
+#   - 二进制必须 root:wheel 4755，位于非 root 用户不可替换的目录（/usr/local/sbin）。
+#
+# ⚠️ 本机 Windows 无法真 jail；本模块只做纯逻辑对拍，e2e 留待 R68 远程 FreeBSD 机。
+
+从 环境 导入 获取环境变量
+从 文件系统 导入 目录存在
+从 沙箱策略 导入 规范策略, 规范路径, 是有效模式
+从 字符串处理 导入 替换
+从 内置核心列表 导入 列表包含
+从 内置核心字典 导入 字典包含键
+
+# setuid-root 二进制默认安装路径（对齐 C JAIL_BIN / sandbox-local freebsdJailRunBin 默认）
+设 默认jail二进制 为 "/usr/local/sbin/dsh-jail-run"
+
+# jail(2) 后端执行强度：只读 nullfs（read-only）或读写 workspace 绑定（workspace-write）均
+# 按构造治理每个承诺的文件效果 → 声明 full 承诺（对齐 STATIC_ENFORCEMENT['freebsd-jail']='full'）。
+设 执行强度full 为 "full"
+
+# 内核拒绝方言（对齐 DENIAL_SIGNATURES['freebsd-jail']）：
+#   nullfs EROFS（只读 workspace 绑定）/ devfs 或越狱路径 EACCES/EPERM。
+设 拒绝签名表 为 ["read-only file system", "permission denied", "operation not permitted"]
+
+# 运行器失败规则（对齐 RUNNER_FAILURE_RULES['freebsd-jail']）：setuid 助手在每次运行器侧
+# 失败打印 "dsh-jail-run: <detail>" 并退出 125；据此区分「命令失败」与「沙箱运行器失败」。
+设 运行器失败退出码 为 [125]
+设 运行器失败签名 为 ["dsh-jail-run: "]
+
+# jail 模式闭集（danger-full-access 不封装，显式逃生口）
+设 jail模式词汇 为 ["read-only", "workspace-write"]
+
+# 解析 dsh-jail-run 二进制路径（对齐 freebsdJailRunBin 解析序）。
+#   解析序：测试钩子(internals) → 环境变量 DSH_JAIL_RUN_BIN → 默认安装路径。
+段落 解析jail二进制 接收 测试钩子 = 空:
+  如果 测试钩子 != 空 且 长(测试钩子) > 0:
+    返回 测试钩子
+  设 环境值 为 获取环境变量("DSH_JAIL_RUN_BIN")
+  如果 环境值 != 空 且 长(环境值) > 0:
+    返回 环境值
+  返回 默认jail二进制
+
+# 探测 jail 是否可用（对齐 PROBE_SOLE_CANDIDATES + probeRunner freebsd-jail）：
+#   该后端依赖外部安装的 setuid 助手，其存在即探针；缺失则 fail-closed。
+#   纯逻辑对拍：用假二进制路径（不存在）模拟不可用。
+段落 探测jail可用 接收 测试钩子 = 空:
+  设 二进制 为 解析jail二进制(测试钩子)
+  返回 文件存在(二进制)
+
+# 工作目录/工作区根验证（对齐 C 侧校验：绝对、realpath 无 ..、存在、拒绝 "/"）。
+#   返回规范路径；不合规抛出。
+段落 验证工作目录 接收 路径:
+  如果 路径 == 空 或 长(路径) == 0:
+    抛出 "沙箱_freebsd: 工作目录为空"
+  设 规范 为 规范路径(路径)
+  # 拒绝把宿主根本身 jail 进去
+  如果 规范 == "/" 或 规范 == "C:/" 或 规范 == "c:/":
+    抛出 "沙箱_freebsd: 拒绝 jail 宿主根 " + 转字符串(规范)
+  如果 目录存在(规范) == 假:
+    抛出 "沙箱_freebsd: 工作目录不存在: " + 转字符串(规范)
+  返回 规范
+
+# 约束命令（对齐 confine() + runnerArgv freebsd-jail 分支）：把 argv 包进 jail 调用。
+#   入参 策略 应为 规范策略() 输出（含 模式 / 工作区根）。
+#   返回 {"argv", "执行强度", "拒绝签名表", "运行器失败规则", "无网络"}。
+#   danger-full-access 是显式逃生口 → 不封装 jail，抛出由调用方决定直跑。
+段落 约束命令 接收 命令数组, 策略, 测试钩子 = 空:
+  如果 策略 == 空 或 字典包含键(策略, "模式") == 假:
+    抛出 "沙箱_freebsd: 约束命令需要规范策略（含模式/工作区根）"
+  设 模式 为 策略["模式"]
+  # danger-full-access 绕过：不经 jail 封装（唯一逃生口；不自动降级到无沙箱）
+  如果 模式 == "danger-full-access":
+    抛出 "沙箱_freebsd: danger-full-access 不经 jail 封装（显式逃生口，由调用方直跑）"
+  如果 列表包含(jail模式词汇, 模式) == 假:
+    抛出 "沙箱_freebsd: jail 不支持模式 " + 转字符串(模式) + "（仅 read-only/workspace-write）"
+  # 工作区根语法校验（对齐 confine：仅做绝对性/越根校验，不触文件系统；
+  #   目录物理存在由 setuid C 二进制在 FreeBSD 宿主运行期负责）。
+  设 根 为 规范路径(策略["工作区根"])
+  如果 根 == "/" 或 根 == "C:/" 或 根 == "c:/":
+    抛出 "沙箱_freebsd: 拒绝 jail 宿主根 " + 转字符串(根)
+  设 二进制 为 解析jail二进制(测试钩子)
+  设 argv 为 [二进制, "--workspace", 根, "--mode", 模式, "--"]
+  遍历 段 之 命令数组:
+    argv.追加(段)
+  返回 ["argv": argv, "执行强度": 执行强度full, "拒绝签名表": 拒绝签名表, "运行器失败规则": [["允许退出码": 运行器失败退出码, "致命签名": 运行器失败签名]], "无网络": 真]
+
+# 运行时失败分类（对齐 diagnostics.ts classifyRunnerFailure freebsd-jail 规则）：
+#   退出码非 0/信号 + stderr 含 "dsh-jail-run: " → 运行器失败（命令没跑）；否则按命令失败/拒绝处理。
+#   返回 {"是运行器失败": bool, "详情": string|空, "原因": string}
+段落 运行时失败分类 接收 退出码, 标准错误:
+  如果 退出码 == 空 或 退出码 == 0:
+    返回 ["是运行器失败": 假, "详情": 空, "原因": "命令正常退出或信号终止"]
+  # 运行器失败需满足：退出码 ∈ 运行器失败退出码（对齐 RUNNER_FAILURE_RULES 的 allowedExitCodes）
+  如果 列表包含(运行器失败退出码, 退出码) == 假:
+    返回 ["是运行器失败": 假, "详情": 空, "原因": "退出码不在运行器失败集合（命令自身失败/内核拒绝，非 setuid 助手报错）"]
+  设 行们 为 标准错误.分割("\n")
+  遍历 行 之 行们:
+    设 小写行 为 替换(行, "\r", "")
+    设 小写行 为 小写行.lower()
+    遍历 签名 之 运行器失败签名:
+      如果 小写行.包含(签名.lower()):
+        返回 ["是运行器失败": 真, "详情": 行, "原因": "沙箱运行器失败（dsh-jail-run 报错，命令未执行）"]
+  返回 ["是运行器失败": 假, "详情": 空, "原因": "命令自身失败或被内核拒绝（非运行器错误）"]
+
+# 匹配拒绝签名（对齐 diagnostics.ts matchesSignature）：非 0 退出 + stderr 含方言子串。
+段落 匹配拒绝签名 接收 退出码, 标准错误:
+  如果 退出码 == 空 或 退出码 == 0:
+    返回 假
+  设 小写 为 标准错误.lower()
+  遍历 签名 之 拒绝签名表:
+    如果 小写.包含(签名.lower()):
+      返回 真
+  返回 假

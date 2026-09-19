@@ -1,0 +1,106 @@
+# test_沙箱升级.light —— R67.3 沙箱升级审批纯逻辑对拍
+从 沙箱策略 导入 规范策略
+从 沙箱升级 导入 严格更宽表, 升级目标类型词汇, 沙箱拒绝标记, 升级提示标记, 是否严格更宽, 构造升级请求, 验证升级参数, 批准升级
+从 审批 导入 结果允许一次, 结果拒绝, 结果撤回, 结果不可用
+
+段落 断言相等 接收 实际, 期望, 标签:
+  如果 实际 != 期望:
+    抛出 "断言失败[" + 标签 + "]: 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言为真 接收 值, 标签:
+  如果 值 != 真:
+    抛出 "断言失败[" + 标签 + "]: 期望真，实际=" + 转字符串(值)
+
+段落 断言为假 接收 值, 标签:
+  如果 值 == 真:
+    抛出 "断言失败[" + 标签 + "]: 期望假，实际=" + 转字符串(值)
+
+段落 主:
+  打印 "=== 沙箱升级审批测试 ==="
+
+  # ---- 严格更宽阶梯 ----
+  断言为真(是否严格更宽("read-only", "workspace-write"), "ro→ww 更宽")
+  断言为真(是否严格更宽("read-only", "danger-full-access"), "ro→danger 更宽")
+  断言为真(是否严格更宽("workspace-write", "danger-full-access"), "ww→danger 更宽")
+  断言为假(是否严格更宽("workspace-write", "read-only"), "ww→ro 非更宽")
+  断言为假(是否严格更宽("danger-full-access", "workspace-write"), "danger 已最宽")
+  断言相等(升级目标类型词汇, ["wider-modes", "network", "full-access"], "升级目标类型")
+
+  # ---- 标记格式（逐字上游） ----
+  断言相等(沙箱拒绝标记("read-only"), "[sandbox: file access denied under read-only mode]", "拒绝标记")
+  断言相等(升级提示标记("command"), "[sandbox: escalation available — retry this exact command once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]", "升级提示标记")
+
+  # ---- 构造升级请求 + 参数校验 ----
+  设 只读 为 规范策略(["模式": "read-only", "工作区根": "/tmp/ws", "会话Id": "s-9"])
+  设 请求 为 构造升级请求(只读, ["类型": "wider-modes", "模式": "workspace-write"], "需要写工作区")
+  断言相等(请求["当前模式"], "read-only", "请求当前模式")
+  断言相等(请求["目标类型"], "wider-modes", "请求目标类型")
+  断言相等(请求["目标模式"], "workspace-write", "请求目标模式")
+  断言相等(请求["原因"], "需要写工作区", "请求原因")
+  断言相等(请求["会话Id"], "s-9", "请求会话Id透传")
+  断言为真(验证升级参数(请求), "合法请求校验通过")
+
+  # 非更宽请求 → 校验抛错（never 打扰人类）
+  设 非更宽 为 构造升级请求(只读, ["类型": "wider-modes", "模式": "read-only"], "no")
+  设 抛了 为 假
+  尝试:
+    验证升级参数(非更宽)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "非更宽请求抛错")
+
+  # full-access 缺目标模式 → 抛错
+  设 缺模式 为 构造升级请求(只读, ["类型": "full-access"], "escape")
+  设 抛了 为 假
+  尝试:
+    验证升级参数(缺模式)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "full-access缺模式抛错")
+
+  # 空原因 → 抛错
+  设 空原因 为 构造升级请求(只读, ["类型": "wider-modes", "模式": "workspace-write"], "")
+  设 抛了 为 假
+  尝试:
+    验证升级参数(空原因)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "空原因抛错")
+
+  # 非法目标类型 → 抛错
+  设 坏类型 为 构造升级请求(只读, ["类型": "bogus", "模式": "workspace-write"], "x")
+  设 抛了 为 假
+  尝试:
+    验证升级参数(坏类型)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "非法类型抛错")
+
+  # ---- 批准升级：ordered fail-closed ----
+  # allowed-once + wider-modes → 放宽到目标模式
+  设 放宽 为 批准升级(请求, 结果允许一次)
+  断言相等(放宽["模式"], "workspace-write", "放宽后模式ww")
+  断言相等(放宽["工作区根"], "/tmp/ws", "放宽后根")
+  断言相等(放宽["会话Id"], "s-9", "放宽后会话Id")
+  # allowed-once + full-access → danger-full-access
+  设 请求全 为 构造升级请求(只读, ["类型": "full-access", "模式": "danger-full-access"], "full escape")
+  设 放宽全 为 批准升级(请求全, 结果允许一次)
+  断言相等(放宽全["模式"], "danger-full-access", "full-access→danger")
+  # allowed-once + network → 允许网络=真，模式不变
+  设 请求网 为 构造升级请求(只读, ["类型": "network"], "need net")
+  设 放宽网 为 批准升级(请求网, 结果允许一次)
+  断言相等(放宽网["模式"], "read-only", "network模式不变")
+  断言为真(放宽网["允许网络"], "network标记")
+
+  # rejected / cancelled / unavailable → 抛错（命令未执行）
+  遍历 坏结果 之 [结果拒绝, 结果撤回, 结果不可用]:
+    设 抛了 为 假
+    尝试:
+      批准升级(请求, 坏结果)
+    捕获 错误:
+      设 抛了 为 真
+    断言为真(抛了, "拒绝类结果抛错(" + 转字符串(坏结果) + ")")
+
+  打印 "--- 沙箱升级审批测试通过 ---"
+
+主()

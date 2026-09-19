@@ -1,0 +1,163 @@
+{
+  "round": "R68",
+  "title": "FreeBSD 远程机 e2e 验证 + 交叉回归",
+  "timestamp": "2026-09-19T08:38:19Z",
+  "environment": {
+    "os": "FreeBSD",
+    "kernel": "15.1-STABLE",
+    "arch": "amd64",
+    "cpu": "8",
+    "memory_mb": 16339,
+    "python": "3.12.14",
+    "clang": "version 21.1.8 (https://github.com/llvm/llvm-project.git llvmorg-21.1.8-0-g2078da43e25a)"
+  },
+  "jail_binary": {
+    "path": "/usr/local/sbin/dsh-jail-run",
+    "installed": true,
+    "permissions": "755 root:wheel"
+  },
+  "cross_validation": [
+    {
+      "name": "PTY伪终端",
+      "file": "test_终端PTY.light",
+      "rc": 0,
+      "elapsed_sec": 1,
+      "passed": true,
+      "output_tail": "test_终端PTY PASS"
+    },
+    {
+      "name": "进程树POSIX",
+      "file": "test_进程树.light",
+      "rc": 0,
+      "elapsed_sec": 2,
+      "passed": true,
+      "output_tail": "test_进程树.light 全部断言通过（9 组 / 基本+退出码+stderr+spill+总超时+空闲超时+环境注入+启动失败+失真标志）"
+    },
+    {
+      "name": "原生socket",
+      "file": "test_套接字.light",
+      "rc": 1,
+      "elapsed_sec": 1,
+      "passed": false,
+      "output_tail": "  │   21    22 段落 断言真(条件, 标签):   参考示例：   请根据具体的错误信息进行修复"
+    },
+    {
+      "name": "事件循环",
+      "file": "test_事件循环.light",
+      "rc": 1,
+      "elapsed_sec": 1,
+      "passed": false,
+      "output_tail": "  57   设 甲 为 新建 套接字(对[0])   58   设 乙 为 新建 套接字(对[1])   建议: 系统调用失败，请检查文件路径、网络连接和系统资源状态。确认操作权限是否足够。   参考示例：   请检查文件路径、网络连接和系统资源状态"
+    },
+    {
+      "name": "事件循环socket集成",
+      "file": "test_套接字事件循环.light",
+      "rc": 1,
+      "elapsed_sec": 1,
+      "passed": false,
+      "output_tail": "  57   设 甲 为 新建 套接字(对[0])   58   设 乙 为 新建 套接字(对[1])   建议: 系统调用失败，请检查文件路径、网络连接和系统资源状态。确认操作权限是否足够。   参考示例：   请检查文件路径、网络连接和系统资源状态"
+    },
+    {
+      "name": "沙箱freebsd封装",
+      "file": "test_沙箱_freebsd.light",
+      "rc": 0,
+      "elapsed_sec": 1,
+      "passed": true,
+      "output_tail": "=== FreeBSD jail 封装测试（纯逻辑）=== --- FreeBSD jail 封装测试通过 ---"
+    },
+    {
+      "name": "沙箱策略引擎",
+      "file": "test_沙箱策略.light",
+      "rc": 0,
+      "elapsed_sec": 0,
+      "passed": true,
+      "output_tail": "=== 沙箱策略引擎测试 === --- 沙箱策略引擎测试通过 ---"
+    },
+    {
+      "name": "沙箱升级审批",
+      "file": "test_沙箱升级.light",
+      "rc": 0,
+      "elapsed_sec": 1,
+      "passed": true,
+      "output_tail": "=== 沙箱升级审批测试 === --- 沙箱升级审批测试通过 ---"
+    }
+  ],
+  "jail_e2e": [
+    {
+      "name": "jail_readonly_basic",
+      "rc": 0,
+      "elapsed_sec": 1,
+      "passed": true,
+      "output_tail": ""
+    },
+    {
+      "name": "jail_readonly_deny_write",
+      "rc": 0,
+      "elapsed_sec": 0,
+      "passed": true,
+      "output_tail": ""
+    },
+    {
+      "name": "jail_readonly_bin_readable",
+      "rc": 0,
+      "elapsed_sec": 0,
+      "passed": true,
+      "output_tail": ""
+    },
+    {
+      "name": "jail_workspace_write",
+      "rc": 0,
+      "elapsed_sec": 0,
+      "passed": true,
+      "output_tail": "hello"
+    },
+    {
+      "name": "jail_workspace_deny_etc",
+      "rc": 0,
+      "elapsed_sec": 0,
+      "passed": true,
+      "output_tail": ""
+    }
+  ],
+  "summary": {
+    "total": 13,
+    "passed": 10,
+    "failed": 3,
+    "skipped": 0,
+    "jail_e2e_passed": 5,
+    "jail_e2e_total": 5,
+    "cross_passed": 5,
+    "cross_total": 8,
+    "platform_differences_found": 2
+  },
+  "blockers": [],
+  "notes": [
+    "R66/R67 产物已就位：套接字、事件循环、沙箱_freebsd、沙箱策略、沙箱升级、dsh-jail-run.c",
+    "PTY 伪终端在 FreeBSD 上通过（openpty + sh 外壳适配）",
+    "进程树 POSIX 分支（setsid/killpg）在 FreeBSD 上实测通过",
+    "dsh-jail-run 使用 ip4=disable/ip6=disable 现代语法，兼容 FreeBSD 15.1",
+    "jail e2e 需 sudo 权限（nullfs 加载、jail 创建、setuid 二进制安装）",
+    "Jail e2e 全部 5 项通过：read-only 基本执行、read-only 拒绝写、read-only /bin 可读、workspace-write 允许写、workspace-write 拒绝写 /etc",
+    "发现 2 项 FreeBSD socket 平台差异：SO_REUSEADDR getsockopt 返回 4（非布尔）、socketpair(AF_INET) 不支持（仅 AF_UNIX）"
+  ],
+  "platform_differences": [
+    {
+      "area": "socket SO_REUSEADDR",
+      "test": "test_套接字.light",
+      "linux_behavior": "getsockopt(SO_REUSEADDR) 返回 0 或 1（布尔）",
+      "freebsd_behavior": "getsockopt(SO_REUSEADDR) 返回 4（选项值，非布尔）",
+      "impact": "测试断言期望读回 1，实际得到 4，测试失败",
+      "severity": "platform-difference",
+      "recommendation": "R66 套接字模块应在 getsockopt 时规范化为布尔值，或测试按平台调整期望值"
+    },
+    {
+      "area": "socketpair(AF_INET)",
+      "test": "test_事件循环.light, test_套接字事件循环.light",
+      "linux_behavior": "socketpair(AF_INET, SOCK_STREAM) 支持，返回一对已连接的 TCP socket",
+      "freebsd_behavior": "socketpair(AF_INET, SOCK_STREAM) 返回 EOPNOTSUPP (errno 45)，仅支持 AF_UNIX/AF_LOCAL",
+      "impact": "事件循环测试使用 socketpair 创建测试套接字对，在 FreeBSD 上直接失败",
+      "severity": "platform-difference",
+      "recommendation": "R66 事件循环测试应使用 AF_UNIX socketpair（跨平台通用），或使用真实 TCP 回环连接替代"
+    }
+  ]
+}
