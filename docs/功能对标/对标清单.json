@@ -246,12 +246,15 @@
       "功能": "CLI 入口（headless runner）",
       "原版包": "apps/cli + bundle/headless",
       "光明模块": "src/总入口.light + examples/运行CLI.light",
-      "状态": "done(v2 增量持久化+会话列表)；0.1.5登记：CLI 宿主层 6 文件变更未移植(args/bin/dump-config/profile-boot)；0.1.5第5轮任务1：总入口 模型解析链末级 fallback 接线 取默认模型()(deepseek-flash)；其余 CLI 宿主变更(args/bin/dump-config/profile-boot)维持登记不移植；0.1.5第7轮：CLI 命令面已覆盖——总入口.light 多命令调度 run/dump-config/version/help + 配置来源标注（对齐 args.ts launcher 哲学 + dump-config.ts）；profile/patch/plugin 层与 argv 子命令宿主面维持登记",
+      "状态": "done(v2 增量持久化+会话列表)；0.1.5登记：CLI 宿主层 6 文件变更未移植(args/bin/dump-config/profile-boot)；0.1.5第5轮任务1：总入口 模型解析链末级 fallback 接线 取默认模型()(deepseek-flash)；其余 CLI 宿主变更(args/bin/dump-config/profile-boot)维持登记不移植；0.1.5第7轮：CLI 命令面已覆盖——总入口.light 多命令调度 run/dump-config/version/help + 配置来源标注（对齐 args.ts launcher 哲学 + dump-config.ts）；profile/patch/plugin 层与 argv 子命令宿主面维持登记；R74路4：新增 src/CLI判定逻辑.light 移植上游 args/profile-boot/dump-config/plugin 四文件纯逻辑函数（解析启动=resolveBoot+rejectElectronProfile、累积补丁=collect、解析遥测补丁=resolveTelemetryPatch、全补丁顺序=allPatches、校验默认样板初始化=initializeProfileFromDefault 校验分支、渲染配置快照=renderConfigDump、锚定路径规格=anchorPathSpec），另补 examples/test_R74_路4_CLI宿主.light 实测 rc=0；bin.ts（Node 入口/版本读取/argv 分发）与 process-shutdown.ts（真实 setTimeout+process.exit 强制退出）登记不移植——宿主进程能力，光明层无对应",
       "证据": [
         "src/总入口.light",
         "examples/test_cli深化.light",
         "examples/test_入口默认模型.light",
-        "examples/test_CLI命令面.light"
+        "examples/test_CLI命令面.light",
+        "src/CLI判定逻辑.light",
+        "examples/test_R74_路4_CLI宿主.light",
+        "_task4_R74_路4_CLI宿主.md"
       ],
       "本轮目标": "done(v2)：v1 环境变量参数解析/单轮对话/内置bash工具/会话写出/多轮REPL/续写；v2 增量持久化：REPL和单轮模式均改用增量保存(初始化日志+追加事件行，文件不存在自动初始化，从指定序号开始只追加新增事件)；新增 HARNESS_LIST=1 会话列表功能(列出根目录下所有已有会话，不需要API key)；增量保存函数可测试导出",
       "反跑判据": "test_cli深化.light：事件包含或工具名断言改反即红",

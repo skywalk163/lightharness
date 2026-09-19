@@ -1,0 +1,166 @@
+# CLI判定逻辑.light —— 对标 #11「CLI 入口（headless runner）」宿主层 6 文件移植收口
+#
+# 上游（/g/dswork/AI/deepseek-harness/apps/cli/src/）：
+#   args.ts          —— launcher 参数解析（commander + process.argv/exit）
+#   bin.ts           —— Node 入口（读 package.json 版本、分发）
+#   dump-config.ts   —— 组合 profile 层并渲染配置快照
+#   profile-boot.ts  —— profile 初始化 / 遥测补丁 / 层组合 / runProfile
+#   process-shutdown.ts —— 有界升級进程关停（setTimeout + process.exit）
+#   plugin.ts        —— pnpm 转发 + bundle 调和 + 相对路径锚定
+#
+# 本模块只承载「能在光明层表达的纯逻辑」，逐函数对照见交付报告与对标清单 #11：
+#   解析启动        ← args.ts resolveBoot + rejectElectronProfile（校验规则，纯逻辑）
+#   累积补丁        ← args.ts collect（可重复单值收集器，纯逻辑）
+#   解析遥测补丁    ← profile-boot.ts resolveTelemetryPatch（遥测禁用开关，纯逻辑）
+#   全补丁顺序      ← profile-boot.ts allPatches（层叠加顺序，纯逻辑）
+#   校验默认样板初始化 ← profile-boot.ts initializeProfileFromDefault 的校验分支（纯逻辑）
+#   渲染配置快照    ← dump-config.ts renderConfigDump（层注释渲染，纯字符串逻辑）
+#   锚定路径规格    ← plugin.ts anchorPathSpec（相对路径规格锚定，纯字符串逻辑）
+#
+# 登记不移植（宿主层，光明无对应能力，见 #11 证据与交付报告）：
+#   bin.ts          —— Node 进程入口；版本读取/argv 分发属宿主面
+#   process-shutdown.ts —— 真实定时器 + process.exit 强制退出，光明无对应能力
+#   其余文件中的 文件系统/commander/cordis/pnpm 依赖 —— 宿主面，不在光明层实现
+
+从 内置核心字符串 导入 开头, 截取, 去除空白
+从 字符串工具轻量 导入 连接字符串
+
+# ============================================================
+# args.ts —— 启动调用解析（resolveBoot + rejectElectronProfile）
+# ============================================================
+# 等价上游 args.ts resolveBoot(program, profile, options, args) 与
+# rejectElectronProfile：仅实现「纯校验与结构化」分支，不接 process.exit / commander。
+# 入参均为已解析的 launcher 选项 + 余下内部参数：
+#   档案         profile 名称（字符串）
+#   要配置倾印    --dump-config 是否置位（真/假）
+#   要默认倾印    --dump-default-config 是否置位（真/假）
+#   默认样板      --from-default-profile 名称（未提供为 空）
+#   补丁表        --patch 收集到的路径表（可重复）
+#   余参          launcher 自有 flags 之后的全部内部参数（原样转交 booted 树）
+# 返回结构化调用字典 ["方式": "profile"|"dump-config", ...]；校验失败则抛出带上游同款文案的错误。
+段落 解析启动 接收 档案, 要配置倾印, 要默认倾印, 默认样板, 补丁表, 余参:
+  # --patch 收到空串
+  如果 列表包含(补丁表, "") == 真:
+    抛出 "error: --patch needs a path"
+  # --from-default-profile 收到空串
+  如果 默认样板 == "":
+    抛出 "error: --from-default-profile needs a name"
+  # desktop 由 Electron 独占管理（不区分大小写）
+  如果 小写(档案) == "desktop":
+    抛出 "error: profile \"desktop\" is managed exclusively by the Electron application"
+  # 两个 dump 旗标互斥
+  如果 要配置倾印 == 真 且 要默认倾印 == 真:
+    抛出 "error: --dump-config and --dump-default-config are mutually exclusive"
+  # 非 dump 模式 → profile 引导（余参原样带走）
+  如果 要配置倾印 != 真 且 要默认倾印 != 真:
+    返回 ["方式": "profile", "档案": 档案, "默认样板": 默认样板, "补丁表": 补丁表, "余参": 余参]
+  # dump 不接受任何 app 参数
+  如果 长度(余参) > 0:
+    抛出 "error: config dumps take no app arguments, got " + 连接字符串(余参, " ")
+  # --dump-default-config 只打印 bundle 层、不吃 --patch
+  设 仅默认 为 要默认倾印 == 真
+  如果 仅默认 == 真 且 长度(补丁表) > 0:
+    抛出 "error: --dump-default-config prints the bundle layers and takes no --patch"
+  返回 ["方式": "dump-config", "档案": 档案, "默认样板": 默认样板, "仅默认": 仅默认, "补丁表": 补丁表]
+
+# ============================================================
+# args.ts —— 可重复单值收集器（collect：(value, previous=[]) => [...previous, value]）
+# ============================================================
+# 等价上游 collect：--patch a.yml --patch b.yml 收集为 [a.yml, b.yml]；绝不变长吞掉后续内部参数。
+段落 累积补丁 接收 值, 旧表:
+  设 新表 为 []
+  遍历 项 之 旧表:
+    新表.追加(项)
+  新表.追加(值)
+  返回 新表
+
+# ============================================================
+# profile-boot.ts —— 遥测禁用补丁（resolveTelemetryPatch）
+# ============================================================
+# 等价上游：ANY 非空值（含 "0"/"false"）都禁用遥测——隐私开关宁可「误关」不可「误开」；
+# 组合里没有遥测行时一律不生成补丁（自定义 profile 不必挂遥测也能跑）。
+#   禁用环境值    DSH_TELEMETRY_DISABLED 原始值（未设置时为 空）
+#   有遥测行      该组合是否携带遥测行（真/假）
+# 返回补丁字典 ["编号": "session-telemetry-otel", "禁用": 真] 或 空。
+段落 解析遥测补丁 接收 禁用环境值, 有遥测行:
+  如果 禁用环境值 == 空 或 禁用环境值 == "":
+    返回 空
+  如果 有遥测行 == 假:
+    返回 空
+  返回 ["编号": "session-telemetry-otel", "禁用": 真]
+
+# ============================================================
+# profile-boot.ts —— 全补丁叠加顺序（allPatches）
+# ============================================================
+# 等价上游 allPatches：bundle 层 → profile 自身层 → 家用（home）层 → 覆盖层（--patch + 遥测），顺序即应用顺序。
+#   包补丁表    bundle 层（dsh.profile.bundles 顺序）
+#   档案补丁    profile 自身 cordis.patch.yml 层
+#   家用补丁表  家用层（$DSH_HOME/cordis.patch.yml，机器本地、跨 profile 生效，故排在自身层之上）
+#   覆盖层表    --patch 覆盖层 + 遥测开关层
+段落 全补丁顺序 接收 包补丁表, 档案补丁, 家用补丁表, 覆盖层表:
+  设 结果 为 []
+  遍历 项 之 包补丁表:
+    结果.追加(项)
+  遍历 项 之 档案补丁:
+    结果.追加(项)
+  遍历 项 之 家用补丁表:
+    结果.追加(项)
+  遍历 项 之 覆盖层表:
+    结果.追加(项)
+  返回 结果
+
+# ============================================================
+# profile-boot.ts —— 从默认样板初始化 profile 的校验分支
+# ============================================================
+# 等价上游 initializeProfileFromDefault 的纯校验前置：未知样板名 / 目标名是已发布（shipped）样板 都报错；
+# 真正的目录创建、模板拷贝属文件系统宿主面，登记不移植。
+#   目标名      新 profile 名称
+#   样板名      --from-default-profile 指定的已发布样板名
+#   已知样板表  已发布样板名表（等价 PROFILE_TEMPLATES 键表）
+# 校验通过返回 真；否则抛出（文案对齐上游 unknown/shipped 两类错误）。
+段落 校验默认样板初始化 接收 目标名, 样板名, 已知样板表:
+  如果 列表包含(已知样板表, 样板名) == 假:
+    抛出 "unknown default profile " + 样板名 + "; expected one of " + 连接字符串(已知样板表, ", ")
+  如果 列表包含(已知样板表, 目标名) == 真:
+    抛出 "profile " + 目标名 + " is shipped and cannot be a custom profile target; omit --from-default-profile to use it"
+  返回 真
+
+# ============================================================
+# dump-config.ts —— 配置快照渲染（renderConfigDump 纯字符串逻辑）
+# ============================================================
+# 等价上游 renderConfigDump：按层打印组合配置，每层注释命名其来源文件（这里用「标签」等价来源名）。
+# 纯字符串拼装，不接 process.stdout / cordis include 算法。
+#   名称     dsh 安装名（等价 NAME）
+#   根路径   该 profile 的空根配置文件（等价 cordis.yml）
+#   层表     层表，每项 ["标签": 来源名, "补丁": 补丁项表]
+段落 渲染配置快照 接收 名称, 根路径, 层表:
+  设 行表 为 []
+  行表.追加("=== " + 名称 + " 配置快照（根: " + 根路径 + "） ===")
+  如果 长度(层表) == 0:
+    行表.追加("  (无层)")
+  否则:
+    遍历 层 之 层表:
+      行表.追加("  - " + 层["标签"] + " (" + 名称 + " layer)")
+  返回 连接字符串(行表, "\n")
+
+# ============================================================
+# plugin.ts —— 相对路径规格锚定（anchorPathSpec）
+# ============================================================
+# 等价上游 anchorPathSpec：pnpm 以 profile 目录为 cwd 运行，裸 `.`/`../plugin` 会静默解析进 profile 内部；
+# 故把相对路径规格（前导点号）锚定回调用目录。等价上游 `\.{1,2}(?:[/\\].*)?` —— 任一前导点号即锚定。
+#   参数          一个 pnpm 参数（原样来自 argv）
+#   基准目录      调用 dsh 时的目录（process.cwd() 等价）
+# 返回锚定后的参数；绝对路径 / registry 名 / 其它 pnpm 参数原样返回。
+段落 锚定路径规格 接收 参数, 基准目录:
+  设 前缀 为 ""
+  设 余 为 参数
+  如果 开头(参数, "file:"):
+    设 前缀 为 "file:"
+    设 余 为 截取(参数, 5, 长度(参数))
+  否则 如果 开头(参数, "link:"):
+    设 前缀 为 "link:"
+    设 余 为 截取(参数, 5, 长度(参数))
+  # 任一前导点号 → 锚定（等价上游 \.{1,2}）
+  如果 长度(余) >= 1 且 截取(余, 0, 1) == ".":
+    返回 前缀 + 连接路径(基准目录, 余)
+  返回 参数
