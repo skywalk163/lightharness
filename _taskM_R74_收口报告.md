@@ -84,7 +84,48 @@ FAILED test_example_exit_code[test_R74_路5_JSONRPC深化.light]
 
 ---
 
-## 七、本轮受阻项
+## 七、0.82 全量门（本轮唯一一次，已跑）
+
+**门禁机**：`ai@192.168.0.82`（FreeBSD 15.1-STABLE，host fb82，python3.12.14）——
+注意不是 workbuddy、也不是 .88；`scripts/同步0.82.py` 用 `.env` 的 `SSH_USER_AI`/`SSH_PASS_AI` 密码认证，脚本内 HOST 已是 0.82。
+
+```
+sync : 4522 文件 / 27.8MB / 6.1s 打包 + 1.2s 上传 → /tmp/r44-20260920-005241，远端 examples 466（与本机一致）✅ RC=0
+test : 7885 用例 / 通过 7685 / 失败 116 / skip 74 / xfail 10 / 248.94s
+diff : 对 R65 基线 082_lightmerge基线_2026-09-19-074303.json → 失败 0 → 116，新增红 116，已修复 0
+```
+
+### 7.1 新增红归因（按 message 首行分类）
+
+| 条数 | 类别 | 是否为 R74 引入 |
+|---|---|---|
+| **105** | `NotImplementedError: 原生后端切片暂不支持 step 参数`（`src/llvm/codegen_typed.py:4209`） | **否**（见 7.2） |
+| 6~7 | 具名实参 keyword_arg（`test_context_manager.py` 的 TestBracketCallKeywordArgs / TestBugAKeywordArg / TestBackendParity + `test_段落调用具名实参`） | **否**（见 7.3，已实锤） |
+| 1 | 「等待」只能写在 异步（`test_04_negative_await_in_sync_method`） | 否 —— R70-B `_require_async_context` 收紧的既有代价 |
+| 1 | 魔数护栏（「字节缓冲」含「纯光明实现」不在首两行，L-176） | 否 |
+| 1 | `test_ffi_phase2` FakeLib 无 close | 否 |
+| 1 | `test_20次连续验证调用` | 否（原生腿同族） |
+
+### 7.2 为什么 105 条切片红不是 R74 引入
+`src/llvm/codegen_typed.py` 的 `git log` 显示**最后一次改动是 R60（a1b4e7a0）**，早于 R65 基线。
+抛出条件 `len(args) >= 3 and args[2] is not None` 没变 → 是**调用方开始传第 3 个（step）参数**了。
+R74 改动面只有「括号式形参名解析」+ 测试文件，不触及切片参数构造。
+（严格说明：此项依据改动史判断，**未做 commit 二分实锤**。）
+
+### 7.3 keyword_arg 6 条已实锤与 R74 无关
+本机对照实验（同一文件、只切 `parser_stmt.py`）：
+- A）当前 HEAD（含 L-179）→ `tests/test_context_manager.py` **6 failed / 137 passed**
+- B）仅把 `parser_stmt.py` 回退到 `702de3b0`（L-178，不含 L-179）→ **仍然 6 failed / 137 passed**
+→ **L-179 不是元凶**。路3 对该文件的改动只有 `test_async_with_return`（`函数`→`异步 函数`），也未触碰 keyword_arg 系列。
+
+### 7.4 结论
+**116 条新增红全部是 R66~R73 累积的欠账**——根因是 R65 门之后 SSH 一直不通，多轮编译器改动（R70/R71/R72/R73）**没有全量门把关**。
+本轮 R74 的改动**未引入新增红**（签名对拍 90/90 + LH 门禁 466 全绿 + 上述对照实验）。
+⚠️ 但**门判据未通过**（新增红 ≠ 0），R74 不能判 PASS，需先清这 116 条欠账。
+
+---
+
+## 八、本轮受阻项
 
 | 项 | 原因 | 影响 |
 |---|---|---|
