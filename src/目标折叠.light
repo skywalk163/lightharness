@@ -16,14 +16,14 @@
 
 # ===== 基础校验原语 =====
 
-段落 是字母小写 接收 字符:
+段落 是字母小写(字符):
   返回 列表包含(小写字母, 字符)
 
-段落 是字母数字小写 接收 字符:
+段落 是字母数字小写(字符):
   返回 列表包含(小写字母, 字符) 或 列表包含(数字字符, 字符)
 
 # 小写短横线（lower-kebab-case）：^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$
-段落 是小写短横线 接收 代码:
+段落 是小写短横线(代码):
   如果 是字符串(代码) == 假: 返回 假
   设 长 为 字符串长度(代码)
   如果 长 == 0: 返回 假
@@ -41,16 +41,16 @@
     设 索引 为 索引 + 1
   返回 真
 
-段落 是正整数 接收 值, 字段:
+段落 是正整数(值, 字段):
   如果 是整数(值) == 假 或 值 < 1:
     抛出 新建 错误("goal change " + 字段 + " must be a positive safe integer")
 
-段落 是非负整数 接收 值, 字段:
+段落 是非负整数(值, 字段):
   如果 是整数(值) == 假 或 值 < 0:
     抛出 新建 错误("goal change " + 字段 + " must be a non-negative safe integer")
 
 # 升序排序（选择排序，返回新表；绕过 列表排序 原地返回 None 的坑）
-段落 排序列表 接收 列表:
+段落 排序列表(列表):
   设 池 为 []
   遍历 项 之 列表: 列表追加(池, 项)
   设 结果 为 []
@@ -69,12 +69,12 @@
     设 池 为 新池
   返回 结果
 
-段落 键名串 接收 字典:
+段落 键名串(字典):
   返回 连接字符串(排序列表(字典键列表(字典)), ",")
 
 # ===== 解码 =====
 
-段落 解码阻塞原因 接收 值:
+段落 解码阻塞原因(值):
   如果 是字典(值) == 假 或 键名串(值) != "code,message":
     抛出 新建 错误("goal change goal.blockedReason must have exactly code and message fields")
   设 代码 为 字典获取(值, "code")
@@ -86,7 +86,7 @@
   设 结果 为 {"code": 代码, "message": 消息}
   返回 结果
 
-段落 解码快照 接收 值:
+段落 解码快照(值):
   如果 是字典(值) == 假:
     抛出 新建 错误("goal change goal must be a record")
   设 编号 为 字典获取(值, "id")
@@ -112,7 +112,7 @@
     字典设置(结果, "blockedReason", 解码阻塞原因(字典获取(值, "blockedReason")))
   返回 结果
 
-段落 解码引用 接收 值:
+段落 解码引用(值):
   如果 是字典(值) == 假 或 键名串(值) != "id,revision":
     抛出 新建 错误("goal clear tombstone must have exactly id and revision fields")
   设 编号 为 字典获取(值, "id")
@@ -122,7 +122,7 @@
   设 结果 为 {"id": 编号, "revision": 字典获取(值, "revision")}
   返回 结果
 
-段落 解码目标变更 接收 值:
+段落 解码目标变更(值):
   如果 是字典(值) == 假 或 字典获取(值, "kind") != "goal/change":
     返回 空
   设 版本 为 字典获取(值, "version")
@@ -155,7 +155,7 @@
   字典设置(结果, "updatedAt", 字典获取(值, "updatedAt"))
   返回 结果
 
-段落 目标变更引用 接收 变更:
+段落 目标变更引用(变更):
   如果 字典获取(变更, "operation") == "clear":
     设 结果 为 字典获取(变更, "cleared")
     返回 结果
@@ -163,18 +163,18 @@
   设 结果 为 {"id": 字典获取(当前目标, "id"), "revision": 字典获取(当前目标, "revision")}
   返回 结果
 
-段落 空目标折叠状态 接收:
+段落 空目标折叠状态():
   返回 {"goal": 空, "roundsStarted": 0, "createdAt": 空, "updatedAt": 空, "lastRef": 空, "seenGoalIds": []}
 
-段落 要求同定义 接收 当前, 下一, 操作:
+段落 要求同定义(当前, 下一, 操作):
   如果 字典获取(下一, "objective") != 字典获取(当前, "objective") 或 字典获取(下一, "maxGoalRounds") != 字典获取(当前, "maxGoalRounds"):
     抛出 新建 错误("goal " + 操作 + " cannot change objective or maxGoalRounds")
 
-段落 要求下一修订 接收 当前, 下一, 操作:
+段落 要求下一修订(当前, 下一, 操作):
   如果 字典获取(下一, "id") != 字典获取(当前, "id") 或 字典获取(下一, "revision") != 字典获取(当前, "revision") + 1:
     抛出 新建 错误("goal " + 操作 + " must advance the current goal by one revision")
 
-段落 校验快照转移 接收 状态, 变更, 当前:
+段落 校验快照转移(状态, 变更, 当前):
   设 下一 为 字典获取(变更, "goal")
   设 操作 为 字典获取(变更, "operation")
   要求下一修订(当前, 下一, 操作)
@@ -202,7 +202,7 @@
     如果 字典获取(当前, "phase") != "active" 或 字典获取(下一, "phase") != "blocked":
       抛出 新建 错误("goal block has an invalid phase transition")
 
-段落 应用目标变更 接收 状态, 变更:
+段落 应用目标变更(状态, 变更):
   设 引用 为 目标变更引用(变更)
   如果 字典获取(变更, "operation") == "clear":
     设 当前 为 字典获取(状态, "goal")
@@ -243,7 +243,7 @@
   字典设置(状态, "updatedAt", 字典获取(变更, "updatedAt"))
   字典设置(状态, "lastRef", 引用)
 
-段落 应用目标事件 接收 状态, 事件:
+段落 应用目标事件(状态, 事件):
   如果 字典获取(事件, "type") == "goal/change":
     设 变更 为 解码目标变更(字典获取(事件, "data"))
     如果 变更 == 空:
@@ -275,7 +275,7 @@
       抛出 新建 错误("goal round at session event " + 转字符串(字典获取(事件, "seq")) + " is not the next admitted round of the active goal")
     字典设置(状态, "roundsStarted", 字典获取(来源, "round"))
 
-段落 折叠目标 接收 事件表:
+段落 折叠目标(事件表):
   设 状态 为 空目标折叠状态()
   遍历 事件 之 事件表:
     应用目标事件(状态, 事件)
@@ -296,17 +296,17 @@
 # （pendingActivation），事件真正落日志时才采用；没有骑上的 goal/change 事件一律回到 disarmed
 # （会话重放/恢复时不继承自动续作授权）。setActivation 仅在真正变化时算一次激活边。
 
-段落 空激活运行时 接收:
+段落 空激活运行时():
   返回 {"activation": "disarmed", "pendingActivation": 空}
 
 # 提交前挂起激活边（偏移 = 追加前的 session 下一序号，对标 commit() 的 pendingActivation）
-段落 挂起激活 接收 运行时, 激活, 偏移:
+段落 挂起激活(运行时, 激活, 偏移):
   字典设置(运行时, "pendingActivation", ["offset": 偏移, "activation": 激活])
 
 # goal/change 事件到达时的激活边界（对标 session/event 处理器）：
 # 待定激活恰好骑在本事件序号上 → 采用该激活；否则视为无进程内授权 → disarmed。
 # 返回是否发生激活边变化（原版仅真正变化时发布 goal/activation-changed）。
-段落 应用激活边界 接收 运行时, 序号:
+段落 应用激活边界(运行时, 序号):
   设 待定 为 字典获取(运行时, "pendingActivation")
   设 激活 为 "disarmed"
   如果 待定 != 空 且 字典获取(待定, "offset") == 序号:
@@ -322,7 +322,7 @@
 #   - 已 active 且 armed → 拒绝（重复恢复；GOAL_INVALID_TRANSITION）
 #   - 轮次预算耗尽 → 拒绝（须先调大 maxGoalRounds）
 #   - 通过 → 提交 resume 变更（phase→active）并以 armed 激活边落地
-段落 恢复激活判定 接收 目标, 激活, 轮次已开:
+段落 恢复激活判定(目标, 激活, 轮次已开):
   设 编号 为 字典获取(目标, "id")
   设 阶段 为 字典获取(目标, "phase")
   如果 阶段 == "complete":
@@ -337,14 +337,14 @@
 #   模型（update_goal 工具调用方）不得恢复暂停目标——只能由用户恢复。
 #   判据：目标 phase == "paused" 且 id/revision 命中引用 → 拒绝（抛错）；
 #   active/blocked 正常放行；引用不匹配放行（交由下游 GoalService.resume 处理）。
-段落 判定模型可恢复 接收 目标, 引用:
+段落 判定模型可恢复(目标, 引用):
   设 阶段 为 字典获取(目标, "phase")
   如果 阶段 == "paused" 且 字典获取(目标, "id") == 字典获取(引用, "id") 且 字典获取(目标, "revision") == 字典获取(引用, "revision"):
     抛出 新建 错误("the model cannot resume a paused goal; the user must resume it")
   返回 真
 
 # 构造驱动器用的目标视图（对标 GoalService.view：投影 + roundsStarted + 进程内激活）
-段落 造目标视图 接收 折叠, 激活:
+段落 造目标视图(折叠, 激活):
   设 当前 为 字典获取(折叠, "goal")
   如果 当前 == 空:
     返回 空
@@ -371,35 +371,35 @@
 # max-tokens 解除授权、fail-closed 预约校验、预步决策声明 startsRequestSeries（#d3ab4ce53d）。
 
 # 模型可见的同会话续作提示（对标 renderGoalRoundPrompt，prompt.ts 逐行同文）
-段落 造目标轮次文本 接收 目标, 轮次:
+段落 造目标轮次文本(目标, 轮次):
   返回 "<goal_round>\n" + "Objective: " + 序列化JSON(字典获取(目标, "objective")) + "\n" + "Round: " + 转字符串(轮次) + "/" + 转字符串(字典获取(目标, "maxGoalRounds")) + "\n\n" + "Continue working toward the objective in this same session. Treat the current workspace, " + "tool results, and durable session state as authoritative; inspect them instead of assuming " + "earlier narration is still current. Make concrete progress and verify the result. Before " + "claiming completion, gather evidence that the whole objective is achieved, read the current " + "goal, and mark it complete. If work remains, leave the goal active for the next round. Follow " + "the configured goal-tool policy before reporting a blocker.\n" + "</goal_round>"
 
 # 单 text 块形式（对标 ContentBlock[] 返回）
-段落 造目标轮次块 接收 目标, 轮次:
+段落 造目标轮次块(目标, 轮次):
   返回 [{"type": "text", "text": 造目标轮次文本(目标, 轮次)}]
 
-段落 是目标轮次来源 接收 来源:
+段落 是目标轮次来源(来源):
   返回 是字典(来源) 且 字典获取(来源, "kind") == "goal" 且 字典获取(来源, "round") > 0
 
-段落 新轮次驱动状态 接收:
+段落 新轮次驱动状态():
   返回 {"attempt": 空, "competingQueued": 假, "needsCheckpoint": 假, "stopping": 假}
 
 # 新一轮预约（对标 drive() 构造的 RoundAttempt；内容串供 deep-equal 比对）
-段落 新轮次预约 接收 目标, 轮次, 消息标识, 内容块表:
+段落 新轮次预约(目标, 轮次, 消息标识, 内容块表):
   设 预约 为 {"goalId": 字典获取(目标, "id"), "revision": 字典获取(目标, "revision"), "round": 轮次, "messageId": 消息标识, "phase": "queued", "cancelled": 假, "stale": 假}
   字典设置(预约, "内容串", 序列化JSON(内容块表))
   返回 预约
 
-段落 同轮预约 接收 来源, 已有:
+段落 同轮预约(来源, 已有):
   返回 是目标轮次来源(来源) 且 字典获取(来源, "goalId") == 字典获取(已有, "goalId") 且 字典获取(来源, "revision") == 字典获取(已有, "revision") 且 字典获取(来源, "round") == 字典获取(已有, "round")
 
 # 对标 sameQueued：同轮 且 内容深度相等
-段落 同排队内容 接收 内容块表, 来源, 已有:
+段落 同排队内容(内容块表, 来源, 已有):
   返回 同轮预约(来源, 已有) 且 序列化JSON(内容块表) == 字典获取(已有, "内容串")
 
 # agent/inbox/inserted（入 next-turn 队）反应：非自身排队 → 竞争排队置位 + 自身 queued 预约置陈旧
 # 返回是否判定为竞争消息
-段落 队列插入处理 接收 状态, 入下轮, 内容块表, 来源:
+段落 队列插入处理(状态, 入下轮, 内容块表, 来源):
   如果 入下轮 == 假:
     返回 假
   设 尝试 为 字典获取(状态, "attempt")
@@ -411,19 +411,19 @@
   返回 真
 
 # agent/inbox/claimed 反应：自身排队内容被认领 → phase=claimed
-段落 队列认领处理 接收 状态, 内容块表, 来源:
+段落 队列认领处理(状态, 内容块表, 来源):
   设 尝试 为 字典获取(状态, "attempt")
   如果 尝试 != 空 且 同排队内容(内容块表, 来源, 尝试):
     字典设置(尝试, "phase", "claimed")
 
 # agent/inbox/discarded 反应：自身预约被丢弃 → cancelled
-段落 队列丢弃处理 接收 状态, 内容块表, 来源:
+段落 队列丢弃处理(状态, 内容块表, 来源):
   设 尝试 为 字典获取(状态, "attempt")
   如果 尝试 != 空 且 同排队内容(内容块表, 来源, 尝试):
     字典设置(尝试, "cancelled", 真)
 
 # session/event user/message 反应：预约消息已落会话日志 → phase=admitted
-段落 轮次已入会话 接收 状态, 消息标识:
+段落 轮次已入会话(状态, 消息标识):
   设 尝试 为 字典获取(状态, "attempt")
   如果 尝试 != 空 且 字典获取(尝试, "messageId") == 消息标识:
     字典设置(尝试, "phase", "admitted")
@@ -432,7 +432,7 @@
 # 仅当存在 queued/claimed/已取消的预约 且 目标仍 active+armed 且 id/revision 完全一致时才暂停；
 # resume 会推进 revision，因此「宿主暂停后立即恢复」不会被再暂停。
 # 返回 "pause"（宿主应调用 goals.pause）或 "continue"；暂停时清掉预约。
-段落 空闲圈定暂停 接收 状态, 目标:
+段落 空闲圈定暂停(状态, 目标):
   设 尝试 为 字典获取(状态, "attempt")
   如果 尝试 == 空:
     返回 "continue"
@@ -446,7 +446,7 @@
 # goal/changed 反应（对标 goal/changed handler）：登记检查点需求；
 # 宿主发起的暂停（智能体在运行且发起者非本智能体）→ 中止 live turn；
 # 模型自发暂停（自己轮内的 update_goal）→ 正常收尾。
-段落 目标变更驱动反应 接收 状态, 操作, 智能体运行中, 本智能体发起:
+段落 目标变更驱动反应(状态, 操作, 智能体运行中, 本智能体发起):
   字典设置(状态, "needsCheckpoint", 真)
   如果 操作 == "pause" 且 智能体运行中 且 本智能体发起 == 假:
     返回 "abort-turn"
@@ -454,7 +454,7 @@
 
 # turn/end 反应：max-tokens → 解除自动授权；aborted → 已认领/已入会话的预约标记取消
 #（否则解除授权）。其余原因不动作。
-段落 轮次结束反应 接收 状态, 原因种类:
+段落 轮次结束反应(状态, 原因种类):
   如果 原因种类 == "max-tokens":
     返回 "disarm"
   如果 原因种类 == "aborted":
@@ -470,7 +470,7 @@
 # 驱动一步决策（对标 drive() 的纯决策核；驱动活跃 = fiber 活跃 + 未 stopping + 智能体空闲 + 无竞争排队）：
 #   检查点失败 → "disarm"；已有预约 → 清掉并要求再检查点（"defer-round"）；
 #   目标非 active+armed → "wait"；轮次预算耗尽 → "block-round-limit"；否则预约下一轮。
-段落 驱动决策 接收 状态, 目标, 驱动活跃, 检查点成功:
+段落 驱动决策(状态, 目标, 驱动活跃, 检查点成功):
   如果 驱动活跃 == 假:
     返回 ["动作": "wait"]
   如果 检查点成功 == 假:
@@ -495,11 +495,11 @@
 
 # 队列失败封禁判定（对标 followup 抛错后的 block('queue-failed') 条件）：
 # 最新目标仍是同一引用且 active+armed 才封禁
-段落 队列失败封禁判定 接收 最新目标, 预约:
+段落 队列失败封禁判定(最新目标, 预约):
   返回 最新目标 != 空 且 字典获取(最新目标, "id") == 字典获取(预约, "goalId") 且 字典获取(最新目标, "revision") == 字典获取(预约, "revision") 且 字典获取(最新目标, "phase") == "active" 且 字典获取(最新目标, "activation") == "armed"
 
 # 预约有效性（对标 validReservation，fail-closed 合取，任一条件不满足即无效）
-段落 预约有效 接收 状态, 内容块表, 来源, 目标, 驱动活跃:
+段落 预约有效(状态, 内容块表, 来源, 目标, 驱动活跃):
   如果 驱动活跃 == 假:
     返回 假
   如果 字典获取(状态, "stopping") == 真:
@@ -534,7 +534,7 @@
 #     排除本次提交与 round-0 的 goal 来源消息）
 #   - 有效但下游拒绝 → 清预约；若同一引用仍 active+armed → block('prompt-rejected')
 #   - 有效且进入 → 声明 startsRequestSeries（系统提示决策输入之一）
-段落 预步目标决策 接收 状态, 消息表, 目标, 驱动活跃, 下游拒绝:
+段落 预步目标决策(状态, 消息表, 目标, 驱动活跃, 下游拒绝):
   设 提交 为 空
   遍历 消息 之 消息表:
     如果 提交 == 空 且 是目标轮次来源(字典获取(消息, "来源")):
@@ -570,7 +570,7 @@
   返回 {"动作": "enter", "开始系列": 真}
 
 # 对标 restoreOtherClaimed：须回插的保留消息标识表（排除本次提交与其余 round-0 goal 来源消息）
-段落 保留消息标识 接收 消息表, 提交标识:
+段落 保留消息标识(消息表, 提交标识):
   设 保留 为 []
   遍历 消息 之 消息表:
     如果 字典获取(消息, "标识") == 提交标识:

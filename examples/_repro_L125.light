@@ -9,7 +9,7 @@
 #
 # 运行：cd lightharness && python 运行.py examples/_repro_L125.light   → 期望 rc=0
 
-段落 取整半数上 接收 x:
+段落 取整半数上(x):
   返回 向下取整(x + 0.5)
 
 段落 主:

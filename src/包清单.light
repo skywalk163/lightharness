@@ -4,7 +4,7 @@
 # 与上游 DshBundleManifest / DshProfileManifest / DshClientManifest / DshConfigTreeDeclaration 对齐。
 
 # 从包 JSON 取出 dsh 字段（非字典或缺 dsh → 空字典）
-段落 读包清单DSH 接收 包JSON:
+段落 读包清单DSH(包JSON):
   如果 是字典(包JSON) == 假:
     返回 {}
   设 dsh 为 字典获取(包JSON, "dsh", 空)
@@ -13,7 +13,7 @@
   返回 dsh
 
 # DshBundleManifest.patch：相对声明包根的 patch 文件路径，必填非空字符串。
-段落 校验Bundle清单 接收 dsh:
+段落 校验Bundle清单(dsh):
   如果 是字典(dsh) == 假:
     返回 假
   设 patch 为 字典获取(dsh, "patch", 空)
@@ -22,7 +22,7 @@
   返回 真
 
 # DshProfileManifest：bundles 可选字符串数组；patchReload 仅 live/startup。
-段落 校验Profile清单 接收 dsh:
+段落 校验Profile清单(dsh):
   如果 是字典(dsh) == 假:
     返回 假
   设 bundles 为 字典获取(dsh, "bundles", 空)
@@ -39,7 +39,7 @@
   返回 真
 
 # DshClientManifest：platform 必填非空字符串；inject/immediately/external 形状校验。
-段落 校验Client清单 接收 dsh:
+段落 校验Client清单(dsh):
   如果 是字典(dsh) == 假:
     返回 假
   设 platform 为 字典获取(dsh, "platform", 空)
@@ -57,7 +57,7 @@
   返回 真
 
 # DshConfigTreeDeclaration：mount/path 均为非空字符串。
-段落 校验配置树声明 接收 项:
+段落 校验配置树声明(项):
   如果 是字典(项) == 假:
     返回 假
   设 mount 为 字典获取(项, "mount", 空)

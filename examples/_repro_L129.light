@@ -12,7 +12,7 @@
 # 运行：cd lightharness && python 运行.py examples/_repro_L129.light   → 期望 rc=0
 
 # JS `Boolean(value)` 真值表
-段落 布尔 接收 值:
+段落 布尔(值):
   如果 值 == 空:
     返回 假
   如果 type(值) == bool:

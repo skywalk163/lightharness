@@ -17,13 +17,13 @@
 # ---- 提醒文案（1:1 对照原版 GENTLE_REMINDER / detailedReminder）----
 设 GENTLE提醒 为 "You are repeating the exact same tool call with identical arguments. Carefully analyze the previous result before calling again: if the task is not complete, try a different approach or different arguments instead of repeating the call."
 
-段落 详细提醒 接收 工具名, 计数, 预览:
+段落 详细提醒(工具名, 计数, 预览):
   设 头 为 "Repeated tool call detected:\n- tool: " 加上 工具名 加上 "\n- consecutive_calls: " 加上 转字符串(计数) 加上 "\n- arguments: " 加上 预览
   设 尾 为 "\nThe repeated calls are not making progress. Do not call this tool with these exact arguments again. Inspect the latest result and choose a different action, different arguments, or finish the task if enough evidence has been gathered."
   返回 头 加上 尾
 
 # ---- 深度键排序（对照原版 sortJsonValue）：列表 map 递归、字典按键排序重建、其余原值 ----
-段落 深度排序值 接收 值:
+段落 深度排序值(值):
   如果 是列表(值):
     设 结果 为 []
     遍历 元素 之 值:
@@ -43,11 +43,11 @@
   返回 值
 
 # ---- 规范化（对照原版 canonicalize）：深度键排序后序列化 ----
-段落 规范化 接收 参数值:
+段落 规范化(参数值):
   返回 序列化JSON(深度排序值(参数值))
 
 # ---- 预览截断（对照原版 previewArguments）：仅截断模型可见文本，链 key 始终用完整 canonical ----
-段落 预览参数 接收 规范, 上限:
+段落 预览参数(规范, 上限):
   设 长 为 字符串长度(规范)
   如果 长 <= 上限:
     返回 规范
@@ -56,7 +56,7 @@
 
 # ---- * 通配匹配（对照原版 wildcardToRegExp 行为：* → 任意子串含空，其余字符字面量相等）----
 # 纯光明递归实现，证明光明无需 python re 即可表达等价语义。
-段落 通配匹配 接收 模式, 文本:
+段落 通配匹配(模式, 文本):
   设 模式长 为 字符串长度(模式)
   如果 模式长 == 0:
     返回 字符串长度(文本) == 0
@@ -88,7 +88,7 @@
   结束。
 
 # ---- 阈值校验（对照原版 validateThresholds：fail-loud，返回升序副本）----
-段落 校验阈值 接收 值列表:
+段落 校验阈值(值列表):
   如果 长度(值列表) == 0:
     抛出 "repeat-tool-reminder: 阈值 不能为空"
   结束。
@@ -112,7 +112,7 @@
   返回 副本
 
 # ---- 预览上限校验（对照原版 argumentsPreviewChars 校验）----
-段落 校验预览上限 接收 n:
+段落 校验预览上限(n):
   如果 (是整数(n) == 假) 或 (n < 1):
     抛出 "repeat-tool-reminder: 非法 argumentsPreviewChars " 加上 转字符串(n) 加上 " —— 必须是整数 ≥ 1"
   结束。
@@ -127,7 +127,7 @@
   属性 预览上限 等于 500
   属性 链 等于 {}
 
-  段落 构造 接收 选项:
+  段落 构造(选项):
     设 阈值 为 [3, 5, 8]
     如果 选项 != 空 且 选项.包含("阈值") == 真:
       设 阈值 为 选项["阈值"]
@@ -151,7 +151,7 @@
     设 己.预览上限 为 校验预览上限(上限)
     设 己.链 为 {}
 
-  段落 是否跟踪 接收 工具名:
+  段落 是否跟踪(工具名):
     如果 长度(己.包含名单) > 0:
       设 命中 为 假
       遍历 模式 之 己.包含名单:
@@ -171,7 +171,7 @@
     返回 真
 
   # 观察一次工具调用，返回提醒文案（空串表示不提醒）。对照原版 observe() 的计数/命中逻辑。
-  段落 观察 接收 工具名, 参数, 代理标识:
+  段落 观察(工具名, 参数, 代理标识):
     如果 代理标识 == 空 或 代理标识 == "":
       返回 ""
     结束。
@@ -199,7 +199,7 @@
     返回 详细提醒(工具名, 计数, 预览参数(规范, 己.预览上限))
 
   # 打断循环（对照原版 agent/pre-step 钩子：出现用户消息时删除该代理链）
-  段落 重置 接收 代理标识:
+  段落 重置(代理标识):
     设 链表 为 己.链
     如果 链表.包含(代理标识) == 真:
       字典删除(链表, 代理标识)

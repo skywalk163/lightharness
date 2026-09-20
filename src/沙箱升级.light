@@ -22,15 +22,15 @@
 设 升级目标类型词汇 为 ["wider-modes", "network", "full-access"]
 
 # 模型面「沙箱拒绝标记」（对齐 escalation.ts sandboxDenialMarker，逐字）
-段落 沙箱拒绝标记 接收 模式:
+段落 沙箱拒绝标记(模式):
   返回 "[sandbox: file access denied under " + 转字符串(模式) + " mode]"
 
 # 模型面「升级提示标记」（对齐 escalation.ts escalationHintMarker，逐字）
-段落 升级提示标记 接收 主题:
+段落 升级提示标记(主题):
   返回 "[sandbox: escalation available — retry this exact " + 转字符串(主题) + " once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]"
 
 # 是否严格更宽：目标模式 必须严格宽于 当前模式（对齐 WIDER_MODES 查找）
-段落 是否严格更宽 接收 当前模式, 目标模式:
+段落 是否严格更宽(当前模式, 目标模式):
   如果 字典包含键(严格更宽表, 当前模式) == 假:
     返回 假
   返回 列表包含(严格更宽表[当前模式], 目标模式)
@@ -39,7 +39,7 @@
 #   当前策略：规范策略() 输出（含 模式）。
 #   目标：{"类型": "wider-modes"|"network"|"full-access", "模式"?: "workspace-write"|"danger-full-access"}
 #   原因：模型一句话理由（透传给用户与审计）。
-段落 构造升级请求 接收 当前策略, 目标, 原因, 主题 = "command":
+段落 构造升级请求(当前策略, 目标, 原因, 主题 = "command"):
   如果 当前策略 == 空 或 字典包含键(当前策略, "模式") == 假:
     抛出 "沙箱升级: 升级请求需要当前规范策略"
   如果 目标 == 空 或 字典包含键(目标, "类型") == 假:
@@ -66,7 +66,7 @@
 #   - wider-modes/full-access 的目标模式合法 且 严格宽于当前模式
 #   - 原因非空
 #   非法则抛出（非更宽请求永不打扰人类）。
-段落 验证升级参数 接收 请求:
+段落 验证升级参数(请求):
   如果 请求 == 空 或 字典包含键(请求, "目标类型") == 假:
     抛出 "沙箱升级: 请求缺少目标类型"
   设 类型 为 请求["目标类型"]
@@ -91,7 +91,7 @@
 #   审批结果 ∈ {allowed-once, rejected, cancelled, unavailable}（复用 审批 结果闭集）。
 #   返回：放宽后的规范策略（full-access → danger-full-access；network → 允许网络=真；wider-modes → 目标模式）。
 #   其余路径抛出逐字文案（工具注册表把异常转成 isError 结果，命令未执行）。
-段落 批准升级 接收 请求, 审批结果:
+段落 批准升级(请求, 审批结果):
   设 结果 为 审批结果
   如果 列表包含(审批结果词汇, 结果) == 假:
     设 结果 为 结果不可用

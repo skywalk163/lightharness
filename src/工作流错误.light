@@ -13,26 +13,26 @@
 # 本模块只保留可纯函数化的判定/构造/渲染逻辑，剔除 Cordis Service / 事件发射胶水。
 # 注：光明解析器对 且/或 布尔链 + 行内 否则 返回 极不稳定，本模块一律用顺序 如果 规避。
 
-段落 取可选 接收 对象, 键:
+段落 取可选(对象, 键):
   如果 (是字典(对象) == 假): 返回 空
   如果 (字典包含键(对象, 键) == 假): 返回 空
   返回 对象[键]
 
 # 已知工作流错误码（对应原版 WorkflowErrorCode 并），用集合成员判定规避 或 链
-段落 已知工作流错误码 接收 码:
+段落 已知工作流错误码(码):
   设 已知集合 为 {"SCRIPT_PARSE": 真, "META_INVALID": 真, "INVALID_ARGUMENT": 真, "UNSUPPORTED_OPTION": 真, "UNSUPPORTED_SCHEMA": 真, "AGENT_CAP": 真, "ITEM_CAP": 真, "AGENT_START": 真, "AGENT_RESULT": 真, "RESULT_UNSERIALIZABLE": 真, "CANCELLED": 真}
   如果 (字典包含键(已知集合, 码) == 真): 返回 真
   返回 假
 
 # 构造一个工作流错误（等价于 new WorkflowError(message, code, {fatal?}），fatal 默认真）
-段落 建立工作流错误 接收 消息, 码, 致命:
+段落 建立工作流错误(消息, 码, 致命):
   设 实际致命 为 真
   如果 致命 != 空: 设 实际致命 为 致命
   返回 {"名": "WorkflowError", "致命": 实际致命, "码": 码, "消息": 消息}
 
 # 等价原版 isFatalWorkflowError：error instanceof WorkflowError && error.fatal
 # 以 名 标记 + 致命 标志建模 host instanceof 不可伪造语义（顺序 如果 规避 且 链）
-段落 判定致命工作流错误 接收 错误:
+段落 判定致命工作流错误(错误):
   如果 (是字典(错误) == 假): 返回 假
   如果 (字典包含键(错误, "名") == 假): 返回 假
   如果 (字典包含键(错误, "致命") == 假): 返回 假
@@ -40,7 +40,7 @@
   返回 错误["致命"] == 真
 
 # 等价原版 renderListenerError：try String(error) catch 固定标签，绝不向上抛
-段落 渲染监听错误 接收 错误:
+段落 渲染监听错误(错误):
   尝试:
     如果 (是字典(错误) == 真):
       如果 (字典包含键(错误, "消息") == 真): 返回 错误["消息"]
@@ -56,16 +56,16 @@
 # =====================================================================
 
 # 是数值 等价（上游 isNumber 排除 bool）：int 或 float
-段落 是数 接收 值:
+段落 是数(值):
   返回 (是整数(值) 或 是浮点(值))
 
 # 等价上游 MaterializeError：以 名 标记建模 host 不可伪造语义
-段落 建立物化错误 接收 路径, 原因:
+段落 建立物化错误(路径, 原因):
   返回 {"名": "MaterializeError", "路径": 路径, "原因": 原因}
 
 # 等价上游 renderThrown：total，绝不向上抛；优先 stack→message→String
 # 光明侧无 stack 字段，按 消息(字典)→字符串(标量)→String(对象) 降级
-段落 渲染抛出 接收 错误:
+段落 渲染抛出(错误):
   尝试:
     如果 (是字典(错误) == 真) 且 (字典包含键(错误, "消息") == 真):
       设 消息 为 错误["消息"]
@@ -76,7 +76,7 @@
     返回 "[unrenderable thrown value]"
 
 # 等价上游 validateMetaShape：纯 JSON 数据按 seam 契约逐字段校验
-段落 校验元形状 接收 元:
+段落 校验元形状(元):
   设 违规 为 []
   如果 (是字典(元) == 假):
     返回 {"违规": ["meta must be an object"]}
@@ -145,14 +145,14 @@
 
 # 等价上游 validateMeta：校验失败抛 META_INVALID（逐条命名违规）；
 # 返回从已校验字段构建的归一化副本，引擎绝不别名调用方对象
-段落 validateMeta 接收 值:
+段落 validateMeta(值):
   设 结果 为 校验元形状(值)
   如果 (字典包含键(结果, "元") == 假):
     抛出 建立工作流错误("invalid meta: " + 连接文本(结果["违规"], "; "), "META_INVALID", 真)
   返回 结果["元"]
 
 # 列表文本连接（等价 Array.join，避免依赖未知内置）
-段落 连接文本 接收 表, 分隔:
+段落 连接文本(表, 分隔):
   设 结果 为 ""
   设 首个 为 真
   遍历 项 之 表:
@@ -162,7 +162,7 @@
   返回 结果
 
 # 等价上游 materializeFromRealm：根 空(null) 原样返回；其余走 物化
-段落 物化自域 接收 值, 根:
+段落 物化自域(值, 根):
   如果 是空(值): 返回 空
   尝试:
     返回 物化(值, 根, [])
@@ -172,7 +172,7 @@
     抛出 建立物化错误(根, "reading the value threw: " + 渲染抛出(抛了.args[0]))
 
 # 等价上游 materialize：按类型分流；非 JSON 值抛 MaterializeError
-段落 物化 接收 值, 路径, 已见:
+段落 物化(值, 路径, 已见):
   如果 是布尔(值): 返回 值
   如果 是字符串(值): 返回 值
   如果 是数(值):
@@ -186,7 +186,7 @@
 
 # 等价上游 materializeArray：光明列表恒稠密，稀疏检测为 no-op；
 # 用 id 表做循环引用检测（已见 存对象 id，等价上游 seen Set）
-段落 物化数组 接收 值, 路径, 已见:
+段落 物化数组(值, 路径, 已见):
   设 标识 为 id(值)
   如果 标识 在 已见: 抛出 建立物化错误(路径, "circular references are not JSON data")
   列表追加(已见, 标识)
@@ -200,7 +200,7 @@
 
 # 等价上游 materializeObject：plain 判定恒真（光明字典无 exotic 原型）；
 # 用 defineProperty 等价方式设键（光明字典设置即独立数据属性，无 __proto__ 副作用）
-段落 物化对象 接收 值, 路径, 已见:
+段落 物化对象(值, 路径, 已见):
   设 标识 为 id(值)
   如果 标识 在 已见: 抛出 建立物化错误(路径, "circular references are not JSON data")
   列表追加(已见, 标识)

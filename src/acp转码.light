@@ -20,7 +20,7 @@
 #   - interrupted        → cancelled
 #   - blocked / error    → end_turn
 #   - 未知 kind          → end_turn（default）
-段落 轮次转停止原因 接收 原因:
+段落 轮次转停止原因(原因):
   设 种类 为 原因["kind"]
   如果 种类 == "completed": 返回 "end_turn"
   如果 种类 == "max-tokens": 返回 "max_tokens"

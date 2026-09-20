@@ -11,7 +11,7 @@
 #
 # 运行：cd lightharness && python 运行.py examples/_repro_L127.light   → 期望 rc=0
 
-段落 含子串 接收 文本, 子串:
+段落 含子串(文本, 子串):
   设 n 为 字符串长度(文本)
   设 m 为 字符串长度(子串)
   设 i 为 0

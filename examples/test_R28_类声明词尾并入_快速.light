@@ -8,7 +8,7 @@
 #
 # 运行：cd light-merge && python cli/light.py run ../lightharness/examples/test_R28_类声明词尾并入_快速.light
 
-段落 断言等于 接收 实际, 期望, 标签:
+段落 断言等于(实际, 期望, 标签):
   如果 实际 != 期望:
     抛出 "断言失败: " + 标签
 

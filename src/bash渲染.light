@@ -16,22 +16,22 @@
 从 JSON 导入 序列化JSON
 
 # 取可选值字段（缺键或空值回落默认），等价于 原版 结果["x"] ?? 默认
-段落 取可选值 接收 表, 键, 默认:
+段落 取可选值(表, 键, 默认):
   如果 字典包含键(表, 键) == 假: 返回 默认
   设 值 为 表[键]
   如果 值 == 空: 返回 默认
   返回 值
 
 # 沙箱拒绝标记（对齐 @deepseek-ai/dsh-sandbox/escalation.ts: sandboxDenialMarker）
-段落 沙箱拒绝标记 接收 模式:
+段落 沙箱拒绝标记(模式):
   返回 "[sandbox: file access denied under " + 模式 + " mode]"
 
 # 升级提示标记（对齐 escalation.ts: escalationHintMarker；em-dash 用 \u2014）
-段落 升级提示标记 接收 主题:
+段落 升级提示标记(主题):
   返回 "[sandbox: escalation available \u2014 retry this exact " + 主题 + " once with sandbox_permissions (the narrowest wider mode that suffices) + justification; the approval prompt asks the user]"
 
 # 单条流内容：未截断直接返回；截断则追加溢出提示（含 spill 路径或 (unavailable)）
-段落 流内容 接收 流数据:
+段落 流内容(流数据):
   设 正文 为 流数据["text"]
   如果 流数据["truncated"] == 真:
     设 溢出路径 为 取可选值(流数据, "spillPath", "(unavailable)")
@@ -39,7 +39,7 @@
   返回 正文
 
 # 渲染一次完成的 foreground 运行（对齐 renderResult）
-段落 渲染结果 接收 结果, 升级模式列表:
+段落 渲染结果(结果, 升级模式列表):
   设 out 为 流内容(结果["stdout"])
   设 err 为 流内容(结果["stderr"])
   设 主体 为 out
@@ -70,7 +70,7 @@
   返回 主体 + 连接字符串(标记, "\n")
 
 # 渲染一次后台进程读取增量（对齐 renderProcessRead）
-段落 渲染进程读取 接收 读取, 沙箱, 升级模式列表:
+段落 渲染进程读取(读取, 沙箱, 升级模式列表):
   设 通知 为 []
   如果 字典包含键(读取, "lossy") == 真:
     如果 读取["lossy"] == 真:

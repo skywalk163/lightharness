@@ -22,7 +22,7 @@
 IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
 
 # 列表按下标取元素（光明无下标取元素原语，用遍历实现）—— 见语言缺陷账 L-035
-段落 列表取 接收 列表, i:
+段落 列表取(列表, i):
   设 计数 为 0
   遍历 元素 之 列表:
     如果 计数 == i: 返回 元素
@@ -30,14 +30,14 @@ IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
   返回 空
 
 # 把 MIME 字符串收窄到耐久光栅词表；不在白名单返回 空
-段落 图像媒体类型 接收 值:
+段落 图像媒体类型(值):
   如果 列表包含(IMAGE_MEDIA_TYPES, 值): 返回 值
   返回 空
 
 # 严格判定「规范 RFC 4648 base64（无空白、无 URL-safe 别名）」。
 # 不用正则的 {n} 量词（会触发 L-034 字符串内花括号词法陷阱），改用
 # 字符类正则 + 长度/填充结构校验。
-段落 是规范base64 接收 数据:
+段落 是规范base64(数据):
   如果 匹配正则(数据, "^[A-Za-z0-9+/=]*$") == 假: 返回 假
   设 n 为 字符串长度(数据)
   如果 n == 0: 返回 真
@@ -54,11 +54,11 @@ IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
   返回 真
 
 # 把一个 resource_link 渲染成核心当前文本词表
-段落 资源链接文本 接收 name, uri:
+段落 资源链接文本(name, uri):
   返回 "\n[resource_link name=" + 序列化JSON(name) + " uri=" + 序列化JSON(uri) + "]\n"
 
 # 严格解码一个 ACP 内联图像（不接收 base64 别名）
-段落 解码图像块 接收 块:
+段落 解码图像块(块):
   设 mime 为 块["mimeType"]
   设 mt 为 图像媒体类型(mime)
   如果 mt == 空: 抛出 新建 错误("image mimeType must be image/png, image/jpeg, image/webp, or image/gif")
@@ -72,7 +72,7 @@ IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
 #   提示: ACP ContentBlock 列表（线顺序）
 #   图像启用: 初始化时广告的能力结果
 # 返回: 核心内容（图像引用按线顺序、文本/资源链接合并为待定文本）
-段落 admitAcpPrompt 接收 提示, 图像启用:
+段落 admitAcpPrompt(提示, 图像启用):
   # 校验轮：先拒绝非法类型，合法图像解码进引用表
   设 引用表 为 []
   遍历 块 之 提示:
@@ -116,7 +116,7 @@ IMAGE_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"]
 # 把一个已落盘的核心 assistant 块翻译为 ACP 线内容。
 #   附件库: ref -> {data, mediaType} 的字典（由调用方注入，抽象掉 IO 取回）
 # 返回: ACP 文本/图像内容；非输出块返回 空。
-段落 assistantBlockToAcp 接收 块, 附件库:
+段落 assistantBlockToAcp(块, 附件库):
   设 种类 为 块["type"]
   如果 种类 == "text":
     设 t 为 块["text"]

@@ -22,7 +22,7 @@
 
 # ---------- 基础日历/时间工具 ----------
 
-段落 是闰年 接收 年:
+段落 是闰年(年):
   如果 年 % 400 == 0:
     返回 真
   如果 年 % 100 == 0:
@@ -31,12 +31,12 @@
     返回 真
   返回 假
 
-段落 某年天数 接收 年:
+段落 某年天数(年):
   如果 是闰年(年):
     返回 366
   返回 365
 
-段落 某月天数 接收 年, 月:
+段落 某月天数(年, 月):
   如果 月 == 2:
     如果 是闰年(年):
       返回 29
@@ -46,7 +46,7 @@
   返回 31
 
 # 某日期距 1970-01-01 的天数（可为负）
-段落 日期到天数 接收 年, 月, 日:
+段落 日期到天数(年, 月, 日):
   设 总 为 0
   设 年游标 为 年
   当 年游标 < 1970:
@@ -63,7 +63,7 @@
   返回 总
 
 # 天数（距 1970-01-01）反推年月日
-段落 天数到日期 接收 天数:
+段落 天数到日期(天数):
   设 年 为 1970
   设 剩余 为 天数
   当 剩余 >= 某年天数(年):
@@ -79,7 +79,7 @@
   返回 { "年": 年, "月": 月, "日": 剩余 + 1 }
 
 # epoch 毫秒 → 规范 RFC3339 UTC 字符串（YYYY-MM-DDTHH:mm:ss.SSSZ）
-段落 epoch转UTC 接收 epoch毫秒:
+段落 epoch转UTC(epoch毫秒):
   设 秒 为 epoch毫秒 // 1000
   设 毫秒 为 epoch毫秒 - 秒 * 1000
   设 天数计 为 秒 // 86400
@@ -91,11 +91,11 @@
   设 日期 为 天数到日期(天数计)
   返回 零填充(日期["年"], 4) 加上 "-" 加上 零填充(日期["月"], 2) 加上 "-" 加上 零填充(日期["日"], 2) 加上 "T" 加上 零填充(时, 2) 加上 ":" 加上 零填充(分, 2) 加上 ":" 加上 零填充(秒2, 2) 加上 "." 加上 零填充(毫秒, 3) 加上 "Z"
 
-段落 零填充 接收 数字, 宽度:
+段落 零填充(数字, 宽度):
   返回 字符串对齐右(转字符串(数字), 宽度, "0")
 
 # 年月日时分秒毫秒 → epoch 毫秒
-段落 日期转epoch 接收 年, 月, 日, 时, 分, 秒, 毫秒:
+段落 日期转epoch(年, 月, 日, 时, 分, 秒, 毫秒):
   设 天数计 为 日期到天数(年, 月, 日)
   返回 (天数计 * 86400 + 时 * 3600 + 分 * 60 + 秒) * 1000 + 毫秒
 
@@ -105,11 +105,11 @@
 
 # RFC3339 四位年 UTC 正则（原版 UTC_INSTANT）
 设 UTC模式 为 "^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}Z$"
-段落 UTC正则 接收 值:
+段落 UTC正则(值):
   返回 匹配正则(值, UTC模式)
 
 # 返回新排序列表（避免依赖就地排序原语）
-段落 排序列表 接收 列表:
+段落 排序列表(列表):
   设 剩余 为 列表创建()
   遍历 x 之 列表:
     列表追加(剩余, x)
@@ -132,7 +132,7 @@
   返回 结果
 
 # 从固定格式 UTC 字符串解析字段
-段落 解析UTC字段 接收 值:
+段落 解析UTC字段(值):
   返回 {
     "年": 转整数(截取(值, 0, 4)),
     "月": 转整数(截取(值, 5, 7)),
@@ -144,22 +144,22 @@
   }
 
 # UTC 字符串 → epoch 毫秒（经回合校验确保规范/真实）
-段落 UTC转epoch 接收 值:
+段落 UTC转epoch(值):
   设 字段 为 解析UTC字段(值)
   返回 日期转epoch(字段["年"], 字段["月"], 字段["日"], 字段["时"], 字段["分"], 字段["秒"], 字段["毫秒"])
 
-段落 是数字字符 接收 c:
+段落 是数字字符(c):
   设 code 为 字符转ASCII(c)
   返回 code >= 48 且 code <= 57
 
 # ---------- 严格解码 ----------
 
-段落 解码Id 接收 值:
+段落 解码Id(值):
   如果 是字符串(值) == 假 或 字符串长度(值) == 0 或 去除空白(值) != 值:
     抛出 新建 错误("schedule id must be a non-empty string without surrounding whitespace")
   返回 值
 
-段落 解码即时 接收 值:
+段落 解码即时(值):
   如果 是字符串(值) == 假 或 UTC正则(值) == 假:
     抛出 新建 错误("scheduledAt must be a canonical four-digit-year RFC 3339 UTC instant")
   设 纪元 为 UTC转epoch(值)
@@ -168,7 +168,7 @@
     抛出 新建 错误("scheduledAt is not a real UTC calendar instant")
   返回 值
 
-段落 不是精确键 接收 值, 期望:
+段落 不是精确键(值, 期望):
   设 排序键 为 排序列表(字典键列表(值))
   设 排序期望 为 排序列表(期望)
   如果 列表长度(排序键) != 列表长度(排序期望):
@@ -180,12 +180,12 @@
     设 i 为 i + 1
   返回 真
 
-段落 校验提示 接收 提示, 标签:
+段落 校验提示(提示, 标签):
   如果 是字符串(提示) == 假 或 字符串长度(提示) == 0 或 去除空白(提示) != 提示:
     抛出 新建 错误(标签 加上 " must be non-empty and already trimmed")
   返回 提示
 
-段落 解码后记录 接收 值:
+段落 解码后记录(值):
   如果 不是精确键(值, ["id", "kind", "prompt", "afterSeconds", "scheduledAt"]) == 假:
     抛出 新建 错误("after schedule must contain exactly id, kind, prompt, afterSeconds, and scheduledAt")
   设 提示 为 校验提示(值["prompt"], "after prompt")
@@ -194,13 +194,13 @@
     抛出 新建 错误("afterSeconds must be a positive safe integer")
   返回 { "id": 解码Id(值["id"]), "kind": "after", "prompt": 提示, "afterSeconds": 后秒, "scheduledAt": 解码即时(值["scheduledAt"]) }
 
-段落 解码于记录 接收 值:
+段落 解码于记录(值):
   如果 不是精确键(值, ["id", "kind", "prompt", "scheduledAt"]) == 假:
     抛出 新建 错误("at schedule must contain exactly id, kind, prompt, and scheduledAt")
   设 提示 为 校验提示(值["prompt"], "at prompt")
   返回 { "id": 解码Id(值["id"]), "kind": "at", "prompt": 提示, "scheduledAt": 解码即时(值["scheduledAt"]) }
 
-段落 解码每记录 接收 值:
+段落 解码每记录(值):
   如果 不是精确键(值, ["id", "kind", "prompt", "everySeconds", "scheduledAt"]) == 假:
     抛出 新建 错误("every schedule must contain exactly id, kind, prompt, everySeconds, and scheduledAt")
   设 提示 为 校验提示(值["prompt"], "every prompt")
@@ -209,7 +209,7 @@
     抛出 新建 错误("everySeconds must be a safe integer of at least " 加上 转字符串(最小每间隔秒))
   返回 { "id": 解码Id(值["id"]), "kind": "every", "prompt": 提示, "everySeconds": 每秒, "scheduledAt": 解码即时(值["scheduledAt"]) }
 
-段落 解码调度记录 接收 值:
+段落 解码调度记录(值):
   如果 是字典(值) == 假:
     抛出 新建 错误("schedule record must be an object")
   设 kind 为 值["kind"]
@@ -222,7 +222,7 @@
   否则:
     抛出 新建 错误("v1 schedule kind must be after, at, or every")
 
-段落 解码调度变更 接收 值:
+段落 解码调度变更(值):
   如果 是字典(值) == 假:
     抛出 新建 错误("schedule/change payload must be an object")
   如果 值["version"] != 1:
@@ -247,7 +247,7 @@
 
 # ---------- 解析偏移即时（at 字符串形态） ----------
 
-段落 解析偏移即时 接收 值:
+段落 解析偏移即时(值):
   如果 是字符串(值) == 假:
     抛出 新建 错误("at must be an explicit-offset string")
   设 年 为 转整数(截取(值, 0, 4))
@@ -294,7 +294,7 @@
 
 # ---------- 状态机 / 派生 ----------
 
-段落 派发记录 接收 记录, 变更:
+段落 派发记录(记录, 变更):
   设 有接受 为 字典包含键(变更, "acceptedAt")
   如果 记录["kind"] != "every":
     如果 有接受 == 真:
@@ -313,7 +313,7 @@
   字典设置(新记录, "scheduledAt", 发生["nextScheduledAt"])
   返回 新记录
 
-段落 折叠调度事件 接收 事件, 种子长度:
+段落 折叠调度事件(事件, 种子长度):
   如果 是整数(种子长度) == 假 或 种子长度 < 0 或 种子长度 > 列表长度(事件):
     抛出 新建 错误("schedule seedLength must be within the supplied event log")
   设 活动 为 字典创建()
@@ -349,7 +349,7 @@
     列表追加(活动列表, 字典获取(活动, k))
   返回 { "active": 活动列表, "seenIds": 字典键列表(见过) }
 
-段落 分配调度Id 接收 折叠:
+段落 分配调度Id(折叠):
   设 见过集合 为 字典创建()
   遍历 id 之 折叠["seenIds"]:
     字典设置(见过集合, id, 真)
@@ -360,7 +360,7 @@
     设 候选 为 "schedule-" 加上 转字符串(序号)
   返回 候选
 
-段落 未来即时 接收 目标, 现在:
+段落 未来即时(目标, 现在):
   如果 目标 <= 现在:
     抛出 新建 错误("The scheduled time must be strictly in the future.")
   设 即时 为 epoch转UTC(目标)
@@ -368,7 +368,7 @@
     抛出 新建 错误("The scheduled time must be representable as a four-digit-year RFC 3339 UTC instant.")
   返回 即时
 
-段落 解析每发生 接收 记录, 接受时间毫秒:
+段落 解析每发生(记录, 接受时间毫秒):
   设 目标 为 UTC转epoch(记录["scheduledAt"])
   设 间隔 为 记录["everySeconds"] * 1000
   如果 是整数(接受时间毫秒) == 假 或 接受时间毫秒 < 最小元年毫秒 或 接受时间毫秒 > 最大元年毫秒:
@@ -389,7 +389,7 @@
 
 # ---------- 记录构造 ----------
 
-段落 创建后调度记录 接收 id, 提示, 后秒, 现在:
+段落 创建后调度记录(id, 提示, 后秒, 现在):
   设 规范提示 为 去除空白(提示)
   如果 字符串长度(规范提示) == 0:
     抛出 新建 错误("prompt must be non-empty after trimming.")
@@ -399,7 +399,7 @@
   设 目标 为 现在 + 延迟
   返回 { "id": id, "kind": "after", "prompt": 规范提示, "afterSeconds": 后秒, "scheduledAt": 未来即时(目标, 现在) }
 
-段落 创建每调度记录 接收 id, 提示, 每秒, 现在:
+段落 创建每调度记录(id, 提示, 每秒, 现在):
   设 规范提示 为 去除空白(提示)
   如果 字符串长度(规范提示) == 0:
     抛出 新建 错误("prompt must be non-empty after trimming.")
@@ -411,7 +411,7 @@
   设 目标 为 现在 + 间隔
   返回 { "id": id, "kind": "every", "prompt": 规范提示, "everySeconds": 每秒, "scheduledAt": 未来即时(目标, 现在) }
 
-段落 创建于调度记录 接收 id, 提示, at, 现在:
+段落 创建于调度记录(id, 提示, at, 现在):
   设 规范提示 为 去除空白(提示)
   如果 字符串长度(规范提示) == 0:
     抛出 新建 错误("prompt must be non-empty after trimming.")

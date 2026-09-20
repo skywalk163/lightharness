@@ -28,7 +28,7 @@
   属性 成功次数 等于 0
   属性 失败次数 等于 0
 
-  段落 构造 接收 超时秒, 选项 = 空:
+  段落 构造(超时秒, 选项 = 空):
     如果 超时秒 != 空:
       设 己.超时秒 为 超时秒
     设 己.执行次数 为 0
@@ -37,7 +37,7 @@
 
   # 执行 Python 代码，返回 {输出, 错误, 返回码, 已截断, 耗时秒}
   # v2：输出大小限制 + 执行统计追踪
-  段落 执行 接收 代码:
+  段落 执行(代码):
     设 己.执行次数 为 己.执行次数 + 1
     设 开始时间 为 时间戳()
     尝试:
@@ -87,7 +87,7 @@
     返回 ["执行次数": 己.执行次数, "总耗时秒": 己.总耗时秒, "成功次数": 己.成功次数, "失败次数": 己.失败次数, "成功率": 成功率, "平均耗时秒": 平均耗时, "超时秒": 己.超时秒, "最大输出字节数": 己.最大输出字节数]
 
   # 执行并返回文本结果（成功返回 stdout，失败返回错误描述）
-  段落 执行取文本 接收 代码:
+  段落 执行取文本(代码):
     设 结果 为 己.执行(代码)
     如果 结果["返回码"] == 0:
       返回 结果["输出"].去除空白()
@@ -99,8 +99,8 @@
 
 # ---- 顶层：包装为工具定义 ----
 # 工具参数：{ "代码": "Python代码" }；返回文本结果。
-段落 造代码执行工具 接收 运行时, 工具名, 描述:
-  段落 执行函数 接收 参数:
+段落 造代码执行工具(运行时, 工具名, 描述):
+  段落 执行函数(参数):
     设 代码 为 ""
     如果 参数.包含("代码"):
       设 代码 为 转字符串(参数["代码"])
@@ -147,7 +147,7 @@
   返回 ["await", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "enum", "export", "extends", "false", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "null", "return", "super", "switch", "this", "throw", "true", "try", "typeof", "var", "void", "while", "with", "yield", "let", "static", "implements", "interface", "package", "private", "protected", "public", "arguments", "eval", "False", "None", "True", "and", "as", "assert", "async", "def", "del", "elif", "except", "from", "global", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "match", "type", "_"]
 
 # DUNDER_MEMBER（/^__.+__$/）：对象协议槽位（中间非空的 __x__ 形式）
-段落 是dunder成员 接收 名:
+段落 是dunder成员(名):
   如果 是字符串(名) == 假:
     返回 假
   如果 字符串长度(名) < 5:
@@ -161,7 +161,7 @@
   返回 字符串长度(中段) > 0
 
 # 便携标识符：[A-Za-z_][A-Za-z0-9_]* 全串匹配（锚定正则）
-段落 是便携标识符 接收 名:
+段落 是便携标识符(名):
   如果 是字符串(名) == 假:
     返回 假
   如果 是空(搜索("^[A-Za-z_][A-Za-z0-9_]*$", 名)) == 假:
@@ -172,7 +172,7 @@
 
 # PtcBindingNamespace.global 与 PtcBindingErrorClass.name 的统一规则：
 # 便携标识符 且 非保留字 且 非保留全局（三支拒绝缘由分立，便于诊断）
-段落 校验命名空间名 接收 名:
+段落 校验命名空间名(名):
   如果 是便携标识符(名) == 假:
     返回 "invalid portable identifier"
   如果 列表包含(便携保留字表(), 名):
@@ -182,13 +182,13 @@
   返回 ""
 
 # PtcBindingErrorClass.name：与命名空间名同规则
-段落 校验错误类名 接收 名:
+段落 校验错误类名(名):
   返回 校验命名空间名(名)
 
 # PtcBindingErrorClass.memberNameProperty：非空串 且 非保留成员 且 非 dunder 形式
 # （dunder 整体拒绝——若干是受限 CPython 描述符，构造拒绝实例时 setattr 即抛；
 #   具体集合是解释器版本细节，故按形式拒绝而非按名单）
-段落 校验错误成员名 接收 名:
+段落 校验错误成员名(名):
   如果 是字符串(名) == 假:
     返回 "member name must be a string"
   如果 字符串长度(名) == 0:
@@ -202,7 +202,7 @@
 # ---- 契约形状（types.ts 谓词化） ----
 
 # PtcJsonValue：无损 JSON（null/布尔/有限数/串/数组/串键字典），防御性深度上限 128
-段落 是有限浮点 接收 值:
+段落 是有限浮点(值):
   设 文本 为 转字符串(值)
   如果 字符串包含(文本, "inf") == 真:
     返回 假
@@ -210,10 +210,10 @@
     返回 假
   返回 真
 
-段落 是无损JSON值 接收 值:
+段落 是无损JSON值(值):
   返回 是无损JSON深层(值, 0)
 
-段落 是无损JSON深层 接收 值, 深度:
+段落 是无损JSON深层(值, 深度):
   如果 深度 > 128:
     返回 假
   如果 值 == 空:
@@ -241,7 +241,7 @@
   返回 假
 
 # PtcBindingErrorClass：{name 合法, memberNameProperty 合法}
-段落 是错误类形状 接收 值:
+段落 是错误类形状(值):
   如果 是字典(值) == 假:
     返回 假
   如果 校验错误类名(字典获取(值, "name", 空)) != "":
@@ -250,7 +250,7 @@
 
 # PtcBindingNamespace：{global 合法, functions 字典且键非空串, errorClass? 合法}
 # functions 的值是宿主函数引用，跨语言不可判型，只做键形状校验（纯逻辑化登记）
-段落 是绑定命名空间 接收 值:
+段落 是绑定命名空间(值):
   如果 是字典(值) == 假:
     返回 假
   如果 校验命名空间名(字典获取(值, "global", 空)) != "":
@@ -273,7 +273,7 @@
   返回 ["exception", "timeout", "abort", "worker-exit", "invalid-output", "output-limit", "protocol", "sandbox-unavailable"]
 
 # PtcRunFailure：{kind ∈ 八类, message 串}
-段落 是运行失败 接收 值:
+段落 是运行失败(值):
   如果 是字典(值) == 假:
     返回 假
   如果 列表包含(运行失败种类表(), 字典获取(值, "kind", 空)) == 假:
@@ -281,7 +281,7 @@
   返回 是字符串(字典获取(值, "message", 空))
 
 # PtcRunSandbox：{mode 串, denied 布尔, enforcement?}（SandboxMode 为上游沙包字符串词汇）
-段落 是运行沙箱 接收 值:
+段落 是运行沙箱(值):
   如果 是字典(值) == 假:
     返回 假
   如果 是字符串(字典获取(值, "mode", 空)) == 假:
@@ -291,7 +291,7 @@
   返回 真
 
 # PtcRunResult：{logs 串列表, sandbox?, value?, error?}——错误是字段而非拒绝路径
-段落 是运行结果 接收 值:
+段落 是运行结果(值):
   如果 是字典(值) == 假:
     返回 假
   如果 是列表(字典获取(值, "logs", 空)) == 假:
@@ -314,7 +314,7 @@
   返回 真
 
 # PtcRunRequest：{program 非空串, bindings 全为合法命名空间, cwd?/timeoutMs?/sandboxPolicy?}
-段落 是运行请求 接收 值:
+段落 是运行请求(值):
   如果 是字典(值) == 假:
     返回 假
   设 程序 为 字典获取(值, "program", 空)
@@ -337,7 +337,7 @@
 # resolve 纯化（PtcRunRequest → PtcRunSpec）：
 #   cwd 缺失拒绝（spec 绝不带缺省目录）；timeoutMs 缺省 → 提供方默认毫秒；
 #   null → 无限期；数值须为正有限且不超上限。返回 {"规约", "错误"}，错误非空即拒绝。
-段落 造运行规约 接收 请求, 默认毫秒, 上限毫秒:
+段落 造运行规约(请求, 默认毫秒, 上限毫秒):
   如果 是运行请求(请求) == 假:
     返回 {"规约": 空, "错误": "invalid run request"}
   设 目录 为 字典获取(请求, "cwd", 空)

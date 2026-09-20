@@ -16,37 +16,37 @@
 # ---- 内容块构造 ----
 
 # 造纯文本块
-段落 造文本块 接收 文本:
+段落 造文本块(文本):
   返回 ["type": "text", "text": 文本]
 
 # 造推理块（reasoning/thinking）
-段落 造推理块 接收 文本:
+段落 造推理块(文本):
   返回 ["type": "reasoning", "text": 文本]
 
 # 造工具调用块（arguments 是模型产出的原始 JSON 字符串）
-段落 造工具调用块 接收 标识, 名字, 参数JSON:
+段落 造工具调用块(标识, 名字, 参数JSON):
   返回 ["type": "tool-call", "id": 标识, "name": 名字, "arguments": 参数JSON]
 
 # 造工具结果块（内容为块表；是否错误 标记失败）
-段落 造工具结果块 接收 工具调用标识, 内容, 是否错误:
+段落 造工具结果块(工具调用标识, 内容, 是否错误):
   返回 ["type": "tool-result", "toolCallId": 工具调用标识, "content": 内容, "isError": 是否错误]
 
 # 造图片块（data 为 base64 编码，mimeType 默认 image/png）
-段落 造图片块 接收 数据, 类型:
+段落 造图片块(数据, 类型):
   设 mime 为 "image/png"
   如果 类型 != 空:
     设 mime 为 类型
   返回 ["type": "image", "data": 数据, "mimeType": mime]
 
 # 造音频块（data 为 base64 编码，mimeType 默认 audio/wav）
-段落 造音频块 接收 数据, 类型:
+段落 造音频块(数据, 类型):
   设 mime 为 "audio/wav"
   如果 类型 != 空:
     设 mime 为 类型
   返回 ["type": "audio", "data": 数据, "mimeType": mime]
 
 # 造资源块（对齐原版 ResourceContentBlock：resourceId + text + source）
-段落 造资源块 接收 资源ID, 文本, 来源:
+段落 造资源块(资源ID, 文本, 来源):
   设 块 为 ["type": "resource", "resourceId": 资源ID, "text": 文本]
   如果 来源 != 空:
     块["source"] 为 来源
@@ -55,7 +55,7 @@
 # 造文件块（对齐原版 FileBlock：type=file + attachment 引用）
 # 原版在请求装配时把 file 块投影为确定性句柄文本（名字/字节大小/只读保存路径），
 # 日志保留结构化引用；光明侧只构造结构化块，投影由装配方负责。
-段落 造文件块 接收 附件引用:
+段落 造文件块(附件引用):
   返回 ["type": "file", "attachment": 附件引用]
 
 # ---- 消息构造（脱钩：光明 L-083 修复后提供 深拷贝 一等原语，对齐上游 deep-freeze）----
@@ -63,33 +63,33 @@
 # ---- 消息构造 ----
 
 # 造用户消息（来源 kind=user）
-段落 造用户消息 接收 内容:
+段落 造用户消息(内容):
   返回 ["id": 造标识(), "role": "user", "content": 深拷贝(内容), "source": ["kind": "user"]]
 
 # 造用户消息（带自定义来源，供插件/注入上下文用）
-段落 造用户消息带来源 接收 内容, 来源:
+段落 造用户消息带来源(内容, 来源):
   返回 ["id": 造标识(), "role": "user", "content": 深拷贝(内容), "source": 来源]
 
 # 造助手消息（来源 kind=model，携带 provider/model）
-段落 造助手消息 接收 内容, 提供方, 模型:
+段落 造助手消息(内容, 提供方, 模型):
   返回 ["id": 造标识(), "role": "assistant", "content": 深拷贝(内容), "source": ["kind": "model", "provider": 提供方, "model": 模型]]
 
 # 造助手消息（带回放状态，供适配器私有元数据）
-段落 造助手消息带回放 接收 内容, 提供方, 模型, 回放状态:
+段落 造助手消息带回放(内容, 提供方, 模型, 回放状态):
   设 来源 为 ["kind": "model", "provider": 提供方, "model": 模型]
   如果 回放状态 不等于 空:
     来源["replayState"] 为 回放状态
   返回 ["id": 造标识(), "role": "assistant", "content": 深拷贝(内容), "source": 来源]
 
 # 造工具结果消息（role=user，content=[tool-result 块]，来源 kind=tool）
-段落 造工具结果消息 接收 调用标识, 内容, 是否错误:
+段落 造工具结果消息(调用标识, 内容, 是否错误):
   设 块 为 造工具结果块(调用标识, 深拷贝(内容), 是否错误)
   返回 ["id": 造标识(), "role": "user", "content": [块], "source": ["kind": "tool", "callId": 调用标识]]
 
 # 造系统消息（对齐原版 createSystemMessage(text, plugin)）
 # 空文本 → content = []（表示「无系统提示」）；非空 → 单个 text 块
 # 来源恒为 {"kind": "plugin", "plugin": 插件}
-段落 造系统消息 接收 文本, 插件:
+段落 造系统消息(文本, 插件):
   设 内容 为 []
   如果 文本 != "":
     列表追加(内容, 造文本块(文本))
@@ -98,11 +98,11 @@
 # ---- 判别与工具函数 ----
 
 # 消息是否为空内容助手消息（只挂用量，不投影）
-段落 助手消息内容为空 接收 消息:
+段落 助手消息内容为空(消息):
   返回 长度(消息["content"]) == 0
 
 # 取消息的文本块拼接（供 UI/摘要用）
-段落 取消息文本 接收 消息:
+段落 取消息文本(消息):
   设 结果 为 ""
   遍历 块 之 消息["content"]:
     如果 块["type"] == "text":
