@@ -1,34 +1,34 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-20T11:59:41+08:00",
+  "generated_at": "2026-09-20T16:53:52+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.82 FreeBSD 15.1",
     "host": "192.168.0.82",
-    "remote_dir": "/tmp/r44-20260920-115320",
-    "cwd": "/tmp/r44-20260920-115320/light-merge"
+    "remote_dir": "/tmp/r44-20260920-164822",
+    "cwd": "/tmp/r44-20260920-164822/light-merge"
   },
   "runner": {
     "mode": "fast",
     "parallel": true,
     "timeout_sec": 2700,
     "marker": "not slow",
-    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260920-115320/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260920-115320/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
-    "elapsed_sec": 358.1,
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260920-164822/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260920-164822/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
+    "elapsed_sec": 308.1,
     "pytest_rc": 0,
     "timed_out": false
   },
   "totals": {
-    "total": 7909,
+    "total": 7928,
     "failure": 0,
     "error": 0,
     "skipped": 75,
     "xfailed": 11,
     "xpassed": 0,
-    "passed": 7823,
+    "passed": 7842,
     "failed": 0,
-    "duration_sec": 356.036
+    "duration_sec": 306.147
   },
   "failed": [],
   "skipped": [
@@ -91,6 +91,7 @@
     "tests/test_llm_client_light.py::test_nonstream_chat",
     "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
     "tests/test_semantic.py::test_number_type",
     "tests/test_semantic.py::test_string_type",
@@ -101,9 +102,10 @@
     "tests/test_semantic.py::test_variable_declaration",
     "tests/test_semantic.py::test_function_declaration",
     "tests/test_semantic.py::test_undefined_variable",
-    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
     "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/test_path_guard_light.py::test_junction指向外部被拒",
     "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
     "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
@@ -113,10 +115,8 @@
     "tests/test_semantic.py::test_recursive_function",
     "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
     "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
+    "tests/test_lsp_protocol_full.py::test",
     "tests/unit/test_light_examples_run.py::test_dict_placeholder",
-    "tests/unit/test_light_examples_run.py::test_placeholder",
-    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
-    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
-    "tests/test_lsp_protocol_full.py::test"
+    "tests/unit/test_light_examples_run.py::test_placeholder"
   ]
 }
