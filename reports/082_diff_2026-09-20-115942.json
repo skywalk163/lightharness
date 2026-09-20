@@ -1,0 +1,29 @@
+{
+  "diff": {
+    "base_generated_at": "2026-09-20T01:33:37+08:00",
+    "new_generated_at": "2026-09-20T11:59:41+08:00",
+    "base_total": 7885,
+    "new_total": 7909,
+    "base_failed": 10,
+    "new_failed": 0,
+    "new_red": [],
+    "recorded": [],
+    "fixed": [
+      "tests/test_async_class_method.py::test_04_negative_await_in_sync_method",
+      "tests/test_context_manager.py::test_function_call_keyword_arg",
+      "tests/test_context_manager.py::test_keyword_arg_accepted",
+      "tests/test_context_manager.py::test_keyword_arg_value_is_full_expression",
+      "tests/test_context_manager.py::test_multiple_keyword_args",
+      "tests/test_context_manager.py::test_positional_and_keyword_mixed",
+      "tests/test_context_manager.py::test_unified_interface_not_silently_dropped",
+      "tests/test_ffi_phase2.py::test_ffi_full_workflow",
+      "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
+      "tests/unit/test_prescan_embed_semicolon_kwarg.py::test_段落调用具名实参"
+    ],
+    "unchanged_red": [],
+    "first_run": false,
+    "ok": true
+  },
+  "new_baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\082_lightmerge基线_latest.json",
+  "base_baseline": "reports/082_lightmerge基线_2026-09-20-013337.json"
+}
