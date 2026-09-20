@@ -1,21 +1,21 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-20T19:08:02+08:00",
+  "generated_at": "2026-09-20T19:56:12+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.82 FreeBSD 15.1",
     "host": "192.168.0.82",
-    "remote_dir": "/tmp/r44-20260920-190141",
-    "cwd": "/tmp/r44-20260920-190141/light-merge"
+    "remote_dir": "/tmp/r44-20260920-195018",
+    "cwd": "/tmp/r44-20260920-195018/light-merge"
   },
   "runner": {
     "mode": "fast",
     "parallel": true,
     "timeout_sec": 2700,
     "marker": "not slow",
-    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260920-190141/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260920-190141/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
-    "elapsed_sec": 364.4,
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20260920-195018/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20260920-195018/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
+    "elapsed_sec": 340.7,
     "pytest_rc": 0,
     "timed_out": false
   },
@@ -28,7 +28,7 @@
     "xpassed": 0,
     "passed": 7855,
     "failed": 0,
-    "duration_sec": 362.387
+    "duration_sec": 338.585
   },
   "failed": [],
   "skipped": [
@@ -67,8 +67,8 @@
     "tests/test_agent_tools_light.py::test_junction指向外部被拒",
     "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
     "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
-    "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
+    "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
     "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
     "tests/test_pty_light.py::test_设窗口大小不炸",
     "tests/test_pty_light.py::test_写输入不崩",
@@ -81,8 +81,8 @@
     "tests/integration/test_playground_api.py::test_parse_simple",
     "tests/integration/test_playground_api.py::test_tokenize_empty",
     "tests/integration/test_playground_api.py::test_tokenize_simple",
-    "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
+    "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
     "tests/integration/test_playground_api.py::test_get_examples",
     "tests/integration/test_playground_api.py::test_get_grammar",
     "tests/integration/test_playground_api.py::test_get_stdlib",
@@ -90,8 +90,8 @@
     "tests/test_llm_client_light.py::test_stream_chat",
     "tests/test_llm_client_light.py::test_nonstream_chat",
     "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
-    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
     "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
     "tests/test_semantic.py::test_number_type",
     "tests/test_semantic.py::test_string_type",
     "tests/test_semantic.py::test_binary_operation_type",
@@ -103,19 +103,19 @@
     "tests/test_semantic.py::test_undefined_variable",
     "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
     "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
     "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
     "tests/test_path_guard_light.py::test_junction指向外部被拒",
-    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
-    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/test_semantic.py::test_type_mismatch",
     "tests/test_semantic.py::test_duplicate_definition",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
     "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
     "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
     "tests/test_lsp_protocol_full.py::test",
     "tests/unit/test_light_examples_run.py::test_dict_placeholder",
-    "tests/unit/test_light_examples_run.py::test_placeholder",
-    "tests/test_semantic.py::test_complete_program",
-    "tests/test_semantic.py::test_recursive_function"
+    "tests/unit/test_light_examples_run.py::test_placeholder"
   ]
 }
