@@ -226,6 +226,7 @@
       "原版包": "core/hooks + hook-protocol",
       "光明模块": "src/钩子.light + src/事件.light(总线) + src/会话.light(会话域接线) + src/代理.light(代理/能力域接线)",
       "状态": "v2；0.1.5已核对：hook-protocol 无 src 变化(hooks-claude-code/codex 提供方层未移植)；0.1.5第5轮确认：hooks 提供方包变更维持登记不移植(宿主层)",
+      "宿主面": true,
       "证据": [
         "src/钩子.light",
         "examples/test_钩子.light",
@@ -247,6 +248,7 @@
       "原版包": "apps/cli + bundle/headless",
       "光明模块": "src/总入口.light + examples/运行CLI.light",
       "状态": "done(v2 增量持久化+会话列表)；0.1.5登记：CLI 宿主层 6 文件变更未移植(args/bin/dump-config/profile-boot)；0.1.5第5轮任务1：总入口 模型解析链末级 fallback 接线 取默认模型()(deepseek-flash)；其余 CLI 宿主变更(args/bin/dump-config/profile-boot)维持登记不移植；0.1.5第7轮：CLI 命令面已覆盖——总入口.light 多命令调度 run/dump-config/version/help + 配置来源标注（对齐 args.ts launcher 哲学 + dump-config.ts）；profile/patch/plugin 层与 argv 子命令宿主面维持登记；R74路4：新增 src/CLI判定逻辑.light 移植上游 args/profile-boot/dump-config/plugin 四文件纯逻辑函数（解析启动=resolveBoot+rejectElectronProfile、累积补丁=collect、解析遥测补丁=resolveTelemetryPatch、全补丁顺序=allPatches、校验默认样板初始化=initializeProfileFromDefault 校验分支、渲染配置快照=renderConfigDump、锚定路径规格=anchorPathSpec），另补 examples/test_R74_路4_CLI宿主.light 实测 rc=0；bin.ts（Node 入口/版本读取/argv 分发）与 process-shutdown.ts（真实 setTimeout+process.exit 强制退出）登记不移植——宿主进程能力，光明层无对应",
+      "宿主面": true,
       "证据": [
         "src/总入口.light",
         "examples/test_cli深化.light",
@@ -271,6 +273,7 @@
       "原版包": "subprocess + shell",
       "光明模块": "src/子进程.light",
       "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/子进程.light",
         "examples/test_子进程.light",
@@ -290,6 +293,7 @@
       "原版包": "sandbox",
       "光明模块": "src/沙箱.light",
       "状态": "v2；0.1.5登记：sandbox OS 层 2 文件变更未移植(profiles/index)；0.1.5第5轮确认：sandbox OS 层维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/沙箱.light",
         "examples/test_沙箱.light",
@@ -417,6 +421,7 @@
       "原版包": "packages/ptc-runtime（0.1.6-alpha.1 起由 packages/code-runtime 改名；0.1.5 时为 packages/code-runtime）",
       "光明模块": "src/代码运行时.light",
       "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/代码运行时.light",
         "examples/test_代码运行时.light",
@@ -432,6 +437,7 @@
       "原版包": "packages/e2b",
       "光明模块": "src/e2b客户端.light",
       "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应",
+      "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b客户端.light",
         "examples/test_e2b.light",
@@ -660,6 +666,7 @@
       "原版包": "packages/goal/goal（fold.ts + domain.ts）",
       "光明模块": "src/目标折叠.light",
       "状态": "done；0.1.5路3：goal 激活边界/轮次驱动(目标折叠.light)；新 tool-goal resume-paused 守卫未移植(宿主工具)；0.1.5第5轮任务3：goal 模型恢复守卫(GOAL_TOOL_RESUME_PAUSED)已作纯决策移植至 目标折叠.判定模型可恢复；tool-goal 工具注册仍属宿主层维持登记",
+      "宿主面": true,
       "证据": [
         "src/目标折叠.light",
         "examples/test_目标折叠.light",
@@ -678,6 +685,7 @@
       "原版包": "packages/session-query/session-query/src/filters.ts",
       "光明模块": "src/会话查询过滤.light",
       "状态": "done；0.1.5登记：filters.ts 本体无变更；包内新增 cold-read/corpus/extraction 新能力未移植；0.1.5第5轮任务4：会话查询.light(26段596行) 移植 extraction/documents/tracing/sources/corpus 纯逻辑面；会话查询过滤.light 仅接口衔接",
+      "销账": "台账过期(实际早已移植)",
       "证据": [
         "src/会话查询过滤.light",
         "examples/test_会话查询过滤.light",
@@ -696,6 +704,7 @@
       "原版包": "packages/acp/acp/src/content.ts",
       "光明模块": "src/acp内容.light",
       "状态": "done；0.1.5登记：acp 宿主适配层 2 文件变更未移植；0.1.5第5轮确认：acp 宿主适配层维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/acp内容.light",
         "examples/test_acp内容.light"
@@ -747,6 +756,7 @@
       "原版包": "packages/acp/acp/src/codec.ts",
       "光明模块": "src/acp转码.light",
       "状态": "done；0.1.5登记：acp codec 宿主适配层变更未移植；0.1.5第5轮确认：acp codec 宿主适配层维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/acp转码.light",
         "examples/test_acp转码.light"
@@ -881,6 +891,7 @@
       "原版包": "packages/web/web-fetch-http/src/policy.ts",
       "光明模块": "src/抓取策略.light",
       "状态": "done；0.1.5登记：web-fetch-http DNS/IP 加固(宿主网络层)未移植；0.1.5第5轮确认：web-fetch-http DNS/IP 加固维持登记不移植(宿主网络层)；0.1.5第7轮：web-fetch-http isNonPublicIpLiteral 纯逻辑面已覆盖（抓取策略.light 剥IPv6括号/是IP字面量/IP是否公网/主机是否非公网字面量）；DNS 解析/地址固定连接/NAT64 探测宿主面维持登记",
+      "宿主面": true,
       "证据": [
         "src/抓取策略.light",
         "examples/test_抓取策略.light",
@@ -1036,6 +1047,7 @@
       "原版包": "packages/api/remotes/src/(remote-events.ts+agent-lookup.ts) + packages/api/gateway/src/(index.ts+client/index.ts)",
       "光明模块": "src/远端总线.light",
       "状态": "done；0.1.5登记：api/remotes+gateway 宿主总线 6 文件变更未移植；0.1.5第5轮确认：api/remotes+gateway 宿主总线维持登记不移植；0.1.5第7轮：api/remotes 转发白名单 19 条已覆盖（远端总线.light 转发白名单/事件可否转发/转发模式，对齐 remote-events.ts）；gateway 总线/网络 IO 宿主面维持登记",
+      "宿主面": true,
       "证据": [
         "src/远端总线.light",
         "examples/test_远端总线.light",
@@ -1057,6 +1069,7 @@
       "原版包": "packages/hooks/hook-protocol/src/(matcher.ts+codec.ts+merge.ts) + packages/hooks/hooks-codex/src/(config.ts+index.ts) + packages/hooks/hooks-claude-code/src/config.ts",
       "光明模块": "src/钩子协议.light",
       "状态": "done；0.1.5登记：hooks 提供方包(hooks-claude-code/codex)变更未移植；0.1.5第5轮确认：hooks 提供方包维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/钩子协议.light",
         "examples/test_钩子协议.light"
@@ -1080,6 +1093,7 @@
       "原版包": "packages/e2b/e2b/src/index.ts + subprocess-e2b/src/(process.ts+output.ts) + fs-e2b/src/index.ts",
       "光明模块": "src/e2b配套.light",
       "状态": "done；0.1.5登记：e2b 配套宿主变更未移植；0.1.5第5轮确认：e2b 配套宿主维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b，e2b 配套宿主变更的「维持登记不移植」记账作废，改记「上游已移除」",
+      "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b配套.light",
         "examples/test_e2b配套.light"
@@ -1183,6 +1197,7 @@
       "原版包": "packages/typert/loader/src/index.ts + packages/typert/registry/src/(index.ts+service.ts)",
       "光明模块": "src/类型注册.light",
       "状态": "done；0.1.5登记：typert registry 宿主服务 1 文件变更未移植；0.1.5第5轮确认：typert registry 宿主服务维持登记不移植",
+      "宿主面": true,
       "证据": [
         "src/类型注册.light",
         "examples/test_类型注册.light"
@@ -1369,6 +1384,7 @@
       "原版包": "packages/webhook/webhook/src/{index.ts, session.ts, types.ts, invariant.ts, brand.ts}",
       "光明模块": "src/webhook会话.light",
       "状态": "done；0.1.5登记：webhook session.ts 宿主胶水简化(初始模型选择)，不移植；0.1.5第7轮：webhook 初始模型监听已对齐（webhook会话.light 载荷优先 + 装配槽回退）；事件总线/scoped Agent 装配宿主胶水维持登记",
+      "宿主面": true,
       "证据": [
         "src/webhook会话.light",
         "examples/test_webhook会话.light"
@@ -1466,6 +1482,7 @@
       "原版包": "packages/test-support/llm-mock-server/src/{index.ts,cli.ts,bin.ts}",
       "光明模块": "src/mock大模型服务器.light",
       "状态": "done(纯逻辑核心)；0.1.5第11轮任务6已跟随：24种行为(success/流式分片/7错误码族/语义空回复族/畸形流/传输退化族/reasoning_success/tool_call_success/max_tokens/slow_success)+默认随机权重13键+最大定时延迟2147483647+播种随机(整数LCG替代mulberry32)+加权选择+文本切块+SSE帧(data:{json}\\n\\n + data:[DONE]\\n\\n)+行为队列FIFO消费(越界循环末位/脚本耗尽500)+守卫次序(非POST405/路径错404/API密钥401/坏JSON400且不消费脚本)；cli.ts/bin.ts/部分延时未移植",
+      "宿主面": true,
       "证据": [
         "src/mock大模型服务器.light",
         "examples/test_mock大模型服务器.light",
@@ -1613,6 +1630,7 @@
       "原版包": "interaction/user-approval/src/{index.ts,invariant.ts,types.ts} + interaction/tool-ask-user/src/index.ts",
       "光明模块": "src/审批.light（对照修复）",
       "状态": "done；0.1.5第12轮：对照修复 D1~D10 —— 审批结果词汇四结果（allowed-once/rejected/cancelled/unavailable 与光明 批准/拒绝 二值映射）+ 审批策略 ask|never + never 自动拒绝文案 NEVER_SENTENCE/ask 说明 ASK_SENTENCE（逐字对齐）+ hasOpenTurn 开轮判定 + 审批请求需开轮前置 + 提问工具形状（造提问调用 multi_select→multiSelect/规范提问答案 selected 复制）；应答者瀑布/AbortSignal 竞态属宿主面未移植",
+      "宿主面": true,
       "证据": [
         "src/审批.light",
         "examples/test_审批对照.light"
@@ -1669,6 +1687,7 @@
       "原版包": "packages/session/session-log-deepseek/src/index.ts（192 行）+ types.ts（90 行）+ invariant.ts（74 行）",
       "光明模块": "src/会话日志增量.light",
       "状态": "done；0.1.5第13轮：线头翻译（version/id 字符串化/createdAt + 条件展开 cwd/parentSession/seedLength=继承事件数/origin/delegationDepth/agentPreset）+ 线事件类型分发（system|user|tool 带 surfaceOp+sourceEventSeqs 数字归一/assistant 仅 surfaceOp/未知可忽略不透明保留）+ 线化操作（append 原样/replace 展开）+ 接受水印折叠（增量扫描起点/六步校验序/格式版本安全整数含 -0/水印取最大/会话标识匹配/记忆表缓存写回）+ 构造增量（afterSeq/throughSeq/后缀起点）+ 确认接受（delivery-accepted 事件 4 键）；宿主面（请求扩展注册/prepare 会话查表/accept 真实追加/invariant 伴随插件）剔除登记；继承分叉豁免（invariant.ts:29-33 isOwnSeq）偏差登记未移植",
+      "宿主面": true,
       "证据": [
         "src/会话日志增量.light",
         "examples/test_会话日志增量.light"
