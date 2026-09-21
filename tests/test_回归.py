@@ -124,6 +124,35 @@ if not sys.platform.startswith('win'):
 EXPECT_GREEN_EXCEPT = set(EXPECT_RED)
 
 
+# ── FreeBSD 0.82 门禁「环境红」台账（R81 建账 / R82 路3 脚本化） ─────────────
+# 这 8 条红与任何一轮源码改动无关，属 FreeBSD 环境能力差异（真实 socket/PTY/
+# 子进程/事件循环/沙箱超时 + flaky）。门禁判据改为「对拍基线，新增红 = 0」，
+# 台账内条目不计入回归红。详见 tests/ci_environment_reds.txt 与
+# _task3_R82_LH环境红判据脚本化.md。
+def _load_env_red_ledger():
+    """解析 tests/ci_environment_reds.txt，返回文件名集合。"""
+    names = set()
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ci_environment_reds.txt')
+    if os.path.isfile(path):
+        with open(path, encoding='utf-8') as fh:
+            for raw in fh:
+                s = raw.strip()
+                if not s or s.startswith('#'):
+                    continue
+                parts = raw.split('\t')
+                if len(parts) >= 2 and parts[1].strip():
+                    names.add(parts[1].strip())
+    return names
+
+
+# 环境红台账文件名集合（跨平台加载；仅 FreeBSD 上真正容忍）
+ENV_RED_LEDGER = _load_env_red_ledger()
+# 本轮实际失败集合（所有平台都记录，供报告核算）
+_ALL_FAILED = set()
+# 本轮失败且命中环境红台账的条目（仅 FreeBSD 报告用）
+_ENV_RED_FAILED = set()
+
+
 def _collect():
     cases = []
     for f in sorted(glob.glob(os.path.join(EXAMPLES, '*.light'))):
@@ -182,8 +211,51 @@ def test_example_exit_code(name, fpath):
     rc, out = _run(fpath)
     if name in EXPECT_RED:
         assert rc != 0, f'{name} 应为红（{EXPECT_RED[name]}），实际 rc=0'
+    elif name in ENV_RED_LEDGER and sys.platform.startswith('freebsd'):
+        # FreeBSD 0.82 环境红台账条目：容忍（无论本轮绿/红都不算回归）。
+        # 记录实际失败情况，供 test_env_red_baseline_report 汇总报告。
+        # 仅 FreeBSD 启用：Linux/Windows 上这 8 条本就绿（走下方 else 硬判绿）。
+        if rc != 0:
+            _ALL_FAILED.add(name)
+            _ENV_RED_FAILED.add(name)
+        # 不断言：台账内条目不计入回归红。
     else:
-        assert rc == 0, f'{name} 应绿，实际 rc={rc}\n--- 输出尾 ---\n{out[-800:]}'
+        # 其它全部预期绿。若失败且不在台账内，即为新增回归红 —— 断言失败并明示。
+        if rc != 0:
+            _ALL_FAILED.add(name)
+        assert rc == 0, (
+            f'{name} 应绿，实际 rc={rc}'
+            + ('（非环境红台账条目 → 疑似回归）' if name not in ENV_RED_LEDGER else '')
+            + f'\n--- 输出尾 ---\n{out[-800:]}'
+        )
+
+
+def test_env_red_baseline_report():
+    """FreeBSD 门禁环境红报告：环境账 N 条 / 命中 M 条 / 回归红 K 条。
+
+    判据：回归红（失败但不属于环境红台账）必须 = 0。台账内条目即使失败也容忍。
+    Windows/Linux 上不启用台账（8 条本就绿），跳过本用例。
+    """
+    if not sys.platform.startswith('freebsd'):
+        pytest.skip('环境红台账仅 FreeBSD runner 适用（Windows/Linux 上 8 条本就绿）')
+    # 回归红 = 本轮失败集合 − 环境红台账
+    new_reds = _ALL_FAILED - ENV_RED_LEDGER
+    env_red_count = len(ENV_RED_LEDGER)
+    present = _ENV_RED_FAILED
+    print()
+    print('=' * 60)
+    print('[环境红报告] FreeBSD 0.82 门禁')
+    print(f'  环境账        : {env_red_count} 条')
+    print(f'  本轮命中台账  : {len(present)} 条')
+    print(f'  回归红(新增红): {len(new_reds)} 条')
+    if present:
+        print('  命中台账: ' + ', '.join(sorted(present)))
+    if new_reds:
+        print('  回归红: ' + ', '.join(sorted(new_reds)))
+    print('=' * 60)
+    assert len(new_reds) == 0, (
+        f'检测到 {len(new_reds)} 条回归红（不在环境红台账内）: ' + ', '.join(sorted(new_reds))
+    )
 
 
 def test_expected_red_registered():

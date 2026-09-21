@@ -64,6 +64,25 @@ def run_pytest():
     return r.returncode == 0
 
 
+def run_judge_selfcheck():
+    """运行环境红判据脚本 self-check（廉价，无需 FreeBSD 跑测）。
+
+    对 R80-B/S/C 父提交失败集重放，证明「新增红恒为 0」，校验台账与判据逻辑一致。
+    """
+    _log("=== 运行环境红判据 self-check ===")
+    script = os.path.join(ROOT, "tests", "ci_judge_env_reds.py")
+    if not os.path.isfile(script):
+        _log(f"  [跳过] 未找到判据脚本 {script}")
+        return True
+    r = subprocess.run(
+        [sys.executable, script, "self-check"],
+        cwd=ROOT,
+    )
+    ok = r.returncode == 0
+    _log(f"self-check 退出码={r.returncode}（{'通过' if ok else '失败'}）")
+    return ok
+
+
 def run_smoke():
     """运行核心模块冒烟测试。"""
     _log("=== 运行核心模块冒烟测试 ===")
@@ -104,6 +123,7 @@ def main():
         sys.exit(1)
 
     results = {}
+    results["judge_selfcheck"] = run_judge_selfcheck()
     results["pytest"] = run_pytest()
     if not quick:
         results["smoke"] = run_smoke()
