@@ -13,7 +13,7 @@
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
   ],
-  "版本": "覆盖记录至第56轮（0.82 切 python3.12 并行 + R55 遗留清零）",
+  "版本": "覆盖记录至 R85（0.1.6-alpha.2 全量，上游锚点 ddefc45fbc；新增 27 卡 #215-#241；Linux 平台补位启动）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -272,7 +272,7 @@
       "功能": "子进程执行（subprocess/shell 后端）",
       "原版包": "subprocess + shell",
       "光明模块": "src/子进程.light",
-      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植",
+      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植；R85改标（0.1.6）：linux-execve/linux-scope 纯逻辑已移植（src/子进程.light R85-B 段，test_R85_B_exec.light rc=0）；process-inspector→src/异步子进程.light；shell-activity/terminal/windows-job 纯逻辑→src/异步PTY.light；真实 execve/systemd-run/Job API/PTY fd 判定仍宿主面（F 批2 Linux 实测范围）",
       "宿主面": true,
       "证据": [
         "src/子进程.light",
@@ -420,7 +420,7 @@
       "功能": "代码执行运行时（code-runtime）",
       "原版包": "packages/ptc-runtime（0.1.6-alpha.1 起由 packages/code-runtime 改名；0.1.5 时为 packages/code-runtime）",
       "光明模块": "src/代码运行时.light",
-      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植",
+      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持",
       "宿主面": true,
       "证据": [
         "src/代码运行时.light",
@@ -436,7 +436,7 @@
       "功能": "e2b 云沙箱客户端（e2b）",
       "原版包": "packages/e2b",
       "光明模块": "src/e2b客户端.light",
-      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应",
+      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持",
       "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b客户端.light",
@@ -1092,7 +1092,7 @@
       "功能": "e2b 沙箱配套纯逻辑（e2b：转义外壳实参/受控环境变量 HOME 随机路径/配置校验 validate；subprocess-e2b：按时收讫 withinMs 投影、命令文本 commandText 编码器行+重定向+引导脚本+argv 引号、输出解码器 base64 帧解析、输出读者 maxBytes/maxSpillBytes/偏移/lossy；fs-e2b：行尾归一化/解码文本/解码规范路径/字面编辑/FS_TOO_LARGE 预算）",
       "原版包": "packages/e2b/e2b/src/index.ts + subprocess-e2b/src/(process.ts+output.ts) + fs-e2b/src/index.ts",
       "光明模块": "src/e2b配套.light",
-      "状态": "done；0.1.5登记：e2b 配套宿主变更未移植；0.1.5第5轮确认：e2b 配套宿主维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b，e2b 配套宿主变更的「维持登记不移植」记账作废，改记「上游已移除」",
+      "状态": "done；0.1.5登记：e2b 配套宿主变更未移植；0.1.5第5轮确认：e2b 配套宿主维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b，e2b 配套宿主变更的「维持登记不移植」记账作废，改记「上游已移除」；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持",
       "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b配套.light",
@@ -1828,7 +1828,7 @@
       "功能": "context/session-reference 会话引用纯逻辑面（配置/序列化/投影/溢出/类型）",
       "原版包": "packages/context/session-reference/src/{config.ts,serialization.ts,projection.ts,spill.ts,types.ts}（5文件纯逻辑，剔除index.ts Cordis装配面；uri.ts复用既有#33 src/会话引用.light）",
       "光明模块": "src/会话引用深化.light",
-      "状态": "done；0.1.5第15轮：命名冲突（既有src/会话引用.light已覆盖#33 uri.ts）改深化名，只读导入复用URI编解码；配置校验(maxReferences 1..3/candidateLimit/maxReferenceBytes/referenceContextFraction)+标签安全序列化(<转\\u003c)+投影提取+溢出策略+类型形状",
+      "状态": "done；0.1.5第15轮：命名冲突（既有src/会话引用.light已覆盖#33 uri.ts）改深化名，只读导入复用URI编解码；配置校验(maxReferences 1..3/candidateLimit/maxReferenceBytes/referenceContextFraction)+标签安全序列化(<转\\u003c)+投影提取+溢出策略+类型形状；R85承接（0.1.6）：label/displayTitle/过滤并入 displayTitle（src/会话引用深化.light，test_R85_E_杂域_上下文.light rc=0）",
       "证据": [
         "src/会话引用深化.light",
         "examples/test_会话引用深化.light",
@@ -2690,7 +2690,7 @@
       "功能": "image/offload事件+图像卸载投影（0.1.6 P0硬兼容）",
       "原模块": "compaction/compaction-image-offload",
       "光明模块": "lightharness/src/会话格式.light + src/压缩.light",
-      "状态": "已完成",
+      "状态": "已完成；R85承接：compaction-image-offload project-message 深度优先标记（src/压缩.light，test_R85_E_压缩镜像卸载.light rc=0）",
       "完成轮次": "第51轮",
       "备注": "任务1。认识image/offload事件+offloadOldestImages纯函数+投影。不做就读不了0.1.6日志。双平台rc=0。"
     },
@@ -3095,6 +3095,330 @@
       "语言缺陷": [
         "仅 freebsd-jail 有完整约束实现；bwrap/landlock/seatbelt/windows-acl 仅探测未实现约束（fail-closed）"
       ]
+    },
+    {
+      "编号": 215,
+      "功能": "工作区变更：git 快照 numstat 解析 / 路径过滤 / 轮记录器 / 事件投影",
+      "原版包": "deliverables/workspace-changes",
+      "光明模块": "src/工作区变更.light",
+      "状态": "已移植纯逻辑·git 执行注入登记",
+      "证据": [
+        "examples/test_R85_D_工作区变更.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 216,
+      "功能": "Office→PDF：转换队列（去重/优先级/状态）/ 身份 / 输出 / 错误族",
+      "原版包": "document/office-to-pdf",
+      "光明模块": "src/office转PDF.light",
+      "状态": "已移植纯逻辑·LibreOffice 后端注入登记",
+      "证据": [
+        "examples/test_R85_D_office转PDF.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 217,
+      "功能": "插件管理：安装规格校验 / 内存补丁 / 失败分类 / 构建审批 / 操作编排",
+      "原版包": "boot/plugin-manager",
+      "光明模块": "src/插件管理.light",
+      "状态": "已移植纯逻辑·Node 安装执行注入登记",
+      "证据": [
+        "examples/test_R85_D_插件管理.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 218,
+      "功能": "tool-cordis：目录 present/prompt/providers + index 装配",
+      "原版包": "extensions/tool-cordis",
+      "光明模块": "src/toolcordis.light",
+      "状态": "已移植纯逻辑·api-catalog/provider 宿主登记",
+      "证据": [
+        "examples/test_R85_D_tool-cordis.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 219,
+      "功能": "typert：protocol 类型模型 + generator analyzer/emitter（简化）",
+      "原版包": "typert（generator+protocol）",
+      "光明模块": "src/typert协议.light + src/typert生成器.light",
+      "状态": "已移植纯逻辑·cordis-catalog/registry/loader 宿主登记",
+      "证据": [
+        "examples/test_R85_D_typert.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 220,
+      "功能": "tool-present 0.1.6 新增 present 交付工具（声明最终交付文件）",
+      "原版包": "deliverables/tool-present（index.ts 全新）",
+      "光明模块": "src/交付呈现.light",
+      "状态": "已移植纯逻辑·fs/session 宿主注入登记",
+      "证据": [
+        "examples/test_R85_D_交付呈现.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 221,
+      "功能": "图片卸载投影 + IMAGE_OFFLOAD_REQUIRED（取代 0.1.5 请求时主动卸载）",
+      "原版包": "llm/llm content.ts + error.ts",
+      "光明模块": "src/消息.light §8",
+      "状态": "已移植纯逻辑·真实字节读取/沙箱落盘宿主登记",
+      "证据": [
+        "examples/test_R85_A_图片卸载.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 222,
+      "功能": "DeepSeek 视觉 token 计算器（PATCH=14/RATIO=3/CAP=1024/MIN=544²，闭式解+≤10 轮 fixpoint）",
+      "原版包": "llm-deepseek common/image-tokens.ts",
+      "光明模块": "src/令牌计量.light 视觉令牌段",
+      "状态": "已移植纯逻辑",
+      "证据": [
+        "examples/test_R85_A_视觉令牌.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 223,
+      "功能": "模型能力元数据与 reasoning efforts（pi-ai 思考级推导）",
+      "原版包": "llm-deepseek model-info.ts + llm-pi-ai models.ts/catalog.ts",
+      "光明模块": "src/模型信息.light（新建）",
+      "状态": "已移植纯逻辑·pi-ai builtinModels/createProvider 装配宿主登记",
+      "证据": [
+        "examples/test_R85_A_模型信息.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 224,
+      "功能": "Messages 路由序列化 + 原生回放校验（in-history 收束/同角色合并/tool 配对/effort 解析/max_tokens 三级回落）",
+      "原版包": "llm-deepseek protocols/messages/{serialize,replay}.ts",
+      "光明模块": "src/客户端.light §Messages",
+      "状态": "已移植纯逻辑·images/access/fileIds 三注入面宿主登记",
+      "证据": [
+        "examples/test_R85_A_消息序列化.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 225,
+      "功能": "token-meter image/offload 折叠 + 结构计价（stateVersion 4→5、卸载标记不入计价 JSON）",
+      "原版包": "token-meter src/{estimate,index}.ts",
+      "光明模块": "src/令牌计量.light §10",
+      "状态": "已移植纯逻辑",
+      "证据": [
+        "examples/test_R85_A_令牌折叠.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 226,
+      "功能": "tool-fs：行级 LCS 块差异 / 写参数校验 / 写结果信封",
+      "原版包": "fs/tool-fs",
+      "光明模块": "src/工具_写文件.light",
+      "状态": "已移植纯逻辑·真实 FS 宿主登记",
+      "证据": [
+        "examples/test_R85_E_工具.diff.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 227,
+      "功能": "image-offload：按深度优先出现位置标记图像为已卸载（承接 R51 #185）",
+      "原版包": "compaction/compaction-image-offload",
+      "光明模块": "src/压缩.light",
+      "状态": "已移植纯逻辑",
+      "证据": [
+        "examples/test_R85_E_压缩镜像卸载.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 228,
+      "功能": "workflow-ptc：WorkerInit / ChildStartRequest / ChildResult 契约校验",
+      "原版包": "workflow/workflow-ptc",
+      "光明模块": "src/工作流错误.light",
+      "状态": "已移植纯逻辑·worker 编排宿主登记",
+      "证据": [
+        "examples/test_R85_E_工作流契约.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 229,
+      "功能": "attachment：等比投影 / 长边投影 / 请求目标校验",
+      "原版包": "attachment/attachment",
+      "光明模块": "src/附件准入.light",
+      "状态": "已移植纯逻辑·sharp/文件读取登记",
+      "证据": [
+        "examples/test_R85_E_附件归一.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 230,
+      "功能": "sandbox：失败签名匹配 / 运行失败分类 / 升级审批判定",
+      "原版包": "sandbox/sandbox",
+      "光明模块": "src/沙箱.light",
+      "状态": "已移植纯逻辑·FFI/windows-acl 登记",
+      "证据": [
+        "examples/test_R85_E_沙箱升级.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 231,
+      "功能": "mcp-resources：资源渲染 + blob 掩码",
+      "原版包": "mcp/mcp-resources",
+      "光明模块": "src/mcp客户端.light",
+      "状态": "已移植纯逻辑",
+      "证据": [
+        "examples/test_R85_E_杂域_权限预设.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 232,
+      "功能": "permission-presets 0.1.6：保留预设 auto + 固定执行包 + 保留名校验",
+      "原版包": "interaction/permission-presets",
+      "光明模块": "src/交互命令.light",
+      "状态": "已移植纯逻辑·Auto hook/projection 登记",
+      "证据": [
+        "examples/test_R85_E_杂域_权限预设.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 233,
+      "功能": "commands CommandDefinitionId + user-questions callId? 形状",
+      "原版包": "interaction/{commands,user-questions}",
+      "光明模块": "src/交互命令.light",
+      "状态": "已移植形状",
+      "证据": [
+        "examples/test_R85_E_杂域_权限预设.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 234,
+      "功能": "session-reference 0.1.6：label / displayTitle / 过滤并入 displayTitle",
+      "原版包": "context/session-reference",
+      "光明模块": "src/会话引用深化.light",
+      "状态": "已移植纯逻辑·投影读取登记",
+      "证据": [
+        "examples/test_R85_E_杂域_上下文.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 235,
+      "功能": "linux-execve/linux-scope 纯逻辑（0.1.5 登记不移植 → 0.1.6 改标已移植：argv/env 构造、错误映射、作用域参数、能力推导）",
+      "原版包": "subprocess/subprocess-local {linux-execve,linux-scope}.ts",
+      "光明模块": "src/子进程.light R85-B 段",
+      "状态": "已移植（本机 Windows 纯逻辑对拍）·真实 execve/systemd-run 宿主",
+      "证据": [
+        "examples/test_R85_B_exec.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 236,
+      "功能": "subprocess-local 0.1.6 增量：process-inspector / shell-activity / terminal / windows-job 纯逻辑",
+      "原版包": "subprocess/subprocess-local",
+      "光明模块": "src/异步子进程.light + src/异步PTY.light",
+      "状态": "已移植纯逻辑·真实 PTY/内核 fd 判定宿主",
+      "证据": [
+        "examples/test_R85_B_inspector.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 237,
+      "功能": "外壳环境控制标记（DSH_* 净化 / SUBPROCESS_CONTROL 注入）",
+      "原版包": "subprocess-local env 控制标记段",
+      "光明模块": "src/外壳环境.light",
+      "状态": "已移植",
+      "证据": [
+        "examples/test_R85_B_exec.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 238,
+      "功能": "PTC run_code 三控 schema 动态收敛（timeoutMs / sandbox_permissions / justification + ESCALATION_TARGETS）",
+      "原版包": "core/tools src/ptc.ts (+137)",
+      "光明模块": "src/工具.light PTC 段",
+      "状态": "已移植·真实 PtcRuntime.run 宿主",
+      "证据": [
+        "examples/test_R85_C_PTC三控.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 239,
+      "功能": "subagent continuation 激活池 + 结算消息 text-only + 委托覆盖",
+      "原版包": "subagent/subagent src/continuation-*.ts + child-agent.ts",
+      "光明模块": "src/子代理续传.light",
+      "状态": "已移植·rootPools/maxActiveSubagents 宿主",
+      "证据": [
+        "examples/test_R85_C_子代理续传增量.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 240,
+      "功能": "agent-loop inbox 异步化 + projection 统一注册",
+      "原版包": "core/agent-loop src/index.ts",
+      "光明模块": "src/代理循环.light",
+      "状态": "宿主面登记（光明为纯状态机，无 inbox；异步化待 ReactLoopInbox 宿主面移植）",
+      "证据": [
+        "无（登记）"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
+    },
+    {
+      "编号": 241,
+      "功能": "session message projection 事件解释器（workspace/changes、permission/preset 事件词汇 + 投影事件表）",
+      "原版包": "core/session src/surface.ts + known-event-types.ts",
+      "光明模块": "src/会话格式.light",
+      "状态": "事件词汇已移植登记·投影解释器待 surface fold 域",
+      "证据": [
+        "examples/test_R85_C_会话事件词汇.light"
+      ],
+      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
+      "反跑判据": ""
     }
   ]
 }
