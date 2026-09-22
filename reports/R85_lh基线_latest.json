@@ -1,18 +1,18 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-22T14:33:11+08:00",
+  "generated_at": "2026-09-22T15:53:15+08:00",
   "target": {
     "name": "lightharness",
     "platform": "0.86 Linux",
     "host": "192.168.0.86",
-    "remote_dir": "/tmp/r85-20260922-142446",
-    "cwd": "/tmp/r85-20260922-142446/lightharness"
+    "remote_dir": "/tmp/r85-20260922-153918",
+    "cwd": "/tmp/r85-20260922-153918/lightharness"
   },
   "runner": {
     "mode": "full",
     "parallel": true,
-    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-142446/lh_results.xml -n auto --dist loadscope --timeout 60",
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-153918/lh_results.xml -n auto --dist loadscope --timeout 60",
     "pytest_rc": "0"
   },
   "totals": {
@@ -24,7 +24,7 @@
     "xpassed": 0,
     "passed": 1371,
     "failed": 0,
-    "duration_sec": 370.264
+    "duration_sec": 343.876
   },
   "failed": [],
   "skipped": [

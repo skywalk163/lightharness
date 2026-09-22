@@ -1,145 +1,39 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-22T07:56:01+08:00",
+  "generated_at": "2026-09-22T15:47:13+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.86 Linux",
     "host": "192.168.0.86",
-    "remote_dir": "/tmp/r85-20260922-072405",
-    "cwd": "/tmp/r85-20260922-072405/light-merge"
+    "remote_dir": "/tmp/r85-20260922-153918",
+    "cwd": "/tmp/r85-20260922-153918/light-merge"
   },
   "runner": {
     "mode": "full",
     "parallel": true,
-    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-072405/lm_results_full.xml -n auto --dist loadscope",
-    "pytest_rc": "1"
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-153918/lm_results_full.xml -n auto --dist loadscope",
+    "pytest_rc": "0"
   },
   "totals": {
     "total": 8298,
-    "failure": 15,
+    "failure": 0,
     "error": 0,
     "skipped": 94,
     "xfailed": 11,
     "xpassed": 0,
-    "passed": 8178,
-    "failed": 15,
-    "duration_sec": 515.029
+    "passed": 8193,
+    "failed": 0,
+    "duration_sec": 451.21
   },
-  "failed": [
-    {
-      "id": "tests/test_http_client.py::test_async_client",
-      "cid": "tests.test_http_client::test_async_client",
-      "status": "failure",
-      "file": "tests/test_http_client.py",
-      "message": "ModuleNotFoundError: No module named 'aiohttp'"
-    },
-    {
-      "id": "tests/test_http_client.py::test_async_client_context_manager",
-      "cid": "tests.test_http_client::test_async_client_context_manager",
-      "status": "failure",
-      "file": "tests/test_http_client.py",
-      "message": "ModuleNotFoundError: No module named 'aiohttp'"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/all_in_one_L3_demo.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L3_domain/all_in_one_L3_demo.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan run 失败 (L3_domain/all_in_one_L3_demo.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo1_sql.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L3_domain/demo1_sql.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan run 失败 (L3_domain/demo1_sql.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/all_in_one_demo.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L4_python/all_in_one_demo.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan run 失败 (L4_python/all_in_one_demo.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo2_pandas_csv.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L4_python/demo2_pandas_csv.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan run 失败 (L4_python/demo2_pandas_csv.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/all_in_one_L3_demo.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L3_domain/all_in_one_L3_demo.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan compile 失败 (L3_domain/all_in_one_L3_demo.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo1_sql.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L3_domain/demo1_sql.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan compile 失败 (L3_domain/demo1_sql.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan compile 失败 (L4_python/all_in_one_demo.light):"
-    },
-    {
-      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
-      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
-      "status": "failure",
-      "file": "tests/e2e/test_e2e_chain.py",
-      "message": "AssertionError: duan compile 失败 (L4_python/demo2_pandas_csv.light):"
-    },
-    {
-      "id": "tests/e2e/test_L3_domain_e2e.py::test_derivative",
-      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_derivative",
-      "status": "failure",
-      "file": "tests/e2e/test_L3_domain_e2e.py",
-      "message": "ModuleNotFoundError: No module named 'sympy'"
-    },
-    {
-      "id": "tests/e2e/test_L3_domain_e2e.py::test_integrate",
-      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_integrate",
-      "status": "failure",
-      "file": "tests/e2e/test_L3_domain_e2e.py",
-      "message": "ModuleNotFoundError: No module named 'sympy'"
-    },
-    {
-      "id": "tests/e2e/test_L3_domain_e2e.py::test_matrix_multiply",
-      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_matrix_multiply",
-      "status": "failure",
-      "file": "tests/e2e/test_L3_domain_e2e.py",
-      "message": "ModuleNotFoundError: No module named 'sympy'"
-    },
-    {
-      "id": "tests/e2e/test_L3_domain_e2e.py::test_simplify",
-      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_simplify",
-      "status": "failure",
-      "file": "tests/e2e/test_L3_domain_e2e.py",
-      "message": "ModuleNotFoundError: No module named 'sympy'"
-    },
-    {
-      "id": "tests/e2e/test_L3_domain_e2e.py::test_solve_quadratic",
-      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_solve_quadratic",
-      "status": "failure",
-      "file": "tests/e2e/test_L3_domain_e2e.py",
-      "message": "ModuleNotFoundError: No module named 'sympy'"
-    }
-  ],
+  "failed": [],
   "skipped": [
     "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
     "tests/test_pure_light_hook.py::test_积木库导入的名字必须在纯光明门面的导出面内",
-    "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/all_in_one_demo.light]",
     "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo5_sklearn_iris.light]",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
-    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
     "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo5_sklearn_iris.light]",
     "tests/test_module_system.py::test_regex_escape",
     "tests/test_module_system.py::test_regex_findall",
@@ -208,10 +102,10 @@
     "tests/integration/test_playground_api.py::test_get_examples",
     "tests/integration/test_playground_api.py::test_get_grammar",
     "tests/integration/test_playground_api.py::test_get_stdlib",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/test_llm_client_light.py::test_stream_chat",
     "tests/test_llm_client_light.py::test_nonstream_chat",
     "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
-    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
     "tests/test_semantic.py::test_number_type",
     "tests/test_semantic.py::test_string_type",
