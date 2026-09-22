@@ -123,9 +123,9 @@ def test_operator_verbs_still_19():
     """OPERATOR_VERBS仍为19条（R32确认为真护栏）"""
     assert len(_lx.OPERATOR_VERBS) == 19
 
-def test_merge_whole_now_2():
-    """_P0A_MERGE_WHOLE：R32 精简为 3 条 → R35 精简为 2 条（移除 非空块）"""
-    assert len(L._P0A_MERGE_WHOLE) == 2
+def test_merge_whole_now_7():
+    """_P0A_MERGE_WHOLE：R32 精简为 3 条 → R35 精简为 2 条 → R58 有意恢复 7 条"""
+    assert len(L._P0A_MERGE_WHOLE) == 7
 
 def test_hm_now_25():
     """HM 词首并入类别：R26 设 22 字 → R33 清零 NEVER_SPLIT 后扩至 25 字

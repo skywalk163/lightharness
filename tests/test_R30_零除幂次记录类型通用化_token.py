@@ -7,7 +7,7 @@ test_R30_零除幂次记录类型通用化_token.py —— R30 任务3 token层�
 3. 三条通用规则**非逐词登记**（同构未登记词形同被覆盖：零除法/一加一/一真一）
 4. 规则收窄不越界（幂次 无括号形态、X类型 其他复合词、二字串数字+关键字）
 5. 「零」作为数字使用完全不受影响（反向硬门槛：CHINESE_NUM 语义零漂移）
-6. 联动保护表断言（HM 仍 22、DUAL 仍 8、MERGE_WHOLE 10 条）
+6. 联动保护表断言（HM 仍 22、DUAL 仍 8、MERGE_WHOLE 现为 7 条——R86-A 对齐 R58 口径）
 
 全语料 token 零变化证据：lightharness/_antirun_r30_t3_全量反跑.py
   HEAD(pre-R30, CCW=10) ←→ t12(任务1/2, CCW=4) ←→ 当前(+任务3, CCW=1)
@@ -83,11 +83,23 @@ def test_record_type_bare():
 
 def test_num_head_merge_generalizes():
     """_r30_cn_num_head_merge 是类别推导，不认词：3 字整串且第二字 ∈ HM∪DUAL
-    ⇒ 整词成标识符（语料 0 登记的 零除法/一加一/一真一 同被覆盖）"""
-    for w in ('零除法', '一加一', '一真一'):
-        t = toks('设 x 为 ' + w)
-        assert ('IDENTIFIER', w) in t, w
-        assert not any(k == 'CHINESE_NUM' for k, _ in t), w
+    ⇒ 整词成标识符（语料 0 登记的 零除法 同被覆盖）。
+
+    R58 任务1 收窄（light-merge 5d097a4c）：第三字是中文数字且整串闭合
+    （len==3 或其后非汉字）⇒ 「数字+运算符+数字」算术三元式，词首数字
+    独立成 CHINESE_NUM——一加一（三字闭合）→ 数字+加+数字；
+    一真一（三字闭合）→ 数字+真一。零除法 第三字 非 数 字 ， 不 触 发 收 窄 ， 仍 整 词 。"""
+    # 非闭合三元式：仍整体并入（类别推导不认词）
+    t = toks('设 x 为 零除法')
+    assert ('IDENTIFIER', '零除法') in t
+    assert not any(k == 'CHINESE_NUM' for k, _ in t)
+    # R58 收窄：闭合算术三元式不再吞成标识符
+    t = toks('设 x 为 一加一')
+    assert ('CHINESE_NUM', 1) in t and ('KEYWORD', '加') in t, t
+    assert not any(v == '一加一' for _, v in t), t
+    t = toks('设 x 为 一真一')
+    assert any(k == 'CHINESE_NUM' for k, _ in t), t
+    assert not any(v == '一真一' for _, v in t), t
 
 # === 6. 收窄不越界：无括号形态保持既有切分 ===
 
@@ -160,18 +172,20 @@ def test_dual_still_8():
         {'乘', '减', '加', '除', '模', '真', '空', '到'})
 
 def test_merge_whole_has_record_type():
-    """R32 任务3/4 更新：MERGE_WHOLE 10→3（整理模型消息/非空块/记录类型）。
+    """R58 更新：MERGE_WHOLE 当前 7 条（R32 保留 2 + R58 恢复 5）。
 
-    R32 逐条三重判据（G1 语料 856/857 文件 token 零变化 ∧ G2 编译门 ∧ G3
-    五种边界形态）后移除 7 条：导出事件表/退出码/接收参数/外部命令/排序依据/
-    输出块表/返回码 —— 整串语义由设名预扫描、函数调用语境整串合并、成员访问
-    规则接住。记录类型 G1 打红 2 文件且函数名位被 类型 劈开，确认为真护栏保留。
-
-    R35 更新：3→2，非空块 由一元前缀运算符通用规则接住后移除（三重判据全通过）。
-    记录类型 经 GR-3/GR-3c 两次通用化尝试均失败，仍保留为真护栏。"""
+    R32 任务3/4：10→3，移除 7 条（导出事件表/退出码/接收参数/外部命令/排序依据/
+    输出块表/返回码），整串语义由设名预扫描、函数调用语境整串合并、成员访问规则接住。
+    R35：3→2，非空块 由一元前缀运算符通用规则接住后移除。
+    R58（light-merge 5d097a4c）：2→7，恢复 导出事件表/返回码/接收参数/非空块/
+    外部命令 —— R32/R35 撤条只证了语料语境可逆，§8.4 要求的裸串语句起始位
+    仍需精确整串口径承接；退出码/排序依据/输出块表 三条裸串已由通用规则接住，
+    维持删除态。"""
     mw = _lx.Lexer._P0A_MERGE_WHOLE
-    assert mw == frozenset({'整理模型消息', '记录类型'})
-    assert '非空块' not in mw      # R35 已移除（通用规则接住，非删除语义）
+    assert mw == frozenset({
+        '整理模型消息', '记录类型',
+        '导出事件表', '返回码', '接收参数', '非空块', '外部命令'})
+    assert '退出码' not in mw and '排序依据' not in mw and '输出块表' not in mw
 
 def test_num_head_class_is_derived():
     """数字词首并入类别由 HM ∪ DUAL 推导，不独立登记"""
@@ -179,12 +193,14 @@ def test_num_head_class_is_derived():
                                              | _lx._P0A_HEAD_MERGE_DUAL)
 
 def test_predicates():
-    """判据函数自洽：整串 ≥3 字 ∧ 词首数字 ∧ 第二字 ∈ HM∪DUAL"""
+    """判据函数自洽：整串 ≥3 字 ∧ 词首数字 ∧ 第二字 ∈ HM∪DUAL
+    （R58 收窄：第三字为数字且整串闭合 ⇒ False，算术三元式不吞词）"""
     f = _lx._r30_cn_num_head_merge
-    assert f('零除错误') and f('零除法') and f('一加一')
+    assert f('零除错误') and f('零除法')
     assert not f('零个') and not f('零除') and not f('零真') and not f('一加')
     assert not f('三段') and not f('零导入') and not f('零匹配')
     assert not f('零点一') and not f('一千零一')   # 第二字为数字 → 不触发
+    assert not f('一加一') and not f('一真一')     # R58 收窄：三字闭合三元式
     assert not f('') and not f('零') and not f('除错误')
 
 

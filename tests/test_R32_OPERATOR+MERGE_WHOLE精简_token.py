@@ -30,29 +30,43 @@ def test_operator_verbs_retained_entries():
                 '幂', '模', '等于', '除', '除以'}
     assert set(_lx.OPERATOR_VERBS) == expected
 
-# === 2. _P0A_MERGE_WHOLE从10→3→2条断言 ===
+# === 2. _P0A_MERGE_WHOLE 10→3→2→7 条断言 ===
 
-def test_merge_whole_now_2():
-    """R32：10→3；R35：3→2（非空块 由通用规则 _P0A_UNARY_PREFIX_KW 接住后移除）"""
-    assert len(L._P0A_MERGE_WHOLE) == 2
+def test_merge_whole_now_7():
+    """R32：10→3；R35：3→2；R58：2→7（有意恢复 5 条「§8.4 点名历史雷区」完整词形）
+
+    R58（light-merge 5d097a4c）实测口径：R32/R35 撤条时已证「撤单条后全语料
+    token 零变化」（语境由设名预扫描/函数调用语境/成员访问规则覆盖），但
+    §8.4 验收套件要求的是**裸串语句起始位**也整体成词——
+      `导出事件表`/`接收参数`/`外部命令`/`返回码`/`非空块` 裸串均被劈开，
+    故按 R58 有意恢复；`退出码`/`排序依据`/`输出块表` 三条裸串已由既有通用
+    规则接住，无需登记。裁决：lexer 7 条为准。"""
+    assert len(L._P0A_MERGE_WHOLE) == 7
 
 def test_merge_whole_retained_entries():
-    """R35 更新：保留 2 条清单（整理模型消息 / 记录类型）
+    """R58 更新：当前 7 条清单（R32 保留 2 条 + R58 恢复 5 条）
 
-    R35 移除 非空块 —— 一元前缀运算符通用规则（无空格 `非X` 恒为复合名，
-    仅当余部是已声明名字时才是 `not X` 表达式）三重判据全通过后接住。
-    保留的 2 条经实证为**真护栏、不可通用化**（详见 _task1/_task3_R35_*.md）。"""
-    assert set(L._P0A_MERGE_WHOLE) == {'整理模型消息', '记录类型'}
+    R58 恢复 5 条：导出事件表/返回码/接收参数/非空块/外部命令（裸串语句起始
+    位语义）。R35 移除的非空块随之回归 MERGE_WHOLE。"""
+    assert set(L._P0A_MERGE_WHOLE) == {
+        '整理模型消息', '记录类型',            # R32/R35 保留真护栏
+        '导出事件表', '返回码', '接收参数',    # R58 恢复
+        '非空块', '外部命令',                  # R58 恢复
+    }
 
 def test_merge_whole_r35_removed_entry():
-    """R35：非空块 已移除（由通用规则接住，非删除语义）"""
-    assert '非空块' not in L._P0A_MERGE_WHOLE
-    # 且通用规则确实生效：无空格 `非空块` 整词成 IDENTIFIER
+    """R58 更新：非空块 已随 R58 恢复回 MERGE_WHOLE（裸串语句起始位由精确整串口径承接）
+
+    无空格 `非空块` 在设名位整词成 IDENTIFIER 的行为不变（通用规则与整串口径双保险）。"""
+    assert '非空块' in L._P0A_MERGE_WHOLE
     assert '非空块' in tok('设 x 为 非空块')
 
 def test_merge_whole_deleted_entries():
-    """R32：_P0A_MERGE_WHOLE已删除7条"""
-    deleted = {'导出事件表', '退出码', '接收参数', '外部命令', '排序依据', '输出块表', '返回码'}
+    """R58 更新：R32 删除 7 条中仅 3 条仍维持删除态（裸串已由通用规则接住）
+
+    导出事件表/接收参数/外部命令/返回码 已随 R58 恢复（见 test_merge_whole_retained_entries）；
+    退出码/排序依据/输出块表 三条裸串由既有通用规则覆盖，维持删除态。"""
+    deleted = {'退出码', '排序依据', '输出块表'}
     for entry in deleted:
         assert entry not in L._P0A_MERGE_WHOLE
 

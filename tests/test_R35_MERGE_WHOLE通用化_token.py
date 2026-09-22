@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-test_R35_MERGE_WHOLE通用化_token.py —— 第35轮 token 层断言
+test_R35_MERGE_WHOLE通用化_token.py —— 第35轮 token 层断言（R86-A 对齐 R58 后现状）
 
-本轮结果：_P0A_MERGE_WHOLE 3 → 2
+本轮结果：_P0A_MERGE_WHOLE 3 → 2（R35）
   · 非空块     —— 通用化**成功**，由新的一元前缀运算符规则接住后移除
   · 整理模型消息 —— 通用化失败（模 是真取模运算符，甲模乙 实证），保留为真护栏
   · 记录类型   —— 通用化失败（与 期望类型/参数类型 结构不可分），保留为真护栏
 
+R58（light-merge 5d097a4c）更新：2 → 7，有意恢复 5 条完整词形
+  （导出事件表/返回码/接收参数/非空块/外部命令）—— R32/R35 撤条只证了
+  「语料语境可逆」，§8.4 要求的裸串语句起始位仍需精确整串口径承接。
+  本文件 §1 现状断言已对齐 7 条口径；其余通用规则/边界形态断言不变。
+
 覆盖：
- 1. MERGE_WHOLE 现状（2 条：整理模型消息 / 记录类型）
+ 1. MERGE_WHOLE 现状（7 条：保留 2 + R58 恢复 5）
  2. 新通用规则 _P0A_UNARY_PREFIX_KW（= {'非'}）存在且生效
  3. 非空块 五种边界形态（设名/函数名/成员访问/段落名/传参位）均整词
  4. 反向形态：带空格 `非 X` 仍是 not 表达式；余部是已声明名字时 `非X` 仍切分
@@ -36,21 +41,29 @@ def vals(src):
     return [v for _, v in toks(src)]
 
 
-# === 1. MERGE_WHOLE 现状：3 → 2 ===
+# === 1. MERGE_WHOLE 现状：R35 3→2，R58 2→7（有意恢复） ===
 
-def test_merge_whole_is_2():
-    """R35：_P0A_MERGE_WHOLE 3→2（非空块 通用化后移除）"""
-    assert len(L._P0A_MERGE_WHOLE) == 2
+def test_merge_whole_is_7():
+    """R58：_P0A_MERGE_WHOLE 2→7（恢复 5 条 §8.4 点名历史雷区完整词形）
+
+    R35 通用化掉的 非空块，其「裸串语句起始位」形态（`非空块` 单独成句）
+    实测仍被劈成 非 + 空块（一元前缀规则要求「余部非已声明名 + 非语句起始」），
+    R58 按精确整串口径恢复。裁决：lexer 7 条为准（light-merge 5d097a4c）。"""
+    assert len(L._P0A_MERGE_WHOLE) == 7
 
 
 def test_merge_whole_exact_contents():
-    """R35：保留 2 条 = 整理模型消息 / 记录类型"""
-    assert set(L._P0A_MERGE_WHOLE) == {'整理模型消息', '记录类型'}
+    """R58 更新：当前 7 条 = R35 保留 2 条 + R58 恢复 5 条"""
+    assert set(L._P0A_MERGE_WHOLE) == {
+        '整理模型消息', '记录类型',            # R32/R35 保留真护栏
+        '导出事件表', '返回码', '接收参数',    # R58 恢复
+        '非空块', '外部命令',                  # R58 恢复
+    }
 
 
-def test_non_empty_block_removed():
-    """R35：非空块 已不在 MERGE_WHOLE（由通用规则接住，非删除语义）"""
-    assert '非空块' not in L._P0A_MERGE_WHOLE
+def test_non_empty_block_restored():
+    """R58：非空块 已恢复进 MERGE_WHOLE（裸串语句起始位由精确整串口径承接）"""
+    assert '非空块' in L._P0A_MERGE_WHOLE
 
 
 # === 2. 新通用规则：一元前缀运算符类别 ===

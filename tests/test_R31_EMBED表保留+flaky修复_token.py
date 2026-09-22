@@ -46,14 +46,21 @@ def test_wei_behavior_merged():
     assert '行为' in t
 
 def test_fanhui_embedded_scan_triggered():
-    """返回：嵌入式扫描触发，返回表整词成IDENTIFIER"""
+    """返回：嵌入式扫描触发受第36轮 _emb_has_return 豁免闸门约束
+
+    第36轮（light-merge d8cf337d）修复 R19 嵌入块连写误吞「返回」关键字：
+    整串含「返回」时不再做最大匹配合并（否则 `X返回Y` 被吞成单个 IDENTIFIER，
+    编译期 name 'X返回Y' is not defined，examples/advanced.light 三处全中，
+    语料 token A/B 48 文件均为预期切分）。故 返回表 → 返回 + 表（非合并态）。"""
     t = tok('设 x 为 返回表')
-    assert '返回表' in t
+    assert '返回' in t
+    assert '返回表' not in t
 
 def test_fanhui_return_value_merged():
-    """返回：返回值整词成IDENTIFIER"""
+    """返回：返回值 同受 _emb_has_return 豁免 → 返回 + 值（不吞词）"""
     t = tok('设 x 为 返回值')
-    assert '返回值' in t
+    assert '返回' in t
+    assert '返回值' not in t
 
 def test_changshi_embedded_scan_triggered():
     """尝试：嵌入式扫描触发，尝试记录整词成IDENTIFIER"""

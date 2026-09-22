@@ -82,8 +82,22 @@ def test_definitions_superset(scan_result):
     段名 `内层返回` 被截成 `内层`），新版按层级收集完整名后不再含残片。
     判定：丢失名若为新版任一名字的真前缀（残片收敛）则不计违规，
     其余丢失名才算 definitions 回归。
+
+    R86-A 注释误报豁免（已证良性，非真定义丢失）：
+      · test_L020.light / 无法正确注册 —— 仅出现于 L4 注释文本
+        「函数名（均含"接收"子串）无法正确注册」；旧版预扫描把注释中的
+        「接收」子串误判为形参登记，产生幽灵名。新版忽略注释，正确。
+      · test_宿主工具.light / 执行上下文 —— 仅出现于 L32 注释
+        「（接收执行上下文）」；同上为注释误报。真名 造执行上下文（L7 导入）
+        新旧两版均正确登记，且非「执行上下文」的真前缀豁免能覆盖的形态。
+    （归因：R86 路 A 步骤3，实测注释行外零出现 → 断言口径问题，非 lexer 缺陷。）
     """
     files, old, new = scan_result
+    # (文件名, 丢失名) → 注释文本误报（旧版把注释中「接收」子串登记为定义名）
+    known_comment_false_positives = {
+        ('test_L020.light', '无法正确注册'),
+        ('test_宿主工具.light', '执行上下文'),
+    }
     violations = []
     expected_shrink = []
     for fp in files:
@@ -92,7 +106,9 @@ def test_definitions_superset(scan_result):
         if not missing:
             continue
         for m in sorted(missing):
-            if any(x != m and x.startswith(m) for x in n):
+            if (os.path.basename(fp), m) in known_comment_false_positives:
+                expected_shrink.append((os.path.basename(fp), m))
+            elif any(x != m and x.startswith(m) for x in n):
                 expected_shrink.append((os.path.basename(fp), m))
             else:
                 violations.append((os.path.basename(fp), m))
