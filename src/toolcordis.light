@@ -1,0 +1,123 @@
+# tool-cordis.light —— R85 任务 D：extensions/tool-cordis 纯逻辑面移植
+#
+# 上游（本地锚点 ddefc45fbc，0.1.6-alpha.2）：
+#   G:\github\deepseek-harness\packages\extensions\tool-cordis\src\
+#     present.ts（19 行）/ prompt.ts（4 行）/ providers.ts（101 行）/ index.ts（83 行）
+#
+# 上游 → 光明对照表（纯逻辑）：
+#   presentInspectListCall()              → 绳呈现列表调用()
+#   presentInspectQueryCall(args)         → 绳呈现查询调用(参数)
+#   CORDIS_SYSTEM_PROMPT                  → 绳系统提示（常量）
+#   registration(id,desc,method,in,out)   → 绳构造注册(...)
+#   readExact(input, field)               → 绳读精确字段(输入, 字段)
+#   exactInput(field, desc)               → 绳精确输入(字段, 描述)
+#   hostInspectProviders(ctx)             → 绳归一提供者(注册列表)（纯归一化；ctx 交互宿主登记）
+#   apply(ctx)                           → 绳装配(宿主钩子)（缺 catalog 钩子抛错；真实注册宿主登记）
+#
+# 宿主面登记（不移植，注入承接）：
+#   - api-catalog.ts（约 7300 行）是第三方 API 定义数据注册表，属宿主侧 Cordis 数据注册表，
+#     登记不移植；由宿主通过 宿主钩子["取目录"] 注入提供。
+#   - providers 的真实注册（ctx.cordisInspect.register / ctx.tools.register）属宿主接线，不移植。
+#
+# 命名避坑：所有 段落/函数 名带前缀「绳」，避免与 src/ 其它模块撞名（已 grep 自查）。
+
+从 内置核心字典 导入 字典包含键
+从 内置核心判型 导入 是字典, 是字符串, 是空
+
+# =====================================================================
+# §0 常量与纯渲染意图
+# =====================================================================
+
+# 上游 CORDIS_SYSTEM_PROMPT
+设 绳系统提示 为 "# Harness runtime inspection
+
+Use cordis_inspect_list to discover Host and Client providers, then cordis_inspect_query to read exact Service, Event, Tool, Theme or Slot APIs. These tools are read-only; queries do not invoke business methods."
+
+# 上游 presentInspectListCall()
+段落 绳呈现列表调用:
+  返回 ["card": "generic", "kind": "read", "title": "List Cordis Inspect Providers"]
+
+# 上游 presentInspectQueryCall(args)
+段落 绳呈现查询调用(参数):
+  设 平台 为 参数["platform"]
+  设 提供者 为 参数["provider"]
+  设 方法 为 参数["method"]
+  返回 ["card": "generic", "kind": "read", "title": "Query Cordis " + 平台 + " " + 提供者 + "." + 方法]
+
+# =====================================================================
+# §1 providers 纯逻辑（注册结构 + 安全字段读取 + 归一化）
+# =====================================================================
+
+# 上游 readExact(input, field)：从输入对象安全读取字符串字段（undefined/null/非对象/非串 → 空）
+段落 绳读精确字段(输入, 字段):
+  如果 输入 == 空:
+    返回 空
+  如果 是字典(输入) == 假:
+    返回 空
+  如果 字典包含键(输入, 字段) == 假:
+    返回 空
+  设 值 为 输入[字段]
+  如果 是字符串(值):
+    返回 值
+  返回 空
+
+# 上游 exactInput(field, description)：构造只含一个精确字符串字段的输入模式
+段落 绳精确输入(字段, 描述):
+  设 模式 为 ["type": "object", "properties": {}, "additionalProperties": 假]
+  模式["properties"][字段] 为 ["type": "string", "description": 描述]
+  返回 模式
+
+# 上游 registration(...)：构造一个 inspect 注册（manifest + 归一方法名 + 输入字段名）
+#   返回 {"manifest": {...}, "方法": method, "输入字段": field} —— 方法供 绳执行查询 校验，
+#   输入字段供其读取真实查询字段（上游 readExact(input, 'service'/'event')，与 method 名无关）。
+段落 绳构造注册(id, 描述, 方法, 输入字段, 输入模式, 输出模式):
+  设 清单 为 ["id": id, "description": 描述, "methods": [["name": 方法, "description": 描述, "inputSchema": 输入模式, "outputSchema": 输出模式]]]
+  设 注册 为 ["manifest": 清单, "方法": 方法, "输入字段": 输入字段]
+  返回 注册
+
+# 上游 providers 里 registration.query 的核心：校验请求方法 == 注册方法，否则抛错（结构纯逻辑）
+段落 绳执行查询(注册, 请求方法, 输入):
+  如果 是字典(注册) == 假:
+    抛出 新建 错误("cordis: 注册必须是字典 [INVALID_REGISTRATION]")
+  设 期望方法 为 注册["方法"]
+  如果 请求方法 != 期望方法:
+    抛出 新建 错误("cordis: 未知 " + 期望方法 + " 检查方法 \"" + 请求方法 + "\" [UNKNOWN_METHOD]")
+  返回 绳读精确字段(输入, 注册["输入字段"])
+
+# 上游 hostInspectProviders(ctx) 的纯归一化部分：把注册列表归一成 {id, 方法} 列表
+段落 绳归一提供者(注册列表):
+  设 表 为 []
+  遍历 注册 之 注册列表:
+    表.追加(["id": 注册["manifest"]["id"], "方法": 注册["方法"]])
+  返回 表
+
+# =====================================================================
+# §2 apply（宿主装配，缺 catalog 钩子抛错；真实注册宿主登记）
+# =====================================================================
+
+# 上游 apply(ctx)：装配 Cordis 只读 inspect 工具。
+#   纯逻辑：校验宿主钩子提供了 取目录（api-catalog 宿主数据注册表注入）；否则抛错。
+#   真实注册（ctx.cordisInspect.register / ctx.tools.register / systemPrompt.section）属宿主接线，不移植。
+段落 绳装配(宿主钩子):
+  如果 是字典(宿主钩子) == 假:
+    抛出 新建 错误("cordis: 缺少宿主钩子（api-catalog 属宿主登记）[MISSING_CATALOG_HOOK]")
+  如果 字典包含键(宿主钩子, "取目录") == 假:
+    抛出 新建 错误("cordis: 缺少宿主钩子 取目录（api-catalog 属宿主登记）[MISSING_CATALOG_HOOK]")
+  设 目录 为 宿主钩子["取目录"]()
+  如果 是列表(目录) == 假:
+    抛出 新建 错误("cordis: 取目录 必须返回注册列表 [BAD_CATALOG]")
+  返回 绳归一提供者(目录)
+
+# =====================================================================
+# 导出
+# =====================================================================
+
+导出 绳系统提示
+导出 绳呈现列表调用
+导出 绳呈现查询调用
+导出 绳读精确字段
+导出 绳精确输入
+导出 绳构造注册
+导出 绳执行查询
+导出 绳归一提供者
+导出 绳装配

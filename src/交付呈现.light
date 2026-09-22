@@ -1,0 +1,132 @@
+# 上游包：deliverables/tool-present（0.1.6-alpha.2 新增的 present 交付工具）
+# 原版文件：src/index.ts（全新文件，0.1.5 无此文件）、src/types.ts（PresentedFile + 事件映射）
+# 说明：R38 已把 tool-present 0.1.5 的「agent-tool-presentation（工具展示/过滤）」移植为
+#       src/工具展示.light（18 项导出，有严格 pytest 守护）。0.1.6 的增量不是对该机制的修改，
+#       而是全新新增的「present 交付工具」（declares files as final deliverables）。
+#       为不破坏 R38 的 18 导出契约 + 全量 pytest 门禁，本增量单独成模块交付。
+#
+# 纯逻辑范围（本模块移植）：
+#   - 配置校验：maxFiles 必须为 >=1 的安全整数，默认 8（上游 Config schema）
+#   - 交付文件形状：PresentedFile {path, description?}
+#   - 执行前校验：① 须有 agent Session ② 须有开放轮边界 ③ 文件数 1..maxFiles
+#                 ④ 路径非空（trim 后）⑤ 每个文件须为常规文件（lstat/stat 结果，宿主注入）
+#   - 输出渲染：每行 "Presented <path>" 以换行拼接（上游 output.render）
+#   - 交付事件投影：{turn, callId, files}（上游 ctx.on('tools/result') → session.append，宿主注入）
+#
+# 宿主面登记（不移植执行，由注入回调承接）：
+#   - 文件系统 lstat/resolve/stat（ctx.fs）→ 注入 环境["宿主钩子"]["取文件类型"]
+#   - 会话事件投影 session.append('deliverables/presented') → 注入 环境["宿主钩子"]["追加交付事件"]
+#   - agent / session / turnBoundary 运行时上下文 → 注入 环境 字典
+
+从 字符串增强 导入 码转字符
+从 字符串处理 导入 去空格
+
+# =====================================================================
+# 常量（对齐上游 name / description / default maxFiles）
+# =====================================================================
+
+段落 交呈工具名():
+  返回 "present"
+
+段落 交呈默认上限():
+  返回 8
+
+段落 交呈工具描述():
+  返回 "Declare existing files accessible through the Session filesystem as final deliverables. When a file you create or update is an output the user asked to receive, you must call present after writing it and before your final response, including files created through Bash or code execution. Mentioning its path in your reply does not replace this call. The files must already exist. The user opens the current source files; their contents are not copied or preserved."
+
+# =====================================================================
+# 配置校验（上游：if (!Number.isSafeInteger(config.maxFiles) || config.maxFiles < 1) throw）
+# =====================================================================
+
+# 入参可为 整数 或 字典{maxFiles: 整数}；校验后返回归一化字典 {maxFiles: int}
+段落 交呈构造配置(入参):
+  如果 是字典(入参) == 真:
+    设 取值 为 入参["maxFiles"]
+  否则:
+    设 取值 为 入参
+  如果 是整数(取值) == 假:
+    抛出 新建 错误("present requires a positive integer maxFiles")
+  如果 取值 < 1:
+    抛出 新建 错误("present requires a positive integer maxFiles")
+  设 配置 为 ["maxFiles": 取值]
+  返回 配置
+
+# =====================================================================
+# 交付文件形状（上游 PresentedFile：{path, description?}）
+# =====================================================================
+
+段落 交呈构造文件(路径, 描述):
+  设 文件 为 ["path": 路径, "description": 描述]
+  返回 文件
+
+# =====================================================================
+# 执行校验（非 fs 部分纯逻辑；fs 类型判定经 宿主钩子["取文件类型"] 注入）
+#   环境 = {有会话, 边界开放, 末轮, 配置, 宿主钩子:{取文件类型:段落}}
+#   参数 = {文件列表: [{path, description}, ...]}
+# =====================================================================
+
+段落 交呈执行(环境, 参数):
+  如果 环境["有会话"] != 真:
+    抛出 新建 错误("present requires an agent Session")
+  如果 环境["边界开放"] != 真:
+    抛出 新建 错误("present requires an open turn")
+  设 配置 为 环境["配置"]
+  设 上限 为 配置["maxFiles"]
+  设 文件列表 为 参数["文件列表"]
+  设 计数 为 列表长度(文件列表)
+  如果 计数 < 1:
+    抛出 新建 错误("present accepts 1 to " + 转字符串(上限) + " files")
+  如果 计数 > 上限:
+    抛出 新建 错误("present accepts 1 to " + 转字符串(上限) + " files")
+  设 已校验 为 []
+  遍历 文件项 之 文件列表:
+    设 路径 为 文件项["path"]
+    设 修整 为 去空格(路径)
+    如果 字符串长度(修整) < 1:
+      抛出 新建 错误("present requires a non-empty file path")
+    设 类型 为 环境["宿主钩子"]["取文件类型"](路径)
+    如果 类型 != "file":
+      抛出 新建 错误("Cannot present " + 路径 + ": not a regular file")
+    列表追加(已校验, 文件项)
+  设 结果 为 ["turn": 环境["末轮"], "files": 已校验]
+  返回 结果
+
+# =====================================================================
+# 输出渲染（上游 output.render：files.map(f => `Presented ${f.path}`).join('\n')）
+# =====================================================================
+
+段落 交呈渲染输出(值):
+  设 文件列表 为 值["files"]
+  设 行列表 为 []
+  遍历 文件项 之 文件列表:
+    列表追加(行列表, "Presented " + 文件项["path"])
+  设 文本 为 ""
+  设 序号 为 0
+  遍历 行项 之 行列表:
+    如果 序号 > 0:
+      设 文本 为 文本 + 码转字符(10)
+    设 文本 为 文本 + 行项
+    设 序号 为 序号 + 1
+  返回 文本
+
+# =====================================================================
+# 交付事件投影 payload（上游 session.append('deliverables/presented', {turn, callId, files})）
+#   宿主面 session.append 由 环境["宿主钩子"]["追加交付事件"] 注入承接；此处只构造 payload 形状
+# =====================================================================
+
+段落 交呈构造交付事件(末轮, 调用ID, 文件列表):
+  设 事件 为 ["turn": 末轮, "callId": 调用ID, "files": 文件列表]
+  返回 事件
+
+# =====================================================================
+# 导出
+# =====================================================================
+
+导出 交呈工具名
+导出 交呈默认上限
+导出 交呈工具描述
+导出 交呈构造配置
+导出 交呈构造文件
+导出 交呈执行
+导出 交呈渲染输出
+导出 交呈构造交付事件
