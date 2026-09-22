@@ -1,0 +1,92 @@
+# test_R85_C_子代理续传增量.light —— R85 任务C：continuation-messages text-only + 激活池 + 委托覆盖
+# 上游：subagent/subagent/src/{continuation-messages, continuation-activation, child-agent}.ts
+从 子代理续传 导入 造结算消息, 续造激活池, 续池预留, 续池占用, 续造委托覆盖
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "断言失败[" + 标签 + "]: 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言为真(值, 标签):
+  如果 值 != 真:
+    抛出 "断言失败[" + 标签 + "]: 期望真，实际=" + 转字符串(值)
+
+段落 主:
+  打印 "=== R85-C 子代理续传增量测试 ==="
+
+  # ---- 结算消息 text-only 过滤（R85-C：父侧只收 text 块） ----
+  # output 含非文本块（如 tool_use）→ 过滤掉，只留 text
+  设 终态混合 为 {"stopReason": "completed", "output": [
+    {"type": "text", "text": "result line 1"},
+    {"type": "tool_use", "name": "grep", "input": {}},
+    {"type": "text", "text": "result line 2"}
+  ]}
+  设 消息 为 造结算消息("child-1", 终态混合)
+  设 内容 为 消息["content"]
+  断言为真(长度(内容) == 4, "混合output过滤后4行")
+  断言相等(内容[1]["text"], "Its closing message:", "closing message头")
+  断言相等(内容[2]["text"], "result line 1", "保留首text块")
+  断言相等(内容[3]["text"], "result line 2", "保留末text块")
+
+  # output 全空文本 → "It left no closing message."
+  设 终态空文本 为 {"stopReason": "completed", "output": [
+    {"type": "text", "text": ""},
+    {"type": "tool_use", "name": "x", "input": {}}
+  ]}
+  设 消息2 为 造结算消息("child-2", 终态空文本)
+  设 内容2 为 消息2["content"]
+  断言为真(长度(内容2) == 2, "空文本output两行")
+  断言相等(内容2[1]["text"], "It left no closing message.", "空文本占位")
+
+  # 无 output 字段 → 同上
+  设 终态无输出 为 {"stopReason": "aborted"}
+  设 消息3 为 造结算消息("child-3", 终态无输出)
+  设 内容3 为 消息3["content"]
+  断言为真(长度(内容3) == 2, "无output两行")
+  断言相等(内容3[1]["text"], "It left no closing message.", "无output占位")
+
+  # ---- 激活池槽位管理 ----
+  设 池 为 续造激活池()
+  断言相等(续池占用(池), 0, "初始池空")
+
+  # 容量 2：预留两个槽位
+  设 释放1 为 续池预留(池, 2)
+  断言相等(续池占用(池), 1, "预留1后占1")
+  设 释放2 为 续池预留(池, 2)
+  断言相等(续池占用(池), 2, "预留2后占2")
+
+  # 第三个 → 抛 ACTIVATION_LIMIT_REACHED
+  设 抛了 为 假
+  尝试:
+    续池预留(池, 2)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "超容量抛错")
+
+  # 释放一个后可再预留
+  释放1()
+  断言相等(续池占用(池), 1, "释放1后占1")
+  设 释放3 为 续池预留(池, 2)
+  断言相等(续池占用(池), 2, "释放后可再预留")
+
+  # ---- 委托策略覆盖 permissionPreset ----
+  # auto 预设 → 保留
+  设 覆盖auto 为 续造委托覆盖("auto", "workspace-write", "never")
+  断言相等(覆盖auto["permissionPreset"], "auto", "auto预设保留")
+  断言相等(覆盖auto["sandboxMode"], "workspace-write", "沙箱覆盖保留")
+  断言相等(覆盖auto["approvalPolicy"], "never", "审批策略保留")
+
+  # danger-full-access 预设 → 保留
+  设 覆盖danger 为 续造委托覆盖("danger-full-access", 空, 空)
+  断言相等(覆盖danger["permissionPreset"], "danger-full-access", "danger预设保留")
+
+  # 其他预设（如 "custom"）→ 不保留（只认 auto / danger-full-access）
+  设 覆盖其他 为 续造委托覆盖("custom", 空, 空)
+  断言相等(覆盖其他["permissionPreset"], 空, "非auto/danger预设不保留")
+
+  # 空预设 → 空
+  设 覆盖空 为 续造委托覆盖(空, 空, 空)
+  断言相等(覆盖空["permissionPreset"], 空, "空预设为空")
+
+  打印 "--- R85-C 子代理续传增量测试通过 ---"
+
+主()

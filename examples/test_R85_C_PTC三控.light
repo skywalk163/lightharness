@@ -1,0 +1,179 @@
+# test_R85_C_PTC三控.light —— R85 任务C：run_code 三控 schema + 升级闭环纯逻辑对拍
+# 上游：packages/core/tools/src/ptc.ts（+137 行，ddefc45fbc）
+从 工具 导入 PTC升级目标表, PTC控制参数基底, PTC控制参数, PTC升级指引, 校验PTC升级参数, 校验PTC超时, 编排PTC升级, 渲染PTC沙箱, PTC沙箱错误文本
+从 审批 导入 结果允许一次, 结果拒绝, 结果撤回, 结果不可用
+从 沙箱升级 导入 是否严格更宽
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "断言失败[" + 标签 + "]: 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言为真(值, 标签):
+  如果 值 != 真:
+    抛出 "断言失败[" + 标签 + "]: 期望真，实际=" + 转字符串(值)
+
+段落 断言为假(值, 标签):
+  如果 值 == 真:
+    抛出 "断言失败[" + 标签 + "]: 期望假，实际=" + 转字符串(值)
+
+段落 主:
+  打印 "=== R85-C PTC 三控 schema 测试 ==="
+
+  # ---- PTC 升级目标表（对齐 ESCALATION_TARGETS） ----
+  断言相等(PTC升级目标表(), ["workspace-write", "danger-full-access"], "升级目标表")
+
+  # ---- 控制参数基底 ----
+  设 基底 为 PTC控制参数基底()
+  断言为真(字典包含键(基底, "timeoutMs"), "基底含timeoutMs")
+  断言为真(字典包含键(基底, "sandbox_permissions"), "基底含sandbox_permissions")
+  断言为真(字典包含键(基底, "justification"), "基底含justification")
+  断言相等(基底["sandbox_permissions"]["enum"], PTC升级目标表(), "sandbox_permissions枚举")
+
+  # ---- 动态控制参数：runtime 为空 → 返回全部 ----
+  设 空参 为 PTC控制参数(空)
+  断言为真(字典包含键(空参, "timeoutMs"), "空runtime含timeoutMs")
+  断言为真(字典包含键(空参, "sandbox_permissions"), "空runtime含sandbox")
+
+  # ---- 动态控制参数：runtime 有超时 → timeoutMs 描述深化 ----
+  设 有超时 为 {"超时": {"默认毫秒": 5000, "上限毫秒": 60000}, "沙箱模式": "read-only"}
+  设 参 为 PTC控制参数(有超时)
+  断言为真(字典包含键(参, "timeoutMs"), "有超时runtime含timeoutMs")
+  断言为真(字符串包含(参["timeoutMs"]["description"], "Default 5000"), "timeoutMs描述含默认")
+  断言为真(字符串包含(参["timeoutMs"]["description"], "capped at 60000"), "timeoutMs描述含上限")
+  断言为真(字典包含键(参, "sandbox_permissions"), "有沙箱runtime含sandbox")
+  断言为真(字典包含键(参, "justification"), "有沙箱runtime含justification")
+
+  # ---- 动态控制参数：runtime 无沙箱 → 不含升级参数 ----
+  设 无沙箱 为 {"超时": {"默认毫秒": 1000, "上限毫秒": 10000}}
+  设 参2 为 PTC控制参数(无沙箱)
+  断言为真(字典包含键(参2, "timeoutMs"), "无沙箱runtime含timeoutMs")
+  断言为假(字典包含键(参2, "sandbox_permissions"), "无沙箱runtime不含sandbox")
+  断言为假(字典包含键(参2, "justification"), "无沙箱runtime不含justification")
+
+  # ---- PTC 升级指引 ----
+  断言相等(PTC升级指引(空), "", "空runtime指引为空")
+  断言相等(PTC升级指引({}), "", "无沙箱能力指引为空")
+  设 指引 为 PTC升级指引({"沙箱模式": "read-only"})
+  断言为真(字符串长度(指引) > 0, "有沙箱能力指引非空")
+  断言为真(字符串包含(指引, "one execution only"), "指引含one execution only")
+
+  # ---- 配对校验（对齐 validateEscalationArgs） ----
+  校验PTC升级参数(空, 空)
+  断言为真(校验PTC升级参数("workspace-write", "need write") == 真, "合法配对通过")
+
+  # 有模式无理由 → 抛错
+  设 抛了 为 假
+  尝试:
+    校验PTC升级参数("workspace-write", 空)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "有模式无理由抛错")
+
+  # 有理由无模式 → 抛错
+  设 抛了 为 假
+  尝试:
+    校验PTC升级参数(空, "just reason")
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "有理由无模式抛错")
+
+  # 空理由 → 抛错
+  设 抛了 为 假
+  尝试:
+    校验PTC升级参数("workspace-write", "   ")
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "空理由抛错")
+
+  # ---- timeoutMs 校验 ----
+  校验PTC超时(空, 空)
+  断言为真(校验PTC超时(5000, {"超时": {"默认毫秒": 1000, "上限毫秒": 60000}}) == 真, "合法timeoutMs通过")
+
+  设 抛了 为 假
+  尝试:
+    校验PTC超时(5000, 空)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "runtime空抛错")
+
+  设 抛了 为 假
+  尝试:
+    校验PTC超时(0, {"超时": {"默认毫秒": 1000}})
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "零timeoutMs抛错")
+
+  设 抛了 为 假
+  尝试:
+    校验PTC超时(-1, {"超时": {"默认毫秒": 1000}})
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "负timeoutMs抛错")
+
+  # ---- 升级编排（复用 R67 严格更宽表） ----
+  # allowed-once + read-only → workspace-write
+  设 放宽 为 编排PTC升级("workspace-write", "need write", "read-only", 结果允许一次)
+  断言相等(放宽, "workspace-write", "PTC升级→ww")
+
+  # allowed-once + read-only → danger-full-access
+  设 放宽2 为 编排PTC升级("danger-full-access", "full escape", "read-only", 结果允许一次)
+  断言相等(放宽2, "danger-full-access", "PTC升级→danger")
+
+  # 非更宽（ww→ro）→ 抛错
+  设 抛了 为 假
+  尝试:
+    编排PTC升级("read-only", "x", "workspace-write", 结果允许一次)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "非更宽抛错")
+
+  # rejected → 抛错
+  设 抛了 为 假
+  尝试:
+    编排PTC升级("workspace-write", "x", "read-only", 结果拒绝)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "拒绝抛错")
+
+  # cancelled → 抛错
+  设 抛了 为 假
+  尝试:
+    编排PTC升级("workspace-write", "x", "read-only", 结果撤回)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "撤回抛错")
+
+  # unavailable → 抛错
+  设 抛了 为 假
+  尝试:
+    编排PTC升级("workspace-write", "x", "read-only", 结果不可用)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "不可用抛错")
+
+  # ---- 沙箱结果渲染 ----
+  断言相等(渲染PTC沙箱(空, 空), [], "空沙箱渲染空")
+  设 部分 为 渲染PTC沙箱({"mode": "read-only", "denied": 真, "enforcement": "partial"}, {"沙箱模式": "read-only"})
+  断言为真(长度(部分) == 2, "partial+denied两行")
+  断言为真(字符串包含(部分[0], "partial on this host"), "partial提示")
+  断言为真(字符串包含(部分[1], "read-only"), "denied含模式")
+  断言为真(字符串包含(部分[1], "one execution only"), "denied含指引")
+
+  # 无沙箱能力 → denied 行不含指引
+  设 部分2 为 渲染PTC沙箱({"mode": "read-only", "denied": 真}, 空)
+  断言为真(长度(部分2) == 1, "无能力denied一行")
+  断言为假(字符串包含(部分2[0], "one execution only"), "无能力无指引")
+
+  # ---- 沙箱错误文本 ----
+  断言相等(PTC沙箱错误文本(空), "", "空沙箱错误空")
+  设 错文 为 PTC沙箱错误文本({"mode": "read-only", "denied": 真, "enforcement": "full"})
+  断言为真(字符串包含(错文, "read-only"), "错误含模式")
+  断言为真(字符串包含(错文, "enforcement: full"), "错误含enforcement")
+  断言为真(字符串包含(错文, "operation denied"), "错误含denied")
+
+  # ---- R67 闭环复跑：沙箱升级模块本身仍绿 ----
+  断言为真(是否严格更宽("read-only", "workspace-write"), "R67严格更宽复跑")
+
+  打印 "--- R85-C PTC 三控测试通过 ---"
+
+主()

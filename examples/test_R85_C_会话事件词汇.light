@@ -1,0 +1,62 @@
+# test_R85_C_会话事件词汇.light —— R85 任务C：known-event-types 新事件 + 消息投影集合
+# 上游：core/session/src/known-event-types.ts（+7 行）
+从 会话格式 导入 已知事件类型, 校验事件载荷, 消息投影事件表
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "断言失败[" + 标签 + "]: 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+段落 断言为真(值, 标签):
+  如果 值 != 真:
+    抛出 "断言失败[" + 标签 + "]: 期望真，实际=" + 转字符串(值)
+
+段落 断言为假(值, 标签):
+  如果 值 == 真:
+    抛出 "断言失败[" + 标签 + "]: 期望假，实际=" + 转字符串(值)
+
+段落 主:
+  打印 "=== R85-C 会话事件词汇测试 ==="
+
+  # ---- 新事件类型已登记 ----
+  断言为真(已知事件类型("image/offload"), "image/offload已知")
+  断言为真(已知事件类型("workspace/changes"), "workspace/changes已知")
+  断言为真(已知事件类型("permission/preset"), "permission/preset已知")
+
+  # ---- 事件载荷校验 ----
+  # workspace/changes：必选 turn
+  校验事件载荷("workspace/changes", {"turn": 3}, 真)
+  设 抛了 为 假
+  尝试:
+    校验事件载荷("workspace/changes", {}, 真)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "workspace/changes缺turn抛错")
+
+  # permission/preset：必选 preset
+  校验事件载荷("permission/preset", {"preset": "auto"}, 真)
+  设 抛了 为 假
+  尝试:
+    校验事件载荷("permission/preset", {}, 真)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "permission/preset缺preset抛错")
+
+  # image/offload：必选 targets（R51 已登记）
+  校验事件载荷("image/offload", {"targets": []}, 真)
+
+  # ---- 消息投影事件表 ----
+  设 投影表 为 消息投影事件表()
+  断言为真(列表包含(投影表, "image/offload"), "投影表含image/offload")
+  断言为假(列表包含(投影表, "workspace/changes"), "投影表不含workspace/changes")
+
+  # ---- 未知类型仍拒绝 ----
+  设 抛了 为 假
+  尝试:
+    校验事件载荷("bogus/event", {}, 真)
+  捕获 错误:
+    设 抛了 为 真
+  断言为真(抛了, "未知类型仍抛错")
+
+  打印 "--- R85-C 会话事件词汇测试通过 ---"
+
+主()

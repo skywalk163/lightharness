@@ -60,15 +60,24 @@
   返回 主语 + " ended abnormally (" + 转字符串(停止原因) + ") before it finished."
 
 # 造运行期所有的结算通知（交付给父）—— summary 去重，output 缺省给占位文案
+# R85-C（0.1.6-alpha.2）：父提供方可能拒绝非文本块（SDK/UI 消费者保留完整子输出），
+# 故只把 type==text 且 text 非空的块透传给父侧 user-message。
 段落 造结算消息(子标识, 终态):
   设 摘要 为 结算摘要(子标识, 终态["stopReason"])
   设 内容 为 续新列表()
   列表追加(内容, {"type": "text", "text": 摘要})
-  如果 字典包含键(终态, "output") == 假:
+  # R85-C：过滤出非空文本块（对齐上游 closingText flatMap 语义）
+  设 文本块 为 续新列表()
+  如果 字典包含键(终态, "output") == 真:
+    遍历 块 之 终态["output"]:
+      如果 字典获取(块, "type", 空) == "text":
+        如果 字符串长度(字典获取(块, "text", "")) > 0:
+          列表追加(文本块, 块)
+  如果 长度(文本块) == 0:
     列表追加(内容, {"type": "text", "text": "It left no closing message."})
   否则:
     列表追加(内容, {"type": "text", "text": "Its closing message:"})
-    遍历 块 之 终态["output"]:
+    遍历 块 之 文本块:
       列表追加(内容, 块)
   返回 {"content": 内容, "source": {"kind": "subagent-settled", "form": "notice",
     "summary": 摘要, "senderSessionId": 子标识}}
@@ -315,6 +324,70 @@
   如果 状态 != 空:
     返回 状态
   返回 允许模型
+
+# =====================================================================
+# §6 R85 任务C（0.1.6-alpha.2）：激活池槽位 + 委托策略覆盖深化
+#
+# 上游（只读）：subagent/subagent/src/continuation-activation.ts（+52）
+#   ActivationPool：process-local 槽位集合，reserve 超容量抛 ACTIVATION_LIMIT_REACHED
+#   maxActiveSubagents：容量上限由部署配置注入
+#   rootPools WeakMap：根 Agent 跨 child settlement 保留池
+#   child-agent.ts：DelegatedPolicyOverrides 新增 permissionPreset
+#   control.ts：ACTIVATION_LIMIT_REACHED 错误码纳入远程错误映射
+#
+# 纯逻辑化：ActivationPool 用列表作槽位集合（Symbol 槽位在光明中用唯一整数替代）；
+# reserve 返回释放闭包；超容量抛错。宿主面（Cordis owner/WeakMap）不移植。
+# =====================================================================
+
+# 激活池槽位超限错误码（对齐上游 ACTIVATION_LIMIT_REACHED）
+段落 激活池超限错误码:
+  返回 "ACTIVATION_LIMIT_REACHED"
+
+# 造激活池：空槽位集合
+段落 续造激活池:
+  返回 {"槽位": [], "下一号": 1}
+
+# 池预留：超容量抛 ACTIVATION_LIMIT_REACHED；否则占一个槽位，返回释放闭包
+#   入参：池表（{槽位, 下一号}）+ 容量上限
+#   返回：释放函数（调用后释放该槽位）
+段落 续池预留(池, 容量):
+  如果 长度(池["槽位"]) >= 容量:
+    抛出 新建 错误("subagent limit reached (active child limit: " + 转字符串(容量) + "); wait for an existing child to finish or complete this work with the current agents", 激活池超限错误码())
+  设 号 为 池["下一号"]
+  池["槽位"].追加(号)
+  池["下一号"] 为 池["下一号"] + 1
+  设 池引用 为 池
+  段落 释放:
+    设 新槽 为 []
+    遍历 s 之 池引用["槽位"]:
+      如果 s != 号:
+        列表追加(新槽, s)
+    池引用["槽位"] 为 新槽
+  返回 释放
+
+# 池当前槽位数（供测试/诊断）
+段落 续池占用(池):
+  返回 长度(池["槽位"])
+
+# 委托策略覆盖：R85-C 新增 permissionPreset 形状（对齐 child-agent.ts DelegatedPolicyOverrides）
+#   入参：父会话当前权限预设（"auto"|"danger-full-access"|空）+ 沙箱模式覆盖 + 审批策略
+#   返回：{permissionPreset, sandboxMode, approvalPolicy}
+段落 续造委托覆盖(权限预设, 沙箱覆盖, 审批策略):
+  设 保留预设 为 空
+  如果 权限预设 == "auto" 或 权限预设 == "danger-full-access":
+    设 保留预设 为 权限预设
+  返回 {"permissionPreset": 保留预设, "sandboxMode": 沙箱覆盖, "approvalPolicy": 审批策略}
+
+# 把委托覆盖追加到子会话日志（对齐 appendDelegatedPolicyOverrides）
+#   只对非空字段落事件；permissionPreset → permission/preset；sandboxMode → sandbox/mode；approvalPolicy → approval/policy
+段落 续追加委托覆盖(子会话日志, 覆盖):
+  如果 覆盖["permissionPreset"] != 空:
+    子会话日志.追加("permission/preset", {"preset": 覆盖["permissionPreset"]})
+  如果 覆盖["sandboxMode"] != 空:
+    子会话日志.追加("sandbox/mode", {"mode": 覆盖["sandboxMode"], "source": "delegation"})
+  如果 覆盖["approvalPolicy"] != 空:
+    子会话日志.追加("approval/policy", {"policy": 覆盖["approvalPolicy"], "source": "delegation"})
+  返回 子会话日志
 
 # =====================================================================
 # 本地工具（一律「续」前缀，避免跨模块同名段）

@@ -132,6 +132,18 @@
 # 键名与上游 wire 形状逐字一致（targets / seq / imageIndexes，英文），保证 0.1.6 日志可读。
 设 占 为 定词汇("image/offload", ["targets"], [])
 
+# ---- R85-C（0.1.6-alpha.2）：工作区变更 + 权限预设事件 ----
+# workspace/changes：turn 起止 git 工作树快照 diff 汇总事件（纯记账 turn 号）
+设 占 为 定词汇("workspace/changes", ["turn"], [])
+# permission/preset：子代理委托边界继承的共享包预设身份（auto / danger-full-access）
+设 占 为 定词汇("permission/preset", ["preset"], [])
+
+# 消息投影事件类型集合（对齐上游 MESSAGE_PROJECTION_EVENT_TYPES）：
+#   这些事件类型的模型可见效果需要显式纯解释器（message projection），
+#   无解释器时读取器拒绝（fail-closed）。
+段落 消息投影事件表:
+  返回 ["image/offload"]
+
 # 未知事件类型是否可忽略（v2 起：不认识的事件类型保持排队直通）
 段落 已知事件类型(种类):
   返回 字典包含键(事件词汇表, 种类)

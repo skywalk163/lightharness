@@ -18,6 +18,9 @@
 #   成员赋值一律「设 己.X 为 …」；校验器成员名用 校验一层/记错误/可读名/核对相等（无危险词根）。
 
 导入 re
+从 沙箱升级 导入 是否严格更宽
+从 审批 导入 结果允许一次, 结果拒绝, 结果撤回, 结果不可用, 审批结果词汇
+从 内置核心字典 导入 字典键列表
 
 # ---- 构造工具模式（模型可见 schema）----
 段落 造工具模式(名字, 描述, 参数):
@@ -593,3 +596,149 @@
   如果 嵌套:
     返回 假
   返回 呈现 == "ptc" 且 名字 != 代码运输名
+
+# =====================================================================
+# R85 任务C（0.1.6-alpha.2）：run_code 三控 schema + 升级闭环深化
+#
+# 上游（只读）：packages/core/tools/src/ptc.ts（+137 行，dd393c1820..ddefc45fbc）
+#   RUN_CODE_CONTROLS：timeoutMs / sandbox_permissions / justification 三参数 schema
+#   controlParameters(runtime)：按 runtime 能力动态收敛模型可见参数
+#   escalationGuidance(runtime)：升级拒绝后的逐字指引
+#   validateEscalationArgs：sandbox_permissions 与 justification 配对校验
+#   approveEscalation（subject="program"）：PTC 升级闭环复用 dsh-sandbox
+#
+# 与既有面的关系：
+#   src/沙箱升级.light（R67）已对齐 escalation.ts 的 WIDER_MODES/批准升级；
+#   本段补 PTC 工具层的「参数 schema + 配对校验 + 编排缝」纯逻辑。
+#   宿主面（真实 ApprovalService / PtcRuntime.run）不移植，入参化注入。
+# =====================================================================
+
+# PTC 升级目标模式闭集（对齐上游 ESCALATION_TARGETS，read-only 为地板）
+段落 PTC升级目标表:
+  返回 ["workspace-write", "danger-full-access"]
+
+# run_code 三控参数 schema 基底（对齐 RUN_CODE_CONTROLS）
+#   模型面：timeoutMs（毫秒正预算）/ sandbox_permissions（更宽模式枚举）/ justification（升级理由）
+段落 PTC控制参数基底:
+  返回 {
+    "timeoutMs": {"type": "number", "description": "Positive elapsed-time budget in milliseconds, capped by the deployment maximum."},
+    "sandbox_permissions": {"type": "string", "enum": PTC升级目标表(), "description": "Wider sandbox mode for this complete program execution; requires justification and approval."},
+    "justification": {"type": "string", "description": "Reason this complete program needs wider access, shown to the user for approval."}
+  }
+
+# 动态控制参数（对齐 controlParameters(runtime)）：
+#   runtime 为空 → 返回全部三控（catalog 读者路径）
+#   runtime 无超时能力 → 不含 timeoutMs；有 → 描述深化（含默认/上限）
+#   runtime 无沙箱模式 → 不含 sandbox_permissions/justification；有 → 含
+段落 PTC控制参数(运行时能力):
+  设 全部 为 PTC控制参数基底()
+  如果 运行时能力 == 空:
+    返回 全部
+  设 结果 为 {}
+  # timeoutMs：仅当 runtime 声明了超时配置时才暴露
+  如果 字典包含键(运行时能力, "超时") == 真:
+    设 超时项 为 全部["timeoutMs"]
+    设 深化 为 "Positive elapsed-time budget in milliseconds, including nested tool and approval waits. Default "
+    设 深化 为 深化 + 转字符串(运行时能力["超时"]["默认毫秒"]) + "; capped at "
+    设 深化 为 深化 + 转字符串(运行时能力["超时"]["上限毫秒"]) + ". Zero does not disable the deadline."
+    设 新超时 为 {}
+    遍历 k 之 字典键列表(超时项):
+      字典设置(新超时, k, 超时项[k])
+    新超时["description"] 为 深化
+    结果["timeoutMs"] 为 新超时
+  # sandbox_permissions + justification：仅当 runtime 声明了沙箱模式时才暴露
+  如果 字典包含键(运行时能力, "沙箱模式") == 真:
+    结果["sandbox_permissions"] 为 全部["sandbox_permissions"]
+    结果["justification"] 为 全部["justification"]
+  返回 结果
+
+# PTC 升级指引（对齐 escalationGuidance）：
+#   runtime 无沙箱模式 → 空串；有 → 逐字指引文案（denied 后追加到模型面）
+段落 PTC升级指引(运行时能力):
+  如果 运行时能力 == 空:
+    返回 ""
+  如果 字典包含键(运行时能力, "沙箱模式") == 假:
+    返回 ""
+  返回 " A sandbox escalation approves this complete program for one execution only. Nested tools retain their own policies and approvals. Request wider access only after evidence of a denial. Earlier effects may already have completed: inspect them before explicitly retrying. Programs are never replayed automatically."
+
+# PTC 升级参数配对校验（对齐上游 validateEscalationArgs）：
+#   sandbox_permissions 与 justification 必须同行；justification trim 后非空
+段落 校验PTC升级参数(目标模式, 理由):
+  如果 目标模式 != 空 且 理由 == 空:
+    抛出 "invalid escalation: sandbox_permissions requires a justification"
+  如果 理由 != 空 且 目标模式 == 空:
+    抛出 "invalid escalation: justification is only valid together with sandbox_permissions"
+  如果 理由 != 空:
+    如果 字符串长度(理由.去除空白()) == 0:
+      抛出 "invalid justification: expected a non-empty sentence"
+  返回 真
+
+# PTC timeoutMs 校验（对齐 ptc.ts 执行期校验）：
+#   缺省 → 跳过；runtime 无超时能力 → 抛错；值须为正有限数
+段落 校验PTC超时(超时毫秒, 运行时能力):
+  如果 超时毫秒 == 空:
+    返回 真
+  如果 运行时能力 == 空:
+    抛出 "timeoutMs is not available for this PTC runtime"
+  如果 字典包含键(运行时能力, "超时") == 假:
+    抛出 "timeoutMs is not available for this PTC runtime"
+  如果 超时毫秒 <= 0:
+    抛出 "invalid timeoutMs: expected a positive finite number"
+  设 文本 为 转字符串(超时毫秒)
+  如果 字符串包含(文本, "inf") == 真:
+    抛出 "invalid timeoutMs: expected a positive finite number"
+  如果 字符串包含(文本, "nan") == 真:
+    抛出 "invalid timeoutMs: expected a positive finite number"
+  返回 真
+
+# PTC 升级编排（对齐上游 approveEscalation，subject="program"）：
+#   入参：目标模式 / 理由 / 当前模式 / 审批结果闭集
+#   严格更宽检查（复用 R67 是否严格更宽）+ 审批结果映射；
+#   allowed-once → 返回放宽后模式；其余路径抛逐字文案。
+段落 编排PTC升级(目标模式, 理由, 当前模式, 审批结果):
+  校验PTC升级参数(目标模式, 理由)
+  # 严格更宽检查（对齐 WIDER_MODES[effectiveMode].includes(mode)）
+  如果 是否严格更宽(当前模式, 目标模式) == 假:
+    抛出 "sandbox escalation to \"" + 转字符串(目标模式) + "\" is not strictly wider than this call's current \"" + 转字符串(当前模式) + "\" mode"
+  设 结果 为 审批结果
+  如果 列表包含(审批结果词汇, 结果) == 假:
+    设 结果 为 结果不可用
+  如果 结果 == 结果允许一次:
+    返回 目标模式
+  如果 结果 == 结果拒绝:
+    抛出 "the user rejected escalating this program to \"" + 转字符串(目标模式) + "\""
+  如果 结果 == 结果撤回:
+    抛出 "approval for escalating to \"" + 转字符串(目标模式) + "\" was cancelled"
+  抛出 "sandbox escalation to \"" + 转字符串(目标模式) + "\" requires approval, but no approval channel is available"
+
+# PTC 沙箱结果渲染（对齐上游 render 中的 sandbox 段）：
+#   无 sandbox → 空表；partial enforcement → 追加提示；denied → 追加模式行 + 升级指引
+段落 渲染PTC沙箱(沙箱, 运行时能力):
+  如果 沙箱 == 空:
+    返回 []
+  设 部分 为 []
+  如果 字典包含键(沙箱, "enforcement") == 真:
+    如果 沙箱["enforcement"] == "partial":
+      部分.追加("File sandbox enforcement is partial on this host.")
+  如果 字典包含键(沙箱, "denied") == 真:
+    如果 沙箱["denied"] == 真:
+      设 行 为 "The " + 转字符串(沙箱["mode"]) + " file sandbox denied an operation."
+      设 指引 为 PTC升级指引(运行时能力)
+      如果 字符串长度(指引) > 0:
+        设 行 为 行 + 指引
+      部分.追加(行)
+  返回 部分
+
+# PTC 沙箱错误附加文本（对齐上游 error 分支的 sandboxText + escalationGuidance）：
+#   运行失败时把沙箱模式/enforcement/denied 拼进错误消息尾
+段落 PTC沙箱错误文本(沙箱):
+  如果 沙箱 == 空:
+    返回 ""
+  设 文本 为 "\nFile sandbox: " + 转字符串(沙箱["mode"])
+  如果 字典包含键(沙箱, "enforcement") == 真:
+    设 文本 为 文本 + "; enforcement: " + 转字符串(沙箱["enforcement"])
+  如果 字典包含键(沙箱, "denied") == 真:
+    如果 沙箱["denied"] == 真:
+      设 文本 为 文本 + "; operation denied"
+  设 文本 为 文本 + "."
+  返回 文本
