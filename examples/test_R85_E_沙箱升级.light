@@ -1,0 +1,51 @@
+# test_R85_E_沙箱升级.light —— R85 任务E 沙箱域：签名匹配/失败分类/升级判定
+从 沙箱 导入 绳匹配签名, 绳分类运行失败, 绳审批升级判定
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言为真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败: " + 标签 + " 期望为真 实际=" + 转字符串(条件))
+
+段落 断言包含(实际, 子串, 标签):
+  如果 字符串包含(转字符串(实际), 子串) == 假:
+    抛出 新建 错误("断言失败: " + 标签 + " 期望含 " + 子串)
+
+段落 主:
+  # ---- 绳匹配签名 ----
+  断言为真(绳匹配签名(1, "Error: EPERM operation not permitted", ["eperm", "eacces"]), "命中签名")
+  断言为真(绳匹配签名(1, "EACCES permission denied", ["eperm"]) == 假, "大小写不命中")
+  断言为真(绳匹配签名(0, "eperm", ["eperm"]) == 假, "0退出不命中")
+  断言为真(绳匹配签名(空, "eperm", ["eperm"]) == 假, "空退出不命中")
+
+  # ---- 绳分类运行失败 ----
+  设 规则 为 [["fatalSignatures": ["fatal: ", "panic"], "informationalLines": ["warning: ignore me"]]]
+  设 失 为 绳分类运行失败(1, "info line\nfatal: disk full", 规则)
+  断言相等(失["detail"], "fatal: disk full", "致命行命中")
+  # 信息行跳过
+  设 失二 为 绳分类运行失败(1, "warning: ignore me\nfatal: boom", 规则)
+  断言相等(失二["detail"], "fatal: boom", "跳过信息行")
+  # 0 退出 → 空
+  断言为真(绳分类运行失败(0, "fatal: x", 规则) == 空, "0退出空")
+  # 无致命 → 空
+  断言为真(绳分类运行失败(1, "nothing here", 规则) == 空, "无致命空")
+  # allowedExitCodes
+  设 规则二 为 [["allowedExitCodes": [2], "fatalSignatures": ["boom"]]]
+  断言为真(绳分类运行失败(1, "boom now", 规则二) == 空, "退出码不允许")
+  设 失三 为 绳分类运行失败(2, "boom now", 规则二)
+  断言相等(失三["detail"], "boom now", "允许退出码命中")
+
+  # ---- 绳审批升级判定 ----
+  设 候选 为 ["readonly", "writable"]
+  断言相等(绳审批升级判定("writable", "writable", 候选), "writable", "相等返回生效")
+  断言相等(绳审批升级判定("writable", "readonly", 候选), "writable", "合法升级")
+  尝试:
+    绳审批升级判定("delete", "readonly", 候选)
+    抛出 新建 错误("应为抛错: 无效升级未抛 [NO_THROW]")
+  捕获 异常 为 e:
+    断言包含(e, "有效升级目标", "无效升级抛错")
+
+主()
+写 "test_R85_E_沙箱升级 PASS"

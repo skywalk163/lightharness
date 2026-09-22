@@ -209,3 +209,49 @@
     字典设置(输出, 键, 物化(值[键], 路径 + "." + 键, 已见))
   列表弹出(已见, 长(已见) - 1)
   返回 输出
+
+# ============================================================
+# R85 任务E（工作流域）：对齐上游 0.1.6 packages/workflow/workflow-ptc/src/{types,guest-types}.ts
+#   - 绳校验工作者初始：WorkerInit {meta,body,limits(maxConcurrentAgents>=1)}
+#   - 绳校验子启动请求：ChildStartRequest {prompt 非空}
+#   - 绳校验子结果：ChildResult {output 列表, stopReason 字符串}
+#   注：PtcRun 运行时/宿主 JSON 绑定（begin/startChild/childResult）属宿主面，本模块仅登记。
+# ============================================================
+
+段落 绳校验工作者初始(初始):
+  如果 是字典(初始) == 假:
+    抛出 新建 错误("WorkerInit 必须为字典")
+  如果 字典包含键(初始, "meta") == 假:
+    抛出 新建 错误("WorkerInit.meta 缺失")
+  如果 字典包含键(初始, "body") == 假:
+    抛出 新建 错误("WorkerInit.body 缺失")
+  如果 字典包含键(初始, "limits") == 假:
+    抛出 新建 错误("WorkerInit.limits 缺失")
+  设 限 为 初始["limits"]
+  如果 是字典(限) == 假:
+    抛出 新建 错误("WorkerInit.limits 必须为字典")
+  如果 字典包含键(限, "maxConcurrentAgents") == 假:
+    抛出 新建 错误("limits.maxConcurrentAgents 缺失")
+  如果 限["maxConcurrentAgents"] < 1:
+    抛出 新建 错误("limits.maxConcurrentAgents 必须 >= 1")
+  返回 真
+
+段落 绳校验子启动请求(请求):
+  如果 是字典(请求) == 假:
+    抛出 新建 错误("ChildStartRequest 必须为字典")
+  如果 字典包含键(请求, "prompt") == 假:
+    抛出 新建 错误("ChildStartRequest.prompt 缺失")
+  如果 请求["prompt"] == "":
+    抛出 新建 错误("ChildStartRequest.prompt 不能为空")
+  返回 真
+
+段落 绳校验子结果(结果):
+  如果 是字典(结果) == 假:
+    抛出 新建 错误("ChildResult 必须为字典")
+  如果 字典包含键(结果, "output") == 假:
+    抛出 新建 错误("ChildResult.output 缺失")
+  如果 是列表(结果["output"]) == 假:
+    抛出 新建 错误("ChildResult.output 必须为列表")
+  如果 字典包含键(结果, "stopReason") == 假:
+    抛出 新建 错误("ChildResult.stopReason 缺失")
+  返回 真

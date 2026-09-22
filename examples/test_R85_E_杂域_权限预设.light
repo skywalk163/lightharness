@@ -1,0 +1,82 @@
+# test_R85_E_杂域_权限预设.light —— R85 任务E 杂域：0.1.6 interaction 增量（permission-presets / commands / user-questions）
+#   + mcp-resources render 的 blob 掩码
+# 对应上游：packages/interaction/{permission-presets,commands,user-questions}/src/*.ts
+#          packages/mcp/mcp-resources/src/render.ts
+# 注意：光明把独立中文数字（一/二/三…）当数字字面量，变量名勿用
+从 交互命令 导入 应用旋钮事件, 推导预设, 自动预设名, 自动预设规格, 预设名是否保留, 校验预设配置, 命令定义标识, 提问意图调用标识
+从 mcp客户端 导入 绳渲染资源结果
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言为真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败: " + 标签 + " 期望为真 实际=" + 转字符串(条件))
+
+段落 断言包含(实际, 子串, 标签):
+  如果 字符串包含(转字符串(实际), 子串) == 假:
+    抛出 新建 错误("断言失败: " + 标签 + " 期望含 " + 子串)
+
+段落 主:
+  # ---- 应用旋钮事件：三种事件的纯状态转移（对齐 0.1.6 applyKnobEvent 命名）----
+  设 基态 为 ["preset": "default", "sandbox": "writable", "approval": "auto"]
+  设 态甲 为 应用旋钮事件(基态, ["type": "permission/preset", "data": ["preset": "strict"]])
+  断言相等(态甲["preset"], "strict", "折叠preset")
+  断言相等(态甲["sandbox"], "writable", "折叠保留sandbox")
+  断言相等(态甲["approval"], "auto", "折叠保留approval")
+
+  设 态乙 为 应用旋钮事件(基态, ["type": "sandbox/mode", "data": ["mode": "readonly"]])
+  断言相等(态乙["sandbox"], "readonly", "折叠sandbox")
+  断言相等(态乙["preset"], "default", "折叠保留preset")
+
+  设 态丙 为 应用旋钮事件(基态, ["type": "approval/policy", "data": ["policy": "manual"]])
+  断言相等(态丙["approval"], "manual", "折叠approval")
+  断言相等(态丙["sandbox"], "writable", "折叠保留sandbox")
+
+  # 未知事件类型 → 原样返回
+  设 态丁 为 应用旋钮事件(基态, ["type": "x/y"])
+  断言相等(态丁["preset"], "default", "未知事件原样")
+
+  # ---- 推导预设（对齐 derive）----
+  设 预设表 为 ["default": ["sandbox": "writable", "approval": "auto"], "locked": ["sandbox": "readonly", "approval": "manual"]]
+  断言相等(推导预设(["preset": "default", "sandbox": "writable", "approval": "auto"], "writable", "auto", 预设表), "default", "显式preset命中")
+  断言相等(推导预设(["preset": 空, "sandbox": "readonly", "approval": "manual"], "writable", "auto", 预设表), "locked", "按sandbox/approval匹配")
+  断言相等(推导预设(["preset": 空, "sandbox": "weird", "approval": "weird"], "writable", "auto", 预设表), "custom", "无匹配custom")
+  断言相等(推导预设(["preset": "default", "sandbox": "readonly", "approval": "manual"], "writable", "auto", 预设表), "locked", "显式不匹配但规格命中")
+
+  # ---- 0.1.6 新增：保留预设 auto（AUTO_PRESET / AUTO_PRESET_SPEC）----
+  断言相等(自动预设名(), "auto", "AUTO_PRESET值")
+  设 规格 为 自动预设规格()
+  断言相等(规格["sandbox"], "danger-full-access", "AUTO规格sandbox")
+  断言相等(规格["approval"], "never", "AUTO规格approval")
+  断言为真(预设名是否保留("custom") == 真, "custom保留")
+  断言为真(预设名是否保留("auto") == 真, "auto保留")
+  断言为真(预设名是否保留("default") == 假, "default非保留")
+
+  # 合法配置通过；保留名作为已配置预设 → 构造期抛错（对齐 throw）
+  断言为真(校验预设配置(["default": ["sandbox": "writable", "approval": "auto"]]) == 真, "合法配置")
+  尝试:
+    校验预设配置(["auto": ["sandbox": "danger-full-access", "approval": "never"]])
+    抛出 新建 错误("NO_THROW")
+  捕获 异常 为 e:
+    断言包含(e, "auto", "保留名报错含auto")
+    断言包含(e, "reserved", "保留名报错含reserved")
+
+  # ---- 0.1.6 新增：commands/brand.ts 的 CommandDefinitionId ----
+  断言相等(命令定义标识("plugin.worker"), "plugin.worker", "定义标识恒等")
+
+  # ---- 0.1.6 新增：user-questions/types.ts 的 callId? ----
+  断言相等(提问意图调用标识(["approve": "a"]), 空, "无callId为空")
+  断言相等(提问意图调用标识(["approve": "a", "callId": "call-1"]), "call-1", "有callId取值")
+
+  # ---- mcp 资源 blob 掩码（mcp-resources/src/render.ts）----
+  设 资源 为 ["type": "resource", "uri": "x", "blob": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2"]
+  设 渲染 为 绳渲染资源结果("srv", 资源)
+  断言包含(渲染["text"], "MCP server: srv", "渲染前缀")
+  断言包含(渲染["text"], "base64 characters", "blob已掩码")
+  断言为真(字符串包含(渲染["text"], "QUJD") == 假, "原始blob不出现")
+  # 嵌套 blob
+  设 资源二 为 ["type": "list", "items": [["type": "res", "blob": "QUJD"], ["type": "res", "blob": "MTIz"]]]
+  设 渲染二 为 绳渲染资源结果("srv2", 资源二)
+  断言包含(渲染二["text"], "base64 characters", "嵌套blob掩码")

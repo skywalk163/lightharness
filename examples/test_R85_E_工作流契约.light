@@ -1,0 +1,43 @@
+# test_R85_E_工作流契约.light —— R85 任务E 工作流域：workflow-ptc 契约形状
+从 工作流错误 导入 绳校验工作者初始, 绳校验子启动请求, 绳校验子结果
+
+段落 断言包含(实际, 子串, 标签):
+  如果 字符串包含(转字符串(实际), 子串) == 假:
+    抛出 新建 错误("断言失败: " + 标签 + " 期望含 " + 子串 + " 实际=" + 转字符串(实际))
+
+段落 主:
+  # WorkerInit 合法
+  设 初始 为 ["meta": ["x": 1], "body": "脚本", "limits": ["maxConcurrentAgents": 2, "maxTotalAgents": 10, "maxItemsPerCall": 5, "syncTimeoutMs": 1000]]
+  如果 绳校验工作者初始(初始) != 真:
+    抛出 新建 错误("WorkerInit 合法应过")
+  # 缺 maxConcurrentAgents
+  尝试:
+    绳校验工作者初始(["meta": 1, "body": "b", "limits": ["maxTotalAgents": 1]])
+    抛出 新建 错误("NO_THROW")
+  捕获 异常 为 e:
+    断言包含(e, "maxConcurrentAgents", "缺并发代理")
+  # maxConcurrentAgents < 1
+  尝试:
+    绳校验工作者初始(["meta": 1, "body": "b", "limits": ["maxConcurrentAgents": 0]])
+    抛出 新建 错误("NO_THROW")
+  捕获 异常 为 e2:
+    断言包含(e2, ">= 1", "并发下限")
+  # ChildStartRequest
+  如果 绳校验子启动请求(["prompt": "做X"]) != 真:
+    抛出 新建 错误("ChildStartRequest 合法应过")
+  尝试:
+    绳校验子启动请求(["prompt": ""])
+    抛出 新建 错误("NO_THROW")
+  捕获 异常 为 e3:
+    断言包含(e3, "为空", "空prompt")
+  # ChildResult
+  如果 绳校验子结果(["output": [["type": "text", "text": "ok"]], "stopReason": "completed"]) != 真:
+    抛出 新建 错误("ChildResult 合法应过")
+  尝试:
+    绳校验子结果(["output": "x", "stopReason": "completed"])
+    抛出 新建 错误("NO_THROW")
+  捕获 异常 为 e4:
+    断言包含(e4, "列表", "output非列表")
+
+主()
+写 "test_R85_E_工作流契约 PASS"
