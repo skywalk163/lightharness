@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-22T07:55:38+08:00",
+  "generated_at": "2026-09-22T14:24:06+08:00",
   "target": {
     "name": "lightharness",
     "platform": "本机 Windows 10",
@@ -13,169 +13,21 @@
     "mode": "full",
     "parallel": false,
     "cmd": "-m pytest tests/ -q --tb=no -rfE -o addopts= -p no:cacheprovider -p no:xdist --timeout 60",
-    "elapsed_sec": 1294.6,
-    "pytest_rc": 1
+    "elapsed_sec": 920.8,
+    "pytest_rc": 0
   },
   "totals": {
-    "total": 1369,
-    "failure": 21,
+    "total": 1375,
+    "failure": 0,
     "error": 0,
     "skipped": 4,
     "xfailed": 0,
     "xpassed": 0,
-    "passed": 1344,
-    "failed": 21,
-    "duration_sec": 1288.954
+    "passed": 1371,
+    "failed": 0,
+    "duration_sec": 913.061
   },
-  "failed": [
-    {
-      "id": "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
-      "cid": "tests.test_R21_词法确定性_超集::test_definitions_superset",
-      "status": "failure",
-      "file": "tests/test_R21_词法确定性_超集.py",
-      "message": "AssertionError: definitions 出现非残片丢失（2）: [('test_L020.light', '无法正确注册'), ('test_宿主工具.light', '执行上下文')]"
-    },
-    {
-      "id": "tests/test_R30_零除幂次记录类型通用化_token.py::test_num_head_merge_generalizes",
-      "cid": "tests.test_R30_零除幂次记录类型通用化_token::test_num_head_merge_generalizes",
-      "status": "failure",
-      "file": "tests/test_R30_零除幂次记录类型通用化_token.py",
-      "message": "AssertionError: 一加一"
-    },
-    {
-      "id": "tests/test_R30_零除幂次记录类型通用化_token.py::test_merge_whole_has_record_type",
-      "cid": "tests.test_R30_零除幂次记录类型通用化_token::test_merge_whole_has_record_type",
-      "status": "failure",
-      "file": "tests/test_R30_零除幂次记录类型通用化_token.py",
-      "message": "AssertionError: assert frozenset({'外..., '返回码', ...}) == frozenset({'整理模型消息', '记录类型'})"
-    },
-    {
-      "id": "tests/test_R30_零除幂次记录类型通用化_token.py::test_predicates",
-      "cid": "tests.test_R30_零除幂次记录类型通用化_token::test_predicates",
-      "status": "failure",
-      "file": "tests/test_R30_零除幂次记录类型通用化_token.py",
-      "message": "AssertionError: assert (True and True and False)"
-    },
-    {
-      "id": "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
-      "cid": "tests.test_R31_EMBED表保留+flaky修复_token::test_fanhui_embedded_scan_triggered",
-      "status": "failure",
-      "file": "tests/test_R31_EMBED表保留+flaky修复_token.py",
-      "message": "AssertionError: assert '返回表' in ['设', 'x', '为', '返回', '表', None]"
-    },
-    {
-      "id": "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged",
-      "cid": "tests.test_R31_EMBED表保留+flaky修复_token::test_fanhui_return_value_merged",
-      "status": "failure",
-      "file": "tests/test_R31_EMBED表保留+flaky修复_token.py",
-      "message": "AssertionError: assert '返回值' in ['设', 'x', '为', '返回', '值', None]"
-    },
-    {
-      "id": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_now_2",
-      "cid": "tests.test_R32_OPERATOR+MERGE_WHOLE精简_token::test_merge_whole_now_2",
-      "status": "failure",
-      "file": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py",
-      "message": "AssertionError: assert 7 == 2"
-    },
-    {
-      "id": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_retained_entries",
-      "cid": "tests.test_R32_OPERATOR+MERGE_WHOLE精简_token::test_merge_whole_retained_entries",
-      "status": "failure",
-      "file": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py",
-      "message": "AssertionError: assert {'外部命令', '导出事...', '返回码', ...} == {'整理模型消息', '记录类型'}"
-    },
-    {
-      "id": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_r35_removed_entry",
-      "cid": "tests.test_R32_OPERATOR+MERGE_WHOLE精简_token::test_merge_whole_r35_removed_entry",
-      "status": "failure",
-      "file": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py",
-      "message": "AssertionError: assert '非空块' not in frozenset({'外部命令', '导出事件表', '接收参数', '整理模型消息', '记录类型', '返回码', ...})"
-    },
-    {
-      "id": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_deleted_entries",
-      "cid": "tests.test_R32_OPERATOR+MERGE_WHOLE精简_token::test_merge_whole_deleted_entries",
-      "status": "failure",
-      "file": "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py",
-      "message": "AssertionError: assert '外部命令' not in frozenset({'外部命令', '导出事件表', '接收参数', '整理模型消息', '记录类型', '返回码', ...})"
-    },
-    {
-      "id": "tests/test_R33_NEVER_SPLIT精简_token.py::test_merge_whole_now_2",
-      "cid": "tests.test_R33_NEVER_SPLIT精简_token::test_merge_whole_now_2",
-      "status": "failure",
-      "file": "tests/test_R33_NEVER_SPLIT精简_token.py",
-      "message": "AssertionError: assert 7 == 2"
-    },
-    {
-      "id": "tests/test_R35_MERGE_WHOLE通用化_token.py::test_merge_whole_is_2",
-      "cid": "tests.test_R35_MERGE_WHOLE通用化_token::test_merge_whole_is_2",
-      "status": "failure",
-      "file": "tests/test_R35_MERGE_WHOLE通用化_token.py",
-      "message": "AssertionError: assert 7 == 2"
-    },
-    {
-      "id": "tests/test_R35_MERGE_WHOLE通用化_token.py::test_merge_whole_exact_contents",
-      "cid": "tests.test_R35_MERGE_WHOLE通用化_token::test_merge_whole_exact_contents",
-      "status": "failure",
-      "file": "tests/test_R35_MERGE_WHOLE通用化_token.py",
-      "message": "AssertionError: assert {'外部命令', '导出事...', '返回码', ...} == {'整理模型消息', '记录类型'}"
-    },
-    {
-      "id": "tests/test_R35_MERGE_WHOLE通用化_token.py::test_non_empty_block_removed",
-      "cid": "tests.test_R35_MERGE_WHOLE通用化_token::test_non_empty_block_removed",
-      "status": "failure",
-      "file": "tests/test_R35_MERGE_WHOLE通用化_token.py",
-      "message": "AssertionError: assert '非空块' not in frozenset({'外部命令', '导出事件表', '接收参数', '整理模型消息', '记录类型', '返回码', ...})"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R41_\\u771f\\u5b9eIO\\u7aef\\u5230\\u7aef.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R41_\\u771f\\u5b9eIO\\u7aef\\u5230\\u7aef.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R41_真实IO端到端.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R41_\\u771f\\u5b9e\\u7f51\\u7edcIO.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R41_\\u771f\\u5b9e\\u7f51\\u7edcIO.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R41_真实网络IO.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9ewebhook.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_\\u771f\\u5b9ewebhook.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实webhook.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u5de5\\u5177\\u94fe.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u5de5\\u5177\\u94fe.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实工具链.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u6293\\u53d6.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u6293\\u53d6.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实抓取.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_agentE5\\u94a9\\u5b50.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_agentE5\\u94a9\\u5b50.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_agentE5钩子.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_agent\\u5de5\\u5177\\u8c03\\u7528.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_agent\\u5de5\\u5177\\u8c03\\u7528.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_agent工具调用.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    }
-  ],
+  "failed": [],
   "skipped": [
     "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
