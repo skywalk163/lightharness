@@ -3,7 +3,8 @@
 # 覆盖（规划文档 66.1 验收）：
 #   1) TCP 回环客户端/服务端（阻塞 + 非阻塞接受）
 #   2) UDP 回环（发送到/接收自）
-#   3) 套接字选项（SO_REUSEADDR / TCP_NODELAY / SO_RCVBUF / SO_SNDBUF）
+#   3) 套接字选项（SO_REUSEADDR / SO_RCVBUF / SO_SNDBUF / TCP_NODELAY——后者必须
+#      用 IPPROTO_TCP 级别，误用 SOL_SOCKET 在 POSIX 上等价 SO_DEBUG → EACCES）
 #   4) 非阻塞模式 + 超时模式（EAGAIN / timeout 异常分类）
 #   5) 字节层收发正确性（含 \x00 \xff 等任意字节；大载荷走 发送全部 循环）
 #   6) 套接字对（唤醒通道语义）
@@ -11,7 +12,7 @@
 #
 # 运行：cd lightharness && python 运行.py examples/test_套接字.light
 从 套接字 导入 新建TCP套接字, 新建UDP套接字, 新建套接字, 新建套接字对
-从 套接字 导入 AF_INET, AF_INET6, AF_UNIX, SOCK_STREAM, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_RCVBUF, SO_SNDBUF, TCP_NODELAY, 套接字
+从 套接字 导入 AF_INET, AF_INET6, AF_UNIX, SOCK_STREAM, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, SO_RCVBUF, SO_SNDBUF, TCP_NODELAY, IPPROTO_TCP, 套接字对可用族, 套接字
 导入 errno
 导入 time
 
@@ -141,15 +142,29 @@
   # 5) 套接字选项：设置 + 读回
   # ============================================================
   设 s5 为 新建TCP套接字()
+  # SO_REUSEADDR 的 getsockopt 读回值是实现定义：Linux 返回 1，FreeBSD 返回 4
+  # （R68 实测），语义判据是「非 0 即开」——断言开关语义可往返，不钉死数值。
   s5.设置选项(SOL_SOCKET, SO_REUSEADDR, 1)
-  断言相等(s5.读取选项(SOL_SOCKET, SO_REUSEADDR), 1, "SO_REUSEADDR 读回 1")
+  断言真(s5.读取选项(SOL_SOCKET, SO_REUSEADDR) != 0, "SO_REUSEADDR 读回为开（非 0）")
+  s5.设置选项(SOL_SOCKET, SO_REUSEADDR, 0)
+  断言相等(s5.读取选项(SOL_SOCKET, SO_REUSEADDR), 0, "SO_REUSEADDR 读回为关（0）")
+  s5.设置选项(SOL_SOCKET, SO_REUSEADDR, 1)
+  断言真(s5.读取选项(SOL_SOCKET, SO_REUSEADDR) != 0, "SO_REUSEADDR 重新置开")
   s5.设置选项(SOL_SOCKET, SO_RCVBUF, 65536)
   断言真(s5.读取选项(SOL_SOCKET, SO_RCVBUF) >= 65536, "SO_RCVBUF 读回不低于设置值")
   s5.设置选项(SOL_SOCKET, SO_SNDBUF, 65536)
   断言真(s5.读取选项(SOL_SOCKET, SO_SNDBUF) >= 65536, "SO_SNDBUF 读回不低于设置值")
+  # TCP_NODELAY 属 IPPROTO_TCP 级别（R86 归因）：POSIX 上 SOL_SOCKET=1 且
+  # TCP_NODELAY=1，误传 SOL_SOCKET 级别会被内核当成 SO_DEBUG（需 CAP_NET_ADMIN）
+  # → EACCES；Windows 却静默接受。级别用错是调用面问题，不是 0.86 环境限制。
+  断言真(IPPROTO_TCP != 空, "IPPROTO_TCP 常量可用")
   断言真(TCP_NODELAY != 空, "TCP_NODELAY 常量可用")
-  s5.设置选项(SOL_SOCKET, TCP_NODELAY, 1)
-  断言相等(s5.读取选项(SOL_SOCKET, TCP_NODELAY), 1, "TCP_NODELAY 读回 1")
+  s5.设置选项(IPPROTO_TCP, TCP_NODELAY, 1)
+  断言真(s5.读取选项(IPPROTO_TCP, TCP_NODELAY) != 0, "TCP_NODELAY 读回为开")
+  断言真(s5.设置不延迟(假), "设置不延迟(假) 可用")
+  断言相等(s5.读取不延迟(), 0, "设置不延迟(假) 读回 0")
+  断言真(s5.设置不延迟(真), "设置不延迟(真) 走 IPPROTO_TCP 级别成功")
+  断言真(s5.读取不延迟() != 0, "设置不延迟(真) 读回为开")
   s5.关闭()
 
   # ============================================================
@@ -201,6 +216,8 @@
   # ============================================================
   # 8) 套接字对：一端写、另一端读（事件循环唤醒通道语义）
   # ============================================================
+  # 地址族兼容：Windows 的 socketpair 支持 AF_INET；POSIX 只支持 AF_UNIX，
+  # stdlib 会把 AF_INET 映射成 AF_UNIX（R86），所以这里传 AF_INET 三平台都合法。
   设 甲乙 为 新建套接字对(AF_INET, 真)
   设 甲 为 甲乙[0]
   设 乙 为 甲乙[1]
@@ -209,6 +226,15 @@
   断言真(甲.当前超时() == 0.0, "非阻塞模式读回 0")
   甲.关闭()
   乙.关闭()
+  # 传 空 = 平台默认族（win32=AF_INET；POSIX=AF_UNIX）——不想关心平台的调用方走这条
+  断言真(套接字对可用族(空) != 空, "套接字对可用族(空) 返回平台默认")
+  设 默认对 为 新建套接字对(空, 真)
+  设 默甲 为 默认对[0]
+  设 默乙 为 默认对[1]
+  默乙.发送(b"wake-default")
+  断言相等(默甲.接收(32), b"wake-default", "平台默认族套接字对跨端可读")
+  默甲.关闭()
+  默乙.关闭()
 
   # ============================================================
   # 9) 地址族常量与工厂：AF_INET/AF_INET6 恒有；AF_UNIX 仅 POSIX（Windows 为 空）
@@ -227,6 +253,6 @@
     设 ux 为 新建套接字(AF_UNIX, SOCK_STREAM)
     ux.关闭()
 
-  输出("test_套接字.light 全部断言通过（9 组 / TCP阻塞回环+非阻塞accept+非阻塞recv+超时模式+选项+UDP回环+字节层+套接字对+地址族常量）")
+  输出("test_套接字.light 全部断言通过（9 组 / TCP阻塞回环+非阻塞accept+非阻塞recv+超时模式+选项(TCP级别)+UDP回环+字节层+套接字对(平台自适应)+地址族常量）")
 
 主()

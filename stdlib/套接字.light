@@ -10,8 +10,13 @@
 #   - 类型常量：SOCK_STREAM / SOCK_DGRAM
 #   - 套接字选项：SO_REUSEADDR、TCP_NODELAY、SO_RCVBUF / SO_SNDBUF（设置+读取）
 #   - 阻塞 / 超时 / 非阻塞三种模式
-#   - 新建套接字对(AF_INET)：事件循环.light 的跨线程唤醒通道就靠它
+#   - 新建套接字对(地址族, 非阻塞)：事件循环.light 的跨线程唤醒通道就靠它
 #     （Windows 的 select 只认 socket，os.pipe 管道进不了 selector，必须用 socketpair）
+#     地址族平台自适应（R86）：win32 走 AF_INET；POSIX（Linux/FreeBSD/macOS）上
+#     socketpair 只支持 AF_UNIX，传 AF_INET / AF_INET6 / 空 一律映射 AF_UNIX
+#   - TCP 选项级别常量 IPPROTO_TCP + 设置不延迟 / 读取不延迟 便捷段落
+#     （TCP_NODELAY 属 IPPROTO_TCP 级别；在 SOL_SOCKET 级别下 POSIX 内核会当成
+#       SO_DEBUG，需 CAP_NET_ADMIN → EACCES，Windows 却静默接受——R86 归因）
 #   - 字节层收发：收发一律是 bytes，不做字符层切割、不做解码——与 进程树.light
 #     采集器同口径（字节进字节出，解码留给调用方）
 #
@@ -25,6 +30,7 @@
 #     是否愿等读/是否愿等写 承担，事件循环.light 据此回 selector；本模块只把异常
 #     原样抛出去，谁调用谁决定分类。
 导入 socket
+导入 sys
 
 # ---- 地址族 / 类型 / 选项常量（只转发，不自造数字）----
 设 AF_INET 为 socket.AF_INET
@@ -37,6 +43,7 @@
 设 SO_RCVBUF 为 socket.SO_RCVBUF
 设 SO_SNDBUF 为 socket.SO_SNDBUF
 设 TCP_NODELAY 为 getattr(socket, "TCP_NODELAY", 空)
+设 IPPROTO_TCP 为 getattr(socket, "IPPROTO_TCP", 空)
 
 # ---- 工厂 ----
 # 统一入口：新建套接字(地址族, 类型)。常规 TCP/UDP 用下面两个便捷段落。
@@ -50,10 +57,30 @@
 段落 新建UDP套接字():
   返回 新建套接字(AF_INET, SOCK_DGRAM)
 
+# ---- 平台自适应（R86：POSIX 上 socketpair(AF_INET/AF_INET6) 直接 EOPNOTSUPP）----
+# 平台是否Windows()：win32 判定。用 getattr 兜底，sys 被裁剪时不炸。
+段落 平台是否Windows():
+  返回 getattr(sys, "platform", "") == "win32"
+
+# 套接字对可用族(地址族) → 本平台上确实能建 socketpair 的地址族
+#   * 传 空                       → 平台默认（win32 = AF_INET；POSIX = AF_UNIX）
+#   * POSIX 传 AF_INET / AF_INET6 → 映射 AF_UNIX（POSIX 的 socketpair 只认本地族）
+#   * win32 传 AF_UNIX（Windows 上为 空）→ 回退 AF_INET
+# 调用方传什么都不炸，同一份代码三平台通用——平台差异在这里收口，不外溢到业务。
+段落 套接字对可用族(地址族):
+  如果 平台是否Windows():
+    如果 地址族 == 空 或 地址族 == AF_UNIX:
+      返回 AF_INET
+    返回 地址族
+  如果 地址族 == 空 或 地址族 == AF_INET 或 地址族 == AF_INET6:
+    返回 AF_UNIX
+  返回 地址族
+
 # 新建套接字对(地址族, 是否非阻塞) → [甲端, 乙端]
 # 返回的是两个 套接字 实例；任何一端写出字节，另一端可读。
 段落 新建套接字对(地址族, 是否非阻塞):
-  设 对 为 socket.socketpair(地址族, socket.SOCK_STREAM)
+  设 用族 为 套接字对可用族(地址族)
+  设 对 为 socket.socketpair(用族, socket.SOCK_STREAM)
   设 甲 为 新建 套接字(对[0])
   设 乙 为 新建 套接字(对[1])
   如果 是否非阻塞:
@@ -128,11 +155,33 @@
     返回 己.原始.gettimeout()
 
   # ---- 选项 ----
+  # ⚠️ 级别(level)由「选项属于哪一层协议」决定，不是「常量从哪来」：
+  #     SO_* 用 SOL_SOCKET；TCP_* 必须用 IPPROTO_TCP。
+  #     POSIX 上 SOL_SOCKET=1 且 TCP_NODELAY=1，误传 SOL_SOCKET 级别会被内核
+  #     当成 SO_DEBUG（需 CAP_NET_ADMIN）→ EACCES；Windows 却静默接受，
+  #     于是表现为「本机绿、Linux 红」（R86 归因）。TCP 级选项请走 设置不延迟。
   段落 设置选项(级别, 名, 值):
     己.原始.setsockopt(级别, 名, 值)
 
   段落 读取选项(级别, 名):
     返回 己.原始.getsockopt(级别, 名)
+
+  # 设置不延迟(是否启用) → 布尔：TCP_NODELAY 的正确级别封装（跨平台）。
+  # IPPROTO_TCP / TCP_NODELAY 缺失时静默跳过（返回 假），调用方无需感知平台。
+  段落 设置不延迟(是否启用):
+    如果 IPPROTO_TCP == 空 或 TCP_NODELAY == 空:
+      返回 假
+    设 值 为 0
+    如果 是否启用:
+      设 值 为 1
+    己.原始.setsockopt(IPPROTO_TCP, TCP_NODELAY, 值)
+    返回 真
+
+  # 读取不延迟() → 0/1（常量缺失时为 空）
+  段落 读取不延迟():
+    如果 IPPROTO_TCP == 空 或 TCP_NODELAY == 空:
+      返回 空
+    返回 己.原始.getsockopt(IPPROTO_TCP, TCP_NODELAY)
 
   # ---- 收发（字节层）----
   # 接收(上限字节) → bytes；对端关闭返回 b""（这是「对端关闭」的权威信号，
@@ -185,6 +234,9 @@
 导出 SO_RCVBUF
 导出 SO_SNDBUF
 导出 TCP_NODELAY
+导出 IPPROTO_TCP
+导出 平台是否Windows
+导出 套接字对可用族
 导出 套接字
 导出 新建套接字
 导出 新建TCP套接字

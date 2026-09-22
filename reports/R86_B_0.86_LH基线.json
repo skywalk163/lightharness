@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-22T12:27:21+08:00",
+  "target": {
+    "name": "lightharness",
+    "platform": "0.86 Linux",
+    "host": "192.168.0.86",
+    "remote_dir": "/tmp/r85-20260922-121759",
+    "cwd": "/tmp/r85-20260922-121759/lightharness"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": true,
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-121759/lh_results.xml -n auto --dist loadscope --timeout 60",
+    "pytest_rc": "1"
+  },
+  "totals": {
+    "total": 1375,
+    "failure": 2,
+    "error": 0,
+    "skipped": 6,
+    "xfailed": 0,
+    "xpassed": 0,
+    "passed": 1367,
+    "failed": 2,
+    "duration_sec": 429.507
+  },
+  "failed": [
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_\\u6c99\\u7bb1\\u63a2\\u6d4b.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_\\u6c99\\u7bb1\\u63a2\\u6d4b.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_沙箱探测.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_\\u6c99\\u7bb1\\u7edf\\u4e00.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_\\u6c99\\u7bb1\\u7edf\\u4e00.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_沙箱统一.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    }
+  ],
+  "skipped": [
+    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
+    "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
+    "tests/test_回归.py::test_env_red_baseline_report"
+  ]
+}
