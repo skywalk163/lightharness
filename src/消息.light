@@ -123,3 +123,194 @@
       设 引用 为 块["attachment"]
       设 结果 为 结果 加上 "[文件 " 加上 引用["name"] 加上 ": " 加上 转字符串(引用["bytes"]) 加上 " 字节]"
   返回 结果
+
+# =====================================================================
+# §8 图片卸载（0.1.6 新增：llm/src/content.ts 卸载面 + error.ts 错误码）
+#
+# 上游锚点 ddefc45fbc：
+#   packages/llm/llm/src/content.ts:126 contentHasImage
+#   packages/llm/llm/src/content.ts:208 base64Length
+#   packages/llm/llm/src/content.ts:218 visitImageBlocks
+#   packages/llm/llm/src/content.ts:226 replaceOffloadedImages
+#   packages/llm/llm/src/content.ts:258 projectOffloadedImages
+#   packages/llm/llm/src/content.ts:277 offloadedImagePrefixCount
+#   packages/llm/llm/src/content.ts:311 requiredImageOffload
+#   packages/llm/llm/src/error.ts:172   IMAGE_OFFLOAD_REQUIRED_CODE
+#   packages/llm/llm-deepseek/src/protocols/chat-completions/serialize.ts:408-412
+#     —— LlmError 文案与 { offloadImages } 载荷
+# 判据锚点：packages/llm/llm/tests/content.spec.ts
+#   describe('requiredImageOffload traversal') / ('projectOffloadedImages') / ('requiredImageOffload')
+# 语义要点（0.1.6 卸载模型重构核心）：
+#   offloaded 标记是 surface 的持久事实；投影时只把已标记块换成路由占位文本，
+#   绝不自行卸载。超限时报 IMAGE_OFFLOAD_REQUIRED 并携带「还需卸载的最老张数」，
+#   由上游链路记账后重试。预算按「整张量 / 整字节量」取整，不按单张逐张扣。
+# 偏离登记：
+#   L-132 光明 段落 可作实参传递（先例 examples/test_R85_D_typert.light 段_释放桩），
+#     但回调无法捕获调用方局部变量，故 requiredImageOffload 的遍历改写为显式传表的
+#     收集器 收集图片字节；同时保留 visitImageBlocks 的回调形态 遍历图片块。
+#   L-133 上游以对象同一性（===）判定「无需复制」；光明 == 是深相等，故
+#     替换已卸载图片 先用 块表包含已卸载 预扫描，等价保留「无卸载则原样返回」。
+#   L-134 Math.ceil(n/3) 与 Math.ceil(x/q) 对正整数改写为纯整数算式
+#     整除(n+2, 3) 与 整除(x+q-1, q)，避开浮点除法与 L-126 floor/trunc 分歧。
+# =====================================================================
+
+# IMAGE_OFFLOAD_REQUIRED_CODE（error.ts:172 逐字）
+段落 卸载错误码:
+  返回 "IMAGE_OFFLOAD_REQUIRED"
+
+# base64Length：含填充的 base64 长度 = ceil(bytes/3)*4
+段落 基64长度(字节数):
+  返回 整除(字节数 + 2, 3) * 4
+
+# contentHasImage：递归识别 image 块（含嵌套 tool-result）
+段落 内容含图片(内容):
+  遍历 块 之 内容:
+    如果 块["type"] == "image":
+      返回 真
+    如果 块["type"] == "tool-result" 且 内容含图片(块["content"]):
+      返回 真
+  返回 假
+
+# 块是否为已卸载标记（缺键视为未卸载）
+段落 块已卸载(块):
+  如果 块.包含("offloaded") 且 块["offloaded"] == 真:
+    返回 真
+  返回 假
+
+# visitImageBlocks：按消息顺序访问每个图片块，含嵌套 tool-result 内容
+段落 遍历图片块(内容, 访问):
+  遍历 块 之 内容:
+    如果 块["type"] == "image":
+      访问(块)
+    否则如果 块["type"] == "tool-result":
+      遍历图片块(块["content"], 访问)
+
+# requiredImageOffload 的内部收集器：未卸载图片的表示字节长度表（最老在前）
+段落 收集图片字节(内容, 预算, 取块字节, 表):
+  遍历 块 之 内容:
+    如果 块["type"] == "image":
+      如果 块已卸载(块) == 假:
+        设 字节 为 取块字节(块)
+        如果 预算["representation"] == "base64":
+          列表追加(表, 基64长度(字节))
+        否则:
+          列表追加(表, 字节)
+    否则如果 块["type"] == "tool-result":
+      收集图片字节(块["content"], 预算, 取块字节, 表)
+
+# offloadedImagePrefixCount：超预算时需卸载的最老前缀张数（按整量取整）
+段落 卸载前缀数(字节表, 预算):
+  设 合计 为 0
+  遍历 字节 之 字节表:
+    设 合计 为 合计 + 字节
+  设 超张 为 0
+  如果 预算.包含("maxImages"):
+    设 差 为 长度(字节表) - 预算["maxImages"]
+    如果 差 > 超张:
+      设 超张 为 差
+  设 超字节 为 0
+  如果 预算.包含("maxBytes"):
+    设 差 为 合计 - 预算["maxBytes"]
+    如果 差 > 超字节:
+      设 超字节 为 差
+  如果 超张 == 0 且 超字节 == 0:
+    返回 0
+  设 张量 为 1
+  如果 预算.包含("countQuantum"):
+    设 张量 为 预算["countQuantum"]
+  设 字节量 为 1
+  如果 预算.包含("byteQuantum"):
+    设 字节量 为 预算["byteQuantum"]
+  设 应卸张 为 0
+  如果 超张 != 0:
+    设 应卸张 为 整除(超张 + 张量 - 1, 张量) * 张量
+  设 应卸字节 为 0
+  如果 超字节 != 0:
+    设 应卸字节 为 整除(超字节 + 字节量 - 1, 字节量) * 字节量
+  设 计数 为 0
+  设 已卸字节 为 0
+  设 i 为 0
+  当 i < 长度(字节表):
+    设 字节 为 字节表[i]
+    设 字节达标 为 假
+    如果 应卸字节 == 0:
+      设 字节达标 为 真
+    否则如果 字节量 == 1:
+      如果 已卸字节 >= 应卸字节:
+        设 字节达标 为 真
+    否则:
+      如果 已卸字节 > 应卸字节:
+        设 字节达标 为 真
+    如果 计数 >= 应卸张 且 字节达标:
+      跳出
+    设 已卸字节 为 已卸字节 + 字节
+    设 计数 为 计数 + 1
+    设 i 为 i + 1
+  返回 计数
+
+# requiredImageOffload：还需卸载的最老图片张数；请求已达标时为 0
+段落 需卸载数(消息表, 预算, 取块字节):
+  设 表 为 列表创建()
+  遍历 消息 之 消息表:
+    收集图片字节(消息["content"], 预算, 取块字节, 表)
+  返回 卸载前缀数(表, 预算)
+
+# 块表（含嵌套）是否含已卸载标记
+段落 块表包含已卸载(块表):
+  遍历 块 之 块表:
+    如果 块["type"] == "image" 且 块已卸载(块):
+      返回 真
+    如果 块["type"] == "tool-result" 且 块表包含已卸载(块["content"]):
+      返回 真
+  返回 假
+
+# replaceOffloadedImages：已标记块换成路由占位文本，未改动则原样返回
+段落 替换已卸载图片(块表, 占位):
+  如果 块表包含已卸载(块表) == 假:
+    返回 块表
+  设 结果 为 列表创建()
+  遍历 块 之 块表:
+    如果 块["type"] == "image" 且 块已卸载(块):
+      列表追加(结果, ["type": "text", "text": 占位(块["attachment"])])
+    否则如果 块["type"] == "tool-result":
+      设 副本 为 深拷贝(块)
+      副本["content"] 为 替换已卸载图片(块["content"], 占位)
+      列表追加(结果, 副本)
+    否则:
+      列表追加(结果, 块)
+  返回 结果
+
+# projectOffloadedImages：逐消息投影，内容未变则复用原消息
+段落 投影已卸载图片(消息表, 占位):
+  设 结果 为 列表创建()
+  遍历 消息 之 消息表:
+    设 新内容 为 替换已卸载图片(消息["content"], 占位)
+    如果 新内容 == 消息["content"]:
+      列表追加(结果, 消息)
+    否则:
+      设 副本 为 深拷贝(消息)
+      副本["content"] 为 新内容
+      列表追加(结果, 副本)
+  返回 结果
+
+# 造 IMAGE_OFFLOAD_REQUIRED 错误形状（serialize.ts:408-412 文案逐字）
+段落 造卸载错误(预算形态, 卸载张数):
+  返回 ["name": "LlmError",
+    "message": "DeepSeek " + 预算形态 + " request images exceed the route budget; "
+      + 转字符串(卸载张数) + " more oldest occurrence(s) must be offloaded.",
+    "code": 卸载错误码(), "offloadImages": 卸载张数]
+
+# R85A-OFFLOAD-SECTION
+
+导出 卸载错误码
+导出 基64长度
+导出 内容含图片
+导出 块已卸载
+导出 遍历图片块
+导出 收集图片字节
+导出 卸载前缀数
+导出 需卸载数
+导出 块表包含已卸载
+导出 替换已卸载图片
+导出 投影已卸载图片
+导出 造卸载错误

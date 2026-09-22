@@ -1,0 +1,226 @@
+# test_R85_A_消息序列化.light —— R85 任务 A：0.1.6 Messages 路由序列化对拍
+#
+# 判据锚点（上游逐字语义，不自行推算）：
+#   ddefc45fbc packages/llm/llm-deepseek/src/protocols/messages/serialize.ts
+#     :14-20  toolInput —— JSON 解析失败或非对象 → {}
+#     :41-53  in-history 系统更新收束（Harness 允许 user 输入前插系统更新；
+#             Messages 把同一更新放在该 user/tool-result 轮之后、下一助手之前）
+#     :54-56  flushSystemUpdates —— 无前置 user 轮 → unsupported
+#     :66     empty in-history system update → unsupported
+#     :94-95  相邻同角色合并
+#     :115-125  tool_use/tool_result 配对校验（重复 id / 无匹配调用 /
+#               调用需立即有结果 / 尾部未收口）+ tool_result 前置重排
+#     :126-128  effort 解析（session-title 强制 off）与 UNSUPPORTED_REASONING_EFFORT
+#     :129     system = [options.system, historySystem].filter(Boolean).join('\n\n')
+#   ddefc45fbc packages/llm/llm-deepseek/src/protocols/messages/replay.ts
+#     :49-76  readReplay/validateReplay（kind/version/model/块数/类型对齐）
+# 移植对象：src/客户端.light §Messages（纯逻辑面）
+# 偏离说明：
+#   D-1 上游 LlmError(message, code)；光明异常无 code 字段，编为 "CODE: message"，
+#       判据按前缀核对（模块头部 D-1）。
+#   D-2 图片注入面（images/access/fileIds）属宿主面，登记不移植；遇 image 块
+#       一律 UNSUPPORTED_CONTENT（与上游 unsupported() 同文案）。
+
+从 客户端 导入 消息工具输入, 消息助手块表, 消息块输入, 读消息回放, 序列化消息请求
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 对拍报错(函数值, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    函数值()
+  捕获 e:
+    设 已抛 为 真
+    设 文本 为 转字符串(e)
+    如果 文本.包含(片段) == 假:
+      抛出 新建 错误("错误片段不符: " + 标签 + " 实际=" + 文本)
+  如果 已抛 == 假:
+    抛出 新建 错误("未抛出: " + 标签)
+
+# ---- 夹具 ----
+
+段落 造连接:
+  返回 [
+    "models": [
+      ["id": "m-1", "name": "M One", "maxTokens": 8192],
+      ["id": "m-h", "name": "M Hist", "systemPromptUpdate": "in-history", "maxTokens": 2048],
+      ["id": "m-裸", "name": "M Bare"],
+    ],
+    "maxTokens": 4096,
+    "defaults": ["thinking": "enabled"],
+  ]
+
+段落 造文本块(文本):
+  返回 ["type": "text", "text": 文本]
+
+段落 造用户(文本):
+  返回 ["role": "user", "content": [造文本块(文本)]]
+
+段落 造助手(文本):
+  返回 ["role": "assistant", "content": [造文本块(文本)]]
+
+# ---- toolInput ----
+
+段落 对拍工具输入:
+  对拍相等(消息工具输入("{\"甲\": 1}"), ["甲": 1], "合法 JSON 对象保留")
+  对拍相等(消息工具输入("不是JSON"), {}, "解析失败回落空对象")
+  对拍相等(消息工具输入("42"), {}, "标量回落空对象")
+  对拍相等(消息工具输入("[1,2]"), {}, "数组回落空对象")
+
+# ---- assistant 块映射 + 回放签名 ----
+
+段落 对拍助手块表:
+  对拍相等(消息助手块表(["role": "assistant", "content": [造文本块("答")]], "m-1"), [["type": "text", "text": "答"]], "text 块映射")
+  设 调用 为 ["type": "tool-call", "id": "t1", "name": "搜索", "arguments": "{\"甲\": 2}"]
+  对拍相等(消息助手块表(["role": "assistant", "content": [调用]], "m-1"), [["type": "tool_use", "id": "t1", "name": "搜索", "input": ["甲": 2]]], "tool-call → tool_use")
+  设 推理 为 ["type": "reasoning", "text": "想一想"]
+  对拍相等(消息助手块表(["role": "assistant", "content": [推理]], "m-1"), [["type": "thinking", "thinking": "想一想"]], "reasoning → thinking 无签名")
+  设 带签 为 ["role": "assistant", "content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-1"], "blocks": [["type": "reasoning", "signature": "签名甲"]]]]]
+  对拍相等(消息助手块表(带签, "m-1"), [["type": "thinking", "thinking": "想一想", "signature": "签名甲"]], "回放签名并入 thinking")
+
+段落 报未知助手块:
+  消息助手块表(["role": "assistant", "content": [["type": "file"]]], "m-1")
+
+对拍报错(报未知助手块, "UNSUPPORTED_CONTENT", "未知助手块类型 抛 UNSUPPORTED_CONTENT")
+
+# ---- readReplay 校验 ----
+
+段落 对拍回放:
+  设 推理 为 ["type": "reasoning", "text": "想一想"]
+  设 信封 为 ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-1"], "blocks": [["type": "reasoning", "signature": "签名甲"]]]
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 信封]], "m-1"), [["type": "reasoning", "signature": "签名甲"]], "合法回放保留")
+  对拍相等(读消息回放(["content": [推理]], "m-1"), 空, "无 source 返回 空")
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "tool", "model": "m-1", "replayState": 信封]], "m-1"), 空, "非 model 来源返回 空")
+  设 错版 为 ["response": ["kind": "deepseek-messages", "version": 2, "model": "m-1"], "blocks": [["type": "reasoning"]]]
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 错版]], "m-1"), 空, "version 不符返回 空")
+  设 错模 为 ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-9"], "blocks": [["type": "reasoning"]]]
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 错模]], "m-1"), 空, "来源模型不符返回 空")
+  设 错数 为 ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-1"], "blocks": []]
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 错数]], "m-1"), 空, "块数不符返回 空")
+  设 错型 为 ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-1"], "blocks": [["type": "text"]]]
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 错型]], "m-1"), 空, "块类型不符返回 空")
+  设 错签 为 ["response": ["kind": "deepseek-messages", "version": 1, "model": "m-1"], "blocks": [["type": "text", "signature": "签名甲"]]]
+  对拍相等(读消息回放(["content": [造文本块("答")], "source": ["kind": "model", "model": "m-1", "replayState": 错签]], "m-1"), 空, "签名落在非 reasoning 返回 空")
+  对拍相等(读消息回放(["content": [推理], "source": ["kind": "model", "model": "m-1", "replayState": 信封]], "m-9"), 空, "跨模型签名不可移植返回 空")
+
+# ---- serialize 主体 ----
+
+段落 对拍基础请求:
+  设 连接 为 造连接()
+  设 选项 为 ["model": "m-1", "system": "顶部"]
+  设 历史 为 [["role": "system", "content": [造文本块("历史系统")]], 造用户("你好")]
+  设 请求 为 序列化消息请求(选项, 连接, 历史)
+  对拍相等(请求["system"], "顶部\n\n历史系统", "system 两段合并")
+  对拍相等(请求["thinking"], ["type": "enabled"], "默认思考启用")
+  对拍相等(请求["output_config"], ["effort": "high"], "默认努力 high")
+  对拍相等(请求["max_tokens"], 8192, "输出上限取自模型条目")
+  对拍相等(请求["stream"], 真, "流式恒真")
+  设 消息表 为 请求["messages"]
+  对拍相等(列表长度(消息表), 1, "首部 system 走 historySystem 不进 messages")
+  对拍相等(消息表[0]["role"], "user", "仅剩 user 轮")
+  对拍相等(消息表[0]["content"], [["type": "text", "text": "你好"]], "text 块透传")
+
+段落 报无前置用户轮:
+  序列化消息请求(["model": "m-h"], 造连接(), [造用户("甲问"), 造助手("甲答"), ["role": "system", "content": [造文本块("补充")]]])
+
+段落 报空更新:
+  序列化消息请求(["model": "m-h"], 造连接(), [造用户("甲问"), ["role": "system", "content": [造文本块("")]]])
+
+段落 对拍系统收束:
+  设 连接 为 造连接()
+  设 选项 为 ["model": "m-h"]
+  设 历史 为 [造用户("甲问"), ["role": "system", "content": [造文本块("补充")]], 造助手("甲答")]
+  设 请求 为 序列化消息请求(选项, 连接, 历史)
+  设 消息表 为 请求["messages"]
+  对拍相等(列表长度(消息表), 3, "in-history 更新插入为独立 system 轮")
+  对拍相等(消息表[0]["role"], "user", "更新落在 user 轮之后")
+  对拍相等(消息表[1]["role"], "system", "更新角色 system")
+  对拍相等(消息表[1]["content"], [["type": "text", "text": "补充"]], "更新文本")
+  对拍相等(消息表[2]["role"], "assistant", "更新在下一助手之前")
+  对拍相等(请求.包含("system") == 假, 真, "无顶部 system 时不设 system 键")
+  对拍报错(报无前置用户轮, "system update without a preceding user or tool-result turn", "无前置 user 轮 抛错")
+  对拍报错(报空更新, "empty in-history system update", "空 in-history 更新 抛错")
+
+段落 报无匹配调用:
+  序列化消息请求(["model": "m-1"], 造连接(), [造助手("无调用"), ["role": "user", "content": [["type": "tool-result", "toolCallId": "t9", "content": [造文本块("孤结果")]]]]])
+
+段落 报重复调用:
+  设 重复 为 ["type": "tool-call", "id": "t1", "name": "搜索", "arguments": "{}"]
+  序列化消息请求(["model": "m-1"], 造连接(), [["role": "assistant", "content": [重复, 重复]]])
+
+段落 报未收口:
+  设 调用 为 ["type": "tool-call", "id": "t1", "name": "搜索", "arguments": "{}"]
+  序列化消息请求(["model": "m-1"], 造连接(), [["role": "assistant", "content": [调用]]])
+
+段落 报缺立即结果:
+  设 调用 为 ["type": "tool-call", "id": "t1", "name": "搜索", "arguments": "{}"]
+  序列化消息请求(["model": "m-1"], 造连接(), [["role": "assistant", "content": [调用]], ["role": "user", "content": [造文本块("旁注")]]])
+
+段落 报未知努力:
+  序列化消息请求(["model": "m-1", "reasoningEffort": "bogus"], 造连接(), [造用户("甲")])
+
+段落 报思考禁用非关:
+  设 禁用连接 为 造连接()
+  设 禁用连接["defaults"] 为 ["thinking": "disabled"]
+  序列化消息请求(["model": "m-1", "reasoningEffort": "high"], 禁用连接, [造用户("甲")])
+
+段落 对拍角色合并与配对:
+  设 连接 为 造连接()
+  设 选项 为 ["model": "m-1"]
+  设 合并历史 为 [造用户("甲"), 造用户("乙")]
+  设 请求 为 序列化消息请求(选项, 连接, 合并历史)
+  设 消息表 为 请求["messages"]
+  对拍相等(列表长度(消息表), 1, "相邻同角色合并为一轮")
+  对拍相等(消息表[0]["content"], [["type": "text", "text": "甲"], ["type": "text", "text": "乙"]], "合并内容保序")
+  设 调用 为 ["type": "tool-call", "id": "t1", "name": "搜索", "arguments": "{\"甲\": 2}"]
+  设 工助手 为 ["role": "assistant", "content": [调用]]
+  设 旁注 为 造文本块("旁注")
+  设 工结果 为 ["role": "user", "content": [旁注, ["type": "tool-result", "toolCallId": "t1", "content": [造文本块("结果甲")], "isError": 假]]]
+  设 工请求 为 序列化消息请求(选项, 连接, [工助手, 工结果])
+  设 工消息 为 工请求["messages"]
+  对拍相等(列表长度(工消息), 2, "工具往返两轮")
+  对拍相等(工消息[1]["content"][0]["type"], "tool_result", "tool_result 前置重排")
+  对拍相等(工消息[1]["content"][1]["type"], "text", "非结果块后移")
+  对拍相等(工消息[1]["content"][0]["tool_use_id"], "t1", "tool_use_id 透传")
+  对拍相等(工消息[1]["content"][0]["is_error"], 假, "isError → is_error")
+  对拍相等(工消息[1]["content"][0]["content"], [["type": "text", "text": "结果甲"]], "结果内容内嵌")
+  对拍报错(报无匹配调用, "tool result has no matching call", "无匹配调用 抛错")
+  对拍报错(报重复调用, "duplicate tool call id", "重复调用标识 抛错")
+  对拍报错(报未收口, "history ends with unresolved tools", "尾部未收口 抛错")
+  对拍报错(报缺立即结果, "tool calls need immediate results", "调用缺立即结果 抛错")
+
+段落 对拍努力与上限:
+  设 连接 为 造连接()
+  设 标题请求 为 序列化消息请求(["model": "m-1", "purpose": "session-title"], 连接, [造用户("起个名")])
+  对拍相等(标题请求["thinking"], ["type": "disabled"], "session-title 强制 off")
+  对拍相等(标题请求.包含("output_config") == 假, 真, "off 不设 output_config")
+  对拍报错(报未知努力, "UNSUPPORTED_REASONING_EFFORT", "未知努力 抛错")
+  对拍报错(报思考禁用非关, "UNSUPPORTED_REASONING_EFFORT", "思考禁用却声明非 off 抛错")
+  设 禁用连接 为 造连接()
+  设 禁用连接["defaults"] 为 ["thinking": "disabled"]
+  设 禁用请求 为 序列化消息请求(["model": "m-1", "reasoningEffort": "off"], 禁用连接, [造用户("甲")])
+  对拍相等(禁用请求["thinking"], ["type": "disabled"], "思考禁用 off 合法")
+  设 低请求 为 序列化消息请求(["model": "m-1", "reasoningEffort": "low"], 连接, [造用户("甲")])
+  对拍相等(低请求["output_config"], ["effort": "low"], "声明 low 透传")
+  设 顶上限 为 序列化消息请求(["model": "m-1", "maxTokens": 100], 连接, [造用户("甲")])
+  对拍相等(顶上限["max_tokens"], 100, "选项上限优先")
+  设 裸请求 为 序列化消息请求(["model": "m-裸"], 连接, [造用户("甲")])
+  对拍相等(裸请求["max_tokens"], 4096, "无模型上限回落连接上限")
+  设 温度请求 为 序列化消息请求(["model": "m-1", "temperature": 0.5, "stop": ["终"], "tools": [["name": "搜索", "description": "查", "parameters": ["type": "object"]]]], 连接, [造用户("甲")])
+  对拍相等(温度请求["temperature"], 0.5, "temperature 透传")
+  对拍相等(温度请求["stop_sequences"], ["终"], "stop → stop_sequences")
+  对拍相等(温度请求["tools"], [["name": "搜索", "description": "查", "input_schema": ["type": "object"]]], "tools → input_schema")
+
+段落 主:
+  对拍工具输入()
+  对拍助手块表()
+  对拍回放()
+  对拍基础请求()
+  对拍系统收束()
+  对拍角色合并与配对()
+  对拍努力与上限()
+
+主()
+写 "test_R85_A_消息序列化 PASS"

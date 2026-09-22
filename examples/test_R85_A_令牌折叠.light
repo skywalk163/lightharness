@@ -1,0 +1,123 @@
+# test_R85_A_令牌折叠.light —— R85 任务 A：token-meter 0.1.6 增量对拍
+#
+# 判据锚点（上游逐字语义，不自行推算）：
+#   ddefc45fbc packages/llm/token-meter/src/estimate.ts:13/16/19  CHARS_PER_TOKEN / BLOCK_OVERHEAD / ROLE_OVERHEAD = 4
+#   ddefc45fbc packages/llm/token-meter/src/estimate.ts:31  estimateStructuralBlock
+#     —— 关键语义：「Image offload marks do not change this reference-only heuristic;
+#        route pricing owns their placeholders.」即卸载标记不进入计价 JSON。
+#   ddefc45fbc packages/llm/token-meter/src/estimate.ts:45  estimateContent（四臂 switch + default 结构计价）
+#   ddefc45fbc packages/llm/token-meter/src/index.ts:253  case 'image/offload' 折叠
+#     —— targets 映射 {seq: Set(imageIndexes)}，命中索引的图片加 offloaded: true
+# 移植对象：src/令牌计量.light §10
+# 期望值来源：以上游算法逐句复算（紧凑 JSON 长度可手验，见下方断言标签）。
+# 偏离说明：紧凑JSON 不做引号/反斜杠转义（L-135），本判据只用 ASCII 无引号载荷。
+# 命名避坑：中文数字别名（一 二 三 四 五 …）与 空 为保留字，局部名一律用安全名。
+
+从 令牌计量 导入 每令牌字符, 块开销, 角色开销, 紧凑JSON, 剥离卸载标记, 估算结构块, 估算内容, 取卸载目标, 折叠图片卸载
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 对拍为真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(条件))
+
+# ---- 夹具 ----
+
+段落 造图片块(载荷):
+  返回 ["type": "image", "data": 载荷, "mimeType": "image/png"]
+
+段落 造带标记图片块(载荷):
+  设 块 为 造图片块(载荷)
+  块["offloaded"] 为 真
+  返回 块
+
+段落 对拍常量:
+  对拍相等(每令牌字符(), 4, "CHARS_PER_TOKEN=4")
+  对拍相等(块开销(), 4, "BLOCK_OVERHEAD=4")
+  对拍相等(角色开销(), 4, "ROLE_OVERHEAD=4")
+
+# 紧凑 JSON：无空格分隔符 + JS 字面量（true/false/null）
+段落 对拍紧凑JSON:
+  设 图片 为 造图片块("AAAA")
+  对拍相等(紧凑JSON(图片), "{\"type\":\"image\",\"data\":\"AAAA\",\"mimeType\":\"image/png\"}", "紧凑JSON 无空格分隔符")
+  对拍相等(字符串长度(紧凑JSON(图片)), 53, "图片块 JSON 长度 53")
+  设 带标记 为 造带标记图片块("AAAA")
+  对拍相等(字符串长度(紧凑JSON(带标记)), 70, "含卸载标记 JSON 长度 70")
+  设 叶 为 ["a": 真, "b": 假, "c": 空, "d": 10]
+  对拍相等(紧凑JSON(叶), "{\"a\":true,\"b\":false,\"c\":null,\"d\":10}", "JS 字面量 true/false/null")
+  对拍相等(紧凑JSON([]), "[]", "空列表")
+  对拍相等(紧凑JSON(["x", "y"]), "[\"x\",\"y\"]", "列表")
+
+# 核心 0.1.6 语义：卸载标记不改变图片块的结构计价
+段落 对拍结构块:
+  设 未标记 为 估算结构块(造图片块("AAAA"))
+  设 带标记 为 估算结构块(造带标记图片块("AAAA"))
+  对拍相等(未标记, 18, "图片块结构计价 4+ceil(53/4)=18")
+  对拍相等(带标记, 18, "卸载标记不进入计价 JSON")
+  对拍相等(带标记, 未标记, "带标记 == 不带标记（上游注释语义）")
+  设 文件 为 ["type": "file", "name": "a.txt", "bytes": 10]
+  对拍相等(估算结构块(文件), 15, "非图片块结构计价 4+ceil(41/4)=15")
+  设 剥离 为 剥离卸载标记(造带标记图片块("AAAA"))
+  对拍为真(剥离.包含("offloaded") == 假, "剥离卸载标记 移除标记键")
+  对拍为真(剥离.包含("mimeType") == 真, "剥离卸载标记 保留其余键")
+  对拍相等(剥离["data"], "AAAA", "剥离卸载标记 载荷保留")
+
+# estimateContent：四臂 + default 结构计价
+段落 对拍内容计价:
+  设 文本块 为 ["type": "text", "text": "hello"]
+  对拍相等(估算内容([文本块]), 6, "text 臂 4+ceil(5/4)=6")
+  设 推理块 为 ["type": "reasoning", "text": "hi"]
+  对拍相等(估算内容([推理块]), 5, "reasoning 臂 4+ceil(2/4)=5")
+  设 文本列表 为 列表创建()
+  列表追加(文本列表, 文本块)
+  列表追加(文本列表, 推理块)
+  对拍相等(估算内容(文本列表), 11, "text + reasoning 合计 11")
+  设 调用块 为 ["type": "tool-call", "name": "search", "arguments": "{}"]
+  对拍相等(估算内容([调用块]), 7, "tool-call 臂 4+ceil(6/4)+ceil(2/4)=7")
+  设 结果块 为 ["type": "tool-result", "content": [["type": "text", "text": "xy"]]]
+  对拍相等(估算内容([结果块]), 9, "tool-result 递归 5+4=9")
+  设 文件 为 ["type": "file", "name": "a.txt", "bytes": 10]
+  对拍相等(估算内容([文件]), 15, "default 臂走结构计价 15")
+
+# image/offload 折叠：targets 命中索引加标记，未命中节点原样返回
+段落 对拍折叠:
+  设 图甲 为 造图片块("AA")
+  设 图乙 为 造图片块("BB")
+  设 图丙 为 造图片块("CC")
+  设 图丁 为 造图片块("DD")
+  设 节点甲 为 ["seq": 1, "images": [图甲, 图乙, 图丙]]
+  设 节点乙 为 ["seq": 2, "images": [图丁]]
+  设 事件 为 ["type": "image/offload", "seq": 9, "data": ["targets": [["seq": 1, "imageIndexes": [0, 2]]]]]
+  设 目标 为 取卸载目标(事件)
+  对拍相等(列表长度(目标), 1, "targets 条数")
+  对拍相等(列表长度(取卸载目标(["type": "image/offload"])), 0, "缺 data 视为空目标")
+  对拍相等(列表长度(取卸载目标(["data": 5])), 0, "data 非字典视为空目标")
+  对拍相等(列表长度(取卸载目标(["data": ["targets": 7]])), 0, "targets 非列表视为空目标")
+  设 结果 为 折叠图片卸载([节点甲, 节点乙], 事件)
+  对拍相等(列表长度(结果), 2, "折叠后节点数")
+  设 首节点 为 结果[0]
+  设 首图片 为 首节点["images"]
+  设 命中零 为 首图片[0]
+  设 未命中 为 首图片[1]
+  设 命中末 为 首图片[2]
+  对拍为真(命中零.包含("offloaded") == 真, "索引 0 加卸载标记")
+  对拍为真(未命中.包含("offloaded") == 假, "索引 1 不加标记")
+  对拍为真(命中末.包含("offloaded") == 真, "索引 2 加卸载标记")
+  对拍相等(未命中["data"], "BB", "未命中图片载荷保留")
+  设 次节点 为 结果[1]
+  对拍相等(次节点, 节点乙, "未命中节点原样保留")
+  设 源甲 为 节点甲["images"][0]
+  对拍为真(源甲.包含("offloaded") == 假, "折叠不改写原节点")
+  对拍相等(折叠图片卸载([节点甲], ["type": "image/offload"]), [节点甲], "无目标时原样返回")
+
+段落 主:
+  对拍常量()
+  对拍紧凑JSON()
+  对拍结构块()
+  对拍内容计价()
+  对拍折叠()
+
+主()
+写 "test_R85_A_令牌折叠 PASS"

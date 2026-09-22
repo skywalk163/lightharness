@@ -338,3 +338,298 @@
     如果 模型["id"] == 模型ID:
       返回 模型
   返回 空
+
+# ====================== 0.1.6 增量段 §Messages 起 ======================
+# 上游锚点：ddefc45fbc packages/llm/llm-deepseek/src/protocols/messages/
+#   serialize.ts —— Messages 路由序列化（system 快照 / in-history 更新收束 /
+#                   角色合并 / tool_use-tool_result 配对校验 / effort 校验）
+#   replay.ts    —— 原生思考元数据校验（kind/version/model/块数/类型对齐）
+#
+# 宿主面登记（不移植，见任务书 A.1）：
+#   serialize.ts 的 images: Map<attachmentId, RequestImageAttachment>、
+#   access: ImageAttachmentAccessResolver、fileIds: Map<attachmentId, DeepSeekFileId>
+#   —— 三者都是执行世界（真实文件字节 / 文件描述符）取数路径。
+#   光明侧图片字节投影已由 消息.light §8（投影已卸载图片/需卸载数）覆盖，
+#   token 侧占位计价由 令牌计量.light §10（估算内容 default 臂）覆盖。
+#   本段遇到 image 块一律 UNSUPPORTED_CONTENT，与上游 unsupported() 同文案。
+#
+# 偏离声明：
+#   D-1 上游 LlmError(message, code)；光明异常不带 code 字段，改为把
+#       「CODE: message」整体编入异常文本，判据用 捕获 后按前缀核对。
+#   D-2 上游 readReplay 的 onDegrade 回调仅作诊断（收不到内容与签名）；
+#       光明侧校验失败统一返回 空，等价「丢弃元数据后序列化持久内容」。
+#   D-3 上游 toolInput 的 JSON.parse 失败回落 {}；光明 解析JSON 抛错，
+#       用 尝试/捕获 包住后同样回落 {}。
+
+# serialize.ts:14-20 —— 历史里 Messages 无法表示的实参用空输入；持久内容不变
+段落 消息工具输入(原始):
+  设 值 为 空
+  尝试:
+    设 值 为 解析JSON(原始)
+  捕获 错误:
+    返回 {}
+  如果 是字典(值):
+    返回 值
+  返回 {}
+
+# serialize.ts:9-11 —— unsupported(type)
+段落 消息不支持(种类):
+  抛出 新建 错误("UNSUPPORTED_CONTENT: DeepSeek Messages cannot represent " + 种类)
+
+# replay.ts:34-76 —— object() 校验 + validateReplay（readReplay 折叠了 onDegrade）
+段落 读消息回放(消息, 模型标识):
+  设 来源 为 取可选(消息, "source")
+  如果 是字典(来源) == 假:
+    返回 空
+  如果 取可选(来源, "kind") != "model":
+    返回 空
+  设 信封 为 取可选(来源, "replayState")
+  如果 是字典(信封) == 假:
+    返回 空
+  设 响应 为 取可选(信封, "response")
+  如果 是字典(响应) == 假:
+    返回 空
+  如果 取可选(响应, "kind") != "deepseek-messages":
+    返回 空
+  如果 取可选(响应, "version") != 1:
+    返回 空
+  如果 取可选(响应, "model") != 取可选(来源, "model"):
+    返回 空
+  设 元块表 为 取可选(信封, "blocks")
+  设 内容 为 取可选(消息, "content")
+  如果 是列表(元块表) == 假:
+    返回 空
+  如果 是列表(内容) == 假:
+    返回 空
+  如果 列表长度(元块表) != 列表长度(内容):
+    返回 空
+  设 索引 为 0
+  遍历 元块 之 元块表:
+    如果 是字典(元块) == 假:
+      返回 空
+    设 类型 为 取可选(元块, "type")
+    如果 类型 != 取可选(内容[索引], "type"):
+      返回 空
+    如果 类型 != "text" 且 类型 != "reasoning" 且 类型 != "tool-call":
+      返回 空
+    如果 元块.包含("signature") == 真:
+      如果 类型 != "reasoning":
+        返回 空
+      如果 是字符串(元块["signature"]) == 假:
+        返回 空
+    设 索引 为 索引 + 1
+  如果 取可选(响应, "model") != 模型标识:
+    返回 空
+  返回 元块表
+
+# serialize.ts:22-35 —— assistant(message, model, onReplayDegrade)
+段落 消息助手块表(消息, 模型标识):
+  设 回放 为 读消息回放(消息, 模型标识)
+  设 结果 为 列表创建()
+  设 索引 为 0
+  遍历 块 之 消息["content"]:
+    如果 块["type"] == "text":
+      列表追加(结果, ["type": "text", "text": 块["text"]])
+    否则:
+      如果 块["type"] == "reasoning":
+        设 条目 为 ["type": "thinking", "thinking": 块["text"]]
+        如果 回放 != 空:
+          设 元 为 回放[索引]
+          如果 元.包含("signature") == 真:
+            设 条目["signature"] 为 元["signature"]
+        列表追加(结果, 条目)
+      否则:
+        如果 块["type"] == "tool-call":
+          列表追加(结果, ["type": "tool_use", "id": 块["id"], "name": 块["name"], "input": 消息工具输入(块["arguments"])])
+        否则:
+          消息不支持("assistant content " + 块["type"])
+    设 索引 为 索引 + 1
+  返回 结果
+
+# serialize.ts:46-58 —— user/tool-result 内容块到 wire 输入
+# 图片块属宿主面（images/access/fileIds 注入），登记不移植，遇之即 UNSUPPORTED_CONTENT
+段落 消息块输入(块):
+  如果 块["type"] == "text":
+    如果 块["text"] == "":
+      返回 []
+    返回 [["type": "text", "text": 块["text"]]]
+  消息不支持("user/tool-result content " + 块["type"])
+  返回 []
+
+# serialize.ts:100-105 —— flushSystemUpdates（返回 错误:空/文案，成功时已追加）
+段落 收束系统更新(消息表, 系统更新):
+  如果 列表长度(系统更新) == 0:
+    返回 ["错误": 空]
+  设 末条 为 空
+  如果 列表长度(消息表) > 0:
+    设 末条 为 消息表[列表长度(消息表) - 1]
+  如果 末条 == 空 或 取可选(末条, "role") != "user":
+    返回 ["错误": "UNSUPPORTED_CONTENT: DeepSeek Messages cannot represent system update without a preceding user or tool-result turn"]
+  遍历 更新 之 系统更新:
+    列表追加(消息表, 更新)
+  返回 ["错误": 空]
+
+# serialize.ts:41-139 —— serialize 主体（图片注入面按宿主面登记省略）
+# 选项形状：{"model","system"?,"maxTokens"?,"temperature"?,"stop"?,"tools"?,"reasoningEffort"?,"purpose"?}
+# 连接形状：{"models":[目录条目...],"maxTokens":整数,"defaults":{"thinking","reasoningEffort"}}
+段落 序列化消息请求(选项, 连接, 历史):
+  设 模型 为 空
+  设 目录 为 取可选(连接, "models")
+  如果 是列表(目录) == 真:
+    遍历 条目 之 目录:
+      如果 条目["id"] == 选项["model"]:
+        设 模型 为 条目
+  设 历史内系统 为 假
+  如果 模型 != 空:
+    如果 取可选(模型, "systemPromptUpdate") == "in-history":
+      设 历史内系统 为 真
+  设 默认配置 为 取可选(连接, "defaults")
+  设 思考禁用 为 假
+  如果 默认配置 != 空:
+    如果 取可选(默认配置, "thinking") == "disabled":
+      设 思考禁用 为 真
+  设 消息表 为 列表创建()
+  设 系统更新 为 列表创建()
+  设 历史系统 为 空
+  遍历 消息 之 历史:
+    如果 消息["role"] == "system":
+      设 文本 为 ""
+      遍历 块 之 消息["content"]:
+        如果 块["type"] != "text":
+          消息不支持("non-text system message")
+        设 文本 为 文本 + 块["text"]
+      如果 历史内系统 == 真 且 列表长度(消息表) > 0:
+        如果 文本 == "":
+          消息不支持("empty in-history system update")
+        列表追加(系统更新, ["role": "system", "content": [["type": "text", "text": 文本]]])
+      否则:
+        设 历史系统 为 文本
+      继续
+    如果 消息["role"] == "assistant":
+      设 收束 为 收束系统更新(消息表, 系统更新)
+      如果 收束["错误"] != 空:
+        抛出 新建 错误(收束["错误"])
+      设 系统更新 为 列表创建()
+    设 内容 为 列表创建()
+    如果 消息["role"] == "assistant":
+      设 内容 为 消息助手块表(消息, 选项["model"])
+    否则:
+      遍历 块 之 消息["content"]:
+        如果 块["type"] != "tool-result":
+          设 输入 为 消息块输入(块)
+          遍历 项 之 输入:
+            列表追加(内容, 项)
+          继续
+        设 内层 为 列表创建()
+        遍历 内块 之 块["content"]:
+          设 输入 为 消息块输入(内块)
+          遍历 项 之 输入:
+            列表追加(内层, 项)
+        设 结果条 为 ["type": "tool_result", "tool_use_id": 块["toolCallId"], "content": 内层]
+        如果 块.包含("isError") == 真:
+          设 结果条["is_error"] 为 块["isError"]
+        列表追加(内容, 结果条)
+    设 末条 为 空
+    如果 列表长度(消息表) > 0:
+      设 末条 为 消息表[列表长度(消息表) - 1]
+    如果 末条 != 空 且 取可选(末条, "role") == 消息["role"]:
+      遍历 项 之 内容:
+        列表追加(末条["content"], 项)
+    否则:
+      列表追加(消息表, ["role": 消息["role"], "content": 内容])
+  设 收束 为 收束系统更新(消息表, 系统更新)
+  如果 收束["错误"] != 空:
+    抛出 新建 错误(收束["错误"])
+  设 系统更新 为 列表创建()
+  # tool_use / tool_result 配对校验
+  设 待配 为 列表创建()
+  遍历 已序消息 之 消息表:
+    如果 已序消息["role"] == "assistant":
+      设 待配 为 列表创建()
+      遍历 块 之 已序消息["content"]:
+        如果 块["type"] == "tool_use":
+          如果 列表包含(待配, 块["id"]) == 真:
+            抛出 新建 错误("INVALID_REQUEST: DeepSeek Messages duplicate tool call id")
+          列表追加(待配, 块["id"])
+    否则:
+      如果 已序消息["role"] == "user":
+        设 结果块 为 列表创建()
+        设 其余 为 列表创建()
+        遍历 块 之 已序消息["content"]:
+          如果 块["type"] == "tool_result":
+            列表追加(结果块, 块)
+          否则:
+            列表追加(其余, 块)
+        遍历 结果 之 结果块:
+          如果 列表包含(待配, 结果["tool_use_id"]) == 假:
+            抛出 新建 错误("INVALID_REQUEST: DeepSeek Messages tool result has no matching call")
+          设 剩余 为 列表创建()
+          遍历 已配 之 待配:
+            如果 已配 != 结果["tool_use_id"]:
+              列表追加(剩余, 已配)
+          设 待配 为 剩余
+        如果 列表长度(待配) > 0:
+          抛出 新建 错误("INVALID_REQUEST: DeepSeek Messages tool calls need immediate results")
+        设 已序消息["content"] 为 结果块 + 其余
+  如果 列表长度(待配) > 0:
+    抛出 新建 错误("INVALID_REQUEST: DeepSeek Messages history ends with unresolved tools")
+  # effort 解析与校验（session-title 强制 off）
+  设 努力 为 空
+  如果 取可选(选项, "purpose") == "session-title":
+    设 努力 为 "off"
+  否则:
+    设 努力 为 取可选(选项, "reasoningEffort")
+    如果 努力 == 空:
+      设 努力 为 取可选(默认配置, "reasoningEffort")
+      如果 努力 == 空:
+        如果 思考禁用 == 真:
+          设 努力 为 "off"
+        否则:
+          设 努力 为 "high"
+  设 合法 为 假
+  如果 努力 == "off" 或 努力 == "low" 或 努力 == "high" 或 努力 == "max":
+    设 合法 为 真
+  如果 合法 == 假 或 (思考禁用 == 真 且 努力 != "off"):
+    抛出 新建 错误("UNSUPPORTED_REASONING_EFFORT: DeepSeek Messages does not support reasoning effort " + 努力)
+  # system 合并：[options.system, historySystem].filter(Boolean).join('\n\n')
+  设 系统文本 为 ""
+  设 顶部系统 为 取可选(选项, "system")
+  如果 顶部系统 != 空:
+    设 系统文本 为 顶部系统
+  如果 历史系统 != 空:
+    如果 系统文本 == "":
+      设 系统文本 为 历史系统
+    否则:
+      设 系统文本 为 系统文本 + "\n\n" + 历史系统
+  设 请求 为 ["model": 选项["model"], "stream": 真, "messages": 消息表]
+  设 输出上限 为 取可选(选项, "maxTokens")
+  如果 输出上限 == 空 且 模型 != 空:
+    设 输出上限 为 取可选(模型, "maxTokens")
+  如果 输出上限 == 空:
+    设 输出上限 为 取可选(连接, "maxTokens")
+  设 请求["max_tokens"] 为 输出上限
+  如果 努力 == "off":
+    设 请求["thinking"] 为 ["type": "disabled"]
+  否则:
+    设 请求["thinking"] 为 ["type": "enabled"]
+    设 请求["output_config"] 为 ["effort": 努力]
+  如果 系统文本 != "":
+    设 请求["system"] 为 系统文本
+  如果 选项.包含("temperature") == 真:
+    设 请求["temperature"] 为 选项["temperature"]
+  如果 选项.包含("stop") == 真:
+    设 请求["stop_sequences"] 为 选项["stop"]
+  如果 选项.包含("tools") == 真:
+    设 输出工具 为 列表创建()
+    遍历 工具 之 选项["tools"]:
+      列表追加(输出工具, ["name": 工具["name"], "description": 工具["description"], "input_schema": 工具["parameters"]])
+    设 请求["tools"] 为 输出工具
+  返回 请求
+
+导出 消息工具输入
+导出 消息不支持
+导出 读消息回放
+导出 消息助手块表
+导出 消息块输入
+导出 收束系统更新
+导出 序列化消息请求

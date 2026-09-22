@@ -1,0 +1,115 @@
+# test_R85_A_模型信息.light —— R85 任务 A：0.1.6 模型能力元数据对拍
+#
+# 判据锚点（上游逐字语义，不自行推算）：
+#   ddefc45fbc packages/llm/llm-deepseek/src/common/model-info.ts
+#     REASONING_EFFORTS 4 条 / OFF_ONLY_REASONING_EFFORTS 1 条
+#     catalogModelInfo —— name 缺省回落 id；inputModalities 缺省 ['text']
+#     modelInfo —— 未收录端点 text-only（上游 77 行注释语义）
+#   ddefc45fbc packages/llm/llm-pi-ai/src/catalog.ts:69-86  THINKING_LEVELS 升级序
+#   ddefc45fbc packages/llm/llm-pi-ai/src/models.ts:52-62  getSupportedThinkingLevels
+#     —— mapped === null 剔除；xhigh/max 仅显式声明开放；无 reasoning 能力仅 off
+# 移植对象：src/模型信息.light（全新模块）
+# 偏离说明：上游 undefined（未声明）与 null（显式置空）在光明侧分别用
+#   「映射.包含(级别) 为假」与「值 == 空」表达（见模块头部 D-1/D-2）。
+
+从 模型信息 导入 思考级表, 推理努力表, 仅关推理努力表, 按ID取努力, 思考级过滤, 目录模型信息, 找目录条目, 解析模型信息
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 取努力标识(努力表):
+  设 标识表 为 列表创建()
+  遍历 条目 之 努力表:
+    列表追加(标识表, 条目["id"])
+  返回 标识表
+
+# ---- 夹具 ----
+
+段落 造连接:
+  返回 [
+    "models": [
+      ["id": "deepseek-flash", "name": "DeepSeek-V41-Flash", "contextWindow": 1000000, "maxTokens": 8192, "inputModalities": ["text", "image"], "systemPromptUpdate": "in-history"],
+      ["id": "deepseek-v4-pro", "name": "DeepSeek-V4-Pro"],
+    ],
+    "defaultContextWindow": 65536,
+    "maxTokens": 4096,
+    "defaults": ["thinking": "enabled"],
+  ]
+
+段落 对拍级别常量:
+  对拍相等(思考级表(), ["off", "minimal", "low", "medium", "high", "xhigh", "max"], "THINKING_LEVELS 升级序 7 级")
+  对拍相等(取努力标识(推理努力表()), ["off", "low", "high", "max"], "REASONING_EFFORTS 4 条")
+  对拍相等(取努力标识(仅关推理努力表()), ["off"], "OFF_ONLY 仅 off")
+  对拍相等(按ID取努力(推理努力表(), "max")["name"], "Max", "按ID取努力 命中")
+  对拍相等(按ID取努力(推理努力表(), "minimal"), 空, "按ID取努力 未命中返回 空")
+
+# pi-ai getSupportedThinkingLevels
+段落 对拍思考级:
+  对拍相等(思考级过滤(["reasoning": 假]), ["off"], "无 reasoning 能力仅 off")
+  对拍相等(思考级过滤(["reasoning": 真]), ["off", "minimal", "low", "medium", "high"], "无映射时 xhigh/max 不开放")
+  对拍相等(思考级过滤(["id": "x"]), ["off"], "缺 reasoning 键仅 off")
+  设 映射 为 ["off": "", "low": 空, "high": "enabled", "xhigh": 空, "max": "enabled"]
+  对拍相等(思考级过滤(["reasoning": 真, "thinkingLevelMap": 映射]), ["off", "minimal", "medium", "high", "max"], "null 剔除 + xhigh/max 显式开放")
+
+# catalogModelInfo：缺省回落
+段落 对拍目录信息:
+  设 信息 为 目录模型信息("deepseek", ["id": "m-1", "name": "M One", "description": "演示", "inputModalities": ["text", "image"]])
+  对拍相等(信息["provider"], "deepseek", "provider 透传")
+  对拍相等(信息["id"], "m-1", "id 透传")
+  对拍相等(信息["name"], "M One", "name 透传")
+  对拍相等(信息["description"], "演示", "description 透传")
+  对拍相等(信息["inputModalities"], ["text", "image"], "inputModalities 透传")
+  设 缺名 为 目录模型信息("deepseek", ["id": "m-2"])
+  对拍相等(缺名["name"], "m-2", "name 缺省回落 id")
+  对拍相等(缺名.包含("description") == 假, 真, "description 缺省不设键")
+  对拍相等(缺名["inputModalities"], ["text"], "inputModalities 缺省 ['text']")
+
+# modelInfo：收录 / 未收录 / 思考禁用 / 努力声明
+段落 对拍解析信息:
+  设 连接 为 造连接()
+  对拍相等(找目录条目(连接, "deepseek-flash")["name"], "DeepSeek-V41-Flash", "找目录条目 命中")
+  对拍相等(找目录条目(连接, "zz-9"), 空, "找目录条目 未命中")
+  设 信息 为 解析模型信息(连接, "deepseek", "deepseek-flash")
+  对拍相等(信息["name"], "DeepSeek-V41-Flash", "收录条目 name 透传")
+  对拍相等(信息["inputModalities"], ["text", "image"], "收录条目 模态透传")
+  对拍相等(信息["context"]["contextWindow"], 1000000, "收录条目 上下文窗口")
+  对拍相等(信息["defaultMaxTokens"], 8192, "收录条目 输出上限")
+  对拍相等(信息["systemPromptUpdate"], "in-history", "收录条目 系统提示更新")
+  对拍相等(取努力标识(信息["reasoning"]["efforts"]), ["off", "low", "high", "max"], "思考启用 广告 4 档")
+  对拍相等(信息["reasoning"]["defaultEffort"], "high", "未声明努力 默认 high")
+
+  设 未收录 为 解析模型信息(连接, "deepseek", "zz-9")
+  对拍相等(未收录["name"], "zz-9", "未收录 name = 请求标识")
+  对拍相等(未收录["inputModalities"], ["text"], "未收录 text-only（上游注释语义）")
+  对拍相等(未收录.包含("description") == 假, 真, "未收录 不虚报描述")
+  对拍相等(未收录["context"]["contextWindow"], 65536, "未收录 回落 defaultContextWindow")
+  对拍相等(未收录["defaultMaxTokens"], 4096, "未收录 回落 连接.maxTokens")
+
+  设 禁用连接 为 造连接()
+  设 禁用连接["defaults"] 为 ["thinking": "disabled"]
+  设 禁用 为 解析模型信息(禁用连接, "deepseek", "deepseek-flash")
+  对拍相等(取努力标识(禁用["reasoning"]["efforts"]), ["off"], "思考禁用 仅广告 off")
+  对拍相等(禁用["reasoning"]["defaultEffort"], "off", "思考禁用 默认 off")
+
+  设 低努力连接 为 造连接()
+  设 低努力连接["defaults"] 为 ["thinking": "enabled", "reasoningEffort": "low"]
+  对拍相等(解析模型信息(低努力连接, "deepseek", "deepseek-flash")["reasoning"]["defaultEffort"], "low", "声明 low 生效")
+  设 关努力连接 为 造连接()
+  设 关努力连接["defaults"] 为 ["thinking": "enabled", "reasoningEffort": "off"]
+  对拍相等(解析模型信息(关努力连接, "deepseek", "deepseek-flash")["reasoning"]["defaultEffort"], "off", "声明 off 生效")
+  设 极限连接 为 造连接()
+  设 极限连接["defaults"] 为 ["thinking": "enabled", "reasoningEffort": "max"]
+  对拍相等(解析模型信息(极限连接, "deepseek", "deepseek-flash")["reasoning"]["defaultEffort"], "max", "声明 max 生效")
+  设 伪努力连接 为 造连接()
+  设 伪努力连接["defaults"] 为 ["thinking": "enabled", "reasoningEffort": "bogus"]
+  对拍相等(解析模型信息(伪努力连接, "deepseek", "deepseek-flash")["reasoning"]["defaultEffort"], "high", "未知努力 回落 high")
+
+段落 主:
+  对拍级别常量()
+  对拍思考级()
+  对拍目录信息()
+  对拍解析信息()
+
+主()
+写 "test_R85_A_模型信息 PASS"
