@@ -49,9 +49,45 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 REPORTS = ROOT / "reports"
 SYNC_SCRIPT = SCRIPTS / "同步0.82.py"
+SYNC86_SCRIPT = SCRIPTS / "同步0.86.py"
 REG082_SCRIPT = SCRIPTS / "082全量回归.py"
+SYNC86_BASELINE_PREFIX = "R85_lm基线_"
+SYNC86_LATEST = REPORTS / f"{SYNC86_BASELINE_PREFIX}latest.json"
 BASE_LIB = SCRIPTS / "回归基线.py"
 PY = "G:/dswork/duan-light-merge/light-merge/.venv/Scripts/python.exe"
+
+
+# ------------------------------------------------------------ 平台解析
+def load_sync_module_86():
+    """动态加载 同步0.86.py（Linux 0.86 同步脚本）。"""
+    spec = importlib.util.spec_from_file_location("sync086", SYNC86_SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def resolve_platform_host(args):
+    """从 --platform / --host 推断平台与 host（向后兼容：不传则 freebsd=0.82）。
+
+    * 显式 --platform 优先；
+    * 只传了 --host（且非 0.82）→ 一律当 linux；
+    * 都没传 → freebsd（0.82）。
+    """
+    if getattr(args, "platform", None):
+        plat = args.platform
+    elif getattr(args, "host", ""):
+        plat = "linux"
+    else:
+        plat = "freebsd"
+    if plat == "linux":
+        host = getattr(args, "host", "") or "192.168.0.86"
+    else:
+        host = getattr(args, "host", "") or "192.168.0.82"
+    return plat, host
+
+
+def sync_module_for(plat):
+    return load_sync_module_86() if plat == "linux" else load_sync_module()
 
 # gate 模式：本机跑 lightharness（快门），0.82 跑 light-merge（基准）
 LOCAL_BASELINE_PREFIX = "本机lh基线_"
@@ -242,6 +278,22 @@ def gate_local(args, result: dict, base_lib) -> bool:
 
 
 def gate_remote(args, result: dict, base_lib, cli=None, sync_mod=None) -> bool:
+    """远端基准（0.82 FreeBSD 或 0.86 Linux，向后兼容泛化）。
+    0.82：调 082全量回归.py test 跑 light-merge 全量；
+    0.86：调 同步0.86.py test-lm 跑 light-merge 全量。两者都再比「新增红」。"""
+    plat, host = resolve_platform_host(args)
+    if plat == "linux":
+        return _gate_remote_linux(args, result, base_lib, host)
+    return _gate_remote_082(args, result, base_lib)
+
+
+def _by_mtime_082():
+    return sorted((q for q in REPORTS.glob("082_lightmerge基线_*.json")
+                   if q.name != "082_lightmerge基线_latest.json"),
+                  key=lambda p: p.stat().st_mtime)
+
+
+def _gate_remote_082(args, result, base_lib) -> bool:
     """0.82 基准：调 082全量回归.py test 跑 light-merge 全量，再比新增红。"""
     # R57 任务3（G8）：透传 --py（默认仍 3.12）。此前门远端腿写死默认解释器，
     # 想用 3.11 对照跑（无 xdist、串行口径）只能绕过门脚本手工调 082全量回归.py。
@@ -253,21 +305,15 @@ def gate_remote(args, result: dict, base_lib, cli=None, sync_mod=None) -> bool:
     # ⚠️ 必须按 mtime 排序，不能按文件名：R56 任务4 产出的对拍基线叫
     # `082_lightmerge基线_R53回退_<ts>.json`，字面序 'R' > '2' → 它排在所有
     # `..._2026-*` 之后，按名字取「最后一个」会拿到它，于是门拿同一份基线自比 → **假 PASS**。
-    def _by_mtime():
-        return sorted((q for q in REPORTS.glob("082_lightmerge基线_*.json")
-                       if q.name != "082_lightmerge基线_latest.json"),
-                      key=lambda p: p.stat().st_mtime)
-
-    before = _by_mtime()
+    before = _by_mtime_082()
     rc, out = _stream_proc(cmd, cwd=ROOT, env=os.environ.copy(),
                            timeout=args.remote_timeout + 600, label="0.82")
     elapsed = round(time.monotonic() - t0, 1)
     tail = normalize(out or "").strip().splitlines()[-8:]
     for ln in tail:
         print("   |", ln)
-    after = _by_mtime()
+    after = _by_mtime_082()
     if before and after and before[-1].name == after[-1].name:
-        # 兜底断言：跑完了却没多出新基线，说明取基线的逻辑又出问题，别再给假 PASS
         print(f"[0.82] ❌ 没有产出新基线（最新仍是 {after[-1].name}）")
         result["remote"] = {"ok": False, "rc": rc, "elapsed_sec": elapsed,
                             "reason": "no new baseline produced"}
@@ -283,8 +329,50 @@ def gate_remote(args, result: dict, base_lib, cli=None, sync_mod=None) -> bool:
     print(f"[0.82] 对比：{after[-1].name}  ⟵  {before[-1].name if before else '(无历史)'}")
     base_lib.print_diff_result(d, label="0.82")
     t = cur["totals"]
-    result["remote"] = {"baseline": str(after[-1]), "totals": t, "diff": d,
-                        "ok": bool(d["ok"]), "elapsed_sec": elapsed,
+    result["remote"] = {"platform": "freebsd", "baseline": str(after[-1]), "totals": t,
+                        "diff": d, "ok": bool(d["ok"]), "elapsed_sec": elapsed,
+                        "first_run": prev is None}
+    return bool(d["ok"])
+
+
+def _gate_remote_linux(args, result, base_lib, host) -> bool:
+    """0.86 基准：调 同步0.86.py test-lm 跑 light-merge 全量，再比新增红。"""
+    cmd = [python_cmd(), str(SYNC86_SCRIPT), "test-lm", "--mode", args.mode_082,
+           "--host", host, "--timeout-sec", str(args.remote_timeout)]
+    print("[0.86] 调用：%s" % " ".join(Path(c).name if Path(c).exists() else c for c in cmd))
+    t0 = time.monotonic()
+
+    def _by_mtime():
+        return sorted((q for q in REPORTS.glob(f"{SYNC86_BASELINE_PREFIX}*.json")
+                       if q.name != SYNC86_LATEST.name),
+                      key=lambda p: p.stat().st_mtime)
+
+    before = _by_mtime()
+    rc, out = _stream_proc(cmd, cwd=ROOT, env=os.environ.copy(),
+                           timeout=args.remote_timeout + 600, label="0.86")
+    elapsed = round(time.monotonic() - t0, 1)
+    tail = normalize(out or "").strip().splitlines()[-12:]
+    for ln in tail:
+        print("   |", ln)
+    after = _by_mtime()
+    if before and after and before[-1].name == after[-1].name:
+        print(f"[0.86] ❌ 没有产出新基线（最新仍是 {after[-1].name}）")
+        result["remote"] = {"ok": False, "rc": rc, "elapsed_sec": elapsed,
+                            "reason": "no new baseline produced"}
+        return False
+    if rc != 0 or len(after) <= len(before):
+        print(f"[0.86] ❌ 全量回归未产出新基线（rc={rc}，耗时 {elapsed}s）")
+        result["remote"] = {"ok": False, "rc": rc, "elapsed_sec": elapsed}
+        return False
+
+    cur = base_lib.load_baseline(after[-1])
+    prev = base_lib.load_baseline(before[-1]) if before else None
+    d = base_lib.diff_baselines(prev, cur)
+    print(f"[0.86] 对比：{after[-1].name}  ⟵  {before[-1].name if before else '(无历史)'}")
+    base_lib.print_diff_result(d, label="0.86")
+    t = cur["totals"]
+    result["remote"] = {"platform": "linux", "baseline": str(after[-1]), "totals": t,
+                        "diff": d, "ok": bool(d["ok"]), "elapsed_sec": elapsed,
                         "first_run": prev is None}
     return bool(d["ok"])
 
@@ -301,10 +389,13 @@ def run_local(args, timeout=600) -> dict:
             "tail": out.splitlines()[-5:], "raw": out}
 
 
-def run_remote(mod, cli, remote_dir: str, args, timeout=1800) -> dict:
+def run_remote(mod, cli, remote_dir: str, args, timeout=1800, prefix=None) -> dict:
     cmd = " ".join(args)
-    full = (f"cd {remote_dir}/lightharness && export LIGHT_MERGE={remote_dir}/light-merge && "
-            f"export PATH={mod.SHIM_DIR}:$PATH && export PYTHONIOENCODING=utf-8 && {cmd}")
+    if prefix is None:
+        prefix = (f"cd {remote_dir}/lightharness && export LIGHT_MERGE={remote_dir}/light-merge && "
+                  f"export PATH={getattr(mod, 'SHIM_DIR', '/tmp/r85-shim')}:$PATH && "
+                  f"export PYTHONIOENCODING=utf-8 && ")
+    full = prefix + cmd
     t0 = time.monotonic()
     rc, out = mod.run_remote(cli, full, timeout=timeout, quiet=True)
     out = normalize(out)
@@ -345,39 +436,52 @@ def run_legacy(args, result: dict) -> bool:
                            "tail": r["tail"]}
         print("本机 pytest rc=%d，失败 %d：%s" % (r["rc"], len(failed), failed))
 
-    # 0.82
+    # 远端（0.82 FreeBSD 或 0.86 Linux，向后兼容泛化）
     if args.remote:
-        mod = load_sync_module()
-        print("=== 0.82（FreeBSD 15.1）===")
-        cli = mod.connect()
+        plat, host = resolve_platform_host(args)
+        mod = sync_module_for(plat)
+        label = "0.86（Linux Ubuntu 24.04）" if plat == "linux" else "0.82（FreeBSD 15.1）"
+        print("=== %s ===" % label)
+        if plat == "linux":
+            cli, *_ = mod.connect(host, mod.PORT)
+        else:
+            cli = mod.connect()
         try:
-            mod.ensure_shim(cli)
+            if plat == "linux":
+                mod.ensure_ready(cli)
+            else:
+                mod.ensure_shim(cli)
             remote_dir = mod.load_remote_dir()
             if args.sync:
                 print("[门] 先做全量重同步…")
-                rc, _ = mod.run_remote(cli, "true", quiet=True)
-                # 同步需在本地打包上传，交由子命令完成
-                subprocess.run([python_cmd(), str(SYNC_SCRIPT), "sync"], cwd=ROOT, check=False)
+                sync_py = str(SYNC86_SCRIPT) if plat == "linux" else str(SYNC_SCRIPT)
+                subprocess.run([python_cmd(), sync_py, "sync"], cwd=ROOT, check=False)
                 remote_dir = mod.load_remote_dir()
             print(f"[门] 远端副本 {remote_dir}")
+            if plat == "linux":
+                prefix = mod.remote_prefix(remote_dir)
+            else:
+                prefix = None
             if args.mode == "core":
                 cases = {}
                 for name, path in CASES:
-                    r = run_remote(mod, cli, remote_dir, [mod.PY, "运行.py", path], timeout=args.timeout)
+                    runner = [mod.REMOTE_PY, "运行.py", path] if plat == "linux" else [mod.PY, "运行.py", path]
+                    r = run_remote(mod, cli, remote_dir, runner, timeout=args.timeout, prefix=prefix)
                     r.pop("raw", None)
                     cases[name] = r
                     print(("PASS" if r["rc"] == 0 else "FAIL"), name, "rc=%d" % r["rc"], "%.2fs" % r["elapsed_sec"])
-                result["remote"] = {"cases": cases,
+                result["remote"] = {"platform": plat, "cases": cases,
                                     "all_rc_zero": all(c["rc"] == 0 for c in cases.values())}
             else:
-                r = run_remote(mod, cli, remote_dir,
-                               [mod.PY, "-m", "pytest", "tests/", "-q", "-p", "no:cacheprovider", "--tb=no"],
-                               timeout=args.timeout)
+                runner = ([mod.REMOTE_PY, "-m", "pytest", "tests/", "-q", "-p", "no:cacheprovider", "--tb=no"]
+                          if plat == "linux" else
+                          [mod.PY, "-m", "pytest", "tests/", "-q", "-p", "no:cacheprovider", "--tb=no"])
+                r = run_remote(mod, cli, remote_dir, runner, timeout=args.timeout, prefix=prefix)
                 failed = parse_failures(r["raw"])
-                result["remote"] = {"rc": r["rc"], "elapsed_sec": r["elapsed_sec"],
+                result["remote"] = {"platform": plat, "rc": r["rc"], "elapsed_sec": r["elapsed_sec"],
                                     "failed": failed, "failed_count": len(failed),
                                     "tail": r["tail"]}
-                print("0.82 pytest rc=%d，失败 %d：%s" % (r["rc"], len(failed), failed))
+                print("%s pytest rc=%d，失败 %d：%s" % (label, r["rc"], len(failed), failed))
         finally:
             cli.close()
 
@@ -417,9 +521,11 @@ def run_gate(args, result: dict) -> bool:
     lok = gate_local(args, result, base_lib)
     rok = True
     if not args.local_only:
+        plat, host = resolve_platform_host(args)
         if args.sync:
-            print("[门] 先同步 0.82…")
-            rc = subprocess.run([python_cmd(), str(SYNC_SCRIPT), "sync"],
+            sync_py = str(SYNC86_SCRIPT) if plat == "linux" else str(SYNC_SCRIPT)
+            print("[门] 先同步 %s…" % ("0.86" if plat == "linux" else "0.82"))
+            rc = subprocess.run([python_cmd(), sync_py, "sync"],
                                 cwd=ROOT, check=False).returncode
             if rc != 0:
                 print(f"[门] ❌ 同步失败 rc={rc}")
@@ -431,8 +537,8 @@ def run_gate(args, result: dict) -> bool:
                       "elapsed_sec": round(time.monotonic() - t0, 1),
                       "judge": "两侧各自与自身上一份基线比新增红，均为 0 才通过"}
     print("=== 门 ===", "PASS ✅" if ok else "FAIL ❌",
-          f"（本机 {'✅' if lok else '❌'} ｜ 0.82 {'✅' if rok else '❌'}，"
-          f"总耗时 {result['gate']['elapsed_sec']:.0f}s）")
+          f"（本机 {'✅' if lok else '❌'} ｜ {'0.86' if (result.get('remote') or {}).get('platform')=='linux' else '0.82'} "
+          f"{'✅' if rok else '❌'}，总耗时 {result['gate']['elapsed_sec']:.0f}s）")
     return ok
 
 
@@ -468,6 +574,13 @@ def main() -> int:
                     help="gate：0.82 侧解释器（默认 /usr/local/bin/python3.12，带 xdist；"
                          "传 3.11 时 082全量回归.py 会按其口径置空 addopts 串行跑）。"
                          "R57 任务3（G8）：门远端腿此前写死默认值，不透传此参数。")
+    # R85 任务F：把远端平台泛化到 Linux 0.86（向后兼容：不传则 freebsd=0.82）
+    ap.add_argument("--platform", choices=["freebsd", "linux"], default=None,
+                    help="远端平台：freebsd=0.82（默认，向后兼容）；linux=0.86。"
+                         "不显式指定时，传了 --host（且非 0.82）一律当 linux。")
+    ap.add_argument("--host", default="",
+                    help="远端 host（freebsd 默认 0.82；linux 默认 192.168.0.86）。"
+                         "例：--host 192.168.0.86 即把 core 门跑在 0.86 Linux 上。")
     args = ap.parse_args()
 
     result = {"schema": 3, "round": "R55", "mode": args.mode,

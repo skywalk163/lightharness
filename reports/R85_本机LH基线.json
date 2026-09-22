@@ -1,0 +1,85 @@
+{
+  "schema": 3,
+  "round": "R55",
+  "mode": "gate",
+  "generated_at": "2026-09-22T07:33:56+0800",
+  "local_platform": {
+    "os": "Windows",
+    "release": "10",
+    "machine": "AMD64",
+    "python": "3.13.14",
+    "shell": "C:\\Windows\\system32\\cmd.exe",
+    "path_separator": "\\",
+    "line_separator": "'\\r\\n'",
+    "preferred_encoding": "utf-8",
+    "filesystem_encoding": "utf-8",
+    "socket_ipv6": true
+  },
+  "local": {
+    "baseline": "G:\\dswork\\duan-light-merge\\lightharness\\reports\\本机lh基线_2026-09-22-075538.json",
+    "totals": {
+      "total": 1369,
+      "failure": 21,
+      "error": 0,
+      "skipped": 4,
+      "xfailed": 0,
+      "xpassed": 0,
+      "passed": 1344,
+      "failed": 21,
+      "duration_sec": 1288.954
+    },
+    "diff": {
+      "base_generated_at": "2026-09-18T07:18:30+08:00",
+      "new_generated_at": "2026-09-22T07:55:38+08:00",
+      "base_total": 1272,
+      "new_total": 1369,
+      "base_failed": 7,
+      "new_failed": 21,
+      "new_red": [
+        "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+        "tests/test_R30_零除幂次记录类型通用化_token.py::test_merge_whole_has_record_type",
+        "tests/test_R30_零除幂次记录类型通用化_token.py::test_num_head_merge_generalizes",
+        "tests/test_R30_零除幂次记录类型通用化_token.py::test_predicates",
+        "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_deleted_entries",
+        "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_now_2",
+        "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_r35_removed_entry",
+        "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_merge_whole_retained_entries",
+        "tests/test_R33_NEVER_SPLIT精简_token.py::test_merge_whole_now_2",
+        "tests/test_R35_MERGE_WHOLE通用化_token.py::test_merge_whole_exact_contents",
+        "tests/test_R35_MERGE_WHOLE通用化_token.py::test_merge_whole_is_2",
+        "tests/test_R35_MERGE_WHOLE通用化_token.py::test_non_empty_block_removed",
+        "tests/test_回归.py::test_example_exit_code[test_R41_\\u771f\\u5b9eIO\\u7aef\\u5230\\u7aef.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R41_\\u771f\\u5b9e\\u7f51\\u7edcIO.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u5de5\\u5177\\u94fe.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9e\\u6293\\u53d6.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R42_\\u771f\\u5b9ewebhook.light]",
+        "tests/test_回归.py::test_example_exit_code[test_agentE5\\u94a9\\u5b50.light]",
+        "tests/test_回归.py::test_example_exit_code[test_agent\\u5de5\\u5177\\u8c03\\u7528.light]"
+      ],
+      "recorded": [],
+      "fixed": [
+        "tests/test_R32_OPERATOR+MERGE_WHOLE精简_token.py::test_deleted_return_code_still_merged",
+        "tests/test_回归.py::test_example_exit_code[test_R22_\\u5d4c\\u5165\\u5173\\u952e\\u5b57\\u5197\\u4f59\\u9a8c\\u8bc1.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R26_\\u8bcd\\u9996\\u5e76\\u5165\\u6df7\\u5408.light]",
+        "tests/test_回归.py::test_example_exit_code[test_R27_\\u8bcd\\u9996\\u5e76\\u5165\\u53cd\\u5411.light]"
+      ],
+      "unchanged_red": [
+        "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_embedded_scan_triggered",
+        "tests/test_R31_EMBED表保留+flaky修复_token.py::test_fanhui_return_value_merged"
+      ],
+      "first_run": false,
+      "ok": false
+    },
+    "ok": false,
+    "first_run": false
+  },
+  "remote": {},
+  "gate": {
+    "local_ok": false,
+    "remote_ok": true,
+    "ok": false,
+    "elapsed_sec": 1294.7,
+    "judge": "两侧各自与自身上一份基线比新增红，均为 0 才通过"
+  }
+}

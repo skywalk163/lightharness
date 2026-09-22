@@ -135,3 +135,27 @@ examples/，门禁对它**零感知**，修复被回退/破坏时全量门不会
 - CI 运行在 `ubuntu-latest`，光明编译器和 lightharness 均为跨平台 Python 实现
 - 本地开发支持 Windows / Linux / macOS
 - Windows 路径分隔符在 `运行.py` 中通过 `os.path` 自动处理
+
+## Linux 0.86 远端门禁（R85 任务F，实测）
+
+除 GitHub Actions（`ubuntu-latest`）外，本仓库还把 **0.86 内网 Linux 机（Ubuntu 24.04，Python 3.12.3，无 sudo）** 纳入跨平台实测门禁，用于发现 Windows / FreeBSD 0.82 之外的第三平台差异。相关脚本与基建：
+
+| 脚本 | 作用 | 备注 |
+|---|---|---|
+| `scripts/同步0.86.py` | 0.86 接入：多账号探活、git tracked 树打包上传、`--with-git`、`probe` 环境探测、venv 建pytest 全家桶、`test-lm`/`test-lh` 远端门禁跑通 | 机器常量用 `--host` 参数化（默认 192.168.0.86），向后兼容 |
+| `scripts/跨平台CLI验证_0.86.py` + `.sh` | 在 0.86 实测 CLI 命令面 version/help/dump-config/unknown | 复用 0.86 远端副本 |
+| `scripts/多平台矩阵.py --host 192.168.0.86 --mode core` | 把核心用例矩阵门跑在 0.86（Linux）上，与 Windows 比对 rc 字典 | `--platform linux` / 推断：传了非 0.82 的 `--host` 即视为 Linux；0.82 行为不变 |
+
+### 0.86 接入要点（踩坑固化，别踩回去）
+
+- **无 sudo**：0.86 的 `ai` 账号无 sudo，因此**绝不装系统 Python**、不 `make install`、不碰全局配置；所有 pytest 依赖装在 `/tmp/r85-venv`（用户级 venv，`python3 -m venv` 已验证可用，无需 apt）。
+- **没有 `python` 命令**：0.86 只有 `python3`。`同步0.86.py` 在 `/tmp/r85-shim` 建了 `python`/`python3` 垫片指向 venv，并把 venv/bin + shim 注入 `PATH`，因此即便用例内部裸调 `python` 也能命中。
+- **凭据只在本机读 `.env`**（`SSH_USER_*`/`SSH_PASS_*`），按 AI→TRAE→WORKBUDDY→DUMATE 顺序探活首个连通账号；值不入档、不落日志、**不上传**（脚本不把 `.env` 打进 tarball）。
+- **打包用 `git ls-files`**（tracked 树），天然不含 `.venv`/未跟踪 scratch；`--with-git` 时额外把 `.git` 一并带上，使依赖 `git archive HEAD` 的用例在 0.86 真正执行而非退化成 skip。
+- **远端命令一律后台跑 + 轮询**（`nohup … &` + 定时 `tail`），全量 pytest 10~20 分钟不阻塞本机；切忌前台死等。
+
+### 0.86 实测结论（数据见 `reports/R85_*` 与 `_taskF_R85_交付报告.md`）
+
+- 0.86（Ubuntu 24.04 / Python 3.12.3）上 light-merge 与 lightharness 全量 pytest 均可跑通，venv 装 `pytest + pytest-xdist + pytest-timeout + psutil + antlr4-python3-runtime`。
+- 与 Windows / FreeBSD 的差异主要在**平台语义**（如 socket 系列），纯编译/解释链路一致；具体对照表见 `docs/多平台差异清单.md` 的 R85 Linux 段。
+- **沙箱**：0.86 未预装 `bwrap`/landlock 用户态工具且 ai 无 sudo，真后端不可用 → 按 fail-closed 记录（见交付报告批2）。

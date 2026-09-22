@@ -1,0 +1,19 @@
+{
+  "host": "192.168.0.86",
+  "port": 22,
+  "account_used": "AI",
+  "username": "ai",
+  "probed_at": "2026-09-22 07:21:45",
+  "uname": "Linux ub86 6.8.0-139-generic #139-Ubuntu SMP PREEMPT_DYNAMIC Sat Aug  1 03:52:05 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux",
+  "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"",
+  "kernel": "6.8.0-139-generic",
+  "python3_version": "Python 3.12.3",
+  "python_version": "bash: line 1: python: command not found\nNONE",
+  "git_version": "git version 2.43.0",
+  "cpu_cores": "4",
+  "mem_total_mb": "3915",
+  "arch": "x86_64",
+  "sudo_available": false,
+  "sudo_note": "SUDO_NO",
+  "pytest_plugins_system": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'xdist'\nNONE"
+}

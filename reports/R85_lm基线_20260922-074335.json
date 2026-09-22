@@ -1,0 +1,402 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-22T07:43:35+08:00",
+  "target": {
+    "name": "light-merge",
+    "platform": "0.86 Linux",
+    "host": "192.168.0.86",
+    "remote_dir": "/tmp/r85-20260922-072405",
+    "cwd": "/tmp/r85-20260922-072405/light-merge"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": true,
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20260922-072405/lm_results_full.xml -n auto --dist loadscope",
+    "pytest_rc": "unknown"
+  },
+  "totals": {
+    "total": 8251,
+    "failure": 27,
+    "error": 9,
+    "skipped": 106,
+    "xfailed": 11,
+    "xpassed": 0,
+    "passed": 8098,
+    "failed": 36,
+    "duration_sec": 536.061
+  },
+  "failed": [
+    {
+      "id": "tests/test_datetime.py::test_公历转农历",
+      "cid": "tests.test_datetime::test_公历转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_农历转公历",
+      "cid": "tests.test_datetime::test_农历转公历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期时间转农历",
+      "cid": "tests.test_datetime::test_日期时间转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期转农历",
+      "cid": "tests.test_datetime::test_日期转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_春节日期",
+      "cid": "tests.test_datetime::test_春节日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中秋日期",
+      "cid": "tests.test_datetime::test_中秋日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_端午日期",
+      "cid": "tests.test_datetime::test_端午日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中国节假日",
+      "cid": "tests.test_datetime::test_中国节假日",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/all_in_one_L3_demo.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L3_domain/all_in_one_L3_demo.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan run 失败 (L3_domain/all_in_one_L3_demo.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo1_sql.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L3_domain/demo1_sql.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan run 失败 (L3_domain/demo1_sql.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/all_in_one_demo.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L4_python/all_in_one_demo.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan run 失败 (L4_python/all_in_one_demo.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo2_pandas_csv.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_run[L4_python/demo2_pandas_csv.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan run 失败 (L4_python/demo2_pandas_csv.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/all_in_one_L3_demo.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L3_domain/all_in_one_L3_demo.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan compile 失败 (L3_domain/all_in_one_L3_demo.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo1_sql.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L3_domain/demo1_sql.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan compile 失败 (L3_domain/demo1_sql.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan compile 失败 (L4_python/all_in_one_demo.light):"
+    },
+    {
+      "id": "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
+      "cid": "tests.e2e.test_e2e_chain::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
+      "status": "failure",
+      "file": "tests/e2e/test_e2e_chain.py",
+      "message": "AssertionError: duan compile 失败 (L4_python/demo2_pandas_csv.light):"
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP提交",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_HTTP提交",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP获取",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_HTTP获取",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_URL编码解码",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_URL编码解码",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_导入",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_导入",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_拼接URL",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_拼接URL",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_获取JSON",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_获取JSON",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/e2e/test_L3_domain_e2e.py::test_derivative",
+      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_derivative",
+      "status": "failure",
+      "file": "tests/e2e/test_L3_domain_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'sympy'"
+    },
+    {
+      "id": "tests/e2e/test_L3_domain_e2e.py::test_integrate",
+      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_integrate",
+      "status": "failure",
+      "file": "tests/e2e/test_L3_domain_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'sympy'"
+    },
+    {
+      "id": "tests/e2e/test_L3_domain_e2e.py::test_matrix_multiply",
+      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_matrix_multiply",
+      "status": "failure",
+      "file": "tests/e2e/test_L3_domain_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'sympy'"
+    },
+    {
+      "id": "tests/e2e/test_L3_domain_e2e.py::test_simplify",
+      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_simplify",
+      "status": "failure",
+      "file": "tests/e2e/test_L3_domain_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'sympy'"
+    },
+    {
+      "id": "tests/e2e/test_L3_domain_e2e.py::test_solve_quadratic",
+      "cid": "tests.e2e.test_L3_domain_e2e.TestL3_Math_E2E::test_solve_quadratic",
+      "status": "failure",
+      "file": "tests/e2e/test_L3_domain_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'sympy'"
+    },
+    {
+      "id": "tests/test_tls_light.py::test_缺cryptography必须响亮降级",
+      "cid": "tests.test_tls_light::test_缺cryptography必须响亮降级",
+      "status": "failure",
+      "file": "tests/test_tls_light.py",
+      "message": "Failed: 本机缺 cryptography（No module named 'cryptography'）：TLS 测试无法生成自签证书，本文件的 TLS 覆盖为零。"
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_tls异步读体拿到完整体且不占用事件循环",
+      "cid": "tests.test_async_io_light.TestTLS异步读腿::test_tls异步读体拿到完整体且不占用事件循环",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_两路TLS串行与并发的关系",
+      "cid": "tests.test_async_io_light.TestTLS异步读腿::test_两路TLS串行与并发的关系",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/test_async_io_light.py::test_tls异步腿的读超时抛读取错误",
+      "cid": "tests.test_async_io_light.TestTLS异步读腿::test_tls异步腿的读超时抛读取错误",
+      "status": "error",
+      "file": "tests/test_async_io_light.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'cryptography'\""
+    },
+    {
+      "id": "tests/e2e/test_L4_python_e2e.py::test_numpy_basic_ops",
+      "cid": "tests.e2e.test_L4_python_e2e.TestL4_Numpy_E2E::test_numpy_basic_ops",
+      "status": "failure",
+      "file": "tests/e2e/test_L4_python_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'numpy'"
+    },
+    {
+      "id": "tests/e2e/test_L4_python_e2e.py::test_numpy_mean",
+      "cid": "tests.e2e.test_L4_python_e2e.TestL4_Numpy_E2E::test_numpy_mean",
+      "status": "failure",
+      "file": "tests/e2e/test_L4_python_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'numpy'"
+    },
+    {
+      "id": "tests/e2e/test_L4_python_e2e.py::test_pandas_dataframe",
+      "cid": "tests.e2e.test_L4_python_e2e.TestL4_Pandas_E2E::test_pandas_dataframe",
+      "status": "failure",
+      "file": "tests/e2e/test_L4_python_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'pandas'"
+    },
+    {
+      "id": "tests/e2e/test_L4_python_e2e.py::test_requests_get",
+      "cid": "tests.e2e.test_L4_python_e2e.TestL4_Requests_E2E::test_requests_get",
+      "status": "failure",
+      "file": "tests/e2e/test_L4_python_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'requests'"
+    },
+    {
+      "id": "tests/e2e/test_L4_python_e2e.py::test_matplotlib_non_blocking",
+      "cid": "tests.e2e.test_L4_python_e2e.TestL4_Matplotlib_E2E::test_matplotlib_non_blocking",
+      "status": "failure",
+      "file": "tests/e2e/test_L4_python_e2e.py",
+      "message": "ModuleNotFoundError: No module named 'matplotlib'"
+    }
+  ],
+  "skipped": [
+    "::tests.test_http_client",
+    "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
+    "tests/test_pure_light_hook.py::test_积木库导入的名字必须在纯光明门面的导出面内",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[E\\u9636\\u6bb5_L3L4\\u539f\\u751f\\u8bed\\u6cd5/E4_L4_\\u6c99\\u7bb1\\u9694\\u79bb\\u9a8c\\u8bc1.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo1_numpy_mean.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo3_matplotlib_plot.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo5_sklearn_iris.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[E\\u9636\\u6bb5_L3L4\\u539f\\u751f\\u8bed\\u6cd5/E4_L4_\\u6c99\\u7bb1\\u9694\\u79bb\\u9a8c\\u8bc1.light]",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo1_numpy_mean.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo3_matplotlib_plot.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo5_sklearn_iris.light]",
+    "tests/test_module_system.py::test_regex_escape",
+    "tests/test_module_system.py::test_regex_findall",
+    "tests/test_module_system.py::test_regex_is_match",
+    "tests/test_module_system.py::test_regex_replace",
+    "tests/test_module_system.py::test_regex_search",
+    "tests/test_module_system.py::test_stat_mean",
+    "tests/test_module_system.py::test_stat_median",
+    "tests/test_module_system.py::test_stat_stdev",
+    "tests/test_module_system.py::test_time_day_name",
+    "tests/test_module_system.py::test_time_days_after",
+    "tests/test_module_system.py::test_time_is_weekday",
+    "tests/test_module_system.py::test_time_weekday",
+    "tests/test_stdlib_phase4.py::test_验证IP地址",
+    "tests/test_stdlib_phase4.py::test_验证JSON",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
+    "tests/test_self_host_bootstrap.py::test_binary_mod",
+    "tests/test_stdlib_phase4.py::test_Base64",
+    "tests/test_stdlib_phase4.py::test_二进制十六进制转换",
+    "tests/test_stdlib_phase4.py::test_字符集转换",
+    "tests/test_stdlib_phase4.py::test_字节字符串转换",
+    "tests/test_self_host_bootstrap.py::test_logical_not",
+    "tests/test_stdlib_phase4.py::test_AES",
+    "tests/test_stdlib_phase4.py::test_RSA",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
+    "tests/integration/test_playground_api.py::test_get_demo_detail",
+    "tests/integration/test_playground_api.py::test_get_demo_not_found",
+    "tests/integration/test_playground_api.py::test_list_demos",
+    "tests/integration/test_playground_api.py::test_list_demos_category_filter",
+    "tests/integration/test_playground_api.py::test_list_demos_limit",
+    "tests/integration/test_playground_api.py::test_run_demo_by_id",
+    "tests/integration/test_playground_api.py::test_run_demo_inline_code",
+    "tests/integration/test_playground_api.py::test_run_demo_invalid_id",
+    "tests/integration/test_playground_api.py::test_run_demo_no_params",
+    "tests/test_v4_1_integration.py::test_compile_to_pyodide_error",
+    "tests/test_v4_1_integration.py::test_compile_to_python_error",
+    "tests/test_agent_tools_light.py::test_junction指向外部不被递归且不外泄",
+    "tests/test_agent_tools_light.py::test_junction外部不膨胀遍历文件数",
+    "tests/test_windows_path.py::test_文件存在_隐藏文件",
+    "tests/test_level6_lexer.py::test_backtick_escape",
+    "tests/integration/test_playground_api.py::test_execute_conditional",
+    "tests/integration/test_playground_api.py::test_execute_empty_code",
+    "tests/integration/test_playground_api.py::test_execute_loop",
+    "tests/integration/test_playground_api.py::test_execute_simple",
+    "tests/integration/test_playground_api.py::test_execute_syntax_error",
+    "tests/integration/test_playground_api.py::test_execute_variable_assignment",
+    "tests/test_agent_tools_light.py::test_junction指向外部被拒",
+    "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
+    "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
+    "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
+    "tests/e2e/test_llvm_pipeline.py::test_simple_ir_generation",
+    "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
+    "tests/test_pty_light.py::test_设窗口大小不炸",
+    "tests/test_pty_light.py::test_写输入不崩",
+    "tests/test_pty_light.py::test_优雅关闭长驻进程",
+    "tests/test_pty_light.py::test_平台缺失明确报错类存在",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
+    "tests/unit/test_light_examples_run.py::test_dict_word_count",
+    "tests/integration/test_playground_api.py::test_parse_empty",
+    "tests/integration/test_playground_api.py::test_parse_simple",
+    "tests/integration/test_playground_api.py::test_tokenize_empty",
+    "tests/integration/test_playground_api.py::test_tokenize_simple",
+    "tests/test_tls_light.py::test_tls_with_ca_handshake_and_sse",
+    "tests/test_tls_light.py::test_tls_without_ca_fails_handshake",
+    "tests/test_tls_light.py::test_tls_disabled_uses_plaintext_server",
+    "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_compiler_runs",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_files_exist",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_self_compile",
+    "tests/integration/test_playground_api.py::test_get_examples",
+    "tests/integration/test_playground_api.py::test_get_grammar",
+    "tests/integration/test_playground_api.py::test_get_stdlib",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
+    "tests/test_llm_client_light.py::test_stream_chat",
+    "tests/test_llm_client_light.py::test_nonstream_chat",
+    "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
+    "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
+    "tests/test_semantic.py::test_number_type",
+    "tests/test_semantic.py::test_string_type",
+    "tests/test_semantic.py::test_binary_operation_type",
+    "tests/test_semantic.py::test_global_scope",
+    "tests/test_semantic.py::test_function_scope",
+    "tests/test_semantic.py::test_nested_scope",
+    "tests/test_semantic.py::test_variable_declaration",
+    "tests/test_semantic.py::test_function_declaration",
+    "tests/test_semantic.py::test_undefined_variable",
+    "tests/e2e/test_full_programs.py::test_simple_program_compiles",
+    "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
+    "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
+    "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
+    "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
+    "tests/test_path_guard_light.py::test_junction指向外部被拒",
+    "tests/test_semantic.py::test_type_mismatch",
+    "tests/test_semantic.py::test_duplicate_definition",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
+    "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
+    "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
+    "tests/test_lsp_protocol_full.py::test",
+    "tests/unit/test_light_examples_run.py::test_dict_placeholder",
+    "tests/unit/test_light_examples_run.py::test_placeholder"
+  ]
+}
