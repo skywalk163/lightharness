@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-22T12:35:17+08:00",
+  "target": {
+    "name": "lightharness",
+    "platform": "Windows 本机 (HP Z620)",
+    "host": "localhost",
+    "remote_dir": "-",
+    "cwd": "G:\\dswork\\duan-light-merge\\lightharness"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": true,
+    "cmd": "-m pytest tests/ -q --tb=no -rfE --basetemp=.pytest_tmp_r86b2 --junitxml=reports/_r86b2_win_lh.xml",
+    "pytest_rc": 0
+  },
+  "totals": {
+    "total": 1375,
+    "failure": 0,
+    "error": 0,
+    "skipped": 4,
+    "xfailed": 0,
+    "xpassed": 0,
+    "passed": 1371,
+    "failed": 0,
+    "duration_sec": 264.618
+  },
+  "failed": [],
+  "skipped": [
+    "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
+    "tests/test_回归.py::test_env_red_baseline_report"
+  ]
+}
