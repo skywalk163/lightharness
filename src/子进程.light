@@ -115,3 +115,225 @@
     设 命令数组 为 ["sh", "-c", 命令字符串]
   结束
   返回 运行进程树(命令数组, 超时毫秒, 配置)
+# =============================================================================
+# 【R85-B】Linux 平台补位：linux-execve / linux-scope / windows-job 纯逻辑
+# 对标 deepseek-harness 0.1.6（ddefc45fbc）subprocess 域：
+#   - linux-execve.ts：argv/envp 构造（尾随 空=null）、FD_CLOEXEC 清除集、
+#     Node 风格系统错误形状（码/错误号/系统调用/路径/消息）
+#   - linux-scope.ts：systemd-run scope 参数、unit 名、管理者/静默环境、
+#     MISSING_UNIT 判定（无正则：行内 unit 词 + 行内缺失短语）、Linux 能力探测链
+#   - windows-job.ts：启动取消错误识别（undefined 字段按缺键处理）、失败映射、Job 探测
+# 宿主面（登记不移植）：koffi 绑定真实 execve/systemctl/spawn、平台/架构/能力探测、
+#   randomBytes(6)（unit 名随机段由宿主注入）。
+# =============================================================================
+
+# ---- linux-execve 纯逻辑 ----
+设 标准文件描述符表 为 [0, 1, 2]
+设 控制通道fd 为 7
+
+# 复制表（光明无 spread：逐项追加）
+段落 变长表(原表):
+  设 结果表 为 []
+  遍历 项 之 原表:
+    列表追加(结果表, 项)
+  返回 结果表
+
+# execvp argv：尾部补 空（对标 [...argv, null]）
+段落 造execvp参数(argv表):
+  设 结果表 为 变长表(argv表)
+  列表追加(结果表, 空)
+  返回 结果表
+
+# envp：{键:值} -> ["键=值", ..., 空]（对标 Object.entries 映射 + null 结尾）
+段落 造envp参数(环境表):
+  设 结果表 为 []
+  遍历 项 之 字典项列表(环境表):
+    列表追加(结果表, 项[0] + "=" + 项[1])
+  列表追加(结果表, 空)
+  返回 结果表
+
+# cloexec 清除集：control==='pipe' 时把控制通道 fd 一并保留
+段落 算cloexec清除集(控制):
+  设 结果表 为 变长表(标准文件描述符表)
+  如果 控制 == "pipe":
+    列表追加(结果表, 控制通道fd)
+  返回 结果表
+
+# Node 风格系统错误名（对标 util.getSystemErrorName 核心子集；未知 → EUNKNOWN）
+段落 系统错误名(错误号值):
+  如果 错误号值 == 2:
+    返回 "ENOENT"
+  如果 错误号值 == 13:
+    返回 "EACCES"
+  如果 错误号值 == 11:
+    返回 "EAGAIN"
+  如果 错误号值 == 9:
+    返回 "EBADF"
+  如果 错误号值 == 4:
+    返回 "EINTR"
+  如果 错误号值 == 22:
+    返回 "EINVAL"
+  如果 错误号值 == 5:
+    返回 "EIO"
+  如果 错误号值 == 12:
+    返回 "ENOMEM"
+  如果 错误号值 == 8:
+    返回 "ENOEXEC"
+  返回 "EUNKNOWN"
+
+# Node 风格系统错误明细（对标 util.getSystemErrorMessage 核心子集；未知 → unknown error）
+段落 系统错误明细(错误号值):
+  如果 错误号值 == 2:
+    返回 "no such file or directory"
+  如果 错误号值 == 13:
+    返回 "permission denied"
+  如果 错误号值 == 11:
+    返回 "resource temporarily unavailable"
+  如果 错误号值 == 9:
+    返回 "bad file descriptor"
+  如果 错误号值 == 4:
+    返回 "interrupted system call"
+  如果 错误号值 == 22:
+    返回 "invalid argument"
+  如果 错误号值 == 5:
+    返回 "input/output error"
+  如果 错误号值 == 12:
+    返回 "out of memory"
+  如果 错误号值 == 8:
+    返回 "exec format error"
+  返回 "unknown error"
+
+# 造系统错误（对标 systemError：uvError = -errno；subject = syscall 或 syscall 'path'；
+#   message = "code: detail, subject"；path 缺省时省略 路径 键，对齐 undefined 字段语义）
+段落 造系统错误(错误号值, 系统调用, 路径 = 空):
+  设 uv错误 为 0 - 错误号值
+  设 码 为 系统错误名(错误号值)
+  设 主体 为 系统调用
+  如果 路径 != 空:
+    设 主体 为 系统调用 + " '" + 路径 + "'"
+  设 错误表 为 ["码": 码, "错误号": uv错误, "系统调用": 系统调用, "消息": 码 + ": " + 系统错误明细(错误号值) + ", " + 主体]
+  如果 路径 != 空:
+    错误表["路径"] 为 路径
+  返回 错误表
+
+# ---- linux-scope 纯逻辑 ----
+设 systemctl超时毫秒 为 5000
+设 作用域初始轮询毫秒 为 50
+
+# 行内含 unit 词且其后行内有缺失短语（对标 MISSING_UNIT 正则的近似：
+#   \bunit\b[^\r\n]*(?:could not be found|not found|not loaded)，i 模式）
+段落 是缺unit错误(输出):
+  遍历 行 之 输出.分割("\n"):
+    如果 行含unit缺失(行):
+      返回 真
+  返回 假
+
+段落 行含unit缺失(行文本):
+  设 小写行 为 转小写(行文本)
+  设 位置 为 查找子串(小写行, "unit")
+  如果 位置 < 0:
+    返回 假
+  设 行余 为 截取到末尾(小写行, 位置 + 4)
+  如果 查找子串(行余, "could not be found") >= 0:
+    返回 真
+  如果 查找子串(行余, "not found") >= 0:
+    返回 真
+  如果 查找子串(行余, "not loaded") >= 0:
+    返回 真
+  返回 假
+
+# unit 名（对标 unitStem = prefix-pid-12hex；randomBytes 与 pid 由宿主注入）
+段落 造unit名(前缀, 进程id, 随机hex):
+  返回 前缀 + "-" + 转字符串(进程id) + "-" + 随机hex
+
+# 复制环境字典
+段落 复制环境(基础环境):
+  设 结果环境 为 {}
+  遍历 项 之 字典项列表(基础环境):
+    结果环境[项[0]] 为 项[1]
+  返回 结果环境
+
+# 管理者环境（对标 managerEnvironment：childEnv({LC_ALL:'C'}) + 删 SYSTEMD_LOG_TARGET）
+段落 造管理者环境(基础环境):
+  设 结果环境 为 复制环境(基础环境)
+  结果环境["LC_ALL"] 为 "C"
+  字典删除(结果环境, "SYSTEMD_LOG_TARGET")
+  返回 结果环境
+
+# 静默环境（对标 quietSystemdEnvironment：childEnv({LC_ALL:'C', SYSTEMD_LOG_TARGET:'null'})）
+段落 造静默环境(基础环境):
+  设 结果环境 为 复制环境(基础环境)
+  结果环境["LC_ALL"] 为 "C"
+  结果环境["SYSTEMD_LOG_TARGET"] 为 "null"
+  返回 结果环境
+
+# scope 参数（对标 scopeArgs：--user --scope --quiet --collect --expand-environment=no
+#   --unit=<unitBase> -- <invocation...> -- <argv...>）
+段落 造作用域参数(unit名, 引导命令表, argv表):
+  设 结果表 为 ["--user", "--scope", "--quiet", "--collect", "--expand-environment=no", "--unit=" + unit名, "--"]
+  遍历 项 之 引导命令表:
+    列表追加(结果表, 项)
+  列表追加(结果表, "--")
+  遍历 项 之 argv表:
+    列表追加(结果表, 项)
+  返回 结果表
+
+# Linux 能力探测（对标 probeLinuxBootstrap/Scope/Manager/Native；
+#   jit 加载、spawnSync 结果、状态码等真实探测结果由宿主注入）
+段落 探测Linux引导(加载可用, 运行器可用):
+  如果 加载可用 == 假:
+    返回 假
+  返回 运行器可用
+
+段落 探测Linux作用域(无错误, 状态码):
+  如果 无错误 == 假:
+    返回 假
+  如果 状态码 != 0:
+    返回 假
+  返回 真
+
+段落 探测Linux管理器(无错误, 状态码):
+  如果 无错误 == 假:
+    返回 假
+  如果 状态码 != 0:
+    返回 假
+  返回 真
+
+段落 探测Linux原生(引导可用, 作用域可用):
+  如果 引导可用 == 假:
+    返回 假
+  返回 作用域可用
+
+# ---- windows-job 纯逻辑 ----
+# 启动取消错误（对标 isWindowsStartCancellationError：name==='Error' &&
+#   message==='subprocess target start was cancelled' && code/syscall/path 皆缺省；
+#   光明 JSON 反序列化丢 undefined 字段，故按「缺键即 undefined」判定）
+段落 是Windows启动取消错误(错误对象):
+  如果 字典获取(错误对象, "名称", "") != "Error":
+    返回 假
+  如果 字典获取(错误对象, "消息", "") != "subprocess target start was cancelled":
+    返回 假
+  如果 字典包含键(错误对象, "码"):
+    返回 假
+  如果 字典包含键(错误对象, "系统调用"):
+    返回 假
+  如果 字典包含键(错误对象, "路径"):
+    返回 假
+  返回 真
+
+# 失败映射（对标 mapStartFailure：已设取消原因且为取消错误 → 取消原因；否则原失败）
+段落 映射启动失败(失败, 序列化对象, 取消原因, 已设取消):
+  如果 已设取消 == 假:
+    返回 失败
+  如果 是Windows启动取消错误(序列化对象) == 假:
+    返回 失败
+  返回 取消原因
+
+# Job 探测（对标 probeWindowsJob：运行器可用 && 绑定可载 && 令牌 Job 支持；
+#   真实探测与异常捕获由宿主注入布尔）
+段落 探测WindowsJob(运行器可用, 绑定可用, 令牌支持):
+  如果 运行器可用 == 假:
+    返回 假
+  如果 绑定可用 == 假:
+    返回 假
+  返回 令牌支持

@@ -1,0 +1,105 @@
+# test_R85_B_exec.light
+# R85 任务 B 判据（一）：子进程 exec 语义 + 系统错误 + Linux scope/unit + Windows Job 探测 + 外壳环境净化
+# 对标 deepseek-harness 0.1.6-alpha.2（ddefc45fbc）subprocess 域纯逻辑面。
+
+从 子进程 导入 造execvp参数, 造envp参数, 算cloexec清除集
+从 子进程 导入 系统错误名, 系统错误明细, 造系统错误
+从 子进程 导入 是缺unit错误, 造unit名, 造管理者环境, 造静默环境, 造作用域参数
+从 子进程 导入 探测Linux引导, 探测Linux作用域, 探测Linux管理器, 探测Linux原生
+从 子进程 导入 是Windows启动取消错误, 映射启动失败, 探测WindowsJob
+从 外壳环境 导入 是凭证形状键, 净化父环境, 是控制环境键, 注入控制标记
+
+段落 断言等于(实际, 期望, 标题):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标题 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 主:
+  # 1) execvp/envp 参数构造：尾随 空
+  断言等于(造execvp参数(["sh", "-c", "echo hi"]), ["sh", "-c", "echo hi", 空], "execvp尾随空")
+  断言等于(造envp参数(["PATH": "/bin", "HOME": "/root"]), ["PATH=/bin", "HOME=/root", 空], "envp键值映射")
+  断言等于(造envp参数({}), [空], "envp空字典尾随空")
+
+  # 2) cloexec 清除集：标准 fd 恒在；pipe 追加控制 fd 7
+  断言等于(算cloexec清除集(""), [0, 1, 2], "cloexec基础集")
+  断言等于(算cloexec清除集("pipe"), [0, 1, 2, 7], "cloexec pipe 追加")
+
+  # 3) 系统错误：名称、明细、uv 错误码、形状（有/无路径键）
+  断言等于(系统错误名(2), "ENOENT", "errno名ENOENT")
+  断言等于(系统错误名(13), "EACCES", "errno名EACCES")
+  断言等于(系统错误名(999), "EUNKNOWN", "errno名未知")
+  断言等于(系统错误明细(5), "input/output error", "errno明细EIO")
+  断言等于(系统错误明细(999), "unknown error", "errno明细未知")
+  设 e1 为 造系统错误(2, "execve", "/bin/sh")
+  断言等于(e1["码"], "ENOENT", "错误码字段")
+  断言等于(e1["错误号"], -2, "错误号取负")
+  断言等于(e1["系统调用"], "execve", "错误系统调用")
+  断言等于(e1["路径"], "/bin/sh", "错误路径")
+  设 e2 为 造系统错误(22, "execve")
+  断言等于(字典包含键(e2, "路径"), 假, "无路径不设路径键")
+  断言等于(e2["系统调用"], "execve", "无路径时以调用为消息主题")
+
+  # 4) MISSING_UNIT 判定
+  断言等于(是缺unit错误("Failed to start unit my.scope: Unit my.scope could not be found."), 真, "unit缺失目标行")
+  断言等于(是缺unit错误("Unit foo.scope is not loaded."), 真, "unit缺失未加载")
+  断言等于(是缺unit错误("systemd-run: failed to create unit: not found"), 真, "unit缺失not found")
+  断言等于(是缺unit错误("everything is fine"), 假, "unit缺失正常行")
+  断言等于(是缺unit错误("no scope here"), 假, "unit缺失无关unit")
+
+  # 5) unit 名与环境
+  断言等于(造unit名("scope", 42, "1a2b3c"), "scope-42-1a2b3c", "unit名拼接")
+  设 基础 为 ["A": "1", "SYSTEMD_LOG_TARGET": "console", "B": "2"]
+  设 管理 为 造管理者环境(基础)
+  断言等于(管理["LC_ALL"], "C", "管理者环境LC_ALL")
+  断言等于(字典包含键(管理, "SYSTEMD_LOG_TARGET"), 假, "管理者环境删日志目标")
+  断言等于(管理["A"], "1", "管理者环境保留原键")
+  设 静默 为 造静默环境(基础)
+  断言等于(静默["SYSTEMD_LOG_TARGET"], "null", "静默环境日志目标")
+  断言等于(静默["B"], "2", "静默环境保留原键")
+
+  # 6) scope 参数形状
+  断言等于(造作用域参数("scope-42-1a2b3c", ["systemd-run"], ["echo", "hi"]),
+    ["--user", "--scope", "--quiet", "--collect", "--expand-environment=no",
+     "--unit=scope-42-1a2b3c", "--", "systemd-run", "--", "echo", "hi"], "作用域参数形状")
+
+  # 7) Linux 探测链
+  断言等于(探测Linux引导(真, 真), 真, "引导全可用")
+  断言等于(探测Linux引导(假, 真), 假, "引导加载失败")
+  断言等于(探测Linux作用域(真, 0), 真, "作用域成功")
+  断言等于(探测Linux作用域(真, 1), 假, "作用域非零状态")
+  断言等于(探测Linux管理器(假, 0), 假, "管理器运行错误")
+  断言等于(探测Linux管理器(真, 1), 假, "管理器非零状态")
+  断言等于(探测Linux管理器(真, 0), 真, "管理器全通过")
+  断言等于(探测Linux原生(真, 真), 真, "原生双可用")
+  断言等于(探测Linux原生(真, 假), 假, "原生作用域不可用")
+
+  # 8) Windows Job 与启动取消错误
+  断言等于(探测WindowsJob(真, 真, 真), 真, "Job全通过")
+  断言等于(探测WindowsJob(真, 假, 真), 假, "Job绑定不可载")
+  断言等于(探测WindowsJob(真, 真, 假), 假, "Job令牌不支持")
+  设 取消错 为 ["名称": "Error", "消息": "subprocess target start was cancelled"]
+  断言等于(是Windows启动取消错误(取消错), 真, "取消错误识别")
+  设 带码 为 ["名称": "Error", "消息": "subprocess target start was cancelled", "码": "EACCES"]
+  断言等于(是Windows启动取消错误(带码), 假, "取消错误带码拒绝")
+  断言等于(是Windows启动取消错误(["名称": "TypeError", "消息": "subprocess target start was cancelled"]), 假, "取消错误名称不符")
+  断言等于(映射启动失败("原失败", 带码, "取消原因", 真), "原失败", "映射非取消保原")
+  断言等于(映射启动失败("原失败", 取消错, "取消原因", 真), "取消原因", "映射取消换原因")
+  断言等于(映射启动失败("原失败", 取消错, "取消原因", 假), "原失败", "映射未设取消保原")
+
+  # 9) 外壳环境净化与控制标记
+  断言等于(是凭证形状键("AWS_SECRET_KEY"), 真, "凭证机密键")
+  断言等于(是凭证形状键("HOME"), 假, "凭证普通键")
+  设 父表 为 ["HOME": "/root", "API_KEY": "sk-123", "PATH": "/bin", "DSH_LEGACY": "x", "USER": "u"]
+  设 净表 为 净化父环境(父表)
+  断言等于(字典包含键(净表, "API_KEY"), 假, "净化凭证删除")
+  断言等于(字典包含键(净表, "DSH_LEGACY"), 假, "净化前缀删除")
+  断言等于(净表["HOME"], "/root", "净化保留普通键")
+  断言等于(是控制环境键("环境键"), 假, "控制键普通键")
+  设 子表 为 ["PATH": "/bin"]
+  注入控制标记(子表, "pipe")
+  断言等于(子表["DSH_SUBPROCESS_CONTROL"], "pipe", "控制标记注入")
+  注入控制标记(子表, "off")
+  断言等于(字典包含键(子表, "DSH_SUBPROCESS_CONTROL"), 真, "控制标记非pipe保留原标")
+
+  写 "test_R85_B_exec PASS"
+
+主()
