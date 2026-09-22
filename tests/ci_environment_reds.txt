@@ -1,8 +1,7 @@
 # =============================================================================
-# lightharness FreeBSD 0.82 门禁「环境红」台账（基线）
-# 建立：R81（2026-09-21），依据：R80-B 两次实跑（S 态 9fcf9c4 + 父提交 1f74413，
-#       失败集合逐条相同）+ R80-C 迁移后同集合。脚本化落 CI：R82 路3。
-# 性质：只登记、不修代码。这 8 条红与任何一轮源码改动无关，属 FreeBSD 环境能力差异
+# lightharness FreeBSD 0.82 门禁「环境红」台账（R86 销账后）
+# 建立：R81（2026-09-21）；销账：R86（2026-09-22）。
+# 性质：只登记、不修代码。台账条目在 FreeBSD 0.82 上为环境能力差异红
 #       （真实 socket / PTY / 子进程 / 事件循环 / 沙箱超时 + flaky）。
 # 用法：本文件是「父/基线提交失败集合」的固化载体。判据脚本 ci_judge_env_reds.py
 #       读它作为 baseline，与本次失败集合 diff，新增红 = 0 即绿。
@@ -10,11 +9,30 @@
 # 字段（制表符分隔，机器可解析；# 开头为注释）：
 #   E编号 \t 文件名 \t 类别 \t flaky(0/1) \t 现象/说明
 # =============================================================================
-E-01	test_事件循环.light	事件循环	0	应绿，实际 rc=1（FreeBSD 事件循环差异）
-E-02	test_套接字.light	TCP/UDP 回环	0	应绿，实际 rc=1（真实套接字回环）
-E-03	test_套接字事件循环.light	socket+事件循环	0	应绿，实际 rc=1
-E-04	test_异步PTY.light	PTY	0	应绿，实际 rc=1（FreeBSD PTY 计时/能力）
-E-05	test_异步子进程.light	subprocess	0	应绿，实际 rc=1（异步子进程）
-E-06	test_进程树接线.light	沙箱超时	0	断言失败: 沙箱秒数上限触发超时 实际=False 期望=True
-E-07	test_lambda_e2e.light	e2e（网络/通道）	0	AssertionError（e2e 网络/通道）
-E-08	test_R70_交叉验证.light	flaky	1	隔离复跑恒绿；项目记忆已列「隔离复跑恒绿」
+#
+# ── R86 销账记录（2026-09-22）─────────────────────────────────────────────
+# R86-B 套接字平台修复（socketpair 平台映射 + SO_REUSEADDR 开关语义 + IPPROTO_TCP
+# 级别修正）在 POSIX 生效后，原 8 条环境红中 7 条（E-01 事件循环 / E-02 套接字 /
+# E-03 套接字事件循环 / E-04 异步PTY / E-05 异步子进程 / E-07 lambda_e2e /
+# E-08 R70交叉验证）随 B 路修复销账；E-06（进程树接线-沙箱超时）随 R86-D rlimits
+# 沙箱兜底修复销账。
+# 坐实依据：0.82 FreeBSD 15.1-STABLE 全量复跑（HEAD f151503，2026-09-22，
+#   `pytest tests/` 串行，537.86s）= 1372 passed / 0 failed / 0 errors / 3 skipped，
+#   junitxml 无任何 failure/error；台账 8 条全部转绿。
+# 台账现为空（销账后不再容忍 FreeBSD 环境红；若未来复现将判为新增红，需人工处置）。
+#
+# ── 归档（R81 建立时原 8 条，2026-09-21，已全部销账）──────────────────────
+# E-01	test_事件循环.light	事件循环	0	应绿，实际 rc=1（FreeBSD 事件循环差异）
+# E-02	test_套接字.light	TCP/UDP 回环	0	应绿，实际 rc=1（真实套接字回环）
+# E-03	test_套接字事件循环.light	socket+事件循环	0	应绿，实际 rc=1
+# E-04	test_异步PTY.light	PTY	0	应绿，实际 rc=1（FreeBSD PTY 计时/能力）
+# E-05	test_异步子进程.light	subprocess	0	应绿，实际 rc=1（异步子进程）
+# E-06	test_进程树接线.light	沙箱超时	0	断言失败: 沙箱秒数上限触发超时 实际=False 期望=True
+# E-07	test_lambda_e2e.light	e2e（网络/通道）	0	AssertionError（e2e 网络/通道）
+# E-08	test_R70_交叉验证.light	flaky	1	隔离复跑恒绿；项目记忆已列「隔离复跑恒绿」
+#
+# ── 台账外全量偶发记录（非登记，仅备注，复跑恒绿）────────────────────────
+# test_终端PTY.light：0.82 全量偶发红（R86 复跑绿，单跑恒绿）——全量负载下 PTY
+#   计时 flaky，隔离复跑恒绿；销账后若复现将判为新增红，按 flaky 处置。
+# test_R21_词法确定性_超集.py：0.82 全量偶发 ERROR（git archive 子进程，
+#   FileNotFoundError），单跑恒绿、复跑全绿——并行/负载下 git 子进程偶发。

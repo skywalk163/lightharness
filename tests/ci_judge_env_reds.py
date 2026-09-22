@@ -166,13 +166,30 @@ def cmd_judge(args):
 
 
 def cmd_self_check(args):
-    """对 R80-B/S/C 父提交失败集重放，证明新增红恒为 0（可复现）。"""
+    """对 R80-B/S/C 父提交失败集重放，证明新增红恒为 0（可复现）。
+
+    R86 销账后台账可为空（全部环境红已修）：此时跳过历史场景重放，
+    仍以反向演示证明判据非 no-op。
+    """
     ledger_files, meta = load_ledger(args.ledger)
-    if not ledger_files:
-        print(f"[错误] 台账为空或无内容: {args.ledger}", file=sys.stderr)
-        return 2
     print("[self-check] 对 R80-B/S/C 父提交失败集重放环境红判据")
     print(f"  台账条目数: {len(ledger_files)}")
+    if not ledger_files:
+        print("  [INFO] 台账为空（R86 已全部销账，不再容忍 FreeBSD 环境红）")
+        print("  [INFO] 跳过 R80-B/S/C 历史场景重放（历史 8 条已归档于台账注释）")
+        all_ok = True
+        # 反向演示：空台账下注入 1 条失败必须被识别为新增红（证明不是 no-op）。
+        synthetic = ["test_合成新回归.light"]
+        demo = judge(synthetic, ledger_files)
+        if demo["counts"]["new"] == 1 and "test_合成新回归.light" in demo["new_reds"]:
+            print(f"  [PASS] 反向演示: 注入 1 条新回归 → 正确识别新增红 {demo['counts']['new']} 条")
+        else:
+            print(f"  [FAIL] 反向演示: 应识别 1 条新增红，实际 {demo['counts']['new']}", file=sys.stderr)
+            all_ok = False
+        print("=" * 60)
+        print(f"[self-check] 结论: {'全部通过（新增红恒为 0）' if all_ok else '存在失败'}")
+        print("=" * 60)
+        return 0 if all_ok else 1
 
     # R80-B（S 前父提交 1f74413）、R80-S（9fcf9c4）、R80-C（迁移后）
     # 失败集合均 = 台账 8 条（R80/R81 实测 8/8 完全相同）。
