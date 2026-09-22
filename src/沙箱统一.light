@@ -10,8 +10,10 @@
 # 安全原则：
 #   - fail-closed：无可用后端时抛出 沙箱不可用错误，绝不降级到无沙箱
 #   - danger-full-access 是唯一显式逃生口（需策略中明确指定，不自动降级）
-#   - 未完全实现的后端（bwrap/landlock/seatbelt/windows-acl）返回 已实现=假，
-#     调用 运行() 时抛出错误（fail-closed）。仅 freebsd-jail 有完整约束实现。
+#   - 已实现约束的后端：freebsd-jail（完整 jail）+ landlock/rlimits（R86 方案 b：
+#     无特权兜底，资源限制 RLIMIT_CPU/AS/NOFILE + 无网络模拟，强度 partial，对齐 landlock 档位）
+#   - 未完全实现的后端（bwrap/seatbelt/windows-acl）返回 已实现=假，
+#     调用 运行() 时抛出错误（fail-closed）。
 #
 # 失败分类（对齐上游 diagnostics.ts classifyRunnerFailure）：
 #   - "success"：退出码 0
@@ -19,6 +21,7 @@
 #   - "runner_failure"：沙箱运行器失败（命令未执行，如 setuid 二进制报错）
 #   - "denial"：内核/沙箱拒绝（退出码非 0 + stderr 含拒绝签名）
 
+导入 sys
 从 沙箱策略 导入 规范策略, 危险全访问, 是有效模式
 从 沙箱探测 导入 探测可用后端, 沙箱不可用错误
 从 沙箱_freebsd 导入 约束命令, 运行时失败分类, 匹配拒绝签名
@@ -26,7 +29,27 @@
 从 进程树 导入 进程树
 
 # 已完全实现约束的后端集合（其余后端仅探测，不执行）
-设 已实现后端 为 ["freebsd-jail"]
+#   freebsd-jail：完整 jail（full）；landlock/rlimits：R86 方案 b 无特权兜底（partial）
+设 已实现后端 为 ["freebsd-jail", "landlock", "rlimits"]
+
+# R86 方案 b：partial 档位（landlock/rlimits）的约束命令包装代码（纯 ASCII Python，
+# 由 进程树 以 [sys.executable, "-c", 包装代码, "--", 命令...] 启动）：
+#   1) 从 "--" 分隔符后取出原命令
+#   2) setrlimit RLIMIT_CPU/AS/NOFILE（资源限制继承给 exec 后的命令）
+#   3) os.execvp 替换为原命令（execvp 走 PATH 查找，保留 rlimit）
+# 包装失败（resource 不可用/setrlimit 被拒/命令找不到）打印 "rlimits-wrapper: " 前缀
+# 并退出 125，作为运行器失败信号（对齐 freebsd-jail 的 125 + dsh-jail-run 约定）。
+设 rlimits包装代码 为 """import os, resource, sys
+try:
+    i = sys.argv.index('--')
+    cmd = sys.argv[i+1:]
+    resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
+    resource.setrlimit(resource.RLIMIT_AS, (536870912, 536870912))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (256, 256))
+    os.execvp(cmd[0], cmd)
+except BaseException as e:
+    sys.stderr.write('rlimits-wrapper: ' + repr(e) + chr(10))
+    sys.exit(125)"""
 
 # ---------- 约束 ----------
 # 约束(命令数组, 策略) → {后端, 执行强度, argv, 策略, 已实现, 拒绝签名表, 运行器失败规则, 无网络}
@@ -37,6 +60,7 @@
 #   3. 探测可用后端（沙箱探测.探测可用后端）
 #   4. 按后端构造约束 argv：
 #      - freebsd-jail：委托 沙箱_freebsd.约束命令
+#      - landlock/rlimits：R86 方案 b，包装 argv（资源限制 + 无网络模拟，已实现=真）
 #      - 其他：返回 已实现=假（fail-closed，运行时抛错）
 段落 约束(命令数组, 策略):
   # 1. 规范策略
@@ -56,8 +80,17 @@
     设 约束结果 为 约束命令(命令数组, 规范后)
     返回 ["后端": 后端, "执行强度": 执行强度, "argv": 约束结果["argv"], "策略": 规范后, "已实现": 真, "是逃生口": 假, "拒绝签名表": 约束结果["拒绝签名表"], "运行器失败规则": 约束结果["运行器失败规则"], "无网络": 约束结果["无网络"]]
 
+  # R86 方案 b：landlock/rlimits（partial 档位）——无特权兜底实现：
+  #   包装 argv 携带资源限制代码，由包装进程 setrlimit 后 exec 原命令（命令继承限制）。
+  #   无网络模拟：约束语义声明 无网络=真（对齐 landlock 档位；纯逻辑层不切 netns）。
+  如果 后端 == "landlock" 或 后端 == "rlimits":
+    设 包装argv 为 [sys.executable, "-c", rlimits包装代码, "--"]
+    遍历 段 之 命令数组:
+      包装argv.追加(段)
+    返回 ["后端": 后端, "执行强度": 执行强度, "argv": 包装argv, "策略": 规范后, "已实现": 真, "是逃生口": 假, "拒绝签名表": [], "运行器失败规则": [["允许退出码": [125], "致命签名": ["rlimits-wrapper: "]]], "无网络": 真]
+
   # 其他后端：已探测但未完全实现约束（fail-closed）
-  返回 ["后端": 后端, "执行强度": 执行强度, "argv": 空, "策略": 规范后, "已实现": 假, "是逃生口": 假, "拒绝签名表": [], "运行器失败规则": [], "无网络": 假, "未实现原因": "后端 " + 后端 + " 已探测但约束实现尚未完成（仅 freebsd-jail 有完整实现）"]
+  返回 ["后端": 后端, "执行强度": 执行强度, "argv": 空, "策略": 规范后, "已实现": 假, "是逃生口": 假, "拒绝签名表": [], "运行器失败规则": [], "无网络": 假, "未实现原因": "后端 " + 后端 + " 已探测但约束实现尚未完成（完整实现仅限 freebsd-jail / landlock / rlimits）"]
 
 # ---------- 运行 ----------
 # 运行(命令数组, 策略, 超时毫秒) → {执行结果, 分类, 详情, 约束}

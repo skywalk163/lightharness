@@ -5,7 +5,7 @@
 # SANDBOX_UNAVAILABLE，绝不降级到无沙箱运行。danger-full-access 是显式逃生口。
 #
 # 平台链：
-#   Linux：bwrap → landlock（功能探测，第一个可用即选）
+#   Linux：bwrap → landlock → rlimits（顺序探测，第一个可用即选；rlimits 为无特权兜底）
 #   FreeBSD：freebsd-jail（唯一候选，探测 dsh-jail-run 二进制存在性）
 #   macOS：seatbelt（sandbox-exec 探测）
 #   Windows：windows-acl（唯一候选，受限 token runner，Windows 上恒可用）
@@ -13,13 +13,14 @@
 # 探测口径（纯逻辑，不实际启动沙箱）：
 #   - bwrap：可执行文件存在（/usr/bin/bwrap 或 PATH 中 bwrap）
 #   - landlock：内核 LSM 包含 landlock（/sys/kernel/security/lsm）
+#   - rlimits：resource 模块可用 + setrlimit 试设回读（纯 Python 无特权兜底，强度 partial）
 #   - freebsd-jail：dsh-jail-run setuid 二进制存在（委托 沙箱_freebsd.探测jail可用）
 #   - seatbelt：/usr/bin/sandbox-exec 存在
 #   - windows-acl：Windows 平台恒可用（不依赖外部二进制）
 #
 # 使用：
 #   设 结果 为 探测可用后端()
-#   结果["后端"]  # "bwrap" / "landlock" / "freebsd-jail" / "seatbelt" / "windows-acl"
+#   结果["后端"]  # "bwrap" / "landlock" / "rlimits" / "freebsd-jail" / "seatbelt" / "windows-acl"
 #   结果["执行强度"]  # "full" / "partial"
 #   结果["探测结果"]  # 各候选的探测详情列表
 
@@ -29,10 +30,10 @@
 从 沙箱_freebsd 导入 探测jail可用, 解析jail二进制
 
 # 后端执行强度（对齐上游 STATIC_ENFORCEMENT）
-设 强度表 为 ["bwrap": "full", "landlock": "partial", "freebsd-jail": "full", "seatbelt": "full", "windows-acl": "partial"]
+设 强度表 为 ["bwrap": "full", "landlock": "partial", "rlimits": "partial", "freebsd-jail": "full", "seatbelt": "full", "windows-acl": "partial"]
 
 # 平台链定义（按探测优先级排序）
-设 平台链 为 ["linux": ["bwrap", "landlock"], "freebsd": ["freebsd-jail"], "darwin": ["seatbelt"], "win32": ["windows-acl"]]
+设 平台链 为 ["linux": ["bwrap", "landlock", "rlimits"], "freebsd": ["freebsd-jail"], "darwin": ["seatbelt"], "win32": ["windows-acl"]]
 
 # SANDBOX_UNAVAILABLE 错误类
 类 沙箱不可用错误 继承 Exception:
@@ -64,8 +65,8 @@
     设 内容 为 句柄.read()
     句柄.close()
     如果 内容.包含("landlock"):
-      返回 ["可用": 真, "详情": "内核 LSM 包含 landlock: " + 内容.截取(0, 100)]
-    返回 ["可用": 假, "详情": "内核 LSM 不含 landlock: " + 内容.截取(0, 100)]
+      返回 ["可用": 真, "详情": "内核 LSM 包含 landlock: " + 内容[0:100]]
+    返回 ["可用": 假, "详情": "内核 LSM 不含 landlock: " + 内容[0:100]]
   捕获 错误:
     返回 ["可用": 假, "详情": "读取 LSM 失败: " + 转字符串(错误)]
 
@@ -88,8 +89,26 @@
 段落 探测windows_acl:
   返回 ["可用": 真, "详情": "windows-acl 为 Windows 内置机制（受限 token runner）"]
 
+# 探测 rlimits（R86 方案 b：无特权兜底后端，对齐 landlock 档位，强度 partial）：
+#   resource 模块可用 + setrlimit 试设回读（无副作用：读 RLIMIT_NOFILE 原值并设回原值）。
+#   Windows 无 resource 模块 → 函数内 try-import 捕获后返回 不可用（fail-closed 由链决定）。
+段落 探测rlimits:
+  尝试:
+    导入 resource
+  捕获 错误:
+    返回 ["可用": 假, "详情": "rlimits 无特权兜底: resource 模块不可用: " + 转字符串(错误)]
+  尝试:
+    设 原限制 为 resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, 原限制)
+    设 回读 为 resource.getrlimit(resource.RLIMIT_NOFILE)
+    如果 回读 == 原限制:
+      返回 ["可用": 真, "详情": "rlimits 无特权兜底: resource 可用，setrlimit 试设回读成功（RLIMIT_NOFILE=" + 转字符串(原限制) + "）"]
+    返回 ["可用": 真, "详情": "rlimits 无特权兜底: resource 可用（RLIMIT_NOFILE=" + 转字符串(回读) + "）"]
+  捕获 错误:
+    返回 ["可用": 假, "详情": "rlimits 无特权兜底: setrlimit 试设失败: " + 转字符串(错误)]
+
 # 后端探测函数映射
-设 探测函数表 为 ["bwrap": 探测bwrap, "landlock": 探测landlock, "freebsd-jail": 探测freebsd_jail, "seatbelt": 探测seatbelt, "windows-acl": 探测windows_acl]
+设 探测函数表 为 ["bwrap": 探测bwrap, "landlock": 探测landlock, "rlimits": 探测rlimits, "freebsd-jail": 探测freebsd_jail, "seatbelt": 探测seatbelt, "windows-acl": 探测windows_acl]
 
 # ---------- 平台识别 ----------
 段落 当前平台:

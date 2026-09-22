@@ -4,7 +4,7 @@
 # 运行：cd lightharness && python 运行.py examples/test_沙箱探测.light
 
 从 沙箱探测 导入 探测可用后端, 有可用后端, 当前平台, 沙箱不可用错误
-从 沙箱探测 导入 探测bwrap, 探测landlock, 探测freebsd_jail, 探测seatbelt, 探测windows_acl
+从 沙箱探测 导入 探测bwrap, 探测landlock, 探测rlimits, 探测freebsd_jail, 探测seatbelt, 探测windows_acl
 导入 sys
 
 段落 断言真(条件, 标签):
@@ -43,6 +43,11 @@
   断言真("可用" 在 r_landlock, "landlock 探测结果含 可用 字段")
   断言真("详情" 在 r_landlock, "landlock 探测结果含 详情 字段")
 
+  设 r_rlimits 为 探测rlimits()
+  断言真("可用" 在 r_rlimits, "rlimits 探测结果含 可用 字段")
+  断言真("详情" 在 r_rlimits, "rlimits 探测结果含 详情 字段")
+  断言包含(r_rlimits["详情"], "rlimits", "rlimits 详情明确标明后端名（可追溯）")
+
   设 r_jail 为 探测freebsd_jail()
   断言真("可用" 在 r_jail, "freebsd-jail 探测结果含 可用 字段")
   断言真("详情" 在 r_jail, "freebsd-jail 探测结果含 详情 字段")
@@ -67,7 +72,7 @@
   打印("选中后端: " + 后端名 + " (执行强度=" + 结果["执行强度"] + ")")
 
   # 选中的后端应在该平台的候选链中
-  设 平台候选 为 ["linux": ["bwrap", "landlock"], "freebsd": ["freebsd-jail"], "darwin": ["seatbelt"], "win32": ["windows-acl"]]
+  设 平台候选 为 ["linux": ["bwrap", "landlock", "rlimits"], "freebsd": ["freebsd-jail"], "darwin": ["seatbelt"], "win32": ["windows-acl"]]
   设 候选们 为 平台候选[平台]
   设 后端在链 为 假
   遍历 候选 之 候选们:
@@ -94,8 +99,11 @@
   如果 平台 == "darwin":
     断言相等(候选们[0], "seatbelt", "macOS 候选链首项为 seatbelt")
   如果 平台 == "linux":
-    # Linux 上 bwrap 优先级高于 landlock
+    # Linux 上 bwrap 优先级高于 landlock，rlimits 为最终兜底
     断言相等(候选们[0], "bwrap", "Linux 候选链首项为 bwrap")
     断言相等(候选们[1], "landlock", "Linux 候选链第二项为 landlock")
+    断言相等(候选们[2], "rlimits", "Linux 候选链第三项为 rlimits")
+    # 本机实测（R86 方案 b）：若 bwrap/landlock 均不可用，rlimits 必须可兜底
+    断言相等(r_rlimits["可用"], 真, "Linux 上探测rlimits 应可用（resource 模块）")
 
   打印("test_沙箱探测 全部断言通过（5 组 / 平台识别+各后端探测+主入口+有可用后端+平台特定）")
