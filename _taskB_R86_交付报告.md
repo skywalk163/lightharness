@@ -136,7 +136,11 @@ socketpair 地址族支持面：
      - §8 `:180`「遗留（R66 模块 FreeBSD 适配）… 修复后重跑 `freebsd/远程回归.sh` 预期 13/13 全绿」→ 本轮两项均已处置，**待 0.82 复跑坐实 13/13**。
      - §2.1 `:216`（socketpair 条目）与 `:217`（`test_套接字` setsockopt EACCES 条目）→ 填「R86 已修 + 根因」（后者根因是 **level 用错**，不是 0.86 环境限制）。
    - `docs/功能对标/行为差异清单.md:886`「事件循环 的跨线程唤醒通道用 新建套接字对(AF_INET) 而非 pipe」→ 应改为「用**平台默认族**套接字对（win32=AF_INET / POSIX=AF_UNIX），R86 起由 stdlib 收口」。
-2. **FreeBSD（0.82）未跑**：本轮改动对 FreeBSD 同样是「POSIX 分支」（socketpair→AF_UNIX），且顺手把 `SO_REUSEADDR` 读回断言改成不钉死数值（FreeBSD 返回 4），预期 0.82 的 R68 遗留红也会转绿；建议 M 路的三平台复跑带上。
+2. **FreeBSD（0.82）未跑，但预期连带销账**：本轮改动在 POSIX 分支上生效（socketpair→AF_UNIX），且顺手把 `SO_REUSEADDR` 读回断言改成不钉死数值（FreeBSD 返回 4）。
+   ⚠️ **由此推出：`tests/ci_environment_reds.txt` 的 8 条「FreeBSD 固有红」中预计有 7 条要销账**——
+   `事件循环` / `套接字` / `套接字事件循环` / `异步PTY` / `异步子进程` / `lambda_e2e`（R68 已实测其根因同为 `socketpair(AF_INET)` EOPNOTSUPP）以及 `test_R70_交叉验证`（flaky）；
+   它们**本来就不是「环境红」，而是同一个平台移植缺陷**，只有 `进程树接线(沙箱超时)` 是独立的环境约束。
+   建议：0.82 复跑后按实测缩减台账，并同步 `tests/ci_judge_env_reds.py` 的自检预期（该自检若假设「台账各条在 FreeBSD 必红」，缩减后可能假红）。台账属 CI 面，**本轮未动**。
 3. `reports/R85_lh基线_latest.json` 被本路 test-lh 覆盖为「B 改动 + A 在途」的中间态（未提交）；M 路收口时会重新生成，无需回填。
 4. 本轮临时脚本（均在**仓库根**，不进版本库）：`_r86b_probe086.py`（0.86 环境探针）、`_r86b_patch.py`（带哨兵的幂等补丁）、`_r86b_remote.py`（0.86 单例快跑）、`_r86b_antirun.py`（反跑判据）、`_r86b_diff.py`（双平台对账）、`_r86b_probe.light`（能力探针）。
 
@@ -144,7 +148,10 @@ socketpair 地址族支持面：
 
 ## 6. 提交与证据
 
-- 提交：`db164c2 R86-B: 套接字平台适配 — socketpair 族平台映射 + TCP 选项级别修正（0.86 7 红清零）`（只含 4 个源码文件 + 本报告 + 证据 JSON，未 push）
+- 提交：
+  - `db164c2 R86-B: 套接字平台适配 — socketpair 族平台映射 + TCP 选项级别修正（0.86 7 红清零）`（4 个源码文件 + 0.86 证据 JSON）
+  - `aace7fa R86-B 交付报告 + Windows 门禁证据入库`（本报告 + Windows 证据 JSON）
+  - 均**未 push**（M 路统一推 origin / myrepo / github）
 - 证据：
   - `reports/R86_B_0.86_LH基线.json`（0.86 全量 1362/7/6 口径，含失败清单）
   - `reports/R86_B_Windows_LH基线.json`（Windows 全量 1371/0/4）
