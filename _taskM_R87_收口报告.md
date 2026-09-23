@@ -16,7 +16,7 @@
 | 三平台 LM 门禁 | Windows 47 / FreeBSD 1 / Linux 0 失败，**全部为存量环境约束，自比新增红 0**（§5.2） |
 | F 两脚本真机验收 | `freebsd/初始化.sh` jail e2e **5/5**；`ensure_venv` 删库重建后 LM 全量 **0 failed**（§6） |
 | ⚠️ 重大修正 | R86「8 条环境红全部销账」证据无效，M 复核回补 3 条（§7） |
-| 远端同步 | lightharness 三远端（gitcode/myrepo/github）推送至 `52a596f`；light-merge 四远端已在 `3b09301e` 无需推送（§9） |
+| 远端同步 | lightharness 三远端（gitcode/myrepo/github）推送至 `726df68`；light-merge 四远端已在 `3b09301e` 无需推送（§9.1） |
 
 > `light-merge` 本轮**零改动**（HEAD 仍为 `3b09301e`），故 LM 基线相对 R86 不含任何 R87 引入的变化。
 
@@ -38,8 +38,8 @@ M 路自身提交（**只写 docs / 报告 / 台账，不动 `src/` 逻辑**）�
 
 | commit | 内容 |
 |---|---|
-| `TBD-M1` | A/E 路根目录交付物归档入仓（`_taskA_R87_上游0.1.7增量清单.md`、`_taskE_R87_flaky根治报告.md`、`docs/R87_任务分发书…`、`docs/R87_agent任务分发_prompts.md`） |
-| `TBD-M2` | `tests/ci_environment_reds.txt` 环境红台账修正（回补 E-01/E-02/E-06）+ `docs/多平台差异清单.md` R87 增量回填 + `_taskM_R87_收口报告.md` |
+| `90840fc` | A/E 路根目录交付物归档入仓（`_taskA_R87_上游0.1.7增量清单.md`、`_taskE_R87_flaky根治报告.md`、`docs/R87_任务分发书…`、`docs/R87_agent任务分发_prompts.md`） |
+| `726df68` | `tests/ci_environment_reds.txt` 环境红台账修正（回补 E-01/E-02/E-06）+ `docs/多平台差异清单.md` R87 增量回填 + 三平台门禁数字入库 `reports/` + `_taskM_R87_收口报告.md`（§9.1 push 回执为事后回填，位于本提交之后） |
 
 > **归档说明**：A 路（增量清单）与 E 路（flaky 报告）原落点在工作区根 `G:\dswork\duan-light-merge\`，该目录**不是 git 仓库**，等于未合流。M 已将其纳入 `lightharness` 版本控制，避免轮次交付物丢失。
 
@@ -180,16 +180,17 @@ junit 中 `test_example_exit_code[test_事件循环.light / test_套接字.light
 
 ## 9. 远端同步与遗留
 
-### 9.1 push 结果
+### 9.1 push 结果（`git ls-remote <r> refs/heads/main` 复核）
 
-| 仓库 | 远端 | 目标 | 状态 |
-|---|---|---|---|
-| lightharness | `origin`（gitcode） | `52a596f` | ⏳ |
-| lightharness | `myrepo`（内网 gitea 192.168.1.5:3000） | `52a596f` | ⏳（收口前 `ac4be9de`） |
-| lightharness | `github` | `52a596f` | ⏳（收口前 `ac4be9de`） |
-| light-merge | `gitcode` / `gitea` / `github` / `origin`(本地镜像 `g:\github\light`) | `3b09301e` | ✅ 四远端均已同步，**本轮无需 push** |
+| 仓库 | 远端 | 推送前 | 推送后（已复核） | 结果 |
+|---|---|---|---|---|
+| lightharness | `origin`（gitcode） | `ac4be9de` | **`726df68`** | ✅ `ac4be9d..726df68  main -> main` |
+| lightharness | `myrepo`（内网 gitea 192.168.1.5:3000） | `ac4be9de` | **`726df68`** | ✅ `ac4be9d..726df68  main -> main` |
+| lightharness | `github` | `ac4be9de` | **`726df68`** | ✅ `ac4be9d..726df68  main -> main` |
+| light-merge | `gitcode` / `gitea` / `github` / `origin`（本地镜像 `g:\github\light`） | `3b09301e` | **`3b09301e`** | ✅ 四远端本已在位，**本轮无需 push** |
 
-push 前已核对 `git status`（无意外改动）与 `git ls-remote <r> refs/heads/main`（确认远端当前 sha，避免误覆盖）。
+> 三远端 ref 已逐一 `ls-remote` 复核，全部指向同一 commit；light-merge 四远端亦逐一复核，均为 `3b09301e`。
+> R87 全线只改 `lightharness`，`light-merge` 零改动，故其远端无需变更。
 
 ### 9.2 遗留（移交 R88，不在本轮 scope）
 
