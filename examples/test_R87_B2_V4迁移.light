@@ -1,0 +1,172 @@
+# test_R87_B2_V4迁移.light —— R87 任务 B2：0.1.7 session-format-v3-to-v4 纯逻辑判据
+#
+# 上游锚点 877717787c（新包 packages/session/session-format-v3-to-v4）：
+#   tool-role.ts      liftToolResult / assertV4ToolResultMessage
+#   sources.ts        rewriteV3MessageSource / rewritePluginSource / producerKind
+#   retired-syntax.ts assertV4RetiredSyntax
+#   validation.ts:26-53 assertReleasedV4Header
+#   migration.ts:17-32 sessionFormatV3ToV4.migrateHeader
+# 判据锚点：packages/session/session-format-v3-to-v4/tests/*.spec.ts
+#   （tool-role / sources / retired-syntax / migration 形状断言）
+
+从 会话格式V4迁移 导入 端校验V4头, 提升工具结果, 校验V4工具结果, 重写消息来源, 端生产者词, 校验V4退役语法, 迁移头V3V4, 端是绝对路径
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 对拍报错(函数值, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    函数值()
+  捕获 e:
+    设 已抛 为 真
+    设 文本 为 转字符串(e)
+    如果 文本.包含(片段) == 假:
+      抛出 新建 错误("错误片段不符: " + 标签 + " 实际=" + 文本)
+  如果 已抛 == 假:
+    抛出 新建 错误("未抛出: " + 标签)
+
+# ---- 夹具：released V3 wrapper tool/result 行 ----
+段落 造V3工具结果行:
+  设 消息 为 ["id": "m1", "role": "user",
+    "source": ["kind": "tool", "callId": "c1"],
+    "content": [["type": "tool-result", "toolCallId": "c1", "isError": 真,
+      "content": [["type": "text", "text": "失败详情"]]]]]
+  返回 ["类型": "tool/result", "序号": 7, "时间": 500, "数据": ["turn": 1, "step": 1, "消息": 消息]]
+
+段落 提升桩V3:
+  提升工具结果(造坏包装行())
+
+段落 校验桩V4:
+  校验V4工具结果(造坏V4行())
+
+段落 来源桩:
+  重写消息来源(["kind": "plugin"], 3, "system")
+
+段落 头桩:
+  迁移头V3V4(["版本": ["主": 2, "次": 0]])
+
+# 非法 V3：wrapper toolCallId 与 tool 源不匹配
+段落 造坏包装行:
+  设 消息 为 ["id": "m2", "role": "user",
+    "source": ["kind": "tool", "callId": "c1"],
+    "content": [["type": "tool-result", "toolCallId": "cX", "isError": 假, "content": []]]]
+  返回 ["类型": "tool/result", "序号": 1, "时间": 100, "数据": ["消息": 消息]]
+
+# 非法 V4：非 tool 角色
+段落 造坏V4行:
+  设 消息 为 ["id": "m3", "role": "user", "toolCallId": "c1",
+    "source": ["kind": "tool", "callId": "c1"], "content": []]
+  返回 ["类型": "tool/result", "序号": 2, "时间": 200, "数据": ["消息": 消息]]
+
+段落 主:
+  # H1 V4 头校验：合法头通过；缺必选/未知键/坏 origin/坏 isSeeded 拒绝
+  对拍相等(端校验V4头(["版本": ["主": 4, "次": 0], "id": "s1", "createdAt": 1000,
+    "isSeeded": 假, "delegationDepth": 0]), 真, "合法 V4 头")
+  对拍报错(段落坏头缺键, "lacks required field", "缺必选键")
+  对拍报错(段落坏头多键, "unexpected field", "未知键拒绝")
+  对拍报错(段落坏头origin, "origin must be", "origin 只许 subagent")
+
+  # H2 cwd 绝对路径近似（偏离 D-2）
+  对拍相等(端是绝对路径("C:\\work\\a"), 真, "Windows 盘符绝对")
+  对拍相等(端是绝对路径("/usr/local"), 真, "POSIX 绝对")
+  对拍相等(端是绝对路径("work/a"), 假, "相对路径拒绝")
+
+  # T1 liftToolResult：wrapper → 一等 tool role（isError 上移、内容搬移）
+  设 行 为 提升工具结果(造V3工具结果行())
+  设 消息 为 行["数据"]["消息"]
+  对拍相等(消息["role"], "tool", "V4 tool role")
+  对拍相等(消息["toolCallId"], "c1", "toolCallId 上移")
+  对拍相等(消息["isError"], 真, "isError 上移")
+  对拍相等(消息["id"], "m1", "消息标识保留")
+  对拍相等(消息["content"][0]["type"], "text", "wrapper 拆除后内容直通")
+  对拍相等(消息["source"], ["kind": "tool", "callId": "c1"], "tool 源保留")
+
+  # T2 非法 wrapper：toolCallId 不匹配 → 显式拒绝
+  对拍报错(提升桩V3, "requires exactly one tool-result wrapper", "坏包装拒绝")
+
+  # T3 嵌套 tool-result → unsupported
+  设 嵌套行 为 ["类型": "tool/result", "序号": 9, "时间": 1, "数据": ["消息": ["id": "m9",
+    "role": "user", "source": ["kind": "tool", "callId": "c9"],
+    "content": [["type": "tool-result", "toolCallId": "c9", "isError": 假,
+      "content": [["type": "tool-result", "toolCallId": "c8", "isError": 假, "content": []]]]]]]]
+  对拍报错(段落嵌套桩, "nested tool-result", "嵌套 wrapper 拒绝")
+
+  # T4 assertV4ToolResultMessage：V4 形状放行；非 tool 角色拒绝；error 元数据矛盾拒绝
+  对拍相等(校验V4工具结果(行), 真, "V4 一等 tool result 放行")
+  对拍报错(校验桩V4, "requires a tool-role message", "非 tool 角色拒绝")
+  设 矛盾行 为 ["类型": "tool/result", "序号": 3, "时间": 1, "数据": ["消息": ["id": "m4",
+    "role": "tool", "toolCallId": "c2", "source": ["kind": "tool", "callId": "c2"],
+    "isError": 假, "content": []], "错误": ["名称": "E", "代码": "X"]]]
+  对拍报错(段落矛盾桩, "carries error metadata", "error 元数据与 isError=假 矛盾")
+
+  # S1 来源改写：plugin → 生产者自有 kind
+  对拍相等(重写消息来源(["kind": "plugin", "plugin": "compact"], 1, "user"),
+    ["kind": "compact-checkpoint"], "compact → compact-checkpoint")
+  对拍相等(重写消息来源(["kind": "plugin", "plugin": "tools-ptc"], 1, "user"),
+    ["kind": "ptc-mode"], "tools-ptc → ptc-mode")
+  对拍相等(重写消息来源(["kind": "plugin", "plugin": "@deepseek-ai/dsh-system-prompt"], 1, "system"),
+    ["kind": "system-prompt"], "系统提示 → system-prompt")
+  对拍相等(重写消息来源(["kind": "plugin", "plugin": "schedule"], 1, "user"),
+    ["kind": "schedule"], "同名生产者保留")
+  对拍相等(重写消息来源(["kind": "plugin", "plugin": "未知插件"], 1, "user"),
+    ["kind": "plugin:未知插件"], "未知插件加前缀")
+  对拍相等(重写消息来源(["kind": "model", "provider": "d", "model": "m"], 1, "assistant"),
+    ["kind": "model", "provider": "d", "model": "m"], "直连 kind 保留")
+
+  # S2 plugin 来源缺字符串 → 拒绝
+  对拍报错(来源桩, "plugin requires a string", "plugin 非字符串拒绝")
+
+  # R1 退役语法：tool/code-dispatch 硬拒；header.system 拒绝；内容槽 wrapper 拒绝
+  对拍报错(段落退役桩1, "rejects retired event type", "旧 PTC 事件硬拒")
+  对拍报错(段落退役桩2, "rejects retired header.system", "旧 header.system 拒绝")
+  对拍报错(段落退役桩3, "must not contain a released tool-result wrapper", "用户内容槽 wrapper 拒绝")
+  对拍相等(校验V4退役语法(["type": "user/message", "seq": 1, "data": ["content": [["type": "text", "text": "ok"]]]]), 真, "干净内容放行")
+  # 流块端：block-start 直接 tool-result → 硬拒
+  对拍报错(段落退役桩4, "must not contain a released tool-result wrapper", "流 block-start wrapper 拒绝")
+
+  # M1 头迁移：V3 → V4；非 V3 拒绝
+  设 新头 为 迁移头V3V4(["版本": ["主": 3, "次": 0]])
+  对拍相等(新头["版本"], ["主": 4, "次": 0], "V3→V4 版本推进")
+  对拍报错(头桩, "expected format v3 header", "非 V3 头拒绝")
+
+  打印 "--- R87 B2 V4 迁移判据通过 ---"
+
+段落 段落坏头缺键:
+  端校验V4头(["版本": ["主": 4, "次": 0], "id": "s1", "createdAt": 1000, "isSeeded": 假])
+
+段落 段落坏头多键:
+  端校验V4头(["版本": ["主": 4, "次": 0], "id": "s1", "createdAt": 1000, "isSeeded": 假, "delegationDepth": 0, "extra": 1])
+
+段落 段落坏头origin:
+  端校验V4头(["版本": ["主": 4, "次": 0], "id": "s1", "createdAt": 1000, "isSeeded": 假, "delegationDepth": 0, "origin": "fork"])
+
+段落 段落嵌套桩:
+  提升工具结果(嵌套行占位())
+
+段落 嵌套行占位:
+  返回 ["类型": "tool/result", "序号": 9, "时间": 1, "数据": ["消息": ["id": "m9",
+    "role": "user", "source": ["kind": "tool", "callId": "c9"],
+    "content": [["type": "tool-result", "toolCallId": "c9", "isError": 假,
+      "content": [["type": "tool-result", "toolCallId": "c8", "isError": 假, "content": []]]]]]]]
+
+段落 段落矛盾桩:
+  校验V4工具结果(["类型": "tool/result", "序号": 3, "时间": 1, "数据": ["消息": ["id": "m4",
+    "role": "tool", "toolCallId": "c2", "source": ["kind": "tool", "callId": "c2"],
+    "isError": 假, "content": []], "错误": ["名称": "E", "代码": "X"]]])
+
+段落 段落退役桩1:
+  校验V4退役语法(["type": "tool/code-dispatch", "seq": 1, "data": {}])
+
+段落 段落退役桩2:
+  校验V4退役语法(["type": "request/header", "seq": 1, "data": ["header": ["system": "旧"]]])
+
+段落 段落退役桩3:
+  校验V4退役语法(["type": "user/message", "seq": 1, "data": ["content": [["type": "tool-result", "toolCallId": "c", "content": []]]]])
+
+段落 段落退役桩4:
+  校验V4退役语法(["type": "assistant/message", "seq": 1, "data": ["消息": ["id": "m", "role": "assistant", "content": []],
+    "stream": [["type": "chunk", "chunk": ["type": "block-start", "blockType": "tool-result"]]]]])
+
+主()

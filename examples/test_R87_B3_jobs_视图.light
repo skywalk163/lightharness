@@ -1,0 +1,47 @@
+从 任务视图 导入 阶段清单, 流道清单, 造块, 造产出坐标, 造任务视图, 进展优先, 公开快照, 状态行, 渲染模型增量
+从 JSON 导入 序列化JSON
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 主程:
+  断言相等(列表长度(阶段清单), 5, "阶段清单 5 项")
+  断言相等(列表长度(流道清单), 3, "流道清单 3 项")
+  设 坐标 为 造产出坐标(100, 40, ["spill/a.log"])
+  设 视图 为 造任务视图("bash-1", "bash", "跑测试", "running", 1000, 坐标, "s1", 1024, "3/10", 空, 空)
+  断言相等(视图["id"], "bash-1", "视图 id")
+  断言相等(视图["progress"], "3/10", "视图 progress")
+  断言相等(进展优先(视图), "3/10", "运行中进展优先")
+  设 快照 为 公开快照(视图)
+  断言相等(快照["detail"], "3/10", "公开快照旁注=进展")
+  断言相等(字典包含键(快照, "owner"), 假, "公开快照剥 owner")
+  断言相等(字典包含键(快照, "outputLimitBytes"), 假, "公开快照剥 outputLimitBytes")
+  断言相等(字典包含键(快照, "finishedAt"), 假, "未结算无 finishedAt")
+  断言相等(状态行(快照), "[status: running, 3/10]", "状态行带旁注")
+  设 结算视图 为 造任务视图("bash-1", "bash", "跑测试", "completed", 1000, 坐标, 空, 空, 空, "exit 0", 2000)
+  设 结算快照 为 公开快照(结算视图)
+  断言相等(进展优先(结算视图), "exit 0", "结算后详情兜底")
+  断言相等(状态行(结算快照), "[status: completed, exit 0]", "结算状态行")
+  设 简视图 为 造任务视图("bash-2", "bash", "x", "running", 5, 造产出坐标(0, 0))
+  设 简快照 为 公开快照(简视图)
+  断言相等(状态行(简快照), "[status: running]", "无旁注状态行")
+  # renderModelDelta
+  设 块表 为 [造块(0, "out1\n", "stdout"), 造块(6, "logline", "log"), 造块(7, "err1", "stderr")]
+  设 串1 为 渲染模型增量(块表, 假, [])
+  断言相等(串1, "out1\n[stderr]\nerr1", "stdout+stderr 分节")
+  设 块表2 为 [造块(0, "noNewline", "stdout"), 造块(9, "err", "stderr")]
+  设 串2 为 渲染模型增量(块表2, 假, [])
+  断言相等(串2, "noNewline\n[stderr]\nerr", "无换行补分隔")
+  设 串3 为 渲染模型增量([], 假, [])
+  断言相等(串3, "", "空块表空串")
+  设 串4 为 渲染模型增量(块表, 真, ["a.log", "b.log"])
+  断言相等(串4, "out1\n[stderr]\nerr1\n[some output was dropped from memory; full output: a.log, b.log]", "有损带溢出路径")
+  设 串5 为 渲染模型增量(块表, 真, [])
+  断言相等(串5, "out1\n[stderr]\nerr1\n[some output was dropped from memory; full output: (unavailable)]", "有损无路径")
+  设 缺口块 为 [造块(0, "head", "stdout", 真)]
+  设 串6 为 渲染模型增量(缺口块, 假, [])
+  断言相等(串6, "head\n[some output was dropped from memory; full output: (unavailable)]", "前置缺口触发提示")
+  写 "test_R87_B3_jobs_视图: 全部用例通过"
+
+主程()

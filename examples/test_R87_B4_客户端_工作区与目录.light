@@ -1,0 +1,107 @@
+# R87 B4-G3 工作区域状态 + cordis 目录投影 纯逻辑回归
+从 工作区 导入 域初始, 归一域阶段, 造待决变更, 钉会话, 解钉会话, 归档会话, 解归档会话, 造会话活动
+从 toolcordis 导入 绳归类配置条目, 绳列举配置, 绳解析配置查询, 绳配置分页, 绳剥离内置事件, 绳上下文表达式, 绳汇聚声明, 绳查询服务目录, 绳查询事件目录
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 主:
+  # ---- 工作区：域初始 ----
+  设 初 为 域初始()
+  断言相等(初["initialized"], 假, "域初始 initialized")
+  断言相等(初["pinnedSessionIds"], [], "域初始 pinned 空")
+
+  # ---- 归一：老记录缺 archived/pinned 补默认 ----
+  设 老 为 归一域阶段(["initialized": 真, "workspaceIds": ["w1"], "archivedSessionIds": ["s9"]])
+  断言相等(老["initialized"], 真, "归一 保留 initialized")
+  断言相等(老["workspaceIds"], ["w1"], "归一 保留 workspaceIds")
+  断言相等(老["archivedSessionIds"], ["s9"], "归一 保留 archived")
+  断言相等(老["pinnedSessionIds"], [], "归一 补 pinned 默认")
+  断言相等(老["defaultWorkspaceId"], 空, "归一 default 空")
+  设 空态 为 归一域阶段(空)
+  断言相等(空态["pinnedSessionIds"], [], "归一 非字典也补默认")
+
+  # ---- 待决变更 ----
+  设 变更 为 造待决变更("create", "w1")
+  断言相等(变更, ["operation": "create", "workspaceId": "w1"], "待决变更 create")
+
+  # ---- 钉选：最近前置 + 与归档互斥 ----
+  设 态 为 归一域阶段([])
+  钉会话(态, "s1")
+  钉会话(态, "s2")
+  钉会话(态, "s1")
+  断言相等(态["pinnedSessionIds"], ["s1", "s2"], "钉选 最近前置去重")
+  归档会话(态, "s1")
+  断言相等(态["archivedSessionIds"], ["s1"], "归档 入归档集")
+  断言相等(态["pinnedSessionIds"], ["s2"], "归档 丢钉选")
+  解钉会话(态, "s2")
+  断言相等(态["pinnedSessionIds"], [], "解钉 移除")
+  解归档会话(态, "s1")
+  断言相等(态["archivedSessionIds"], [], "解归档 移除")
+  钉会话(态, "s3")
+  断言相等(态["archivedSessionIds"], [], "钉选 互斥移出归档")
+
+  # ---- 会话活动 ----
+  设 活动 为 造会话活动("job", [["id": "j1", "label": "作业一"], ["id": "j2"]])
+  断言相等(活动["kind"], "job", "活动 kind")
+  断言相等(列表长度(活动["items"]), 2, "活动 items 数")
+  断言相等(活动["items"][0]["label"], "作业一", "活动 item label 透传")
+  设 活动裸 为 造会话活动("turn")
+  断言相等(字典包含键(活动裸, "items"), 假, "活动 无项表省略 items")
+
+  # ---- toolcordis：条目归类 ----
+  断言相等(绳归类配置条目(["id": "a", "name": "n", "含组": 真, "含子树": 假, "纤程uid": "u", "已停用": 假, "有配置": 真, "原生配置": 真]), "tree", "归类 tree")
+  断言相等(绳归类配置条目(["id": "a", "name": "n", "含组": 假, "含子树": 假, "纤程uid": 空, "已停用": 假, "有配置": 真, "原生配置": 真]), "inactive", "归类 inactive")
+  断言相等(绳归类配置条目(["id": "a", "name": "n", "含组": 假, "含子树": 假, "纤程uid": "u", "已停用": 假, "有配置": 假, "原生配置": 真]), "absent", "归类 absent")
+  断言相等(绳归类配置条目(["id": "a", "name": "n", "含组": 假, "含子树": 假, "纤程uid": "u", "已停用": 假, "有配置": 真, "原生配置": 假]), "unsupported", "归类 unsupported")
+  断言相等(绳归类配置条目(["id": "a", "name": "n", "含组": 假, "含子树": 假, "纤程uid": "u", "已停用": 假, "有配置": 真, "原生配置": 真]), "schema", "归类 schema")
+
+  # ---- 查询校验 + 分页 ----
+  设 查 为 绳解析配置查询(["offset": 10, "limit": 5])
+  断言相等(查["offset"], 10, "查询 offset")
+  断言相等(查["limit"], 5, "查询 limit")
+  设 查默认 为 绳解析配置查询([])
+  断言相等(查默认["offset"], 0, "查询 offset 默认 0")
+  断言相等(查默认["limit"], 25, "查询 limit 默认 25")
+  设 条目表 为 [
+    ["id": "p:core", "name": "core", "status": "schema"],
+    ["id": "p:extra", "name": "extra", "status": "absent"],
+    ["id": "p:core2", "name": "core", "status": "schema"]
+  ]
+  设 页 为 绳配置分页(条目表, ["entry": 空, "name": "core", "offset": 0, "limit": 1])
+  断言相等(页["total"], 2, "分页 total 过滤")
+  断言相等(列表长度(页["entries"]), 1, "分页 页长")
+  断言相等(页["nextOffset"], 1, "分页 末页前 nextOffset")
+  设 页末 为 绳配置分页(条目表, ["entry": 空, "name": 空, "offset": 2, "limit": 10])
+  断言相等(页末["nextOffset"], 空, "分页 末页 nextOffset 空")
+
+  # ---- 剥内置事件 ----
+  设 事件表 为 [["name": "cordis/added"], ["name": "agent/status"], ["name": "cordis/removed"]]
+  设 宿主事件 为 绳剥离内置事件(事件表)
+  断言相等(列表长度(宿主事件), 1, "剥内置 只留 agent/status")
+  断言相等(宿主事件[0]["name"], "agent/status", "剥内置 保留项")
+
+  # ---- 上下文表达式 ----
+  断言相等(绳上下文表达式("tools"), "ctx.tools", "上下文表达式 合法标识符")
+  断言相等(绳上下文表达式("weird-key"), "ctx[\"weird-key\"]", "上下文表达式 带横杠走方括号")
+
+  # ---- 服务目录投影 ----
+  设 服务表 为 [["key": "tools", "summary": "工具服务", "description": "完整工具服务", "methods": [["signature": "list(): Tool[]", "description": "列工具", "parameters": []]]]]
+  设 类型表 为 [["name": "Tool", "declaration": "decl Tool has a name"]]
+  设 目录 为 绳查询服务目录(空, 服务表, 类型表)
+  断言相等(目录["mode"], "catalog", "服务目录 catalog")
+  断言相等(目录["services"][0]["methods"][0]["signature"], "list(): Tool[]", "服务目录 紧凑签名")
+  设 单条 为 绳查询服务目录("tools", 服务表, 类型表)
+  断言相等(单条["mode"], "service", "服务目录 service")
+  断言相等(单条["service"]["access"]["hardDependency"]["expression"], "ctx.tools", "服务单条 注入表达式")
+  断言相等(列表长度(单条["referencedTypes"]), 1, "服务单条 闭包含 Tool")
+
+  # ---- 事件目录投影 ----
+  设 事件目录 为 绳查询事件目录(空, [["name": "agent/status", "mode": "serial", "summary": "状态", "description": "状态事件", "signature": "(s: Status)", "parameters": []]], 类型表)
+  断言相等(事件目录["mode"], "catalog", "事件目录 catalog")
+  断言相等(事件目录["events"][0]["mode"], "serial", "事件目录 mode 透传")
+
+  写 "test_R87_B4_客户端_工作区与目录: 全部通过"
+
+主()

@@ -1,0 +1,29 @@
+# 客户端上传协议.light —— R87 B4 第3组：client/file-upload/src/protocol.ts + types.ts
+#
+# 上游（锚点 877717787c）：
+#   protocol.ts —— 上传路由常量 FILE_UPLOAD_PATH / FILE_UPLOAD_ROUTE
+#   types.ts    —— EncodedFileUploadRequest {data, name?} / FileUploadValue {receiptId, file}
+#
+# 纯逻辑剥离：真实 fetch 上传、base64 字节编解码、Host 叶子名消毒、FormData 全属宿主；
+#   这里只搬路由常量与上传请求/回执的字段形状。
+
+设 上传路由 为 "/api/session/uploadFileBinary"
+设 上传相对路由 为 "api/session/uploadFileBinary"
+
+# 编码上传请求（EncodedFileUploadRequest）：data 必为 base64 串，name 可选显示名
+段落 造上传请求(数据, 名=空):
+  如果 是字符串(数据) == 假:
+    抛出 新建 错误("upload: data 必须是 base64 字符串")
+  设 请求 为 ["data": 数据]
+  如果 名 != 空:
+    设 请求["name"] 为 名
+  返回 请求
+
+# 上传回执（FileUploadValue）：receiptId + file 引用
+段落 造上传回执(回执标识, 文件引用):
+  返回 ["receiptId": 回执标识, "file": 文件引用]
+
+导出 上传路由
+导出 上传相对路由
+导出 造上传请求
+导出 造上传回执

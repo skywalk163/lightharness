@@ -372,3 +372,111 @@
             返回 修复 + "/"
           返回 修复
   返回 结果
+
+# ============================================================
+# R87 增量 §工作区域状态（对齐 packages/workspace/workspace/src/spec.ts + types.ts L1-84）
+#
+# 上游语义（877717787c）：
+#   workspaceDomainState 持久形状：
+#     initialized(布尔) / defaultWorkspaceId(可选, 首用工作区标识, 注销后保留) /
+#     workspaceIds(权威显示顺序) / archivedSessionIds(默认[], 注册表级归档集) /
+#     pinnedSessionIds(默认[], 注册表级钉选集, 最近钉选在前) /
+#     pendingMutation(可选, 可恢复双写变更标记 create|delete)
+#   钉选与归档互斥：归档会丢掉该会话的钉选。
+#   会话活动（types.ts L25-55）：归档准入时会话算活跃的理由——{kind, items:[{id,label?}]}。
+#
+# 纯逻辑剥离：zod schema 校验、defineDomain/storage-domain 持久化、Cordis 事件已剔除；
+#   这里只做形状归一、缺省填充、钉/归档互斥、活动构造。
+# ============================================================
+
+# 域初始全局阶段（spec.ts L81 initial）
+段落 域初始:
+  返回 ["initialized": 假, "workspaceIds": [], "archivedSessionIds": [], "pinnedSessionIds": []]
+
+# 域阶段归一：把持久化字典补成权威形状；archived/pinned 缺省为 []（老记录兼容）
+段落 归一域阶段(原始):
+  设 阶段 为 ["initialized": 假, "defaultWorkspaceId": 空, "workspaceIds": [], "archivedSessionIds": [], "pinnedSessionIds": [], "pendingMutation": 空]
+  如果 是字典(原始) == 假:
+    返回 阶段
+  如果 字典包含键(原始, "initialized"):
+    设 阶段["initialized"] 为 原始["initialized"]
+  如果 字典包含键(原始, "defaultWorkspaceId"):
+    设 阶段["defaultWorkspaceId"] 为 原始["defaultWorkspaceId"]
+  如果 字典包含键(原始, "workspaceIds") 且 是列表(原始["workspaceIds"]):
+    设 阶段["workspaceIds"] 为 复制列表(原始["workspaceIds"])
+  如果 字典包含键(原始, "archivedSessionIds") 且 是列表(原始["archivedSessionIds"]):
+    设 阶段["archivedSessionIds"] 为 复制列表(原始["archivedSessionIds"])
+  如果 字典包含键(原始, "pinnedSessionIds") 且 是列表(原始["pinnedSessionIds"]):
+    设 阶段["pinnedSessionIds"] 为 复制列表(原始["pinnedSessionIds"])
+  如果 字典包含键(原始, "pendingMutation") 且 是字典(原始["pendingMutation"]):
+    设 阶段["pendingMutation"] 为 原始["pendingMutation"]
+  返回 阶段
+
+# 待决变更标记（spec.ts L40-43 discriminated union）：operation ∈ create|delete
+段落 造待决变更(操作, 工作区标识):
+  如果 操作 != "create" 且 操作 != "delete":
+    抛出 新建 错误("待决变更操作必须是 create 或 delete: " + 操作)
+  返回 ["operation": 操作, "workspaceId": 工作区标识]
+
+# 列表去重后前置插入（钉选：最近在前；通用助手）
+段落 前置去重(表, 项):
+  设 新表 为 []
+  列表追加(新表, 项)
+  遍历 现存 之 表:
+    如果 现存 != 项:
+      列表追加(新表, 现存)
+  返回 新表
+
+# 列表移除某项（归档/解钉用）
+段落 剔除项(表, 项):
+  设 新表 为 []
+  遍历 现存 之 表:
+    如果 现存 != 项:
+      列表追加(新表, 现存)
+  返回 新表
+
+# 钉会话：最近钉选前置；与归档互斥——钉选即移出归档集
+段落 钉会话(阶段, 会话标识):
+  设 阶段["pinnedSessionIds"] 为 前置去重(阶段["pinnedSessionIds"], 会话标识)
+  设 阶段["archivedSessionIds"] 为 剔除项(阶段["archivedSessionIds"], 会话标识)
+  返回 阶段
+
+# 解钉会话
+段落 解钉会话(阶段, 会话标识):
+  设 阶段["pinnedSessionIds"] 为 剔除项(阶段["pinnedSessionIds"], 会话标识)
+  返回 阶段
+
+# 归档会话：加入归档集（去重）；按 spec 互斥语义归档丢掉该会话的钉选
+段落 归档会话(阶段, 会话标识):
+  如果 列表包含(阶段["archivedSessionIds"], 会话标识) == 假:
+    列表追加(阶段["archivedSessionIds"], 会话标识)
+  设 阶段["pinnedSessionIds"] 为 剔除项(阶段["pinnedSessionIds"], 会话标识)
+  返回 阶段
+
+# 解归档会话（恢复其 sessionIds 槽位由消费方处理，这里只维护注册表级归档集）
+段落 解归档会话(阶段, 会话标识):
+  设 阶段["archivedSessionIds"] 为 剔除项(阶段["archivedSessionIds"], 会话标识)
+  返回 阶段
+
+# 会话活动（types.ts L40-55）：归档准入时一条「会话算活跃」的理由
+# 项表：[{id, label?}]；无逐项身份的家族（turn）传空/省略项表
+段落 造会话活动(种类, 项表=空):
+  设 活动 为 ["kind": 种类]
+  如果 项表 != 空:
+    设 项出口 为 []
+    遍历 项 之 项表:
+      设 条目 为 ["id": 项["id"]]
+      如果 字典包含键(项, "label"):
+        设 条目["label"] 为 项["label"]
+      列表追加(项出口, 条目)
+    设 活动["items"] 为 项出口
+  返回 活动
+
+导出 域初始
+导出 归一域阶段
+导出 造待决变更
+导出 钉会话
+导出 解钉会话
+导出 归档会话
+导出 解归档会话
+导出 造会话活动

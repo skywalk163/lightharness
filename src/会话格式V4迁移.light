@@ -1,0 +1,340 @@
+# 会话格式V4迁移.light —— 0.1.7 新包 session-format-v3-to-v4 纯逻辑面（R87 B2）
+#
+# 上游（877717787c，新包；0.1.6 锚点 ddefc45fbc 无此包）：
+#   packages/session/session-format-v3-to-v4/src/tool-role.ts        → §2 V4 一等 tool role
+#   packages/session/session-format-v3-to-v4/src/sources.ts          → §3 V3 插件来源改写
+#   packages/session/session-format-v3-to-v4/src/retired-syntax.ts   → §4 V4 退役语法拒绝
+#   packages/session/session-format-v3-to-v4/src/validation.ts       → §1 V4 头校验（26-53行）
+#   packages/session/session-format-v3-to-v4/src/migration.ts        → §5 头迁移声明（12-32行）
+# 语义要点：V4 = 0.1.7 消息模型 —— developer 一等角色、tool 一等角色
+#   （toolCallId/isError 上移）、system-prompt 生产者源、退役 wrapper 语法硬拒。
+# 复刻边界（登记）：
+#   - relationships.ts/facts.ts/developer.ts/catalog 子证据迁移属 catalog 子会话
+#     面 dépend à R88（本轮登记暂缓，见 _taskB2_R87_明细.md）。
+#   - validation.ts 的 cwd isAbsolute 走 node:path；光明以「前导分隔符或盘符」近似，
+#     偏离 D-2。
+#   - 消息来源键：光明历史口径 source/来源 双读（会话格式.light §13 与 消息.light 并存）。
+# 命名避坑：局部名避 数/序/事件/头/原因；「端」前缀辅助段避免与 会话格式.light 段重定义。
+
+从 会话格式 导入 安全整数, 头版本号, 头版本为
+
+# =====================================================================
+# §1 V4 头校验（validation.ts assertReleasedV4Header:26-53）
+# =====================================================================
+# 头 = {版本, id, createdAt, isSeeded, delegationDepth[, cwd, parentSession, origin, agentPreset]}
+# 光明口径：版本 = {主: 4, 次: 0}；createdAt/delegationDepth 走 安全整数 判据。
+段落 端校验V4头(头):
+  如果 是字典(头) == 假:
+    抛出 新建 错误("expected format v4 header")
+  如果 头版本为(头, 4, 0) == 假:
+    抛出 新建 错误("expected format v4 header")
+  设 必选 为 ["id", "createdAt", "isSeeded", "delegationDepth"]
+  设 可选 为 ["cwd", "parentSession", "origin", "agentPreset"]
+  遍历 键 之 必选:
+    如果 字典包含键(头, 键) == 假:
+      抛出 新建 错误("format v4 header lacks required field " + 键)
+  遍历 键 之 字典键列表(头):
+    如果 (键 == "版本") 或 (列表包含(必选, 键)) 或 (列表包含(可选, 键)):
+      继续
+    抛出 新建 错误("format v4 header has unexpected field " + 键)
+  如果 是字符串(头["id"]) == 假:
+    抛出 新建 错误("format v4 header id must be a string")
+  尝试:
+    安全整数(头["createdAt"], "format v4 header createdAt")
+    安全整数(头["delegationDepth"], "format v4 header delegationDepth")
+  捕获 异常 为 计数错误:
+    抛出 新建 错误(转字符串(计数错误))
+  如果 是布尔(头["isSeeded"]) == 假:
+    抛出 新建 错误("format v4 header isSeeded must be boolean")
+  如果 字典包含键(头, "cwd"):
+    如果 (是字符串(头["cwd"]) == 假) 或 (端是绝对路径(头["cwd"]) == 假):
+      抛出 新建 错误("format v4 header cwd must be absolute")
+  如果 字典包含键(头, "parentSession") 且 (是字符串(头["parentSession"]) == 假):
+    抛出 新建 错误("format v4 header parentSession must be a string")
+  如果 字典包含键(头, "agentPreset") 且 (是字符串(头["agentPreset"]) == 假):
+    抛出 新建 错误("format v4 header agentPreset must be a string")
+  如果 字典包含键(头, "origin") 且 (头["origin"] != "subagent"):
+    抛出 新建 错误("format v4 header origin must be \"subagent\"")
+  返回 真
+
+# cwd 绝对路径近似（偏离 D-2：前导分隔符或盘符「X:\」「X:/」；替代 node:path.isAbsolute）
+段落 端是绝对路径(路径):
+  如果 是字符串(路径) == 假:
+    返回 假
+  如果 (路径[0:1] == "/") 或 (路径[0:1] == "\\"):
+    返回 真
+  如果 字符串长度(路径) >= 3:
+    设 盘符 为 路径[0:1]
+    设 冒号 为 路径[1:2]
+    设 斜杠 为 路径[2:3]
+    如果 (冒号 == ":") 且 ((斜杠 == "\\") 或 (斜杠 == "/")):
+      返回 (盘符 >= "A") 且 (盘符 <= "Z") 或 (盘符 >= "a") 且 (盘符 <= "z")
+  返回 假
+
+# =====================================================================
+# §2 V4 一等 tool role（tool-role.ts）
+# =====================================================================
+# wrapper 块专属键 / 消息专属键（tool-role.ts:4-5 逐字）
+段落 端包装键表:
+  返回 ["type", "toolCallId", "content", "isError"]
+
+段落 端消息键表:
+  返回 ["id", "role", "source", "content"]
+
+# extensionFields：保留未知字段且不合并两个属主（前缀 plugin:<owner>:<key>）
+段落 端扩展字段(值, 键表, 属主):
+  设 结果 为 {}
+  遍历 键 之 字典键列表(值):
+    如果 列表包含(键表, 键):
+      继续
+    结果["plugin:" + 属主 + ":" + 键] 为 值[键]
+  返回 结果
+
+# resultContent：内容必须为数组且不得嵌套 tool-result（tool-role.ts:20-27）
+段落 端结果内容(值, 主语):
+  如果 是列表(值) == 假:
+    抛出 新建 错误(主语 + " tool-result content must be an array")
+  遍历 块 之 值:
+    如果 是字典(块) 且 (字典获取(块, "type", "") == "tool-result"):
+      抛出 新建 错误(主语 + " contains a nested tool-result unsupported by this converter")
+  返回 值
+
+# liftToolResult（tool-role.ts:34-86）：把 released V3 wrapper tool/result 行
+# 提升为一等 V4 tool role 消息；wrapper 校验前置，坏历史显式拒绝。
+# 光明事件口径：{类型:"tool/result", 序号, 时间, 数据:{消息:...}}；消息 role/source
+# 兼容 "source"/"来源" 双读。
+段落 提升工具结果(事件项):
+  如果 (事件项["类型"] != "tool/result") 或 (是字典(事件项.获取("数据", 空)) == 假):
+    返回 事件项
+  设 数据 为 事件项["数据"]
+  设 消息 为 字典获取(数据, "消息", 字典获取(数据, "message", 空))
+  如果 (是字典(消息) == 假) 或 (字典获取(消息, "role", "") != "user"):
+    返回 事件项
+  设 主语 为 "format v3 " + 事件项["类型"] + " at seq " + 转字符串(事件项["序号"])
+  设 来源 为 字典获取(消息, "source", 字典获取(消息, "来源", 空))
+  设 调用标识 为 空
+  如果 是字典(来源):
+    设 调用标识 为 字典获取(来源, "callId", 空)
+  设 内容 为 字典获取(消息, "content", 空)
+  设 包装 为 空
+  如果 (是列表(内容)) 且 (长度(内容) == 1):
+    设 首块 为 内容[0]
+    如果 是字典(首块):
+      设 包装 为 首块
+  设 消息标识 为 字典获取(消息, "id", "")
+  如果 (是字符串(消息标识) == 假) 或 (消息标识 == ""):
+    抛出 新建 错误(主语 + " requires exactly one tool-result wrapper matching its tool source")
+  如果 (是字典(来源) == 假) 或 (字典获取(来源, "kind", "") != "tool"):
+    抛出 新建 错误(主语 + " requires exactly one tool-result wrapper matching its tool source")
+  如果 (是字符串(调用标识) == 假) 或 (调用标识 == ""):
+    抛出 新建 错误(主语 + " requires exactly one tool-result wrapper matching its tool source")
+  如果 (包装 == 空) 或 (字典获取(包装, "type", "") != "tool-result"):
+    抛出 新建 错误(主语 + " requires exactly one tool-result wrapper matching its tool source")
+  如果 字典获取(包装, "toolCallId", "") != 调用标识:
+    抛出 新建 错误(主语 + " requires exactly one tool-result wrapper matching its tool source")
+  设 是否错误 为 字典获取(包装, "isError", 空)
+  如果 (是否错误 != 空) 且 (是布尔(是否错误) == 假):
+    抛出 新建 错误(主语 + " tool-result isError must be boolean")
+  设 目标消息 为 {}
+  目标消息["role"] 为 "tool"
+  目标消息["source"] 为 来源
+  目标消息["toolCallId"] 为 调用标识
+  目标消息["content"] 为 端结果内容(字典获取(包装, "content", 空), 主语)
+  如果 是否错误 != 空:
+    目标消息["isError"] 为 是否错误
+  目标消息["id"] 为 消息标识
+  遍历 键 之 字典键列表(端扩展字段(消息, 端消息键表(), "message")):
+    目标消息[键] 为 端扩展字段(消息, 端消息键表(), "message")[键]
+  遍历 键 之 字典键列表(端扩展字段(包装, 端包装键表(), "result")):
+    目标消息[键] 为 端扩展字段(包装, 端包装键表(), "result")[键]
+  设 新数据 为 深拷贝(数据)
+  新数据["消息"] 为 目标消息
+  设 新事件 为 {}
+  新事件["类型"] 为 事件项["类型"]
+  新事件["序号"] 为 事件项["序号"]
+  新事件["时间"] 为 事件项["时间"]
+  新事件["数据"] 为 新数据
+  如果 事件项.包含("来源事件序号"):
+    新事件["来源事件序号"] 为 事件项["来源事件序号"]
+  如果 事件项.包含("遮蔽"):
+    新事件["遮蔽"] 为 事件项["遮蔽"]
+  返回 新事件
+
+# assertV4ToolResultMessage（tool-role.ts:92-130）：校验 V4 tool/result 行
+# 是「精确一等 tool result」；非 tool/result 行直通。
+段落 校验V4工具结果(事件项):
+  如果 事件项["类型"] != "tool/result":
+    返回 真
+  设 主语 为 "format v4 " + 事件项["类型"] + " at seq " + 转字符串(事件项["序号"])
+  设 数据 为 事件项.获取("数据", 空)
+  如果 是字典(数据) == 假:
+    抛出 新建 错误(主语 + " data must be an object")
+  设 消息 为 字典获取(数据, "消息", 字典获取(数据, "message", 空))
+  如果 是字典(消息) == 假:
+    抛出 新建 错误(主语 + " message must be an object")
+  设 消息标识 为 字典获取(消息, "id", "")
+  设 角色 为 字典获取(消息, "role", "")
+  设 调用标识 为 字典获取(消息, "toolCallId", 空)
+  设 来源 为 字典获取(消息, "source", 字典获取(消息, "来源", 空))
+  设 是否错误 为 字典获取(消息, "isError", 空)
+  设 来源调用标识 为 空
+  如果 是字典(来源):
+    设 来源调用标识 为 字典获取(来源, "callId", 空)
+  如果 (是字符串(消息标识) == 假) 或 (消息标识 == ""):
+    抛出 新建 错误(主语 + " requires a first-class message with a string id")
+  如果 角色 != "tool":
+    抛出 新建 错误(主语 + " requires a tool-role message")
+  如果 (是字符串(调用标识) == 假) 或 (调用标识 == "") 或 (来源调用标识 != 调用标识):
+    抛出 新建 错误(主语 + " requires toolCallId matching its tool source")
+  如果 (是字典(来源) == 假) 或 (字典获取(来源, "kind", "") != "tool"):
+    抛出 新建 错误(主语 + " requires a tool source")
+  如果 是列表(消息["content"]) == 假:
+    抛出 新建 错误(主语 + " requires array content")
+  遍历 块 之 消息["content"]:
+    如果 是字典(块) 且 (字典获取(块, "type", "") == "tool-result"):
+      抛出 新建 错误(主语 + " content must not contain a released tool-result wrapper")
+  如果 (是否错误 != 空) 且 (是布尔(是否错误) == 假):
+    抛出 新建 错误(主语 + " isError must be boolean when present")
+  如果 字典包含键(数据, "错误") 且 (是否错误 != 真):
+    抛出 新建 错误(主语 + " carries error metadata for a non-error tool result")
+  返回 真
+
+# =====================================================================
+# §3 V3 插件来源改写（sources.ts）
+# =====================================================================
+# RENAMED_PRODUCERS（sources.ts:31-37 逐字）
+段落 端改名生产者表:
+  返回 {"compact": "compact-checkpoint", "tools-code-mode": "ptc-mode",
+    "tools-ptc": "ptc-mode", "dsh-compaction-basic": "compact-basic",
+    "@deepseek-ai/dsh-system-prompt": "runtime-context"}
+
+# RELEASED_SAME_NAME_PRODUCERS（sources.ts:40-45 逐字）
+段落 端同名生产者表:
+  返回 ["agent-instructions", "session-reference", "team-message", "goal",
+    "skill-invocation", "skill-catalog", "coordinator", "subagent-report",
+    "subagent-settled", "webhook", "agent-message", "model-selection",
+    "plan-mode", "time-context", "tmux-context", "user-approval",
+    "repeat-tool-reminder", "tool-cordis", "cordis-host-runner", "tool-goal",
+    "tool-jobs", "hooks-codex", "hooks-claude-code", "schedule",
+    "dsh-session-title-llm"]
+
+# producerKind（sources.ts:48-53）：系统提示生产者按角色特判为 system-prompt
+段落 端生产者词(插件, 角色):
+  如果 (插件 == "@deepseek-ai/dsh-system-prompt") 且 (角色 == "system"):
+    返回 "system-prompt"
+  设 改名 为 字典获取(端改名生产者表(), 插件, 空)
+  如果 改名 != 空:
+    返回 改名
+  如果 列表包含(端同名生产者表(), 插件):
+    返回 插件
+  返回 "plugin:" + 插件
+
+# rewritePluginSource（sources.ts:58-71）：kind='plugin' 来源 → 生产者自有 kind
+# 恰好两键（kind+plugin）时坍缩为 {kind}；其余键保留、plugin 键丢弃。
+段落 端改写插件来源(来源, 序号, 角色):
+  设 插件 为 字典获取(来源, "plugin", 空)
+  如果 是字符串(插件) == 假:
+    抛出 新建 错误("plugin source at seq " + 转字符串(序号) + " is not canonical: plugin requires a string")
+  设 新词 为 端生产者词(插件, 角色)
+  如果 长度(字典键列表(来源)) == 2:
+    返回 {"kind": 新词}
+  设 结果 为 {}
+  遍历 键 之 字典键列表(来源):
+    如果 键 == "plugin":
+      继续
+    如果 键 == "kind":
+      结果[键] 为 新词
+    否则:
+      结果[键] 为 来源[键]
+  返回 结果
+
+# rewriteV3MessageSource（sources.ts:78-86）：直连 kind 保留；plugin 来源改写
+段落 重写消息来源(来源, 序号, 角色):
+  如果 是字典(来源) == 假:
+    抛出 新建 错误("message source at seq " + 转字符串(序号) + " requires a nonempty kind")
+  设 词 为 字典获取(来源, "kind", "")
+  如果 (是字符串(词) == 假) 或 (词 == ""):
+    抛出 新建 错误("message source at seq " + 转字符串(序号) + " requires a nonempty kind")
+  如果 词 == "plugin":
+    返回 端改写插件来源(来源, 序号, 角色)
+  返回 来源
+
+# =====================================================================
+# §4 V4 退役语法硬拒（retired-syntax.ts）
+# =====================================================================
+段落 端拒包装块(块, 主语):
+  如果 是字典(块) 且 (字典获取(块, "type", "") == "tool-result"):
+    抛出 新建 错误(主语 + " must not contain a released tool-result wrapper")
+  返回 真
+
+段落 端拒包装内容(内容, 主语):
+  如果 是列表(内容) == 假:
+    返回 真
+  遍历 块 之 内容:
+    端拒包装块(块, 主语)
+  返回 真
+
+# assertV4RetiredSyntax（retired-syntax.ts:26-77）：退役头/PTC 旧词/wrapper 硬拒；
+# 工具参数、回放状态、schema 参数与嵌套扩展值保持不透明。
+段落 校验V4退役语法(行):
+  如果 是字典(行) == 假:
+    返回 真
+  设 种类 为 字典获取(行, "type", "")
+  如果 ((种类 == "tool/code-dispatch-start") 或 (种类 == "tool/code-dispatch")) 且 (字典获取(行, "ignorable", 假) != 真):
+    抛出 新建 错误("format v4 rejects retired event type " + 种类)
+  设 数据 为 字典获取(行, "data", 空)
+  如果 种类 == "request/header":
+    如果 (是字典(数据) == 假) 或 (是字典(字典获取(数据, "header", 空)) == 假):
+      抛出 新建 错误("format v4 request/header requires data and header objects")
+    如果 字典包含键(数据["header"], "system"):
+      抛出 新建 错误("format v4 request/header rejects retired header.system")
+    返回 真
+  如果 是字典(数据) == 假:
+    返回 真
+  设 主语 为 "format v4 " + 种类 + " at seq " + 转字符串(字典获取(行, "seq", "")) + " content"
+  如果 种类 == "user/message":
+    端拒包装内容(字典获取(数据, "content", 空), 主语)
+  否则如果 (种类 == "developer/message") 或 (种类 == "assistant/message") 或 (种类 == "team/message/queued"):
+    端拒包装内容(字典获取(字典获取(数据, "消息", 字典获取(数据, "message", 空)), "content", 空), 主语)
+  否则如果 (种类 == "agent/inbox/spliced") 或 (种类 == "session/title-llm-request"):
+    设 键 为 "messages"
+    如果 种类 == "agent/inbox/spliced":
+      设 键 为 "inserted"
+    设 消息表 为 字典获取(数据, 键, 空)
+    如果 是列表(消息表):
+      遍历 消息 之 消息表:
+        端拒包装内容(字典获取(消息, "content", 空), 主语)
+  否则如果 种类 == "compaction/summary":
+    端拒包装内容(字典获取(数据, "summary", 空), 主语)
+    端拒包装内容(字典获取(数据, "rawOutput", 空), 主语)
+  否则如果 种类 == "tool/ptc-dispatch":
+    端拒包装内容(字典获取(数据, "content", 空), 主语)
+  # 助手流块端：block-end 携带 wrapper / block-start 直接是 tool-result → 硬拒
+  如果 ((种类 == "assistant/message") 或 (种类 == "assistant/attempt")) 且 (是列表(字典获取(数据, "stream", 空))):
+    遍历 条目 之 数据["stream"]:
+      如果 (是字典(条目) == 假) 或 (字典获取(条目, "type", "") != "chunk"):
+        继续
+      设 块载荷 为 字典获取(条目, "chunk", 空)
+      如果 是字典(块载荷) == 假:
+        继续
+      如果 字典获取(块载荷, "type", "") == "block-end":
+        端拒包装块(字典获取(块载荷, "block", 空), 主语)
+      如果 (字典获取(块载荷, "type", "") == "block-start") 且 (字典获取(块载荷, "blockType", "") == "tool-result"):
+        抛出 新建 错误(主语 + " must not contain a released tool-result wrapper")
+  返回 真
+
+# =====================================================================
+# §5 V3→V4 头迁移（migration.ts:17-32）
+# =====================================================================
+# 迁移声明：V3 released 头 → V4；body 恢复需显式子证据（createStage 抛
+# unsupported——catalog 子会话面归 R88，登记见明细）。光明沿用 会话格式.light
+# 定义迁移/创建链 的 {主,次} 版本口径。
+段落 迁移头V3V4(头):
+  如果 字典获取(字典获取(头, "版本", {}), "主", 0) != 3:
+    抛出 新建 错误("expected format v3 header")
+  设 新头 为 深拷贝(头)
+  新头["版本"] 为 ["主": 4, "次": 0]
+  返回 新头
+
+导出 端校验V4头, 端是绝对路径, 提升工具结果, 校验V4工具结果
+导出 重写消息来源, 端生产者词, 校验V4退役语法, 迁移头V3V4

@@ -1,0 +1,63 @@
+# R87 B4-G1 预设登记（agent-preset-registry）纯逻辑回归
+# 上游：packages/preset/agent-preset-registry/src/{display,composition-inventory,definition,types}.ts
+
+从 预设 导入 是内置预设 条目列表问题
+从 预设深化 导入 定义组合 挂载行带前缀 是登记行 是登记表 登记错误码表 组合行
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 信息 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 恒真求值(表达式):
+  返回 真
+
+段落 主:
+  # ---- display.ts isBuiltInPreset ----
+  断言相等(是内置预设({"id": "standard"}), 真, "内置预设 无 name + 已知 id")
+  断言相等(是内置预设({"id": "standard", "name": "自报名"}), 假, "内置预设 自报 name 则不算")
+  断言相等(是内置预设({"id": "user-1"}), 假, "内置预设 未知 id")
+  断言相等(是内置预设({"id": "ptc"}), 真, "内置预设 ptc")
+  断言相等(是内置预设({"id": "minimal"}), 真, "内置预设 minimal")
+  断言相等(是内置预设({"id": "cordis"}), 真, "内置预设 cordis")
+
+  # ---- definition.ts entryListProblem 嵌套非列表分支 ----
+  设 问题 为 条目列表问题("not-a-list", "")
+  断言相等(问题, "the composition must be a top-level list of plugin rows", "顶层非列表")
+  设 问题2 为 条目列表问题("not-a-list", "row 1")
+  断言相等(问题2, "group row 1 must hold a list of plugin rows", "嵌套组 config 非列表")
+  # 正常列表无问题
+  断言相等(条目列表问题([{"name": "a"}], ""), 空, "合法列表无问题")
+
+  # ---- composition-inventory definitionComposition ----
+  设 好行 为 [{"name": "a"}, {"name": "组", "group": 真, "config": [{"name": "b"}]}]
+  设 合 为 定义组合(好行, 恒真求值)
+  断言相等(字典包含键(合, "rows"), 真, "定义组合 合法→rows")
+  断言相等(列表长度(合["rows"]), 2, "定义组合 展平两行")
+  设 坏合 为 定义组合("garbage", 恒真求值)
+  断言相等(字典包含键(坏合, "broken"), 真, "定义组合 非法→broken")
+  断言相等(坏合["broken"], "the composition must be a top-level list of plugin rows", "定义组合 broken 文案")
+
+  # ---- mountedCompositionRows owner-id 前缀剥离 ----
+  设 树 为 [
+    {"id": "root:e1", "options": {"name": "n1", "disabled": 假}},
+    {"id": "root:group", "options": {"name": "组", "group": 真}},
+    {"id": "root:e3", "options": {"name": "n3"}, "fiber": {"state": "active"}}]
+  设 挂 为 挂载行带前缀(树, "root:")
+  断言相等(列表长度(挂), 2, "挂载带前缀 跳过组")
+  断言相等(挂[0]["entryId"], "e1", "挂载带前缀 剥前缀")
+  断言相等(挂[1]["entryId"], "e3", "挂载带前缀 剥前缀2")
+  断言相等(挂[1]["fiberState"], "active", "挂载带前缀 纤维状态")
+
+  # ---- types.ts 新名册形状（无 trust / authorable）----
+  断言相等(是登记行({"id": "p", "isDefault": 真}), 真, "登记行 合法最小")
+  断言相等(是登记行({"id": "p", "isDefault": 真, "name": "名", "broken": "x"}), 真, "登记行 含可选")
+  断言相等(是登记行({"id": "", "isDefault": 真}), 假, "登记行 空 id")
+  断言相等(是登记行({"id": "p", "isDefault": 1}), 假, "登记行 严格布尔")
+  断言相等(是登记表({"presets": [{"id": "p", "isDefault": 真}], "modeSelectionEnabled": 真}), 真, "登记表 合法")
+  断言相等(是登记表({"presets": [], "authorable": 真}), 假, "登记表 旧 authorable 形状不认")
+  断言相等(列表长度(登记错误码表()), 3, "登记错误码 三条（read-only 已下线）")
+  断言相等(列表包含(登记错误码表(), "agent-preset/read-only"), 假, "登记错误码 无 read-only")
+
+  打印 "test_R87_B4_配置_预设登记 PASS"
+
+主()

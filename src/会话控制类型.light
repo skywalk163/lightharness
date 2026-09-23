@@ -311,3 +311,36 @@
   如果 种类 == "api-session/status":
     返回 真
   返回 假
+
+# =====================================================================
+# R87 · 0.1.7 增量：归档会话门血缘判定（api/session-controller）
+# =====================================================================
+# 上游锚点 877717787c（0.1.6 锚点 ddefc45fbc 之上）：
+#   packages/api/session-controller/src/archived-session-gate.ts:38-56 underArchivedSession：
+#     沿 header 的 subagent 血缘向上查归档表；fork 的会话是独立对话（origin!=='subagent'
+#     即止）；parentSession 缺失时按「父 id 已归档」收口；环路由 visited 集合截断。
+#   纯逻辑面：血缘遍历判定；Cordis 接线（agent/pre-step 插件、sessions/workspaceRegistry
+#   注入）属宿主面登记不移植。
+# 判据锚点：packages/api/session-controller/tests/archived-session-gate.host.spec.ts。
+# 形状约定（光明口径）：头 = {id, origin?, parentSession?}；取父头(会话id) 返回父头或 空；
+#   归档表 = 已归档会话 id 的字符串列表。
+# =====================================================================
+
+# underArchivedSession：agent 的会话或其 subagent 血缘上任一会话是否已归档
+段落 归档血缘判定(头, 归档表, 取父头):
+  设 当前头 为 头
+  设 已访问 为 {}
+  当 字典包含键(已访问, 当前头["id"]) == 假:
+    如果 列表包含(归档表, 当前头["id"]):
+      返回 真
+    已访问[当前头["id"]] 为 真
+    如果 (字典获取(当前头, "origin", "") != "subagent") 或 (字典获取(当前头, "parentSession", 空) == 空):
+      返回 假
+    设 父会话标识 为 当前头["parentSession"]
+    设 父头 为 取父头(父会话标识)
+    如果 父头 == 空:
+      返回 列表包含(归档表, 父会话标识)
+    设 当前头 为 父头
+  返回 假
+
+导出 归档血缘判定

@@ -1,0 +1,104 @@
+从 任务不变式 导入 终态清单, 活动任务, 不变式机
+从 JSON 导入 序列化JSON
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+# 造一个任务视图（内联，与 任务视图.造任务视图 同形）
+段落 造视图(标识, 阶段, 起始, 总数, 归属=空, 完成=空, 进展=空):
+  设 视图 为 ["id": 标识, "kind": "bash", "label": "lbl", "owner": 归属, "status": 阶段, "startedAt": 起始, "output": ["total": 总数, "earliest": 0]]
+  如果 完成 != 空:
+    设 视图["finishedAt"] 为 完成
+  如果 进展 != 空:
+    设 视图["progress"] 为 进展
+  返回 视图
+
+段落 主程:
+  # 0. runningJobs 过滤（archive-admission L48-51）
+  设 视图表 为 [
+    ["id": "a", "owner": "s1", "status": "running"],
+    ["id": "b", "owner": "s1", "status": "stopping"],
+    ["id": "c", "owner": "s1", "status": "completed"],
+    ["id": "d", "owner": "s2", "status": "running"],
+    ["id": "e", "owner": 空, "status": "running"]
+  ]
+  设 活动 为 活动任务(视图表, "s1")
+  断言相等(列表长度(活动), 2, "s1 活动任务 = running+stopping")
+  断言相等(活动[0]["id"], "a", "a 是 running")
+  断言相等(活动[1]["id"], "b", "b 是 stopping")
+  设 活动2 为 活动任务(视图表, "s2")
+  断言相等(列表长度(活动2), 1, "s2 只见 d")
+  设 活动0 为 活动任务(视图表, 空)
+  断言相等(列表长度(活动0), 1, "无主归属只见无主 e")
+
+  # 1.  happy path：registered → progress → settled → removed
+  设 机 为 新建 不变式机()
+  设 读登记 为 造视图("bash-1", "running", 100, 0, "s1")
+  机.喂(["type": "registered", "job": 读登记], 读登记)
+  断言相等(机.失败计数(), 0, "happy: registered 无误")
+  设 读进展 为 造视图("bash-1", "running", 100, 50, "s1", 空, "3/10")
+  机.喂(["type": "progress", "job": 读进展], 读进展)
+  断言相等(机.失败计数(), 0, "happy: progress 无误")
+  设 读结算 为 造视图("bash-1", "completed", 100, 100, "s1", 200)
+  机.喂(["type": "settled", "job": 读结算], 读结算)
+  断言相等(机.失败计数(), 0, "happy: settled 无误")
+  机.喂(["type": "removed", "job": 读结算], 空)
+  断言相等(机.失败计数(), 0, "happy: removed 无误")
+
+  # 2. registered 后于既往事件
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-1", "running", 10, 0, "s1")
+  机.喂(["type": "output", "id": "b-1", "total": 5, "owner": "s1"], 造视图("b-1", "running", 10, 5, "s1"))
+  机.喂(["type": "registered", "job": v], v)
+  断言相等(机.失败计数(), 1, "registered 晚于 output → 1 失败")
+
+  # 3. registered 带终态
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-2", "completed", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  断言相等(机.失败计数(), 1, "registered 终态 → 1 失败")
+
+  # 4. settled 后又 progress
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-3", "running", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  设 vs 为 造视图("b-3", "completed", 10, 0, "s1", 20)
+  机.喂(["type": "settled", "job": vs], vs)
+  设 vp 为 造视图("b-3", "running", 10, 0, "s1", 空, "x")
+  机.喂(["type": "progress", "job": vp], vs)
+  断言相等(机.失败计数(), 1, "settled 后 progress → 1 失败")
+
+  # 5. settled 非终态（同时缺 finishedAt → 两条独立失败，对齐上游三条独立判据）
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-4", "running", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  机.喂(["type": "settled", "job": v], v)
+  断言相等(机.失败计数(), 2, "settled 非终态+缺 finishedAt → 2 失败")
+
+  # 6. settled 两次
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-5", "running", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  设 vs 为 造视图("b-5", "completed", 10, 0, "s1", 20)
+  机.喂(["type": "settled", "job": vs], vs)
+  机.喂(["type": "settled", "job": vs], vs)
+  断言相等(机.失败计数(), 1, "settled 重复 → 1 失败")
+
+  # 7. removed 在 settled 前（注册表已删 → readBack=空，只触发相位失败）
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-6", "running", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  机.喂(["type": "removed", "job": v], 空)
+  断言相等(机.失败计数(), 1, "removed 早于 settled → 1 失败")
+
+  # 8. output total 领先注册表
+  设 机 为 新建 不变式机()
+  设 v 为 造视图("b-7", "running", 10, 0, "s1")
+  机.喂(["type": "registered", "job": v], v)
+  机.喂(["type": "output", "id": "b-7", "total": 999, "owner": "s1"], 造视图("b-7", "running", 10, 50, "s1"))
+  断言相等(机.失败计数(), 1, "output total 领先 → 1 失败")
+
+  写 "test_R87_B3_jobs_不变式: 全部用例通过"
+
+主程()

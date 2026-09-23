@@ -1,0 +1,181 @@
+# 工作区依赖.light —— 捆绑 Python/Node/pnpm 载荷的运行时元数据解析与路径解析（R87 B3 第2组）
+#
+# 上游只读依据（877717787c）：
+#   packages/skill/tool-workspace-dependencies/src/index.ts
+#     - parsePrimaryRuntime：payload JSON 校验 / legacy(components) 归一 /
+#       发行版名归一（小写 + [-_.]+ → '-'，归一后重名拒绝）
+#     - workspaceDependencyPaths：按平台(win32/darwin/linux)解析解释器与库目录
+#
+# 纯逻辑面：只搬「校验 + 归一 + 字符串拼路径」；去掉全部 fs 宿主调用
+# （readFile/stat/cp/mkdir/rename/...），路径以 '/' 拼接出规范相对形态，
+# 真实宿主 join 由调用方完成。
+
+从 内置核心判型 导入 是整数, 是浮点, 是字符串, 是列表, 是字典
+从 字符串增强 导入 安全正则匹配, 码转字符
+
+# ---- 基础判型 ----
+段落 是记录(值):
+  如果 值 == 空:
+    返回 假
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是列表(值) == 真:
+    返回 假
+  返回 真
+
+# 语义化版本：x.y.z 可带 [-+] 预发布/构建后缀（上游 VERSION 正则）
+段落 是版本号(值):
+  如果 是字符串(值) == 假:
+    返回 假
+  返回 安全正则匹配("^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z._-]+)?$", 值)
+
+# 发行版名：字母数字开头，后续字母数字/点/下划线/连字符
+段落 是发行版名(值):
+  如果 是字符串(值) == 假:
+    返回 假
+  返回 安全正则匹配("^[A-Za-z0-9][A-Za-z0-9._-]*$", 值)
+
+# 发行版版本：数字开头，后续词字符/点/叹号/加号/连字符
+段落 是发行版版本(值):
+  如果 是字符串(值) == 假:
+    返回 假
+  返回 安全正则匹配("^[0-9][0-9A-Za-z.!+-]*$", 值)
+
+# 载荷摘要：64 位小写十六进制（手工校验，规避源码字面量词花括号 L-086）
+段落 是摘要(文本):
+  如果 是字符串(文本) == 假:
+    返回 假
+  如果 字符串长度(文本) != 64:
+    返回 假
+  遍历 字符 之 文本:
+    如果 ((字符 >= "0" 且 字符 <= "9") 或 (字符 >= "a" 且 字符 <= "f")) == 假:
+      返回 假
+  返回 真
+
+# pythonPackages 是否合法发行版表（名/版本双双过正则）
+段落 是发行版表(值):
+  如果 是记录(值) == 假:
+    返回 假
+  遍历 键 之 字典键列表(值):
+    如果 是发行版名(键) == 假:
+      返回 假
+    如果 是发行版版本(值[键]) == 假:
+      返回 假
+  返回 真
+
+# 归一发行版名：小写 + [-_.] → '-'（上游 toLowerCase().replace(/[-_.]+/g,'-')）
+# 注：连字符用 码转字符(45) 构造（裸 "-" 字面量在本语言词法里会被误切为负号）；
+# 转小写结果直接内联作首参，不先绑定局部变量（规避 codegen 怪异）。
+段落 归一发行版名(名):
+  设 分隔 为 码转字符(45)
+  设 一步 为 替换字符串(转小写(名), "_", 分隔)
+  设 二步 为 替换字符串(一步, ".", 分隔)
+  返回 二步
+
+# ---- parsePrimaryRuntime（载荷 JSON 校验 + legacy 归一）----
+段落 解析主运行时(值):
+  如果 是记录(值) == 假:
+    抛出 "primary runtime: invalid metadata"
+  设 有组件 为 字典包含键(值, "components")
+  设 版本表 为 值
+  如果 有组件:
+    设 版本表 为 值["components"]
+  如果 是记录(版本表) == 假:
+    抛出 "primary runtime: invalid metadata"
+  # legacy 形态不得在顶层再混入 python/node/pnpm（混合格式拒绝）
+  如果 有组件:
+    如果 字典包含键(值, "python") 或 字典包含键(值, "node") 或 字典包含键(值, "pnpm"):
+      抛出 "primary runtime: invalid metadata"
+  设 桌面版 为 值["desktopVersion"]
+  设 平台 为 值["platform"]
+  设 架构 为 值["arch"]
+  设 摘要 为空
+  如果 字典包含键(值, "payloadDigest"):
+    设 摘要 为 值["payloadDigest"]
+  设 Python 为 版本表["python"]
+  设 Node 为空
+  如果 字典包含键(版本表, "node"):
+    设 Node 为 版本表["node"]
+  设 Pnpm 为空
+  如果 字典包含键(版本表, "pnpm"):
+    设 Pnpm 为 版本表["pnpm"]
+  # pythonPackages：legacy 缺省 → 空表；新形态缺省即空
+  设 发行版表 为 {}
+  如果 字典包含键(值, "pythonPackages"):
+    设 发行版表 为 值["pythonPackages"]
+  # ---- 字段校验 ----
+  如果 是字符串(桌面版) == 假 或 字符串长度(桌面版) == 0:
+    抛出 "primary runtime: invalid metadata"
+  如果 平台 != "win32" 且 平台 != "darwin" 且 平台 != "linux":
+    抛出 "primary runtime: invalid metadata"
+  如果 架构 != "x64" 且 架构 != "arm64":
+    抛出 "primary runtime: invalid metadata"
+  如果 是版本号(Python) == 假:
+    抛出 "primary runtime: invalid metadata"
+  如果 Node != 空 且 是版本号(Node) == 假:
+    抛出 "primary runtime: invalid metadata"
+  如果 Pnpm != 空 且 (是版本号(Pnpm) == 假 或 Node == 空):
+    抛出 "primary runtime: invalid metadata"
+  如果 摘要 != 空:
+    如果 是摘要(摘要) == 假:
+      抛出 "primary runtime: invalid metadata"
+  如果 是发行版表(发行版表) == 假:
+    抛出 "primary runtime: invalid metadata"
+  # 归一发行版名后重名检测（大小写/分隔符差异视为同一发行版）
+  设 已见 为 {}
+  遍历 键 之 字典键列表(发行版表):
+    设 归一名 为 归一发行版名(键)
+    如果 字典包含键(已见, 归一名):
+      抛出 "primary runtime: invalid metadata"
+    设 已见[归一名] 为 真
+  # legacy：numpy/pandas 旧顶层版本必须存在；若发行版表内也有，须一致
+  如果 有组件:
+    遍历 名 之 ["numpy", "pandas"]:
+      如果 字典包含键(版本表, 名) == 假 或 是版本号(版本表[名]) == 假:
+        抛出 "primary runtime: invalid metadata"
+      如果 字典包含键(发行版表, 名):
+        如果 发行版表[名] != 版本表[名]:
+          抛出 "primary runtime: conflicting " 加上 名 加上 " distribution version"
+  设 出 为 ["desktopVersion": 桌面版, "platform": 平台, "arch": 架构, "python": Python, "pythonPackages": 发行版表]
+  如果 摘要 != 空:
+    设 出["payloadDigest"] 为 摘要
+  如果 Node != 空:
+    设 出["node"] 为 Node
+  如果 Pnpm != 空:
+    设 出["pnpm"] 为 Pnpm
+  返回 出
+
+# ---- workspaceDependencyPaths（纯字符串拼路径，按平台分支）----
+# 拼路径段：以 '/' 连接（规范形态；宿主 join 由调用方落本地分隔符）
+段落 拼路径(根, 段表):
+  设 出 为 根
+  遍历 段 之 段表:
+    设 出 为 出 + "/" + 段
+  返回 出
+
+段落 工作区依赖路径(根, 清单):
+  设 依赖 为 拼路径(根, ["dependencies"])
+  设 视窗 为 清单["platform"] == "win32"
+  设 Python 为 拼路径(依赖, ["python", "python.exe"])
+  如果 视窗 == 假:
+    设 Python 为 拼路径(依赖, ["python", "bin", "python3"])
+  设 出 为 ["python": Python, "pythonPackages": "", "pythonDistributions": 清单["pythonPackages"]]
+  # node
+  如果 字典包含键(清单, "node"):
+    设 节点文件 为 "node"
+    如果 视窗:
+      设 节点文件 为 "node.exe"
+    设 出["node"] 为 拼路径(依赖, ["node", "bin", 节点文件])
+    设 出["nodePackages"] 为 拼路径(依赖, ["node", "node_modules"])
+  # pnpm（走捆绑 Node 的 pnpm.mjs）
+  如果 字典包含键(清单, "pnpm"):
+    设 出["pnpm"] 为 拼路径(依赖, ["pnpm", "bin", "pnpm.mjs"])
+  # python 库目录
+  设 主 为 清单["python"]
+  设 点表 为 分割字符串(主, ".")
+  设 短版 为 点表[0] + "." + 点表[1]
+  如果 视窗:
+    设 出["pythonPackages"] 为 拼路径(依赖, ["python", "Lib", "site-packages"])
+  否则:
+    设 出["pythonPackages"] 为 拼路径(依赖, ["python", "lib", "python" + 短版, "site-packages"])
+  返回 出

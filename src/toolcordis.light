@@ -121,3 +121,243 @@ Use cordis_inspect_list to discover Host and Client providers, then cordis_inspe
 导出 绳执行查询
 导出 绳归一提供者
 导出 绳装配
+
+
+# =====================================================================
+# R87 增量 §config 分页发现 + 目录投影（对齐 tool-cordis/src/config.ts + providers.ts
+#   + api-catalog.ts L7745-7818，锚点 877717787c）
+#
+# 上游语义：
+#   config.ts liveConfig(entry) 把 Loader 条目归类为
+#     tree(subgroup/subtree) / inactive(无 fiber.uid 或 disabled) /
+#     absent(无 runtime.Config) / unsupported(非原生 Schemastery) / schema(原生)
+#   parseQuery：entry/name 必须非空串；offset>=0 整数默认 0；limit 1..100 默认 25
+#   无 entry → 按 name 精确过滤后分页，回 {entries, total, nextOffset(末页为空)}
+#   providers.ts：Config provider(listConfigs) 取代 Builtin；HOST_EVENTS 剥掉 cordis/* 前缀事件
+#   api-catalog.ts queryServiceApi/queryEventApi：省略键 → 紧凑目录；给键 → 单条契约 + 引用声明闭包
+#
+# 宿主面登记（不移植）：loader.entries()/fiber.runtime.Config/createConfigProjector/
+#   pluginPackages/SERVICE_API/EVENT_API/TYPE_API 原始数据——由 取目录 钩子注入；
+#   这里只做归类、校验、分页、目录投影与闭包汇聚。
+# =====================================================================
+
+从 字符串处理 导入 字符转ASCII
+
+# 条目归类（config.ts liveConfig L28-38）
+# 入参 条目 形状：{id, name, 含组(布尔), 含子树(布尔), 纤程uid(串/空), 已停用(布尔), 有配置(布尔), 原生配置(布尔)}
+段落 绳归类配置条目(条目):
+  如果 条目["含组"] 或 条目["含子树"]:
+    返回 "tree"
+  如果 条目["纤程uid"] == 空 或 条目["已停用"]:
+    返回 "inactive"
+  如果 条目["有配置"] == 假:
+    返回 "absent"
+  如果 条目["原生配置"] == 假:
+    返回 "unsupported"
+  返回 "schema"
+
+# 条目投影（config.ts listing L40-42）：只外露 id/patchId/name/status
+段落 绳列举配置(条目):
+  设 归类 为 绳归类配置条目(条目)
+  返回 ["id": 条目["id"], "patchId": 条目["id"], "name": 条目["name"], "status": 归类]
+
+# 非空串校验（config.ts text() L57-62）
+段落 绳非空串(字段表, 键):
+  如果 字典包含键(字段表, 键) == 假:
+    返回 空
+  设 值 为 字段表[键]
+  如果 是字符串(值) == 假 或 值 == "":
+    抛出 新建 错误("cordis: " + 键 + " 必须是非空字符串")
+  返回 值
+
+# 查询校验（config.ts parseQuery L55-70）
+段落 绳解析配置查询(输入):
+  设 字段 为 []
+  如果 是字典(输入):
+    设 字段 为 输入
+  设 条目 为 绳非空串(字段, "entry")
+  设 名 为 绳非空串(字段, "name")
+  设 偏移 为 0
+  如果 字典包含键(字段, "offset"):
+    设 偏移 为 字段["offset"]
+  设 上限 为 25
+  如果 字典包含键(字段, "limit"):
+    设 上限 为 字段["limit"]
+  如果 是整数(偏移) == 假 或 偏移 < 0:
+    抛出 新建 错误("cordis: offset 必须是非负整数")
+  如果 是整数(上限) == 假 或 上限 < 1 或 上限 > 100:
+    抛出 新建 错误("cordis: limit 必须是 1 到 100 的整数")
+  返回 ["entry": 条目, "name": 名, "offset": 偏移, "limit": 上限]
+
+# 目录分页（config.ts queryLiveConfig 无 entry 臂 L103-108）
+# 条目表为已归类字典列表（{id,name,status,...}）；按 name 精确过滤后切片
+段落 绳配置分页(条目表, 查询):
+  设 匹配 为 []
+  遍历 候选 之 条目表:
+    如果 查询["name"] == 空:
+      列表追加(匹配, 候选)
+    否则如果 候选["name"] == 查询["name"]:
+      列表追加(匹配, 候选)
+  设 末 为 查询["offset"] + 查询["limit"]
+  设 页 为 []
+  设 i 为 查询["offset"]
+  当 i < 末 且 i < 列表长度(匹配):
+    列表追加(页, 匹配[i])
+    设 i 为 i + 1
+  设 结束 为 查询["offset"] + 列表长度(页)
+  设 下一 为 空
+  如果 结束 < 列表长度(匹配):
+    设 下一 为 结束
+  返回 ["entries": 页, "total": 列表长度(匹配), "nextOffset": 下一]
+
+# HOST_EVENTS（providers.ts L32）：剥掉 cordis/* 内置事件名
+段落 绳剥离内置事件(事件表):
+  设 表 为 []
+  遍历 事件 之 事件表:
+    设 名 为 事件["name"]
+    设 是内置 为 假
+    如果 字符串长度(名) >= 7:
+      如果 截取(名, 0, 7) == "cordis/":
+        设 是内置 为 真
+    如果 是内置 == 假:
+      列表追加(表, 事件)
+  返回 表
+
+# ---- 目录投影（api-catalog.ts L7762-7818）----
+# ASCII 字字符判定（标识符/整词边界共用）
+段落 绳字字符(字符):
+  设 码 为 字符转ASCII(字符)
+  如果 码 >= 65 且 码 <= 90:
+    返回 真
+  如果 码 >= 97 且 码 <= 122:
+    返回 真
+  如果 码 >= 48 且 码 <= 57:
+    返回 真
+  如果 码 == 95:
+    返回 真
+  返回 假
+
+# 标识符首字符（字母/_/$）
+段落 绳首字符(字符):
+  设 码 为 字符转ASCII(字符)
+  如果 码 >= 65 且 码 <= 90:
+    返回 真
+  如果 码 >= 97 且 码 <= 122:
+    返回 真
+  如果 码 == 95 或 码 == 36:
+    返回 真
+  返回 假
+
+# contextProperty 前置判定（api-catalog.ts L762-763）
+段落 绳判定标识符(键):
+  如果 键 == "":
+    返回 假
+  如果 绳首字符(键[0]) == 假:
+    返回 假
+  设 i 为 1
+  当 i < 字符串长度(键):
+    如果 绳字字符(键[i]) == 假:
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# contextProperty：合法标识符 → ctx.key；否则 ctx["key"]
+段落 绳上下文表达式(键):
+  如果 绳判定标识符(键):
+    返回 "ctx." + 键
+  返回 "ctx[\"" + 键 + "\"]"
+
+# 整词包含（\bname\b 近似）：名出现在文本中且两侧非字字符
+段落 绳含整词(文本, 名):
+  设 名长 为 字符串长度(名)
+  设 文本长 为 字符串长度(文本)
+  设 搜位 为 0
+  当 搜位 <= 文本长 - 名长:
+    如果 截取(文本, 搜位, 搜位 + 名长) == 名:
+      设 左好 为 真
+      如果 搜位 > 0:
+        设 左好 为 绳字字符(文本[搜位 - 1]) == 假
+      设 右位 为 搜位 + 名长
+      设 右好 为 真
+      如果 右位 < 文本长:
+        设 右好 为 绳字字符(文本[右位]) == 假
+      如果 左好 且 右好:
+        返回 真
+    设 搜位 为 搜位 + 1
+  返回 假
+
+# referencedTypeClosure（api-catalog.ts L7745-7760）：BFS 汇聚被签名引用的声明
+# 类型表：[{name, declaration}]；种子为签名文本表
+段落 绳汇聚声明(种子表, 类型表):
+  设 已含 为 {}
+  设 前沿 为 []
+  遍历 种 之 种子表:
+    列表追加(前沿, 种)
+  设 前进 为 真
+  当 前进:
+    设 下批 为 []
+    设 前进 为 假
+    遍历 型 之 类型表:
+      如果 字典包含键(已含, 型["name"]):
+        继续
+      设 命中 为 假
+      遍历 文 之 前沿:
+        如果 绳含整词(文, 型["name"]):
+          设 命中 为 真
+      如果 命中:
+        设 已含[型["name"]] 为 真
+        列表追加(下批, 型["declaration"])
+        设 前进 为 真
+    设 前沿 为 下批
+  设 出口 为 []
+  遍历 型 之 类型表:
+    如果 字典包含键(已含, 型["name"]):
+      列表追加(出口, 型)
+  返回 出口
+
+# queryServiceApi（api-catalog.ts L7772-7798）
+# 服务表/类型表由 取目录 钩子注入；键省略 → 紧凑目录，给键 → 单条契约
+段落 绳查询服务目录(键, 服务表, 类型表):
+  如果 键 == 空:
+    设 表 为 []
+    遍历 服务 之 服务表:
+      设 法表 为 []
+      遍历 法 之 服务["methods"]:
+        列表追加(法表, ["signature": 法["signature"]])
+      列表追加(表, ["key": 服务["key"], "description": 服务["summary"], "methods": 法表])
+    返回 ["mode": "catalog", "services": 表]
+  设 命中 为 空
+  遍历 服务 之 服务表:
+    如果 服务["key"] == 键:
+      设 命中 为 服务
+  如果 命中 == 空:
+    抛出 新建 错误("cordis: 无目录 Service 名为 \"" + 键 + "\"")
+  设 签表 为 []
+  遍历 法 之 命中["methods"]:
+    列表追加(签表, 法["signature"])
+  返回 ["mode": "service", "service": ["key": 命中["key"], "description": 命中["description"], "access": ["optional": ["expression": "ctx.get(\"" + 命中["key"] + "\")", "requiresUndefinedCheck": 真], "hardDependency": ["inject": [命中["key"]], "expression": 绳上下文表达式(命中["key"])]], "methods": 命中["methods"]], "referencedTypes": 绳汇聚声明(签表, 类型表)]
+
+# queryEventApi（api-catalog.ts L7806-7825）
+段落 绳查询事件目录(名, 事件表, 类型表):
+  如果 名 == 空:
+    设 表 为 []
+    遍历 事件 之 事件表:
+      列表追加(表, ["name": 事件["name"], "description": 事件["summary"], "mode": 事件["mode"], "signature": 事件["signature"]])
+    返回 ["mode": "catalog", "events": 表]
+  设 命中 为 空
+  遍历 事件 之 事件表:
+    如果 事件["name"] == 名:
+      设 命中 为 事件
+  如果 命中 == 空:
+    抛出 新建 错误("cordis: 无目录 Event 名为 \"" + 名 + "\"")
+  返回 ["mode": "event", "event": ["name": 命中["name"], "description": 命中["description"], "mode": 命中["mode"], "signature": 命中["signature"], "parameters": 命中["parameters"]], "referencedTypes": 绳汇聚声明([命中["signature"]], 类型表)]
+
+导出 绳归类配置条目
+导出 绳列举配置
+导出 绳解析配置查询
+导出 绳配置分页
+导出 绳剥离内置事件
+导出 绳上下文表达式
+导出 绳汇聚声明
+导出 绳查询服务目录
+导出 绳查询事件目录

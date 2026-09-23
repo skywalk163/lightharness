@@ -1,0 +1,74 @@
+# test_R87_B1_llm.light —— R87 任务 B1：0.1.7 llm/message.ts 增量判据
+#
+# 上游锚点 877717787c：packages/llm/llm/src/message.ts
+#   :124-132  boundContextSummary / CONTEXT_SUMMARY_MAX_CHARS=120
+#   :107-115  MessageSourceMap 0.1.7 闭集（user/model/tool/system-prompt，无 plugin 兜底）
+#   :279-292  createSystemMessage(text) → source {kind:'system-prompt'}
+#   :146-150  DeveloperMessage（role='developer'）
+#   :299-307  createToolResultMessage → 一等 tool role（toolCallId/isError 上移）
+# 判据锚点：packages/llm/llm/tests/message.spec.ts（0.1.7 形状断言）
+
+从 消息 导入 限摘要长度, 摘要限界字符数, 消息来源词表, 造系统提示消息, 造开发者消息, 造工具角色消息, 造工具增块, 造工具删块, 造用户消息, 造文本块
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 造长文本(字数):
+  设 结果 为 ""
+  设 i 为 0
+  当 i < 字数:
+    设 结果 为 结果 加上 "字"
+    设 i 为 i + 1
+  返回 结果
+
+段落 主:
+  # M1 摘要限界：120 以内原样；121 → 119 字 + …
+  对拍相等(摘要限界字符数(), 120, "CONTEXT_SUMMARY_MAX_CHARS")
+  对拍相等(限摘要长度("短摘要"), "短摘要", "未超限原样")
+  设 长文 为 造长文本(120)
+  对拍相等(限摘要长度(长文), 长文, "恰好 120 不截断")
+  设 超限 为 限摘要长度(造长文本(121))
+  对拍相等(长度(超限), 120, "截断后总长 119+省略号")
+  对拍相等(超限[119], "…", "末位省略号")
+  对拍相等(超限[0:119], 造长文本(119), "截断保留前 119 字")
+
+  # M2 来源闭集：无 'plugin' 兜底，system-prompt 入集
+  设 词表 为 消息来源词表()
+  对拍相等(长度(词表), 4, "0.1.7 来源四词")
+  对拍相等(列表包含(词表, "plugin"), 假, "0.1.7 移除 plugin 兜底")
+  对拍相等(列表包含(词表, "system-prompt"), 真, "system-prompt 入集")
+
+  # M3 createSystemMessage(text)：system-prompt 源；空文本 → 空内容
+  设 系统消息 为 造系统提示消息("你是光明助手")
+  对拍相等(系统消息["role"], "system", "system 角色")
+  对拍相等(系统消息["source"]["kind"], "system-prompt", "0.1.7 来源 kind")
+  对拍相等(系统消息["source"].包含("plugin"), 假, "不再携带 plugin 名")
+  对拍相等(长度(系统消息["content"]), 1, "非空文本单块")
+  设 空系统 为 造系统提示消息("")
+  对拍相等(长度(空系统["content"]), 0, "空文本 = 无系统提示")
+
+  # M4 DeveloperMessage：role='developer'，来源由 producer 供给
+  设 开发块 为 [造工具增块("查天气"), 造工具删块("写文件")]
+  对拍相等(开发块[0]["type"], "tool-addition", "增块类型")
+  对拍相等(开发块[1]["toolName"], "写文件", "删块工具名")
+  设 开发消息 为 造开发者消息(开发块, ["kind": "user"])
+  对拍相等(开发消息["role"], "developer", "developer 角色")
+  对拍相等(长度(开发消息["content"]), 2, "开发者消息内容块数")
+  对拍相等(开发消息["source"]["kind"], "user", "0.1.7 user/developer 可携任意 producer kind")
+
+  # M5 一等 tool role：toolCallId/isError 上移到消息层
+  设 工具消息 为 造工具角色消息("call_9", [造文本块("晴")], 假)
+  对拍相等(工具消息["role"], "tool", "一等 tool role")
+  对拍相等(工具消息["toolCallId"], "call_9", "toolCallId 消息层")
+  对拍相等(工具消息["isError"], 假, "isError 消息层")
+  对拍相等(工具消息["source"], ["kind": "tool", "callId": "call_9"], "来源 callId 同步")
+  对拍相等(工具消息["content"][0]["type"], "text", "内容块原样")
+
+  # M6 0.1.6 既有口径不受影响（对照冒烟）
+  设 旧用户 为 造用户消息([造文本块("你好")])
+  对拍相等(旧用户["source"]["kind"], "user", "0.1.6 用户来源不变")
+
+  打印 "--- R87 B1 llm/message 判据通过 ---"
+
+主()

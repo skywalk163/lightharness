@@ -1,0 +1,59 @@
+# test_R87_B1_协议.light —— R87 任务 B1：0.1.7 typert/acp/sdk 纯逻辑增量判据
+#
+# 上游锚点 877717787c：
+#   packages/acp/acp/src/codec.ts   TurnEndReason merge-extensible + 种子专有 forked
+#   packages/acp/acp/src/updates.ts toolResultUpdate 输入改一等 tool role 消息
+#   packages/typert/protocol/src/json-value.ts（新文件）isRemoteUplinkItem
+#     —— 顶层 undefined 作为上行项合法；嵌套 undefined 仍拒绝（光明 空 无法区分
+#     undefined/null，L-131 已登记，故「顶层 undefined」面由网关协议 item 缺省
+#     value 帧承载，本用例只判无损 JSON 面）。
+# 判据锚点：packages/sdk/client/tests/*.spec.ts、packages/acp/acp/tests/*.spec.ts
+
+从 acp转码 导入 轮次转停止原因, 是种子专有原因
+从 协议深化 导入 结果更新V4, 结果更新
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 附件桩(引用):
+  返回 空
+
+段落 内容桩(块, 附件库):
+  如果 块["type"] == "text":
+    返回 {"type": "text", "text": 块["text"]}
+  返回 空
+
+段落 主:
+  # A1 TurnEndReason 0.1.7：forked 是种子专有变体，永不终结 ACP prompt 轮
+  对拍相等(是种子专有原因(["kind": "forked"]), 真, "forked 为种子专有")
+  对拍相等(是种子专有原因(["kind": "completed"]), 假, "completed 非种子专有")
+  对拍相等(轮次转停止原因(["kind": "forked"]), "end_turn", "种子专有走 default 兜底")
+  对拍相等(轮次转停止原因(["kind": "completed"]), "end_turn", "既有映射不变")
+
+  # A2 结果更新V4：一等 tool role 消息（toolCallId/isError 消息层；reasoning 透传）
+  设 工具消息 为 ["role": "tool", "toolCallId": "call-ok", "isError": 假,
+    "content": [{"type": "text", "text": "结果"}], "source": ["kind": "tool", "callId": "call-ok"]]
+  设 更新1 为 结果更新V4(工具消息, 附件桩)
+  对拍相等(更新1["sessionUpdate"], "tool_call_update", "V4 更新类型")
+  对拍相等(更新1["toolCallId"], "call-ok", "V4 消息层 toolCallId")
+  对拍相等(更新1["status"], "completed", "V4 成功状态")
+
+  设 坏消息 为 ["role": "tool", "toolCallId": "call-bad", "isError": 真,
+    "content": [{"type": "reasoning", "text": "hidden"}], "source": ["kind": "tool", "callId": "call-bad"]]
+  设 更新2 为 结果更新V4(坏消息, 附件桩)
+  对拍相等(更新2["toolCallId"], "call-bad", "V4 失败调用标识")
+  对拍相等(更新2["status"], "failed", "V4 失败状态")
+  对拍相等(长度(更新2["content"]), 0, "reasoning 块不产 ACP 内容")
+
+  # A3 0.1.6 口径 结果更新(块) 保留
+  设 旧块 为 ["id": "call-old", "isError": 真, "content": [{"type": "text", "text": "旧"}]]
+  设 更新3 为 结果更新(旧块, 附件桩)
+  对拍相等(更新3["toolCallId"], "call-old", "0.1.6 块口径不变")
+  对拍相等(更新3["status"], "failed", "0.1.6 错误状态不变")
+
+  # T1 typert 上行项：无损 JSON 判定已由 网关协议 §1 承载（挪包登记，
+  #     isRemoteUplinkItem 顶层 undefined 面由 item 缺省 value 帧承载——见网关判据 G1）
+  打印 "--- R87 B1 typert/acp/sdk 判据通过 ---"
+
+主()

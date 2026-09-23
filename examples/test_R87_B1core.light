@@ -1,0 +1,131 @@
+# test_R87_B1core.light —— R87 任务 B1：0.1.7 core/session 增量判据
+#
+# 上游锚点 877717787c：
+#   packages/core/session/src/repair.ts   openTurnClosers 起因参数化（interrupted|forked）
+#   packages/core/session/src/fork.ts     buildForkSeed（新文件，0.1.7）
+# 判据锚点：packages/core/session/tests/fork.spec.ts（0.1.7 新增）
+# 判据要点：
+#   C1 起因文案：interrupted / forked 两族逐字，forked 含 "fork point"；
+#   C2 开轮闭合器：未决调用 → tool/result（forked 前缀 id + 来源事件序号 + 错误码）
+#      → step/end → turn/end{原因}；平衡日志返回空表；
+#   C3 造分叉种子：前缀保留 + session/end-seed{继承:真}（序号=边界+1、时间复用边界事件）
+#      + forked 闭合器接续编号；
+#   C4 非法边界抛错；空日志闭合器为空。
+
+从 会话格式 导入 起因文案, 开轮闭合器, 造分叉种子, 中断轮闭合器, 恢复码工具未启动, 恢复码结果未知
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 对拍报错(函数值, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    函数值()
+  捕获 e:
+    设 已抛 为 真
+    设 文本 为 转字符串(e)
+    如果 文本.包含(片段) == 假:
+      抛出 新建 错误("错误片段不符: " + 标签 + " 实际=" + 文本)
+  如果 已抛 == 假:
+    抛出 新建 错误("未抛出: " + 标签)
+
+# ---- 夹具：开启轮 + 开启步 + 助手携带工具调用 + tool/call（无结果）----
+段落 造开启日志:
+  设 表 为 []
+  列表追加(表, ["类型": "turn/start", "序号": 0, "时间": 100, "数据": ["turn": 1]])
+  列表追加(表, ["类型": "step/start", "序号": 1, "时间": 101, "数据": ["turn": 1, "step": 1]])
+  设 调用块 为 ["type": "tool-call", "id": "c1", "name": "查天气", "arguments": "{}"]
+  设 消息 为 ["id": "m1", "role": "assistant", "content": [调用块], "source": ["kind": "model", "provider": "d", "model": "m"]]
+  列表追加(表, ["类型": "assistant/message", "序号": 2, "时间": 102, "数据": ["turn": 1, "step": 1, "消息": 消息]])
+  列表追加(表, ["类型": "tool/call", "序号": 3, "时间": 103, "数据": ["turn": 1, "step": 1, "callId": "c1"]])
+  返回 表
+
+段落 造平衡日志:
+  设 表 为 造开启日志()
+  设 结果块 为 ["type": "tool-result", "toolCallId": "c1", "isError": 假, "content": []]
+  设 消息 为 ["id": "m2", "role": "user", "content": [结果块], "source": ["kind": "tool", "callId": "c1"]]
+  列表追加(表, ["类型": "tool/result", "序号": 4, "时间": 104, "数据": ["turn": 1, "step": 1, "消息": 消息, "成功": 真]])
+  列表追加(表, ["类型": "step/end", "序号": 5, "时间": 105, "数据": ["turn": 1, "step": 1]])
+  列表追加(表, ["类型": "turn/end", "序号": 6, "时间": 106, "数据": ["turn": 1, "原因": "stop"]])
+  返回 表
+
+段落 越界边界桩:
+  造分叉种子(造开启日志(), 9)
+
+段落 空表边界桩:
+  造分叉种子([], 0)
+
+段落 主:
+  # C1 起因文案（interrupted 沿用 0.1.6 逐字；forked 为 0.1.7 新增）
+  对拍相等(起因文案("forked", 真).包含("after the fork point"), 真, "forked-started 文案")
+  对拍相等(起因文案("forked", 假).包含("no record of this tool call starting"), 真, "forked-notStarted 文案")
+  对拍相等(起因文案("interrupted", 真).包含("Its outcome is unknown"), 真, "interrupted-started 文案")
+  对拍相等(起因文案("interrupted", 真) == 起因文案("forked", 真), 假, "两起因文案互异")
+
+  # C2 开轮闭合器（forked 起因）：tool/result → step/end → turn/end
+  设 日志 为 造开启日志()
+  设 收尾 为 开轮闭合器(日志, "forked")
+  对拍相等(长度(收尾), 3, "forked 闭合器事件数")
+  设 结果项 为 收尾[0]
+  对拍相等(结果项["类型"], "tool/result", "闭合器1类型")
+  对拍相等(结果项["序号"], 4, "闭合器1序号接续")
+  对拍相等(结果项["时间"], 103, "闭合器时间复用最后真实事件")
+  对拍相等(结果项["数据"]["调用"], "c1", "闭合器调用标识")
+  对拍相等(结果项["数据"]["消息"]["id"], "forked-tool-result-c1-4", "合成消息 id 前缀=起因")
+  对拍相等(结果项["数据"]["消息"]["content"][0]["content"][0]["text"].包含("after the fork point"), 真, "forked 模型可见文案")
+  对拍相等(结果项["数据"]["错误"]["代码"], 恢复码结果未知, "已启动错误码")
+  对拍相等(结果项["来源事件序号"][0], 3, "引用 tool/call 序号")
+  对拍相等(收尾[1]["类型"], "step/end", "闭合器2类型")
+  对拍相等(收尾[2]["类型"], "turn/end", "闭合器3类型")
+  对拍相等(收尾[2]["数据"]["原因"], "forked", "turn/end 原因=起因")
+
+  # C2b interrupted 起因：文案/前缀/原因随起因切换，错误码同族
+  设 收尾2 为 开轮闭合器(日志, "interrupted")
+  对拍相等(收尾2[0]["数据"]["消息"]["id"], "interrupted-tool-result-c1-4", "interrupted id 前缀")
+  对拍相等(收尾2[0]["数据"]["错误"]["代码"], 恢复码结果未知, "interrupted 已启动错误码同族")
+  对拍相等(收尾2[2]["数据"]["原因"], "interrupted", "interrupted turn/end 原因")
+
+  # C2c 0.1.6 兼容：中断轮闭合器行为不变（等价 开轮闭合器(...,"interrupted")）
+  设 收尾3 为 中断轮闭合器(日志)
+  对拍相等(长度(收尾3), 3, "0.1.6 中断闭合器事件数不变")
+  对拍相等(收尾3[0]["数据"]["消息"]["id"], "interrupted-tool-result-c1-4", "0.1.6 id 前缀不变")
+
+  # C2d 平衡日志：无需合成
+  对拍相等(开轮闭合器(造平衡日志(), "forked"), [], "平衡日志 forked 空闭合")
+  对拍相等(开轮闭合器([], "forked"), [], "空日志空闭合")
+
+  # C2e 未启动调用（assistant 携带调用但无 tool/call）：TOOL_NOT_STARTED + 无来源序号
+  设 未启动日志 为 []
+  列表追加(未启动日志, ["类型": "turn/start", "序号": 0, "时间": 200, "数据": ["turn": 9]])
+  设 调用块2 为 ["type": "tool-call", "id": "cx", "name": "写文件", "arguments": "{}"]
+  设 消息2 为 ["id": "m9", "role": "assistant", "content": [调用块2], "source": ["kind": "model", "provider": "d", "model": "m"]]
+  列表追加(未启动日志, ["类型": "assistant/message", "序号": 1, "时间": 201, "数据": ["turn": 9, "step": 1, "消息": 消息2]])
+  设 收尾4 为 开轮闭合器(未启动日志, "forked")
+  对拍相等(长度(收尾4), 2, "未启动：无 step/end（步未显式开启后仍闭合 turn）")
+  对拍相等(收尾4[0]["数据"]["错误"]["代码"], 恢复码工具未启动, "未启动错误码")
+  对拍相等(收尾4[0].包含("来源事件序号"), 假, "未启动不引用来源序号")
+  对拍相等(收尾4[0]["数据"]["消息"]["content"][0]["content"][0]["text"].包含("no record of this tool call starting"), 真, "未启动 forked 文案")
+
+  # C3 分叉种子：前缀保留 + seed + forked 闭合器
+  设 种子表 为 造分叉种子(造开启日志(), 3)
+  对拍相等(长度(种子表), 8, "种子表=前缀4+种子1+闭合器3")
+  对拍相等(种子表[0]["序号"], 0, "前缀事件原样保留")
+  对拍相等(种子表[3]["类型"], "tool/call", "边界事件保留")
+  设 种子 为 种子表[4]
+  对拍相等(种子["类型"], "session/end-seed", "种子事件类型")
+  对拍相等(种子["序号"], 4, "种子序号=边界+1")
+  对拍相等(种子["时间"], 103, "种子时间复用边界事件")
+  对拍相等(种子["数据"]["继承"], 真, "种子数据 inherited")
+  对拍相等(种子表[5]["类型"], "tool/result", "种子后接 forked 闭合器")
+  对拍相等(种子表[5]["序号"], 5, "闭合器序号接续种子")
+  对拍相等(种子表[5]["数据"]["消息"]["id"], "forked-tool-result-c1-5", "forked 闭合器编号基于种子")
+  对拍相等(种子表[7]["数据"]["原因"], "forked", "种子 turn/end 原因")
+
+  # C4 非法边界抛错
+  对拍报错(越界边界桩, "boundary", "越界边界")
+  对拍报错(空表边界桩, "boundary", "空表边界")
+
+  打印 "--- R87 B1 core/session 判据通过 ---"
+
+主()

@@ -1,0 +1,162 @@
+# 任务不变式.light —— 后台任务事件协议相位机（invariant）+ 归档准入 runningJobs 过滤
+#
+# 对齐原版：
+#   packages/jobs/jobs/src/invariant.ts（@deepseek-ai/dsh-jobs/invariant）
+#     L20      TERMINAL_STATUSES = completed|killed|failed
+#     L27-30   Phase = live（首事件后）| settled（结算后至移除前）
+#     L60-71   checkAnnounced：身份字段 kind/label/owner/startedAt 一致；announced.output.total 不领先 read
+#     L80-93   output 事件：read 不可空；total 不领先；新 id 采纳为 live
+#     L96-104  registered：不得早于既往事件；不得终态/带 finishedAt
+#     L105-110 progress/stopping：不得在 settled 后；不得终态
+#     L111-120 settled：不得重复；必须终态；finishedAt>=startedAt；progress 必须已清
+#     L121-126 removed：不得在 settled 前；read 不可仍在；删相位
+#     L131-137 settled 额外：read.status/finishedAt 与 announced 一致
+#   packages/jobs/jobs/src/archive-admission.ts
+#     L48-51   runningJobs：list(owner).filter(owner===自身 && running|stopping)
+#
+# 复刻边界（去 Cordis/invariants 宿主）：
+#   - fail 回调替换为失败表（可断言）；readBack(ctx,id,owner) 由调用方直接传入「读回视图」
+#     （注册表当前投影；记录已删则传 空）。相位机本身纯逻辑，不依赖注册表。
+#   - archive-admission 的 ctx.on(session-activity/session-stop) 接线属宿主胶水，不搬；
+#     只搬纯过滤 runningJobs。
+#
+# ⚠️ 命名铁律：避开词根 取/生成/导出/导入/新建/模型/事件/类型/部分/原因/全部/工具/
+#            模式(含模)/用量/打印/抛出/接口/接收/属性/异步/包含/匹配/排序/回调/映射/枚举/返回。
+
+从 JSON 导入 序列化JSON
+从 内置核心字典 导入 字典删除
+
+设 终态清单 为 ["completed", "killed", "failed"]
+
+# =====================================================================
+# 归档准入：该归属尚未结算的活动任务（archive-admission.ts L48-51 runningJobs）
+#   入参：视图表（registry.list(归属) 的结果）、归属 id
+# =====================================================================
+段落 活动任务(视图表, 归属):
+  设 结果 为 []
+  遍历 视图 之 视图表:
+    如果 视图["owner"] == 归属:
+      如果 视图["status"] == "running" 或 视图["status"] == "stopping":
+        列表追加(结果, 视图)
+  返回 结果
+
+# =====================================================================
+# 相位机（invariant.ts install 内的 per-job 状态校验）
+# =====================================================================
+类 不变式机:
+  属性 阶段表 等于 空
+  属性 失败表 等于 空
+
+  段落 构造:
+    设 己.阶段表 为 {}
+    设 己.失败表 为 []
+
+  段落 记失败(报文):
+    己.失败表.追加(报文)
+
+  # 喂一条任务报文 + 注册表当前读回（读不到传 空）
+  段落 喂(报文, 读回):
+    设 类别 为 报文["type"]
+    # ---- output 事件（invariant L80-93）----
+    如果 类别 == "output":
+      设 标识 为 转字符串(报文["id"])
+      如果 读回 == 空:
+        己.记失败("output announced for job " + 标识 + " that the registry no longer returns")
+      否则:
+        如果 报文["total"] > 读回["output"]["total"]:
+          己.记失败("output announced for job " + 标识 + " at total " + 转字符串(报文["total"]) + " ahead of the registry's " + 转字符串(读回["output"]["total"]))
+      如果 字典包含键(己.阶段表, 标识) == 假:
+        设 己.阶段表[标识] 为 "live"
+      返回
+    # ---- 生命周期事件 ----
+    设 视图 为 报文["job"]
+    设 标识 为 转字符串(视图["id"])
+    设 相位 为 空
+    如果 字典包含键(己.阶段表, 标识):
+      设 相位 为 己.阶段表[标识]
+    设 终态 为 假
+    如果 列表包含(终态清单, 视图["status"]):
+      设 终态 为 真
+    如果 类别 == "registered":
+      如果 相位 != 空:
+        己.记失败("registered announced for job " + 标识 + " after earlier events for the same id")
+      如果 终态:
+        己.记失败("registered job " + 标识 + " must announce a live status without finishedAt")
+      如果 字典包含键(视图, "finishedAt"):
+        如果 视图["finishedAt"] != 空:
+          己.记失败("registered job " + 标识 + " must announce a live status without finishedAt")
+    否则:
+      如果 类别 == "progress" 或 类别 == "stopping":
+        如果 相位 == "settled":
+          己.记失败(类别 + " announced for job " + 标识 + " after its settlement")
+        如果 终态:
+          己.记失败(类别 + " announced for job " + 标识 + " with a terminal status")
+      否则:
+        如果 类别 == "settled":
+          如果 相位 == "settled":
+            己.记失败("settled announced twice for job " + 标识)
+          如果 终态 == 假:
+            己.记失败("settled job " + 标识 + " must announce a terminal status, got " + 序列化JSON(视图["status"]))
+          设 完成时刻 为 空
+          如果 字典包含键(视图, "finishedAt"):
+            设 完成时刻 为 视图["finishedAt"]
+          如果 完成时刻 == 空:
+            己.记失败("settled job " + 标识 + " must announce finishedAt no earlier than startedAt")
+          否则:
+            如果 完成时刻 < 视图["startedAt"]:
+              己.记失败("settled job " + 标识 + " must announce finishedAt no earlier than startedAt")
+          如果 字典包含键(视图, "progress"):
+            如果 视图["progress"] != 空:
+              己.记失败("settled job " + 标识 + " must announce a cleared progress line")
+        否则:
+          如果 类别 == "removed":
+            如果 相位 == "live":
+              己.记失败("removed announced for job " + 标识 + " before its settlement")
+            如果 读回 != 空:
+              己.记失败("removed announced for job " + 标识 + " that the registry still returns")
+            字典删除(己.阶段表, 标识)
+            返回
+    # ---- announced vs read 一致性（invariant L130-137）----
+    如果 读回 == 空:
+      己.记失败(类别 + " announced for job " + 标识 + " that the registry does not return")
+    否则:
+      己.核对身份(视图, 读回, 类别)
+      如果 视图["output"]["total"] > 读回["output"]["total"]:
+        己.记失败(类别 + " for job " + 标识 + " announces output total " + 转字符串(视图["output"]["total"]) + " ahead of the registry's " + 转字符串(读回["output"]["total"]))
+      如果 类别 == "settled":
+        如果 读回["status"] != 视图["status"]:
+          己.记失败("settled job " + 标识 + " announces " + 视图["status"] + " while the registry reads " + 读回["status"])
+        设 读完 为 空
+        设 宣完 为 空
+        如果 字典包含键(读回, "finishedAt"):
+          设 读完 为 读回["finishedAt"]
+        如果 字典包含键(视图, "finishedAt"):
+          设 宣完 为 视图["finishedAt"]
+        如果 读完 != 宣完:
+          己.记失败("settled job " + 标识 + " finishedAt mismatch")
+    # ---- 落相位 ----
+    如果 类别 == "settled":
+      设 己.阶段表[标识] 为 "settled"
+    否则:
+      设 己.阶段表[标识] 为 "live"
+
+  # 身份字段一致（invariant L60-71 checkAnnounced 的身份四键）
+  段落 核对身份(宣, 读, 类别):
+    如果 读["kind"] != 宣["kind"]:
+      己.记失败(类别 + " for job " + 转字符串(宣["id"]) + " kind mismatch")
+    如果 读["label"] != 宣["label"]:
+      己.记失败(类别 + " for job " + 转字符串(宣["id"]) + " label mismatch")
+    如果 读["owner"] != 宣["owner"]:
+      己.记失败(类别 + " for job " + 转字符串(宣["id"]) + " owner mismatch")
+    如果 读["startedAt"] != 宣["startedAt"]:
+      己.记失败(类别 + " for job " + 转字符串(宣["id"]) + " startedAt mismatch")
+
+  段落 失败列表:
+    返回 己.失败表
+
+  段落 失败计数:
+    返回 列表长度(己.失败表)
+
+导出 终态清单
+导出 活动任务
+导出 不变式机

@@ -55,6 +55,9 @@
       如果 列表长度(升级模式列表) > 0: 列表追加(标记, 升级提示标记("command"))
   如果 字典包含键(结果, "timedOut") == 真:
     如果 结果["timedOut"] == 真: 列表追加(标记, "[timed out after " + 序列化JSON(结果["timeoutMs"]) + "ms]")
+  # 【R87-B4】renderResult 新增 stopped 标记（外部叫停，非命令失败；插在超时之后、信号之前）
+  如果 字典包含键(结果, "stopped") == 真:
+    列表追加(标记, "[stopped: " + 结果["stopped"] + "]")
   设 有信号 为 假
   如果 字典包含键(结果, "signal") == 真:
     如果 结果["signal"] != 空: 设 有信号 为 真
@@ -96,3 +99,47 @@
   如果 字符串长度(读取["delta"]) > 0:
     如果 结尾(读取["delta"], "\n") == 假: 设 分隔 为 "\n"
   返回 读取["delta"] + 分隔 + 连接字符串(通知, "\n")
+
+# =====================================================================
+# 【R87-B4】render.ts 0.1.7 增量纯逻辑
+# 对标源：packages/shell/tool-bash/src/render.ts（锚点 877717787c）
+#   - renderPromoted：前台调用转后台后给模型的交接文本
+#   - renderJobRead：新签名（delta/lossy/spillPaths 入参），渲染进程读取增量；
+#     旧 渲染进程读取(读取字典,...) 保留为薄封装，向下兼容既有测试。
+# tool-pwsh 与 tool-bash 同构（render.ts 文案一致），本模块即为两侧共用根。
+# =====================================================================
+
+# renderPromoted：已转后台的前台调用文本（promoted = {作业id, 等待毫秒, 已有输出}）
+段落 渲染已提升(已提升):
+  设 输出 为 已提升["output"]
+  设 主体 为 ""
+  如果 字符串长度(输出) > 0:
+    如果 结尾(输出, "\n") == 真:
+      设 主体 为 输出
+    否则:
+      设 主体 为 输出 + "\n"
+  设 行 为 主体 + "[still running after " + 序列化JSON(已提升["timeoutMs"]) + "ms; moved to background job " + 已提升["jobId"] + "]\n"
+  设 指引 为 "The command keeps running in the background. You will be notified when it finishes; "
+  设 指引 为 指引 + "read newer output with job_output, stop it with job_kill."
+  返回 行 + 指引
+
+# renderJobRead：新签名（增量文本 / 有损 / 溢出路径表 / 沙箱事实 / 升级目标表）
+段落 渲染作业读取(增量, 有损, 路径表, 沙箱, 升级模式列表):
+  设 通知 为 []
+  如果 有损 == 真:
+    设 溢出文案 为 "(unavailable)"
+    如果 列表长度(路径表) > 0: 设 溢出文案 为 连接字符串(路径表, ", ")
+    列表追加(通知, "[some output was dropped from memory; full output: " + 溢出文案 + "]")
+  如果 沙箱 != 空:
+    如果 字典包含键(沙箱, "runnerFailed") == 真:
+      如果 沙箱["runnerFailed"] == 真:
+        列表追加(通知, "[sandbox: the sandbox runner itself failed under " + 沙箱["mode"] + " mode \u2014 the command did not run; this is a sandbox problem, not a command failure]")
+    否则如果 字典包含键(沙箱, "denied") == 真:
+      如果 沙箱["denied"] == 真:
+        列表追加(通知, 沙箱拒绝标记(沙箱["mode"]))
+        如果 列表长度(升级模式列表) > 0: 列表追加(通知, 升级提示标记("command"))
+  如果 列表长度(通知) == 0: 返回 增量
+  设 分隔 为 ""
+  如果 字符串长度(增量) > 0:
+    如果 结尾(增量, "\n") == 假: 设 分隔 为 "\n"
+  返回 增量 + 分隔 + 连接字符串(通知, "\n")

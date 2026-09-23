@@ -22,6 +22,8 @@
 # 命名避坑：L-119 单字别名保留字；L-120 可全切分标识符。
 
 从 字符串处理 导入 字符转ASCII
+从 内置核心字符串 导入 开头
+从 预设 导入 条目列表问题
 
 # =====================================================================
 # §1 预设组合清单（composition-inventory.ts）
@@ -176,6 +178,83 @@
     返回 假
   遍历 行 之 值["rows"]:
     如果 是组合行(行) == 假:
+      返回 假
+  返回 真
+
+# =====================================================================
+# §1.5 R87 增量：agent-preset-registry 入口与新名册形状
+#   上游 packages/preset/agent-preset-registry/src/{composition-inventory,types}.ts
+#   fileComposition(path) 异步读文件 → definitionComposition(rows) 同步收已解析行；
+#   mountedCompositionRows 增加 owner-id 前缀剥离；名册行/名册表去掉 trust/authorable。
+# =====================================================================
+
+# definitionComposition（composition-inventory.ts L140-150）：
+#   先 entryListProblem 闸门，有问题→{broken}，否则展平→{rows}
+段落 定义组合(行表, 求值能力):
+  设 问题 为 条目列表问题(行表, "")
+  如果 问题 != 空:
+    返回 {"broken": 问题}
+  设 累积 为 列表创建()
+  设 展平 为 展平行(行表, 假, 求值能力, 累积)
+  返回 {"rows": 展平}
+
+# mountedCompositionRows 的 owner-id 前缀剥离（L153-166）：
+#   实时树项的 entry.id 形如 "<owner.id>:<子id>"，剥掉前缀得相对 id；组行跳过。
+段落 挂载行带前缀(树项表, 前缀):
+  设 找到 为 列表创建()
+  遍历 项 之 树项表:
+    设 选项 为 字典获取(项, "options", {})
+    如果 字典获取(选项, "group", 假) == 真:
+      继续
+    设 标识 为 字典获取(项, "id", 空)
+    如果 前缀 != "" 且 是字符串(标识) 且 开头(标识, 前缀):
+      设 标识 为 截取(标识, 字符串长度(前缀), 字符串长度(标识))
+    设 行 为 {"entryId": 标识, "moduleName": 选项["name"], "enabled": 取反(字典获取(选项, "disabled", 假))}
+    如果 是动态禁用标记(字典获取(选项, "disabled", 空)) == 真:
+      字典设置(行, "condition", 选项["disabled"]["js表达式"])
+    如果 字典包含键(项, "fiber") == 真 且 字典包含键(项["fiber"], "state") == 真:
+      字典设置(行, "fiberState", 项["fiber"]["state"])
+    列表追加(找到, 行)
+  返回 找到
+
+# 新名册远程错误码（types.ts：read-only 已下线）
+段落 登记错误码表:
+  返回 ["agent-preset/not-found", "agent-preset/invalid", "agent-preset/locked"]
+
+# 新名册行（types.ts AgentPresetRow：去掉 trust，加 broken；name/description 可选串）
+段落 是登记行(值):
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "id") == 假:
+    返回 假
+  如果 是字符串(值["id"]) == 假 或 字符串长度(值["id"]) == 0:
+    返回 假
+  如果 字典包含键(值, "isDefault") == 假:
+    返回 假
+  如果 是布尔值(值["isDefault"]) == 假:
+    返回 假
+  如果 字典包含键(值, "name") == 真 且 是字符串(值["name"]) == 假:
+    返回 假
+  如果 字典包含键(值, "description") == 真 且 是字符串(值["description"]) == 假:
+    返回 假
+  如果 字典包含键(值, "broken") == 真 且 是字符串(值["broken"]) == 假:
+    返回 假
+  返回 真
+
+# 新名册表（types.ts AgentPresetRoster：authorable → modeSelectionEnabled）
+段落 是登记表(值):
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典包含键(值, "presets") == 假:
+    返回 假
+  如果 字典包含键(值, "modeSelectionEnabled") == 假:
+    返回 假
+  如果 是列表(值["presets"]) == 假:
+    返回 假
+  如果 是布尔值(值["modeSelectionEnabled"]) == 假:
+    返回 假
+  遍历 行 之 值["presets"]:
+    如果 是登记行(行) == 假:
       返回 假
   返回 真
 

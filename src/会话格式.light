@@ -1409,6 +1409,166 @@ V3编解码["编码事件"] 为 编码V2事件
     列表追加(结果, 替换消息卸载占位(消息))
   返回 结果
 
+# =====================================================================
+# §16 R87 · 0.1.7 增量：起因化开轮闭合器 + 分叉种子（core/session）
+# =====================================================================
+# 上游锚点 877717787c（0.1.6 锚点 ddefc45fbc 之上）：
+#   packages/core/session/src/repair.ts:28-40   OpenTurnCloseCause（interrupted | forked）
+#   packages/core/session/src/repair.ts:42-55   CLOSER_TEXT（两起因的模型可见文案）
+#   packages/core/session/src/repair.ts:63-151  openTurnClosers 起因参数化：
+#     合成消息 id 前缀 = 起因词；turn/end reason.kind = 起因词；
+#     错误码 TOOL_NOT_STARTED / TOOL_OUTCOME_UNKNOWN 两起因共用。
+#   packages/core/session/src/fork.ts:1-30      buildForkSeed：
+#     复制 [0..边界] 前缀 → 追加 session/end-seed{inherited:true}（序号=边界+1，
+#     时间复用边界事件）→ 追加 forked 起因闭合器。
+# 判据锚点：packages/core/session/tests/fork.spec.ts（0.1.7 新增）。
+# 词汇约定：
+#   - turn/end 数据「原因」沿用本模块 0.1.6 展平口径（reason.kind → 字符串）。
+#   - 合成结果消息沿用 0.1.6 光明口径（role=user + tool-result 块）；0.1.7 V4
+#     一等 tool role 的重写归 会话格式V4迁移.light，此处不越界。
+#   - 上游 buildForkSeed 的边界合法性由调用方校验（contiguous seq）；本实现
+#     对空表/越界显式抛错兜底。session/end-seed 事件数据按上游 {inherited:true}
+#     直通构造为「继承」键，不经 校验事件载荷（词汇表「长度」必选键是 0.1.6
+#     持久化种子行口径，fork 种子不走该契约——已登记偏离 D-1）。
+# =====================================================================
+
+# 起因 → 未决调用的模型可见文案（repair.ts CLOSER_TEXT 逐字）
+段落 起因文案(起因, 已启动):
+  如果 起因 == "forked":
+    如果 已启动:
+      返回 "The history inherited by this branch records this tool call starting but does not include its result. The parent session may have completed it after the fork point. Decide whether to retry from the tool semantics: retry only if the operation is read-only or idempotent; if it may have side effects, first verify external state or ask the user. Do not retry blindly."
+    返回 "The history inherited by this branch has no record of this tool call starting. The parent session may have executed it after the fork point. Decide whether to retry from the tool semantics: retry only if the operation is read-only or idempotent; if it may have side effects, first verify external state or ask the user. Do not retry blindly."
+  如果 已启动:
+    返回 "The tool call was interrupted after it was recorded, but no result was durably recorded. Its outcome is unknown. Decide whether to retry from the tool semantics: retry only if the operation is read-only or idempotent; if it may have side effects, first verify external state or ask the user. Do not retry blindly."
+  返回 "The tool call was interrupted before the Harness recorded it as started. Retry it if it is still needed."
+
+# 起因化开轮闭合器（0.1.7 openTurnClosers 全量口径；0.1.6 中断轮闭合器的超集）
+# 扫描同 §13：轮界重置待决调用 → 未决调用合成错误 tool/result（按转写序）→
+# step/end（若开启）→ turn/end{原因=起因}。合成消息 id 前缀 = 起因词。
+段落 开轮闭合器(事件表, 起因):
+  设 有开启轮次 为 假
+  设 有开启步骤 为 假
+  设 待决调用 为 {}
+  遍历 事件项 之 事件表:
+    设 种类 为 事件项["类型"]
+    设 数据 为 修复取值(事件项, "数据", 空)
+    如果 种类 == "turn/start":
+      设 有开启轮次 为 真
+      设 有开启步骤 为 假
+      设 待决调用 为 {}
+    否则如果 种类 == "turn/end":
+      设 有开启轮次 为 假
+      设 有开启步骤 为 假
+      设 待决调用 为 {}
+    否则如果 种类 == "step/start":
+      设 有开启步骤 为 真
+    否则如果 种类 == "step/end":
+      设 待决调用 为 {}
+      设 有开启步骤 为 假
+    否则如果 种类 == "assistant/message":
+      设 消息 为 修复取值(数据, "消息", {})
+      设 内容表 为 修复取值(消息, "content", [])
+      如果 是列表(内容表):
+        遍历 块 之 内容表:
+          如果 是字典(块):
+            设 块型 为 修复取值(块, "type", "")
+            设 块标识 为 修复取值(块, "id", "")
+            如果 (块型 == "tool-call") 且 (块标识 != ""):
+              设 条目 为 {}
+              条目["步骤"] 为 修复取值(数据, "step", 空)
+              待决调用[块标识] 为 条目
+    否则如果 种类 == "tool/call":
+      设 调用标识 为 修复取值(数据, "callId", 空)
+      如果 调用标识 == 空:
+        设 调用标识 为 修复取值(数据, "调用", 空)
+      如果 (调用标识 != 空) 且 (字典包含键(待决调用, 调用标识) == 真):
+        设 条目 为 待决调用[调用标识]
+        条目["调用序号"] 为 事件项["序号"]
+    否则如果 种类 == "tool/result":
+      设 消息 为 修复取值(数据, "消息", {})
+      设 来源 为 修复取值(消息, "来源", {})
+      设 调用标识 为 修复取值(来源, "callId", 空)
+      如果 调用标识 == 空:
+        设 调用标识 为 修复取值(数据, "调用", 空)
+      如果 (调用标识 != 空) 且 (字典包含键(待决调用, 调用标识) == 真):
+        字典删除(待决调用, 调用标识)
+  # 平衡日志（无开启尾轮）或空日志：无需合成（上游 openTurn === null || last === undefined）
+  如果 (有开启轮次 == 假) 或 (长度(事件表) == 0):
+    返回 []
+  设 最后事件 为 事件表[长度(事件表) - 1]
+  设 序号 为 最后事件["序号"] + 1
+  设 时刻 为 最后事件["时间"]
+  设 合成表 为 []
+  遍历 调用标识 之 字典键列表(待决调用):
+    设 条目 为 待决调用[调用标识]
+    设 调用序号 为 修复取值(条目, "调用序号", 空)
+    设 已启动 为 调用序号 != 空
+    设 文案 为 起因文案(起因, 已启动)
+    设 消息 为 {}
+    消息["id"] 为 起因 + "-tool-result-" + 调用标识 + "-" + 转字符串(序号)
+    消息["role"] 为 "user"
+    设 来源 为 {}
+    来源["kind"] 为 "tool"
+    来源["callId"] 为 调用标识
+    消息["来源"] 为 来源
+    设 文本块 为 {}
+    文本块["type"] 为 "text"
+    文本块["text"] 为 文案
+    设 块内 为 []
+    列表追加(块内, 文本块)
+    设 结果块 为 {}
+    结果块["type"] 为 "tool-result"
+    结果块["toolCallId"] 为 调用标识
+    结果块["isError"] 为 真
+    结果块["content"] 为 块内
+    设 消息内容 为 []
+    列表追加(消息内容, 结果块)
+    消息["content"] 为 消息内容
+    设 错误 为 {}
+    如果 已启动:
+      错误["名称"] 为 "ToolOutcomeUnknownError"
+      错误["代码"] 为 恢复码结果未知
+    否则:
+      错误["名称"] 为 "ToolNotStartedError"
+      错误["代码"] 为 恢复码工具未启动
+    设 结果数据 为 {}
+    结果数据["调用"] 为 调用标识
+    结果数据["成功"] 为 假
+    结果数据["消息"] 为 消息
+    结果数据["错误"] 为 错误
+    设 合成事件 为 造事件("tool/result", 序号, 时刻, 结果数据)
+    设 序号 为 序号 + 1
+    如果 已启动:
+      设 来源序号 为 []
+      列表追加(来源序号, 调用序号)
+      合成事件["来源事件序号"] 为 来源序号
+    列表追加(合成表, 合成事件)
+  如果 有开启步骤:
+    设 步数据 为 {}
+    步数据["原因"] 为 起因
+    列表追加(合成表, 造事件("step/end", 序号, 时刻, 步数据))
+    设 序号 为 序号 + 1
+  设 轮数据 为 {}
+  轮数据["原因"] 为 起因
+  列表追加(合成表, 造事件("turn/end", 序号, 时刻, 轮数据))
+  返回 合成表
+
+# 分叉种子（0.1.7 fork.ts buildForkSeed）：
+# 复制 [0..边界] 闭前缀 → 追加 session/end-seed{继承:真}（序号=边界+1，时间=边界事件）
+# → 追加 forked 起因闭合器。返回「前缀+种子+闭合器」的新表；源事件对象按上游口径原样保留。
+段落 造分叉种子(事件表, 边界):
+  如果 (长度(事件表) == 0) 或 (边界 < 0) 或 (边界 >= 长度(事件表)):
+    抛出 新建 错误("fork seed: boundary must be an existing contiguous event seq")
+  设 前缀 为 事件表[0:边界 + 1]
+  设 边界项 为 事件表[边界]
+  设 种子数据 为 {}
+  种子数据["继承"] 为 真
+  列表追加(前缀, 造事件("session/end-seed", 边界 + 1, 边界项["时间"], 种子数据))
+  设 收尾 为 开轮闭合器(前缀, "forked")
+  遍历 收尾项 之 收尾:
+    列表追加(前缀, 收尾项)
+  返回 前缀
+
 # 导出清单
 导出 是追加表面事件, 是替换表面事件, 是非负安全序号, 校验表面标记, 投影消息产生
 导出 校验节点0角色形状, 校验V3系统头, 补验V2V3迁移
@@ -1432,3 +1592,5 @@ V3编解码["编码事件"] 为 编码V2事件
 导出 取事件序号, 当前表面节点, 是图像块, 是工具结果块, 图像身份, 卸载占位文本
 导出 替换卸载图像, 替换消息卸载占位, 卸载块表, 卸载消息图像, 校验图像卸载载荷
 导出 投影图像卸载, 投影消息产生带卸载
+# R87 B1：0.1.7 core/session 起因化闭合器 + 分叉种子
+导出 起因文案, 开轮闭合器, 造分叉种子

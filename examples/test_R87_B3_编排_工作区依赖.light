@@ -1,0 +1,84 @@
+# test_R87_B3_编排_工作区依赖.light —— R87 B3 第2组：载荷元数据解析 + 平台路径
+# 覆盖：
+#   1. 现代载荷（无 components）解析：字段归一、发行版表透传
+#   2. legacy(components) 归一：顶层 python/node/pnpm 拒绝混入；numpy/pandas 校验
+#   3. 发行版名归一：大小写/分隔符差异重名拒绝
+#   4. 路径解析：win32 / linux 分支（python/node/pnpm/site-packages）
+# 反跑判据：把 win32 分支写死成 linux、或放宽发行版重名，断言即红。
+
+从 工作区依赖 导入 解析主运行时, 工作区依赖路径
+
+段落 断言真(条件, 标签):
+  如果 条件 == 假:
+    抛出 "断言失败: " 加上 标签
+
+段落 断言等于(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "断言失败: " 加上 标签 + " 实际=" 加上 转字符串(实际) + " 期望=" 加上 转字符串(期望)
+
+段落 是解析抛错(值):
+  设 抛了 为 假
+  尝试:
+    解析主运行时(值)
+  捕获 错误 为 e:
+    设 抛了 为 真
+  返回 抛了
+
+# ---- 1. 现代载荷 ----
+设 现代 为 ["desktopVersion": "1.2.3", "platform": "win32", "arch": "x64",
+  "python": "3.11.4", "node": "20.10.0", "pnpm": "9.0.5",
+  "pythonPackages": ["numpy": "1.26.0", "pandas": "2.2.2"]]
+设 清单 为 解析主运行时(现代)
+断言等于(清单["desktopVersion"], "1.2.3", "桌面版")
+断言等于(清单["platform"], "win32", "平台")
+断言等于(清单["python"], "3.11.4", "python 版")
+断言等于(清单["node"], "20.10.0", "node 版")
+断言等于(清单["pnpm"], "9.0.5", "pnpm 版")
+断言等于(清单["pythonPackages"]["numpy"], "1.26.0", "发行版透传")
+
+# ---- 2. legacy components ----
+设 旧 为 ["desktopVersion": "0.9.0", "platform": "darwin", "arch": "arm64",
+  "components": ["python": "3.10.2", "numpy": "1.24.0", "pandas": "2.0.1"],
+  "pythonPackages": ["numpy": "1.24.0", "pandas": "2.0.1"]]
+设 旧清单 为 解析主运行时(旧)
+断言等于(旧清单["python"], "3.10.2", "legacy python 归一")
+断言真(旧清单.包含("node") == 假, "legacy 无 node 不落键")
+
+# legacy 顶层混入 python 应拒
+设 混 为 ["desktopVersion": "1.0.0", "platform": "linux", "arch": "x64",
+  "components": ["python": "3.11.0"], "python": "3.11.0", "pythonPackages": []]
+断言真(是解析抛错(混), "legacy 顶层混入 python 应拒")
+
+# ---- 3. 字段/发行版校验 ----
+断言真(是解析抛错("不是字典"), "非记录应拒")
+断言真(是解析抛错(["desktopVersion": "", "platform": "win32", "arch": "x64", "python": "3.11.0", "pythonPackages": []]), "空桌面版应拒")
+断言真(是解析抛错(["desktopVersion": "1.0.0", "platform": "bsd", "arch": "x64", "python": "3.11.0", "pythonPackages": []]), "坏平台应拒")
+断言真(是解析抛错(["desktopVersion": "1.0.0", "platform": "win32", "arch": "riscv", "python": "3.11.0", "pythonPackages": []]), "坏架构应拒")
+断言真(是解析抛错(["desktopVersion": "1.0.0", "platform": "win32", "arch": "x64", "python": "abc", "pythonPackages": []]), "坏 python 版应拒")
+# pnpm 无 node 应拒
+断言真(是解析抛错(["desktopVersion": "1.0.0", "platform": "win32", "arch": "x64", "python": "3.11.0", "pnpm": "9.0.0", "pythonPackages": []]), "pnpm 缺 node 应拒")
+# payloadDigest 长度
+断言真(是解析抛错(["desktopVersion": "1.0.0", "platform": "win32", "arch": "x64", "python": "3.11.0", "payloadDigest": "zz", "pythonPackages": []]), "坏摘要应拒")
+# 发行版重名（归一后 numpy / NumPy 撞名）
+设 撞名 为 ["desktopVersion": "1.0.0", "platform": "win32", "arch": "x64",
+  "python": "3.11.0", "pythonPackages": ["numpy": "1.0", "NumPy": "2.0"]]
+断言真(是解析抛错(撞名), "归一后发行版重名应拒")
+
+# ---- 4. 路径解析 ----
+设 win清单 为 ["platform": "win32", "python": "3.11.4", "node": "20.10.0", "pnpm": "9.0.5", "pythonPackages": ["numpy": "1.0"]]
+设 win路径 为 工作区依赖路径("C:/payload", win清单)
+断言真(win路径["python"].包含("dependencies/python/python.exe"), "win python 解释器")
+断言真(win路径["node"].包含("dependencies/node/bin/node.exe"), "win node")
+断言真(win路径["nodePackages"].包含("dependencies/node/node_modules"), "win node_modules")
+断言真(win路径["pnpm"].包含("dependencies/pnpm/bin/pnpm.mjs"), "win pnpm")
+断言真(win路径["pythonPackages"].包含("dependencies/python/Lib/site-packages"), "win site-packages")
+断言等于(win路径["pythonDistributions"]["numpy"], "1.0", "win 发行版透传")
+
+设 lin清单 为 ["platform": "linux", "python": "3.10.2", "pythonPackages": []]
+设 lin路径 为 工作区依赖路径("/opt/payload", lin清单)
+断言真(lin路径["python"].包含("dependencies/python/bin/python3"), "linux python3")
+断言真(lin路径["pythonPackages"].包含("dependencies/python/lib/python3.10/site-packages"), "linux python3.10 site-packages")
+断言真(lin路径.包含("node") == 假, "无 node 不落键")
+断言真(lin路径.包含("pnpm") == 假, "无 pnpm 不落键")
+
+打印 "test_R87_B3_编排_工作区依赖 PASS"

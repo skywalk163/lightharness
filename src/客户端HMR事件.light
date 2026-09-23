@@ -1,0 +1,38 @@
+# 客户端HMR事件.light —— R87 B4 第3组：client/hmr/src/events.ts 纯逻辑
+#
+# 上游（锚点 877717787c）：packages/client/hmr/src/events.ts
+#   /plugins/events SSE 通道帧面：graph(连接/变更时整图) | rebuilt(单包重建通知)
+#   parsePluginsEventFrame：已知帧 / 前向兼容未知类型 / 非法载荷 三态判别。
+#
+# 纯逻辑剥离：WebBootGraph 完整解析、EventSource 订阅、模块控制器索引更新全属宿主；
+#   这里只搬帧信封判别与端点常量。
+
+设 HMR事件端点 为 "/plugins/events"
+设 HMR事件相对路由 为 "plugins/events"
+
+# parsePluginsEventFrame（events.ts L26-41）
+# 回 {kind:"frame", frame:{type:"graph"|"rebuilt", ...}} / {kind:"unknown"} / {kind:"invalid"}
+段落 解析插件事件帧(值):
+  如果 是字典(值) == 假:
+    返回 ["kind": "invalid"]
+  如果 字典包含键(值, "type") == 假:
+    返回 ["kind": "invalid"]
+  设 型 为 值["type"]
+  如果 型 == "rebuilt":
+    如果 字典包含键(值, "id") 且 字典包含键(值, "rev"):
+      如果 是字符串(值["id"]) 且 是字符串(值["rev"]):
+        返回 ["kind": "frame", "frame": ["type": "rebuilt", "id": 值["id"], "rev": 值["rev"]]]
+    返回 ["kind": "invalid"]
+  如果 型 == "graph":
+    如果 字典包含键(值, "graph"):
+      如果 是字典(值["graph"]):
+        返回 ["kind": "frame", "frame": ["type": "graph", "graph": 值["graph"]]]
+    返回 ["kind": "invalid"]
+  # 前向兼容：已知是字符串但未认 → unknown；非串 → invalid
+  如果 是字符串(型):
+    返回 ["kind": "unknown"]
+  返回 ["kind": "invalid"]
+
+导出 HMR事件端点
+导出 HMR事件相对路由
+导出 解析插件事件帧

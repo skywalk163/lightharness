@@ -1,0 +1,175 @@
+# 任务视图.light —— 任务视图（JobView/JobChunk/JobChannel/JobStatus 数据结构与投影）
+# + tool-jobs 渲染纯逻辑（publicJob/jobDetail/statusLine/renderModelDelta）
+#
+# 对齐原版：
+#   packages/jobs/jobs/src/view.ts（@deepseek-ai/dsh-jobs/view 叶模块，client-safe 只读投影）
+#     L48-52  JobStatus = running|stopping|completed|killed|failed
+#     L62-65  JobKindMap（bash/subagent，本纯逻辑版按开放字符串处理）
+#     L76-79  JobChannel = stdout|stderr|log
+#     L81-91  JobChunk { at, text, channel?, gapBefore? }
+#     L103-135 JobView { id, kind, label, owner?, outputLimitBytes?, status,
+#                        progress?, detail?, startedAt, finishedAt?,
+#                        output: { total, earliest, spillPaths? } }
+#   packages/jobs/tool-jobs/src/render.ts（@deepseek-ai/dsh-tool-jobs/render）
+#     L29-33  jobDetail：progress ?? detail
+#     L41-54  publicJob：剥除 owner/offsets/limits 的 model-safe 投影
+#     L62-67  statusLine：`[status: …]` / `[status: …, detail]`
+#     L85-108 renderModelDelta：stdout 拼接 + 单节 stderr + 丢弃提示
+#
+# 复刻边界：
+#   - 只搬纯数据结构与纯函数投影；不搬终端渲染/ANSI/插件宿主接线。
+#   - JobView.output.spillPaths 为可选数组；缺省键不出现（与原版 optional 一致）。
+#
+# ⚠️ 命名铁律：避开词根 取/生成/导出/导入/新建/模型/事件/类型/部分/原因/全部/工具/
+#            模式(含模)/用量/打印/抛出/接口/接收/属性/异步/包含/匹配/排序/回调/映射/枚举/返回。
+#   状态一律叫「阶段」；字典字面量单行。
+
+从 JSON 导入 序列化JSON
+
+# =====================================================================
+# 常量（view.ts L48-52 / L76-79）
+# =====================================================================
+
+# 五种任务阶段（JobStatus）
+设 阶段清单 为 ["running", "stopping", "completed", "killed", "failed"]
+# 三种流道（JobChannel）：stdout/stderr 进模型消费读；log 仅观察者可见
+设 流道清单 为 ["stdout", "stderr", "log"]
+
+# =====================================================================
+# 数据构造器（纯字典投影，可选字段缺则不写键）
+# =====================================================================
+
+# 一块产出（view.ts L81-91 JobChunk）：绝对字节偏移 / 原文 / 流道 / 前置丢失标记
+段落 造块(偏移, 原文, 流道=空, 前置缺口=空):
+  设 块 为 ["at": 偏移, "text": 原文]
+  如果 流道 != 空:
+    设 块["channel"] 为 流道
+  如果 前置缺口 == 真:
+    设 块["gapBefore"] 为 真
+  返回 块
+
+# 产出坐标（view.ts L127-135 output）：total=下一偏移；earliest=最旧保留字节；
+#   spillPaths=各源当前保留的完整流文件（源序去重），无则不写键
+段落 造产出坐标(总数, 最早, 溢出路径=空):
+  设 坐标 为 ["total": 总数, "earliest": 最早]
+  如果 溢出路径 != 空:
+    设 坐标["spillPaths"] 为 溢出路径
+  返回 坐标
+
+# 只读任务视图（view.ts L103-135 JobView）：每次调用产出新字典，非活态注册表
+#   入参：标识/类别/标题/阶段/起始时刻/产出坐标；可选 归属/输出上限/进展/详情/完成时刻
+段落 造任务视图(标识, 类别, 标题, 阶段, 起始时刻, 坐标, 归属=空, 输出上限=空, 进展=空, 详情=空, 完成时刻=空):
+  设 视图 为 ["id": 标识, "kind": 类别, "label": 标题, "status": 阶段, "startedAt": 起始时刻, "output": 坐标]
+  如果 归属 != 空:
+    设 视图["owner"] 为 归属
+  如果 输出上限 != 空:
+    设 视图["outputLimitBytes"] 为 输出上限
+  如果 进展 != 空:
+    设 视图["progress"] 为 进展
+  如果 详情 != 空:
+    设 视图["detail"] 为 详情
+  如果 完成时刻 != 空:
+    设 视图["finishedAt"] 为 完成时刻
+  返回 视图
+
+# =====================================================================
+# 渲染纯逻辑（render.ts）
+# =====================================================================
+
+# 旁注一行（render.ts L29-33 jobDetail）：运行中进展优先；结算后终态详情兜底
+段落 进展优先(视图):
+  如果 字典包含键(视图, "progress") == 真:
+    如果 视图["progress"] != 空:
+      返回 视图["progress"]
+  如果 字典包含键(视图, "detail") == 真:
+    返回 视图["detail"]
+  返回 空
+
+# model-safe 公开快照（render.ts L41-54 publicJob）：剥除 owner/offsets/limits
+段落 公开快照(视图):
+  设 快照 为 ["id": 视图["id"], "kind": 视图["kind"], "label": 视图["label"], "status": 视图["status"], "startedAt": 视图["startedAt"]]
+  设 旁注 为 进展优先(视图)
+  如果 旁注 != 空:
+    设 快照["detail"] 为 旁注
+  如果 字典包含键(视图, "finishedAt") == 真:
+    如果 视图["finishedAt"] != 空:
+      设 快照["finishedAt"] 为 视图["finishedAt"]
+  返回 快照
+
+# 状态行（render.ts L62-67 statusLine）：带详情则 `[status: s, d]`，否则 `[status: s]`
+段落 状态行(快照):
+  设 阶段名 为 快照["status"]
+  如果 字典包含键(快照, "detail") == 真:
+    如果 快照["detail"] != 空:
+      返回 "[status: " + 阶段名 + ", " + 快照["detail"] + "]"
+  返回 "[status: " + 阶段名 + "]"
+
+# 文本是否以换行结尾（render.ts 内联 endsWith('\n')）
+段落 换行收尾(文本):
+  设 n 为 字符串长度(文本)
+  如果 n == 0:
+    返回 假
+  如果 字符串获取(文本, n - 1) == "\n":
+    返回 真
+  返回 假
+
+# 模型消费增量（render.ts L85-108 renderModelDelta）：
+#   stdout/未标注块按序拼接，stderr 块集中为单节 `[stderr]`；log 块绝不进模型。
+#   丢失字节（游标落后保留区，或块自带前置缺口）→ 追加丢弃提示并点名溢出文件。
+段落 渲染模型增量(块表, 有损, 溢出路径表):
+  设 可见 为 []
+  遍历 块 之 块表:
+    设 流道 为 取可选(块, "channel", 空)
+    如果 流道 != "log":
+      列表追加(可见, 块)
+  设 出串 为 ""
+  设 错串 为 ""
+  遍历 块 之 可见 :
+    设 流道 为 取可选(块, "channel", 空)
+    如果 流道 == "stderr":
+      设 错串 为 错串 + 块["text"]
+    否则:
+      设 出串 为 出串 + 块["text"]
+  设 分隔 为 ""
+  如果 字符串长度(出串) > 0:
+    如果 换行收尾(出串) == 假:
+      设 分隔 为 "\n"
+  设 正文 为 出串
+  如果 字符串长度(错串) > 0:
+    设 正文 为 正文 + 分隔 + "[stderr]\n" + 错串
+  设 有缺口 为 假
+  遍历 块 之 可见 :
+    如果 取可选(块, "gapBefore", 假) == 真:
+      设 有缺口 为 真
+  如果 有损 == 假 且 有缺口 == 假:
+    返回 正文
+  设 点名 为 "(unavailable)"
+  如果 列表长度(溢出路径表) > 0:
+    设 点名 为 拼路径表(溢出路径表)
+  设 提示 为 "[some output was dropped from memory; full output: " + 点名 + "]"
+  设 补行 为 ""
+  如果 字符串长度(正文) > 0:
+    如果 换行收尾(正文) == 假:
+      设 补行 为 "\n"
+  返回 正文 + 补行 + 提示
+
+# 用 ", " 连接路径表（render.ts spillPaths.join(', ')）
+段落 拼路径表(路径表):
+  设 拼接 为 ""
+  设 i 为 0
+  遍历 路径 之 路径表:
+    如果 i > 0:
+      设 拼接 为 拼接 + ", "
+    设 拼接 为 拼接 + 路径
+    设 i 为 i + 1
+  返回 拼接
+
+导出 阶段清单
+导出 流道清单
+导出 造块
+导出 造产出坐标
+导出 造任务视图
+导出 进展优先
+导出 公开快照
+导出 状态行
+导出 渲染模型增量

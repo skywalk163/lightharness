@@ -1,0 +1,81 @@
+# 客户端认证.light —— R87 B4 第3组：client/connection/src/browser-auth.ts 结构纯逻辑
+#
+# 上游（锚点 877717787c）：packages/client/connection/src/browser-auth.ts
+#   浏览器会话认证：启动令牌兑换 + 持久签名 Cookie。
+#
+# 纯逻辑剥离（宿主面登记）：node:crypto 的 sha256 摘要 / HMAC-SHA256 签名 /
+#   base64url 编解码 / randomBytes / timingSafeEqual / Date.now / URL / Response 全属宿主。
+#   这里把「签名/验签/摘要」抽象成入参函数，只搬：
+#     Cookie 头解析、Cookie 名派生形状、v1.体.签 信封形状、过期窗口四向判定。
+#   常量：COOKIE_PREFIX=dsh-auth- / TOKEN_QUERY=token / 信封版本 v1。
+
+设 令牌查询键 为 "token"
+设 Cookie前缀 为 "dsh-auth-"
+设 信封版本 为 "v1"
+
+# cookieValue（browser-auth.ts L111-118）：从 Cookie 头找精确名的值
+段落 解析Cookie头(头值, 名):
+  设 段表 为 []
+  设 段 为 ""
+  遍历 字 之 头值:
+    如果 字 == ";":
+      列表追加(段表, 段)
+      设 段 为 ""
+    否则:
+      设 段 为 段 + 字
+  列表追加(段表, 段)
+  遍历 原段 之 段表:
+    设 等号 为 查找子串(原段, "=")
+    如果 等号 < 0:
+      继续
+    设 左 为 去除空白(截取(原段, 0, 等号))
+    如果 左 == 名:
+      返回 去除空白(截取(原段, 等号 + 1, 字符串长度(原段)))
+  返回 空
+
+# cookieName（L106-108）：dsh-auth- + sha256(authority)base64url；摘要函数宿主注入
+段落 造Cookie名(权威, 摘要函数):
+  返回 Cookie前缀 + 摘要函数(权威)
+
+# encodeCookie 信封形状（L129-132）：v1.<body>.<sig>
+段落 造签名信封(体, 签):
+  返回 信封版本 + "." + 体 + "." + 签
+
+# decodeCookie 信封拆分（L134-144 形状校验）：三段且版本 v1 → {体, 签}；否则空
+段落 拆签名信封(串):
+  设 段表 为 []
+  设 段 为 ""
+  遍历 字 之 串:
+    如果 字 == ".":
+      列表追加(段表, 段)
+      设 段 为 ""
+    否则:
+      设 段 为 段 + 字
+  列表追加(段表, 段)
+  如果 列表长度(段表) != 3:
+    返回 空
+  如果 段表[0] != 信封版本:
+    返回 空
+  返回 ["体": 段表[1], "签": 段表[2]]
+
+# isAuthenticated 过期窗口（L295-299）四向判定：
+#   issuedAt <= now && expiresAt > now && expiresAt > issuedAt && (expiresAt-issuedAt) <= maxAge
+段落 校验Cookie窗口(签发于, 过期于, 现在, 最长毫秒):
+  如果 签发于 > 现在:
+    返回 假
+  如果 过期于 <= 现在:
+    返回 假
+  如果 过期于 <= 签发于:
+    返回 假
+  如果 过期于 - 签发于 > 最长毫秒:
+    返回 假
+  返回 真
+
+导出 令牌查询键
+导出 Cookie前缀
+导出 信封版本
+导出 解析Cookie头
+导出 造Cookie名
+导出 造签名信封
+导出 拆签名信封
+导出 校验Cookie窗口

@@ -300,8 +300,72 @@
       + 转字符串(卸载张数) + " more oldest occurrence(s) must be offloaded.",
     "code": 卸载错误码(), "offloadImages": 卸载张数]
 
-# R85A-OFFLOAD-SECTION
+# =====================================================================
+# §9 R87 · 0.1.7 增量：消息来源重构 + 摘要限界（llm/message.ts）
+# =====================================================================
+# 上游锚点 877717787c（0.1.6 锚点 ddefc45fbc 之上）：
+#   packages/llm/llm/src/message.ts:28-31    SystemPromptMessageSource（kind='system-prompt'）
+#   packages/llm/llm/src/message.ts:107-115  MessageSourceMap 0.1.7 闭集：
+#       user / model / tool / system-prompt（移除共享 'plugin' 兜底 kind，
+#       user 消息可携带任意 producer 的 kind，消费方对未知 kind 直通跳过）
+#   packages/llm/llm/src/message.ts:146-150  DeveloperMessage（role='developer'，
+#       增量式 agent 会话变更：工具增删，按会话顺序）
+#   packages/llm/llm/src/message.ts:170-180  ToolResultMessage 一等 tool role：
+#       role='tool'，toolCallId / isError 上移到消息层（0.1.6 是 user+tool-result 块）
+#   packages/llm/llm/src/message.ts:279-292  createSystemMessage(text)（去 plugin 参数）
+#   packages/llm/llm/src/message.ts:299-307  createToolResultMessage（tool role 形状）
+#   packages/llm/llm/src/message.ts:124-132  boundContextSummary / CONTEXT_SUMMARY_MAX_CHARS=120
+# 判据锚点：packages/llm/llm/tests/message.spec.ts（0.1.7 形状断言）。
+# 词汇约定：
+#   - 0.1.6 既有构造段（§前部）原样保留：造系统消息(text, plugin) 是 0.1.6
+#     'plugin' kind 口径；本段新增 0.1.7 口径构造，二者并存（增量对齐，不回改）。
+#   - 0.1.7 遍历扁平化（image/file 遍历不再递归 tool-result 内容）与一等
+#     tool role 强耦合，归 会话格式V4迁移.light 统一重写（见其明细 D-1）。
+# =====================================================================
 
+# CONTEXT_SUMMARY_MAX_CHARS（message.ts:124 逐字）
+段落 摘要限界字符数:
+  返回 120
+
+# boundContextSummary：超限截到 119 字符 + '…'（message.ts:129-132）
+段落 限摘要长度(摘要):
+  如果 长度(摘要) <= 摘要限界字符数():
+    返回 摘要
+  返回 摘要[0:摘要限界字符数() - 1] 加上 "…"
+
+# 0.1.7 消息来源闭集（message.ts MessageSourceMap；merge-extensible：未知 kind 由消费方直通）
+段落 消息来源词表:
+  返回 ["user", "model", "tool", "system-prompt"]
+
+# createSystemMessage(text)：渲染后的系统提示消息；空文本 → content=[]（不产线）
+# 0.1.7 口径：来源恒为 {kind:'system-prompt'}（不再携带 plugin 名）
+段落 造系统提示消息(文本):
+  设 内容 为 []
+  如果 文本 != "":
+    列表追加(内容, 造文本块(文本))
+  返回 ["id": 造标识(), "role": "system", "content": 深拷贝(内容), "source": ["kind": "system-prompt"]]
+
+# createDeveloperMessage：增量式会话变更消息（工具增删块；content 为块表）
+# 来源由 producer 供给（0.1.7：user/developer 消息携带任意 producer kind）
+段落 造开发者消息(内容, 来源):
+  返回 ["id": 造标识(), "role": "developer", "content": 深拷贝(内容), "source": 来源]
+
+# 造工具增删块（developer 消息的两种块：0.1.7 surface 校验面配套词汇）
+# tool-addition 禁止内联工具定义（上游 tool-addition must omit inline tool definitions）
+段落 造工具增块(工具名):
+  返回 ["type": "tool-addition", "toolName": 工具名]
+
+段落 造工具删块(工具名):
+  返回 ["type": "tool-removal", "toolName": 工具名]
+
+# createToolResultMessage：一等 tool role 消息（toolCallId/isError 上移到消息层）
+段落 造工具角色消息(调用标识, 内容, 是否错误):
+  返回 ["id": 造标识(), "role": "tool", "toolCallId": 调用标识,
+    "content": 深拷贝(内容), "isError": 是否错误,
+    "source": ["kind": "tool", "callId": 调用标识]]
+
+导出 摘要限界字符数, 限摘要长度, 消息来源词表, 造系统提示消息
+导出 造开发者消息, 造工具增块, 造工具删块, 造工具角色消息
 导出 卸载错误码
 导出 基64长度
 导出 内容含图片

@@ -277,3 +277,26 @@
   如果 控制 == "pipe":
     环境表[SUBPROCESS_CONTROL_ENV] 为 "pipe"
   返回 环境表
+
+# =====================================================================
+# 【R87-B4】shell/src/types.ts 0.1.7 增量类型词汇纯逻辑
+# 对标源：packages/shell/shell/src/types.ts（锚点 877717787c）
+#   - ShellExpiryPolicy = 'kill' | 'none'：到期策略词汇（'kill' 杀进程并记 timedOut；
+#     'none' 不上闹钟，仅回显 timeoutMs）
+#   - ShellExecSpec.onExpiry 由 resolve() 默认 'kill'；本模块只搬「请求→已解析」的默认化纯逻辑。
+# 宿主面剔除：ShellObservedStreams / ShellProcess.observed / ShellExecution.result()
+#   均为 Promise/异步迭代器句柄形态（readFrom 偏移游标），非纯逻辑，不搬。
+# =====================================================================
+
+# ShellExpiryPolicy 词汇常量（types.ts:46）
+设 到期策略杀 为 "kill"
+设 到期策略无 为 "none"
+
+# 归一到期策略（resolve 对 ShellExecRequest.onExpiry 的默认化）：缺省/非 'none' → 'kill'
+段落 归一到期策略(请求):
+  如果 字典包含键(请求, "onExpiry") == 假:
+    返回 到期策略杀
+  设 值 为 请求["onExpiry"]
+  如果 值 == 到期策略无:
+    返回 到期策略无
+  返回 到期策略杀

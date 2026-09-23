@@ -1,0 +1,122 @@
+# test_R87_B4_命令_文件关联.light —— R87-B4 组2 scope2：native-command 纯逻辑
+从 文件关联 导入 桌面项字段, 桌面数据目录, 校验应用表, 空化可选串, 点版次序, 折叠Mac应用, 解区域, 查应用名, 解内容类型, 解默认桌面, 标Windows默认
+从 JSON 导入 序列化JSON
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望: 抛出 新建 错误("断言失败 [" + 标签 + "]: 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 含子串(文本, 子, 标签):
+  如果 包含(文本, 子) == 假: 抛出 新建 错误("含子串失败 [" + 标签 + "]: 期望含 " + 子)
+
+设 desktop文本 为 "[Desktop Entry]\nName=Firefox\nName[zh_CN]=火狐\nIcon=firefox\nHidden=false\n[Desktop Action new-window]\nName=New Window"
+设 字段 为 桌面项字段(desktop文本)
+断言相等(字段["Name"], "Firefox", "项字段-Name")
+断言相等(字段["Icon"], "firefox", "项字段-Icon")
+如果 字典包含键(字段, "Hidden") == 假: 抛出 新建 错误("项字段-Hidden应在主段")
+如果 字典包含键(字段, "New Window") == 真: 抛出 新建 错误("项字段-动作段不应进主段")
+
+# 注释行跳过
+设 注释文本 为 "[Desktop Entry]\n# comment line\nKey=value"
+设 字段注释 为 桌面项字段(注释文本)
+断言相等(字段注释["Key"], "value", "项字段-注释跳过")
+如果 字典包含键(字段注释, "comment line") == 真: 抛出 新建 错误("项字段-注释不应作键")
+
+# === 桌面数据目录：默认 / XDG_DATA_HOME / XDG_DATA_DIRS ===
+设 空环境 为 {}
+设 目录默认 为 桌面数据目录("/home/u", 空环境)
+断言相等(目录默认[0], "/home/u/.local/share", "目录-首位默认")
+含子串(序列化JSON(目录默认), "/usr/local/share", "目录-含local")
+含子串(序列化JSON(目录默认), "/usr/share", "目录-含usr")
+
+设 自定义环境 为 ["XDG_DATA_HOME": "/custom/home", "XDG_DATA_DIRS": "/a:/b:"]
+设 目录 为 桌面数据目录("/home/u", 自定义环境)
+断言相等(目录[0], "/custom/home", "目录-自定义HOME")
+断言相等(目录[1], "/a", "目录-自定义DIRS1")
+断言相等(目录[2], "/b", "目录-自定义DIRS2")
+
+# === 校验应用表 ===
+设 合法图标 为 "data:image/png;base64,aGVsbG8="
+设 合法项 为 ["id": "firefox", "name": "Firefox", "default": 真, "icon": 合法图标]
+设 合法项2 为 ["id": "code", "name": "Code", "default": 假, "icon": 空]
+设 校验 为 校验应用表([合法项, 合法项2])
+断言相等(列表长度(校验), 2, "校验-合法两项")
+断言相等(校验[0]["id"], "firefox", "校验-id透传")
+
+设 抛了 为 假
+尝试:
+  校验应用表("nope")
+捕获 错误:
+  设 抛了 为 真
+如果 抛了 == 假: 抛出 新建 错误("校验-非表应抛")
+
+设 坏项 为 ["id": "", "name": "X", "default": 真, "icon": 空]
+设 抛了2 为 假
+尝试:
+  校验应用表([坏项])
+捕获 错误:
+  设 抛了2 为 真
+如果 抛了2 == 假: 抛出 新建 错误("校验-空id应抛")
+
+设 坏图标 为 ["id": "a", "name": "X", "default": 真, "icon": "http://x.png"]
+设 抛了3 为 假
+尝试:
+  校验应用表([坏图标])
+捕获 错误:
+  设 抛了3 为 真
+如果 抛了3 == 假: 抛出 新建 错误("校验-坏图标应抛")
+
+# === 空化可选串 ===
+断言相等(空化可选串(""), 空, "空化-空串")
+断言相等(空化可选串(空), 空, "空化-null")
+断言相等(空化可选串("1.2.3"), "1.2.3", "空化-保留")
+
+# === 点版次序 ===
+断言相等(点版次序("1.2.0", "1.10.0"), -8, "点版-1.2小于1.10")
+断言相等(点版次序("2.0", "1.9"), 1, "点版-2大于1.9")
+断言相等(点版次序("1.0", 空), 1, "点版-null排最低")
+断言相等(点版次序(空, 空), 0, "点版-都null相等")
+
+# === 折叠Mac应用：同 bundle+名 折叠，保留默认/高版本 ===
+设 应用A 为 ["id": "/a", "name": "App", "default": 假, "icon": 空, "bundle": "com.x", "version": "1.0"]
+设 应用A新 为 ["id": "/b", "name": "App", "default": 假, "icon": 空, "bundle": "com.x", "version": "2.0"]
+设 应用B 为 ["id": "/c", "name": "Other", "default": 真, "icon": 空, "bundle": 空, "version": 空]
+设 折叠 为 折叠Mac应用([应用A, 应用A新, 应用B])
+断言相等(列表长度(折叠), 2, "折叠-两组")
+断言相等(折叠[0]["id"], "/b", "折叠-高版本上位")
+断言相等(折叠[1]["id"], "/c", "折叠-无bundle保留")
+
+# === 解区域 ===
+断言相等(解区域(["LC_ALL": "zh_CN.UTF-8"]), "zh_CN", "区域-去点后")
+断言相等(解区域(["LANG": "en_US"]), "en_US", "区域-LANG")
+断言相等(解区域({}), "", "区域-空")
+
+# === 查应用名：Name[区域] ?? Name[语言] ?? Name ===
+设 名字段 为 ["Name": "Firefox", "Name[zh_CN]": "火狐", "Name[zh]": "中文"]
+断言相等(查应用名(名字段, "zh_CN"), "火狐", "名-全区域")
+断言相等(查应用名(名字段, "zh_TW"), "中文", "名-语言回退")
+断言相等(查应用名(名字段, "fr"), "Firefox", "名-默认Name")
+
+# === 解内容类型 ===
+设 gio信息 为 "standard::content-type:    text/plain\n其他行"
+断言相等(解内容类型(gio信息), "text/plain", "MIME-提取")
+设 抛mime 为 假
+尝试:
+  解内容类型("no content type here")
+捕获 错误:
+  设 抛mime 为 真
+如果 抛mime == 假: 抛出 新建 错误("MIME-缺失应抛")
+
+# === 解默认桌面 ===
+设 mime输出 为 "Default application:     org.firefox.desktop\n  org.firefox.desktop\n  code.desktop"
+设 解 为 解默认桌面(mime输出)
+断言相等(解["默认"], "org.firefox.desktop", "默认桌面-默认")
+断言相等(列表长度(解["表"]), 2, "默认桌面-两候选去重")
+
+# === 标Windows默认：大小写不敏感 == executable/appId ===
+设 句柄表 为 [["id": "FirefoxURL", "name": "Firefox", "icon": 空], ["id": "notepad", "name": "Notepad", "icon": 空], ["id": "FirefoxURL", "name": "Dup", "icon": 空]]
+设 标注 为 标Windows默认(句柄表, "firefoxurl", 空)
+断言相等(列表长度(标注), 2, "Win默认-去重")
+断言相等(标注[0]["default"], 真, "Win默认-可执行命中")
+断言相等(标注[1]["default"], 假, "Win默认-其他否")
+
+写 "--- R87-B4 文件关联 纯逻辑测试通过 ---"

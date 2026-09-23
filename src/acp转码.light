@@ -29,3 +29,20 @@
   如果 种类 == "blocked": 返回 "end_turn"
   如果 种类 == "error": 返回 "end_turn"
   返回 "end_turn"
+
+# =====================================================================
+# R87 · 0.1.7 增量：TurnEndReason 可扩展 + 种子专有变体（acp/codec.ts）
+# =====================================================================
+# 上游锚点 877717787c：packages/acp/acp/src/codec.ts（0.1.6 锚点 ddefc45fbc 之上）
+#   TurnEndReason 由闭集改为 merge-extensible；新增种子专有变体 `forked`
+#   （分叉种子的 turn/end reason，见 core/session fork.ts）——种子专有变体
+#   永不终结 ACP prompt 轮，映射仍走 default "end_turn" 语义兜底。
+# 判据锚点：packages/acp/acp/tests/*.spec.ts（0.1.7 turn end 注记）。
+
+# 是否种子专有终结原因（forked 只出现在分叉种子的收尾事件，永不终结活跃 ACP 轮）
+段落 是种子专有原因(原因):
+  如果 是字典(原因) == 假:
+    返回 假
+  返回 字典获取(原因, "kind", "") == "forked"
+
+导出 是种子专有原因

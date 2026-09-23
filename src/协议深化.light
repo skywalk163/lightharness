@@ -405,6 +405,29 @@
     设 状态 为 "failed"
   返回 {"sessionUpdate": "tool_call_update", "toolCallId": 取可选(块, "id", ""), "status": 状态, "content": 内容表}
 
+# =====================================================================
+# R87 · 0.1.7 增量：一等 tool role 消息的 ACP 结果更新（acp/updates.ts）
+# =====================================================================
+# 上游锚点 877717787c（0.1.6 锚点 ddefc45fbc 之上）：
+#   packages/acp/acp/src/updates.ts:64-85 toolResultUpdate：0.1.7 输入从
+#   tool-result 块改为【一等 tool role 消息】——toolCallId / isError 在消息层，
+#   内容直接遍历 message.content（reasoning 等块随之透传，不再经由块内 content）。
+# 判据锚点：packages/sdk/client/tests/*.spec.ts（call-bad 形状迁移用例）。
+# 0.1.6 口径 结果更新(块) 原样保留；本段新增 0.1.7 口径 结果更新V4(消息)。
+
+段落 结果更新V4(消息, 附件库):
+  设 内容表 为 列表创建()
+  遍历 子块 之 取可选(消息, "content", []):
+    设 内容 为 assistantBlockToAcp(子块, 附件库)
+    如果 内容 != 空:
+      列表追加(内容表, {"kind": "content", "content": 内容})
+  设 状态 为 "completed"
+  如果 取可选(消息, "isError", 假) == 真:
+    设 状态 为 "failed"
+  返回 {"sessionUpdate": "tool_call_update", "toolCallId": 取可选(消息, "toolCallId", ""), "status": 状态, "content": 内容表}
+
+导出 结果更新V4
+
 段落 解析工具入参(值):
   如果 值 == 空:
     返回 空

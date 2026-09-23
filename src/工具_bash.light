@@ -17,6 +17,7 @@
 #        注册统一走 具注册工具(注册, 名称, 级别, 处理, 插件)。
 #        （注：核心工具.light 用的是另一套 工具.工具注册表 抽象，确实有 .注册 方法，不受影响。）
 从 工具执行 导入 具注册工具, 级公开
+从 bash渲染 导入 沙箱拒绝标记, 升级提示标记
 
 # bash 参数模式（JSON Schema，供 OpenAI/tools 校验）
 段落 bash模式:
@@ -57,3 +58,65 @@
   设 定义 为 造bash工具定义()
   具注册工具(注册表, 定义["name"], 级别, 定义["execute"], 空)
   返回 真
+
+# =====================================================================
+# 【R87-B4】background.ts 0.1.7 增量纯逻辑（通用作业适配）
+# 对标源：packages/shell/tool-bash/src/background.ts（锚点 877717787c）
+#   - sandboxNotes：值得写进作业终态的沙箱备注（runnerFailed / denied+升级）
+#   - processOutcome：已结束进程 → 作业结局（killed/completed + 细节，沙箱备注拼接）
+#   - ringDelta：一次消费读到的环块 → stdout 顺序拼接、stderr 合为 [stderr] 段
+# 宿主面剔除：processSources（闭包绑定 observed.readFrom）、processJob（AbortController/异步）。
+# tool-pwsh 同构（background.ts 文案一致），本函数即为两侧共用根。
+# =====================================================================
+
+# sandboxNotes（background.ts:24-33）：runnerFailed 一条；denied 一条(+可选升级)；否则空表
+段落 沙箱备注(沙箱, 升级模式列表):
+  如果 沙箱 == 空:
+    返回 []
+  如果 字典包含键(沙箱, "runnerFailed") == 真:
+    如果 沙箱["runnerFailed"] == 真:
+      返回 ["[sandbox: the sandbox runner itself failed under " + 沙箱["mode"] + " mode \u2014 the command did not run; this is a sandbox problem, not a command failure]"]
+  如果 字典包含键(沙箱, "denied") == 真:
+    如果 沙箱["denied"] == 真:
+      设 表 为 [沙箱拒绝标记(沙箱["mode"])]
+      如果 列表长度(升级模式列表) > 0: 列表追加(表, 升级提示标记("command"))
+      返回 表
+  返回 []
+
+# processOutcome（background.ts:44-52）：killed→信号或'killed before exit'；否则 completed→exit code；
+#   沙箱备注以 '; ' 拼到细节末尾
+段落 进程结局(进程, 升级模式列表):
+  设 状态 为 "completed"
+  设 细节 为 "exit code: 0"
+  如果 字典包含键(进程, "exitCode") == 真:
+    如果 进程["exitCode"] != 空: 设 细节 为 "exit code: " + 序列化JSON(进程["exitCode"])
+  如果 进程["status"] == "killed":
+    设 状态 为 "killed"
+    设 细节 为 "killed before exit"
+    如果 字典包含键(进程, "signal") == 真:
+      如果 进程["signal"] != 空: 设 细节 为 "signal: " + 进程["signal"]
+  设 结果 为 ["状态": 状态, "细节": 细节]
+  设 备注 为 []
+  如果 字典包含键(进程, "sandbox") == 真:
+    设 备注 为 沙箱备注(进程["sandbox"], 升级模式列表)
+  如果 列表长度(备注) == 0:
+    返回 结果
+  字典设置(结果, "细节", 细节 + "; " + 连接字符串(备注, " "))
+  返回 结果
+
+# ringDelta（background.ts:71-78）：非 stderr 块文本顺拼为 out；stderr 块文本顺拼为 err；
+#   out 非空且不以 \n 结尾时补一个 \n；err 非空则以 [stderr] 段接上
+段落 环块增量(块表):
+  设 out 为 ""
+  设 err 为 ""
+  遍历 块 之 块表:
+    如果 块["channel"] == "stderr":
+      设 err 为 err + 块["text"]
+    否则:
+      设 out 为 out + 块["text"]
+  如果 字符串长度(err) == 0:
+    返回 out
+  设 分隔 为 ""
+  如果 字符串长度(out) > 0:
+    如果 结尾(out, "\n") == 假: 设 分隔 为 "\n"
+  返回 out + 分隔 + "[stderr]\n" + err

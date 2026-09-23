@@ -1,0 +1,53 @@
+# R87 B4-G3 locale / file-upload / hmr 纯协议面 回归
+从 客户端语言设置 导入 语言设置命名空间, 内置语言表, 校验语言标识, 归一语言设置
+从 客户端上传协议 导入 上传路由, 上传相对路由, 造上传请求, 造上传回执
+从 客户端HMR事件 导入 HMR事件端点, 解析插件事件帧
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 主:
+  # ---- 语言设置 ----
+  断言相等(语言设置命名空间, "locale", "语言 命名空间")
+  断言相等(内置语言表, ["zh", "en"], "语言 内置表")
+  断言相等(校验语言标识("zh"), 真, "语言标识 zh")
+  断言相等(校验语言标识("en-US"), 真, "语言标识 en-US")
+  断言相等(校验语言标识("zh-Hans-CN"), 真, "语言标识 多级")
+  断言相等(校验语言标识("x"), 假, "语言标识 过短")
+  断言相等(校验语言标识(""), 假, "语言标识 空")
+  断言相等(校验语言标识("12"), 假, "语言标识 纯数字首段")
+  设 段 为 归一语言设置(["preference": "zh"])
+  断言相等(段["preference"], "zh", "语言设置 归一透传")
+  设 段空 为 归一语言设置(空)
+  断言相等(字典包含键(段空, "preference"), 假, "语言设置 空段省略")
+
+  # ---- 上传协议 ----
+  断言相等(上传路由, "/api/session/uploadFileBinary", "上传路由 绝对")
+  断言相等(上传相对路由, "api/session/uploadFileBinary", "上传路由 相对")
+  设 求 为 造上传请求("aGVsbG8=", "note.txt")
+  断言相等(求["data"], "aGVsbG8=", "上传请求 data")
+  断言相等(求["name"], "note.txt", "上传请求 name")
+  设 求裸 为 造上传请求("aGVsbG8=")
+  断言相等(字典包含键(求裸, "name"), 假, "上传请求 省略 name")
+  设 回执 为 造上传回执("rcpt-1", ["kind": "attachment"])
+  断言相等(回执["receiptId"], "rcpt-1", "回执 receiptId")
+
+  # ---- HMR 事件帧 ----
+  断言相等(HMR事件端点, "/plugins/events", "HMR 端点")
+  设 重 为 解析插件事件帧(["type": "rebuilt", "id": "pkg-a", "rev": "rev1"])
+  断言相等(重["kind"], "frame", "HMR rebuilt kind")
+  断言相等(重["frame"]["type"], "rebuilt", "HMR rebuilt type")
+  断言相等(重["frame"]["rev"], "rev1", "HMR rebuilt rev")
+  设 图 为 解析插件事件帧(["type": "graph", "graph": ["entries": []]])
+  断言相等(图["kind"], "frame", "HMR graph kind")
+  设 未知 为 解析插件事件帧(["type": "future-thing"])
+  断言相等(未知["kind"], "unknown", "HMR 未知类型前向兼容")
+  设 坏1 为 解析插件事件帧(["type": "rebuilt", "id": 1])
+  断言相等(坏1["kind"], "invalid", "HMR rebuilt 缺 rev 非法")
+  设 坏2 为 解析插件事件帧("not-a-dict")
+  断言相等(坏2["kind"], "invalid", "HMR 非字典非法")
+
+  写 "test_R87_B4_客户端_杂项协议: 全部通过"
+
+主()

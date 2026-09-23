@@ -3,7 +3,8 @@
 #
 # 上游结构映射（以上游真实代码为准）：
 #   types.ts        -> 状态枚举与快照形状（任务 pending/in_progress/completed/deleted；
-#                      成员阶段 provisioning/active/failed；成员状态 running/idle/inactive/provisioning/failed）
+#                      成员阶段 provisioning/active/failed；成员状态 running/inactive/provisioning/failed）
+#                      R87 增量 ddefc45fbc..877717787c：availability 二值收敛，去掉 idle。
 #   task-board.ts   -> 造任务事件 改任务事件（CAS 修订、九动作、授权、依赖校验、写域重叠警告）
 #   task-graph.ts   -> 断言任务图 检测依赖环（自引用/重复/缺失/DFS 环；上游无显式拓扑排序）
 #   roster.ts       -> 校验成员名（lower-kebab-case ≤64 非 lead）造成员事件 找活跃成员
@@ -23,7 +24,7 @@
 # 分页（cursor/limit）与任务书点名的活动聚合/团队状态机为补充实现，报告登记。
 # 绕法：内置裸名（L-090）、无 且/或 行内链（L-043）、标识符避关键字（L-084/L-092）、无花括号文案（L-089）。
 
-导出 需要文本 归一写域 校验成员名 折叠团队状态 任务就绪 断言任务图 检测依赖环 判动作门槛 造任务事件 改任务事件 造成员事件 找活跃成员 发消息事件 确认送达事件 未读数 消息接受判定 校验事件流 任务分页 近期活动 断言团队转移 清理终止任务。
+导出 需要文本 归一写域 校验成员名 折叠团队状态 任务就绪 断言任务图 检测依赖环 判动作门槛 造任务事件 改任务事件 造成员事件 找活跃成员 发消息事件 确认送达事件 未读数 消息接受判定 校验事件流 任务分页 近期活动 断言团队转移 清理终止任务 判内容块 列内容块。
 
 # ---------------- validation.ts ----------------
 # requiredText（逐字）：trim 空抛 must be non-empty；超长抛 exceeds N characters
@@ -693,3 +694,47 @@
       设 新任务["修订"] 为 新任务["修订"] + 1
     设 清理表[新任务["标识"]] 为 新任务
   返回 清理表
+
+# ---------------- projection.ts：contentBlockSchema 语义（R87 增量） ----------------
+# 核心内容块型集（coreContentBlockTypes）。0.1.7 起 tool-result 不再进入严格联合，
+# 又留在核心集里——于是一个 type=tool-result 的块既不匹配四个显式变体、又被未知型
+# 回退拒绝（退役标记，不进 JSON 解码插件内容的可扩展回退）。
+设 队核心块型 为 ["text", "reasoning", "image", "tool-call", "tool-result"]
+
+# 单个内容块是否被接受：text/reasoning 带文本串；image 带 attachment；tool-call 带 id/name/arguments；
+# tool-result 退役拒绝；其余非空 type 且不在核心集的未知插件变体按引用保留。
+段落 判内容块(块):
+  如果 是字典(块) == 假:
+    返回 假
+  如果 字典包含键(块, "type") == 假:
+    返回 假
+  设 型 为 字典获取(块, "type", "")
+  如果 是字符串(型) == 假:
+    返回 假
+  如果 字符串长度(型) == 0:
+    返回 假
+  如果 型 == "text":
+    返回 是字符串(字典获取(块, "text", 空))
+  如果 型 == "reasoning":
+    返回 是字符串(字典获取(块, "text", 空))
+  如果 型 == "image":
+    返回 字典包含键(块, "attachment")
+  如果 型 == "tool-call":
+    如果 字典包含键(块, "id") == 假: 返回 假
+    如果 字典包含键(块, "name") == 假: 返回 假
+    如果 字典包含键(块, "arguments") == 假: 返回 假
+    返回 真
+  # tool-result 等已在核心集的型：退役/不进回退
+  如果 列表包含(队核心块型, 型):
+    返回 假
+  # 未知插件变体：非空 type 且不在核心集 → 按引用保留
+  返回 真
+
+# 一组内容块是否全部被接受
+段落 列内容块(表):
+  如果 是列表(表) == 假:
+    返回 假
+  遍历 块 之 表:
+    如果 判内容块(块) == 假:
+      返回 假
+  返回 真

@@ -1,0 +1,175 @@
+# 客户端RPC.light —— R87 B4 第3组：client/connection RPC 协议面纯逻辑
+#
+# 上游（锚点 877717787c）：
+#   packages/client/connection/src/rpc.ts        —— 结果信封 + transportError
+#   packages/client/connection/src/rpc-host.ts   —— 通道/端点段校验 + endpointFromPath
+#   packages/client/connection/src/client/rpc.ts —— assertTarget + parseConnectionResponse
+#
+# 纯逻辑剥离：Request/Response/FormData/Blob/node:http/Cordis/AbortSignal 全属宿主，
+#   这里只搬信封形状、通道与端点段校验、路径拆解、服务端响应信封校验。
+#   HTTP 状态码（401/403/404/413/415/400）与字节桥接不硬抄，见报告登记。
+#
+# 命名：成员名避开关键字词根；字典键沿用上游 wire 拼写（type/rpcId/result/...）。
+
+从 字符串处理 导入 字符转ASCII
+
+# ---- 结果信封（rpc.ts L18-49, L56-65）----
+
+# transportError(error)：运输层拒绝 → gateway/internal 失败结果
+段落 传输错(错误文本):
+  返回 ["ok": 假, "error": ["code": "gateway/internal", "message": 错误文本, "details": {}]]
+
+# 成功结果
+段落 成功结果(值):
+  返回 ["ok": 真, "value": 值]
+
+# 失败结果（ConnectionRpcFailure：code/message/details）
+段落 失败结果(代码, 消息, 详情):
+  设 实参详情 为 {}
+  如果 详情 != 空:
+    设 实参详情 为 详情
+  返回 ["ok": 假, "error": ["code": 代码, "message": 消息, "details": 实参详情]]
+
+# ---- 传输信封（rpc.ts L80-95）----
+# 客户端请求：{type:"client-request", rpcId, method, payload}
+段落 造客户端请求(标识, 方法, 载荷):
+  返回 ["type": "client-request", "rpcId": 标识, "method": 方法, "payload": 载荷]
+
+# 服务端响应：{type:"server-response", rpcId, result}
+段落 造服务端响应帧(标识, 结果):
+  返回 ["type": "server-response", "rpcId": 标识, "result": 结果]
+
+# ---- 通道与端点段校验（rpc-host.ts L35-36, L280-289, L314-331；client/rpc.ts L176-183）----
+
+# 字符 ∈ [A-Za-z0-9._~-]（通道段允许集）
+段落 通道字(字符):
+  设 码 为 字符转ASCII(字符)
+  如果 码 >= 65 且 码 <= 90:
+    返回 真
+  如果 码 >= 97 且 码 <= 122:
+    返回 真
+  如果 码 >= 48 且 码 <= 57:
+    返回 真
+  如果 字符 == "." 或 字符 == "_" 或 字符 == "~" 或 字符 == "-":
+    返回 真
+  返回 假
+
+# 字符 ∈ [A-Za-z0-9_$.-]（端点段允许集）
+段落 端点字(字符):
+  设 码 为 字符转ASCII(字符)
+  如果 码 >= 65 且 码 <= 90:
+    返回 真
+  如果 码 >= 97 且 码 <= 122:
+    返回 真
+  如果 码 >= 48 且 码 <= 57:
+    返回 真
+  如果 字符 == "_" 或 字符 == "$" 或 字符 == "." 或 字符 == "-":
+    返回 真
+  返回 假
+
+# CHANNEL_PATTERN = /^\/[A-Za-z0-9._~-]+$/
+段落 通道合法(通道):
+  如果 字符串长度(通道) < 1:
+    返回 假
+  如果 通道[0] != "/":
+    返回 假
+  设 i 为 1
+  当 i < 字符串长度(通道):
+    如果 通道字(通道[i]) == 假:
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 通道校验（assertChannel L314-318）：合法且非保留 /api
+段落 校验通道(通道):
+  如果 通道合法(通道) == 假 或 通道 == "/api":
+    抛出 新建 错误("connection: 非法或保留 RPC 通道 \"" + 通道 + "\"")
+
+# 单段端点段校验：拒绝 '' '.' '..' 与非法字符
+段落 端点段合法(段):
+  如果 段 == "" 或 段 == "." 或 段 == "..":
+    返回 假
+  设 i 为 0
+  当 i < 字符串长度(段):
+    如果 端点字(段[i]) == 假:
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# endpointFromPath（rpc-host.ts L280-289）：pathname 必须以 channel/ 开头；拆段逐段校验
+段落 端点自路径(通道, 路径名):
+  设 前缀 为 通道 + "/"
+  设 前缀长 为 字符串长度(前缀)
+  如果 字符串长度(路径名) < 前缀长:
+    返回 空
+  如果 截取(路径名, 0, 前缀长) != 前缀:
+    返回 空
+  设 端点 为 截取(路径名, 前缀长, 字符串长度(路径名))
+  设 段表 为 []
+  设 段 为 ""
+  遍历 字 之 端点:
+    如果 字 == "/":
+      列表追加(段表, 段)
+      设 段 为 ""
+    否则:
+      设 段 为 段 + 字
+  列表追加(段表, 段)
+  遍历 检段 之 段表:
+    如果 端点段合法(检段) == 假:
+      返回 空
+  返回 端点
+
+# assertTarget（client/rpc.ts L176-183）：调用方侧目标校验
+段落 校验目标(通道, 端点):
+  如果 通道合法(通道) == 假:
+    抛出 新建 错误("connection: 非法 RPC 目标 \"" + 通道 + "/" + 端点 + "\"")
+  设 段表 为 []
+  设 段 为 ""
+  遍历 字 之 端点:
+    如果 字 == "/":
+      列表追加(段表, 段)
+      设 段 为 ""
+    否则:
+      设 段 为 段 + 字
+  列表追加(段表, 段)
+  遍历 检段 之 段表:
+    如果 端点段合法(检段) == 假:
+      抛出 新建 错误("connection: 非法 RPC 目标 \"" + 通道 + "/" + 端点 + "\"")
+
+# ---- 服务端响应信封校验（client/rpc.ts L141-170 parseConnectionResponse）----
+# 合法 → {rpcId, result}；非法 → 抛错
+段落 解析服务端响应(值):
+  如果 是字典(值) == 假:
+    抛出 新建 错误("connection: 非法 server-response 信封")
+  如果 值["type"] != "server-response":
+    抛出 新建 错误("connection: 非法 server-response 信封")
+  如果 字典包含键(值, "rpcId") == 假 或 是字符串(值["rpcId"]) == 假:
+    抛出 新建 错误("connection: 非法 server-response 信封")
+  设 结果 为 取可选(值, "result")
+  如果 是字典(结果) == 假:
+    抛出 新建 错误("connection: 非法 server-response 结果")
+  如果 取可选(结果, "ok") == 真:
+    返回 ["rpcId": 值["rpcId"], "result": ["ok": 真, "value": 取可选(结果, "value")]]
+  如果 取可选(结果, "ok") != 假:
+    抛出 新建 错误("connection: 非法 server-response 结果")
+  设 错 为 取可选(结果, "error")
+  如果 是字典(错) == 假:
+    抛出 新建 错误("connection: 非法 server-response 失败")
+  如果 是字符串(错["code"]) == 假 或 是字符串(错["message"]) == 假:
+    抛出 新建 错误("connection: 非法 server-response 失败")
+  设 详情 为 取可选(错, "details")
+  如果 详情 == 空:
+    设 详情 为 {}
+  返回 ["rpcId": 值["rpcId"], "result": ["ok": 假, "error": ["code": 错["code"], "message": 错["message"], "details": 详情]]]
+
+导出 传输错
+导出 成功结果
+导出 失败结果
+导出 造客户端请求
+导出 造服务端响应帧
+导出 通道合法
+导出 校验通道
+导出 端点段合法
+导出 端点自路径
+导出 校验目标
+导出 解析服务端响应

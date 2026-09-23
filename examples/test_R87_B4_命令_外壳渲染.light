@@ -1,0 +1,99 @@
+# test_R87_B4_命令_外壳渲染.light —— R87-B4 组2 scope1：shell 类型/渲染/后台纯逻辑
+从 bash渲染 导入 渲染结果, 渲染已提升, 渲染作业读取
+从 工具_bash 导入 进程结局, 环块增量
+从 外壳环境 导入 归一到期策略
+从 JSON 导入 序列化JSON
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望: 抛出 新建 错误("断言失败 [" + 标签 + "]: 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 含子串(文本, 子, 标签):
+  如果 包含(文本, 子) == 假: 抛出 新建 错误("含子串失败 [" + 标签 + "]: 期望含 " + 子)
+
+设 无升级 为 []
+设 有升级 为 ["sudo"]
+
+# === 归一到期策略（types.ts onExpiry 默认化）===
+断言相等(归一到期策略([]), "kill", "到期-缺省kill")
+断言相等(归一到期策略(["onExpiry": "none"]), "none", "到期-none保留")
+断言相等(归一到期策略(["onExpiry": "kill"]), "kill", "到期-kill显式")
+
+# === 渲染结果：新增 stopped 标记（在超时后、信号前）===
+设 流空 为 {"text": "", "truncated": 假}
+设 结果_停 为 {"stdout": 流空, "stderr": 流空, "exitCode": 0, "signal": 空, "stopped": "user"}
+设 文本_停 为 渲染结果(结果_停, 无升级)
+含子串(文本_停, "[stopped: user]", "结果-stopped标记")
+断言相等(文本_停, "(no output)\n[stopped: user]", "结果-stopped全文")
+
+# stopped 与信号同框：stopped 在前
+设 结果_停信号 为 {"stdout": 流空, "stderr": 流空, "exitCode": 0, "signal": "SIGTERM", "stopped": "user"}
+设 文本_停信号 为 渲染结果(结果_停信号, 无升级)
+设 位停 为 查找子串(文本_停信号, "[stopped: user]")
+设 位信 为 查找子串(文本_停信号, "[killed by signal: SIGTERM]")
+如果 位停 >= 位信: 抛出 新建 错误("stopped 应排在 signal 之前")
+
+# === 渲染已提升（renderPromoted）===
+设 提升_空输出 为 ["jobId": "job-1", "timeoutMs": 3000, "output": ""]
+设 文本_提升空 为 渲染已提升(提升_空输出)
+含子串(文本_提升空, "[still running after 3000ms; moved to background job job-1]", "提升-空输出行")
+含子串(文本_提升空, "job_output", "提升-指引job_output")
+
+设 提升_无尾换 为 ["jobId": "job-2", "timeoutMs": 5000, "output": "partial"]
+设 文本_提升补 为 渲染已提升(提升_无尾换)
+断言相等(文本_提升补, "partial\n[still running after 5000ms; moved to background job job-2]\nThe command keeps running in the background. You will be notified when it finishes; read newer output with job_output, stop it with job_kill.", "提升-补换行")
+
+设 提升_有尾换 为 ["jobId": "job-3", "timeoutMs": 1000, "output": "line\n"]
+设 文本_提升不补 为 渲染已提升(提升_有尾换)
+含子串(文本_提升不补, "line\n[still running after 1000ms", "提升-已有尾换不补")
+
+# === 渲染作业读取（renderJobRead 新签名）===
+设 路径表 为 ["/a", "/b"]
+设 作业_有损 为 渲染作业读取("delta", 真, 路径表, 空, 无升级)
+断言相等(作业_有损, "delta\n[some output was dropped from memory; full output: /a, /b]", "作业读-有损有路径")
+
+设 作业_有损无 为 渲染作业读取("d", 真, [], 空, 无升级)
+断言相等(作业_有损无, "d\n[some output was dropped from memory; full output: (unavailable)]", "作业读-有损无路径")
+
+设 沙箱_denied 为 ["denied": 真, "mode": "docker"]
+设 作业_denied 为 渲染作业读取("d", 假, [], 沙箱_denied, 有升级)
+含子串(作业_denied, "[sandbox: file access denied under docker mode]", "作业读-denied")
+含子串(作业_denied, "escalation available", "作业读-升级提示")
+
+设 作业_净 为 渲染作业读取("clean", 假, [], 空, 无升级)
+断言相等(作业_净, "clean", "作业读-净")
+
+# === 进程结局（processOutcome）===
+设 进程_killed信号 为 ["status": "killed", "signal": "SIGKILL"]
+设 结局_k 为 进程结局(进程_killed信号, 无升级)
+断言相等(结局_k["状态"], "killed", "结局-killed状态")
+断言相等(结局_k["细节"], "signal: SIGKILL", "结局-killed信号细节")
+
+设 进程_killed无信号 为 ["status": "killed", "signal": 空]
+设 结局_k2 为 进程结局(进程_killed无信号, 无升级)
+断言相等(结局_k2["细节"], "killed before exit", "结局-killed无信号")
+
+设 进程_完成 为 ["status": "completed", "exitCode": 3]
+设 结局_c 为 进程结局(进程_完成, 无升级)
+断言相等(结局_c["状态"], "completed", "结局-completed状态")
+断言相等(结局_c["细节"], "exit code: 3", "结局-completed细节")
+
+设 进程_带沙箱 为 ["status": "completed", "exitCode": 0, "sandbox": ["denied": 真, "mode": "docker"]]
+设 结局_s 为 进程结局(进程_带沙箱, 有升级)
+含子串(结局_s["细节"], "exit code: 0; ", "结局-沙箱拼接前缀")
+含子串(结局_s["细节"], "file access denied under docker mode", "结局-沙箱拒绝文案")
+含子串(结局_s["细节"], "escalation available", "结局-升级提示")
+
+# === 环块增量（ringDelta）===
+设 块_混合 为 [["channel": "stdout", "text": "a"], ["channel": "stderr", "text": "e"], ["channel": "stdout", "text": "b"]]
+断言相等(环块增量(块_混合), "ab\n[stderr]\ne", "环块-混合")
+
+设 块_out换行 为 [["channel": "stdout", "text": "a\n"], ["channel": "stderr", "text": "e"]]
+断言相等(环块增量(块_out换行), "a\n[stderr]\ne", "环块-out已换行")
+
+设 块_仅out 为 [["channel": "stdout", "text": "x"]]
+断言相等(环块增量(块_仅out), "x", "环块-仅out")
+
+设 块_空 为 []
+断言相等(环块增量(块_空), "", "环块-空")
+
+写 "--- R87-B4 外壳/渲染/后台 纯逻辑测试通过 ---"

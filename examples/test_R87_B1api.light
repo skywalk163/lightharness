@@ -1,0 +1,95 @@
+# test_R87_B1api.light —— R87 任务 B1：0.1.7 api 包纯逻辑增量判据
+#
+# 上游锚点 877717787c：
+#   packages/api/gateway/src/stream-protocol.ts  RemoteStreamClientMessage 0.1.7
+#     —— 客户端→主机新增 item（可选无损 JSON value）/ end（上行半关闭）帧
+#   packages/api/gateway/src/remote-error-codes.ts:27-38 —— 新增
+#     'gateway/protocol' / 'gateway/uplink-overflow'
+#   packages/api/session-controller/src/archived-session-gate.ts:38-56
+#     underArchivedSession —— subagent 血缘归档判定（fork 即独立对话）
+# 判据锚点：packages/api/gateway/tests/*.spec.ts、
+#   packages/api/session-controller/tests/archived-session-gate.host.spec.ts
+
+从 网关协议 导入 是客户端上行项, 是客户端上行收尾, 网校验客户端消息V2, 造上行项, 造上行收尾, 网关错误码表V2, 是网关错误码
+从 会话控制类型 导入 归档血缘判定
+
+段落 对拍相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 对拍报错(函数值, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    函数值()
+  捕获 e:
+    设 已抛 为 真
+    设 文本 为 转字符串(e)
+    如果 文本.包含(片段) == 假:
+      抛出 新建 错误("错误片段不符: " + 标签 + " 实际=" + 文本)
+  如果 已抛 == 假:
+    抛出 新建 错误("未抛出: " + 标签)
+
+段落 校验桩(值):
+  返回 网校验客户端消息V2(值)
+
+# ---- 血缘夹具 ----
+段落 造头(标识, 来源, 父标识):
+  设 头 为 ["id": 标识]
+  如果 来源 != 空:
+    头["origin"] 为 来源
+  如果 父标识 != 空:
+    头["parentSession"] 为 父标识
+  返回 头
+
+段落 主:
+  # G1 上行项帧：带无损 JSON value / 缺省 value（顶层 undefined 线形）
+  对拍相等(是客户端上行项(造上行项("s1", [1, "x", 真, 空])), 真, "上行项带 value")
+  对拍相等(是客户端上行项(造上行项("s1")), 真, "上行项缺省 value")
+  对拍相等(是客户端上行项(["type": "item", "streamId": "s1", "value": ["坏": 造上行项]]), 假, "不可序列化 value 拒绝")
+  对拍相等(是客户端上行项(["type": "item", "streamId": ""]), 假, "空流标识拒绝")
+  对拍相等(是客户端上行项(["type": "item", "streamId": "s1", "额外": 1]), 假, "多余键拒绝")
+
+  # G2 上行半关闭帧：end + streamId
+  对拍相等(是客户端上行收尾(造上行收尾("s2")), 真, "上行收尾准入")
+  对拍相等(是客户端上行收尾(["type": "end", "streamId": "s2", "value": 1]), 假, "end 不许带 value")
+
+  # G3 0.1.7 客户端消息校验全表：open / item / end / cancel
+  对拍相等(网校验客户端消息V2(造上行项("s1", 7))["type"], "item", "校验放行 item")
+  对拍相等(网校验客户端消息V2(造上行收尾("s2"))["type"], "end", "校验放行 end")
+  对拍相等(网校验客户端消息V2(["type": "cancel", "streamId": "s3"])["type"], "cancel", "校验放行 cancel")
+  对拍报错(非法上行项桩, "invalid Remote stream", "非法值拒绝")
+
+  # G4 网关错误码 0.1.7 扩充：19 码
+  对拍相等(长度(网关错误码表V2()), 19, "0.1.7 十九个网关码")
+  对拍相等(是网关错误码("gateway/protocol"), 真, "gateway/protocol 入表")
+  对拍相等(是网关错误码("gateway/uplink-overflow"), 真, "gateway/uplink-overflow 入表")
+  对拍相等(是网关错误码("gateway/不存在"), 假, "未知码拒绝")
+
+  # A1 归档血缘：会话自身归档
+  设 归档表 为 ["sess-a"]
+  对拍相等(归档血缘判定(造头("sess-a", 空, 空), 归档表, 段落取父桩), 真, "自身归档")
+
+  # A2 subagent 血缘向上命中：子(subagent, 父=sess-p) ← 父已归档
+  对拍相等(归档血缘判定(造头("sess-c", "subagent", "sess-p"), 归档表, 段落取父桩), 真, "subagent 血缘命中")
+
+  # A3 fork 即独立对话：origin 非 subagent 不上溯
+  对拍相等(归档血缘判定(造头("sess-f", "fork", "sess-a"), 归档表, 段落取父桩), 假, "fork 不继承归档")
+
+  # A4 parentSession 缺失：按父 id 已归档收口
+  对拍相等(归档血缘判定(造头("sess-d", "subagent", "sess-a"), 归档表, 段落取父桩), 真, "父缺失按归档收口")
+  对拍相等(归档血缘判定(造头("sess-d", "subagent", "sess-x"), 归档表, 段落取父桩), 假, "父缺失未归档为假")
+
+  # A5 未归档且无血缘 → 假
+  对拍相等(归档血缘判定(造头("sess-z", 空, 空), 归档表, 段落取父桩), 假, "未归档独立会话")
+
+  打印 "--- R87 B1 api 纯逻辑判据通过 ---"
+
+段落 非法上行项桩:
+  返回 网校验客户端消息V2(["type": "item", "streamId": "s1", "value": ["k": 非法上行项桩]])
+
+段落 段落取父桩(标识):
+  如果 标识 == "sess-p":
+    返回 造头("sess-a", 空, 空)
+  返回 空
+
+主()

@@ -1,0 +1,43 @@
+# test_R87_B3_基建_团队状态收敛.light —— R87 任务 B3 第 3 组 对拍测试
+# 覆盖 src/团队花名册.light 的 availability 二值收敛（收束可用）与
+# src/代理团队.light 的 contentBlockSchema 语义（判内容块/列内容块）。
+# 运行：python 运行.py examples/test_R87_B3_基建_团队状态收敛.light
+
+从 团队花名册 导入 收束可用
+从 代理团队 导入 判内容块, 列内容块
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 主:
+  # ===== 1. availability 二值收敛：只有 running 仍为 running，idle/未加载一律 inactive =====
+  断言相等(收束可用(空), "inactive", "收敛-空代理=inactive")
+  断言相等(收束可用({"态": "running"}), "running", "收敛-running 仍是 running")
+  断言相等(收束可用({"态": "idle"}), "inactive", "收敛-idle 收敛为 inactive")
+  断言相等(收束可用({"态": "stopped"}), "inactive", "收敛-其他态=inactive")
+  断言相等(收束可用({"态": "running", "键": "x"}), "running", "收敛-running 带附加键")
+
+  # ===== 2. contentBlockSchema：四个显式变体接受 =====
+  断言相等(判内容块({"type": "text", "text": "你好"}), 真, "块-text 接受")
+  断言相等(判内容块({"type": "reasoning", "text": "推理"}), 真, "块-reasoning 接受")
+  断言相等(判内容块({"type": "image", "attachment": {"attachmentId": "a1"}}), 真, "块-image 接受")
+  断言相等(判内容块({"type": "tool-call", "id": "c1", "name": "f", "arguments": "{}"}), 真, "块-tool-call 接受")
+
+  # ===== 3. contentBlockSchema：tool-result 退役，既不在联合又在核心集 → 拒绝 =====
+  断言相等(判内容块({"type": "tool-result", "toolCallId": "c1", "content": []}), 假, "块-tool-result 退役拒绝")
+
+  # ===== 4. contentBlockSchema：未知插件变体（非空 type 且不在核心集）按引用保留 =====
+  断言相等(判内容块({"type": "my-custom", "data": 1}), 真, "块-未知插件变体保留")
+  断言相等(判内容块({"type": "tool-call"}), 假, "块-tool-call 缺参拒绝")
+  断言相等(判内容块({"type": ""}), 假, "块-空 type 拒绝")
+  断言相等(判内容块("not-a-block"), 假, "块-非字典拒绝")
+
+  # ===== 5. 列内容块：一组全过 / 任一坏即假 =====
+  断言相等(列内容块([{"type": "text", "text": "a"}, {"type": "my-x", "v": 1}]), 真, "列-全过")
+  断言相等(列内容块([{"type": "text", "text": "a"}, {"type": "tool-result", "content": []}]), 假, "列-混入tool-result假")
+  断言相等(列内容块("not-a-list"), 假, "列-非列表假")
+
+  写 "test_R87_B3_基建_团队状态收敛 PASS"
+
+主()

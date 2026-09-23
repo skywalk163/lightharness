@@ -1,0 +1,73 @@
+# test_R87_B3_基建_插件注册表计划.light —— R87 任务 B3 第 3 组 对拍测试
+# 覆盖 src/插件注册表计划.light：注册表归一化、询问计划、失败归因、git 宿主解析。
+# 运行：python 运行.py examples/test_R87_B3_基建_插件注册表计划.light
+
+从 插件注册表计划 导入 插册归一, 插册计划, 插册归属, 插册解析宿主, 插官方注册表, 插pnpm自
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言抛错(标签, 运算):
+  设 抛了 为 假
+  设 消息 为 ""
+  尝试:
+    运算()
+  捕获 异常对象:
+    设 抛了 为 真
+    设 消息 为 转字符串(异常对象)
+  如果 抛了 == 假:
+    抛出 新建 错误("应抛未抛: " + 标签)
+  返回 消息
+
+段落 抛坏协议:
+  插册归一("ftp://example.com/x")
+
+段落 主:
+  # ===== 1. normalizeRegistry：小写宿主 + 尾斜杠，非 http(s) 抛错 =====
+  断言相等(插册归一("https://registry.npmjs.org"), "https://registry.npmjs.org/", "归一-官方补斜杠")
+  断言相等(插册归一("HTTPS://REGISTRY.NpmJS.org"), "https://registry.npmjs.org/", "归一-小写")
+  断言相等(插册归一("http://example.com/npm"), "http://example.com/npm/", "归一-http补斜杠")
+  断言相等(插册归一("https://a.com"), "https://a.com/", "归一-根斜杠")
+  设 消息协议 为 断言抛错("坏协议", 抛坏协议)
+  断言相等(字符串包含(消息协议, "http(s)"), 真, "归一-坏协议抛错")
+
+  # ===== 2. registryPlan：公开自身源 + 回退 =====
+  设 配公开 为 {"首选": 插官方注册表, "回退": [], "自解析": 插官方注册表}
+  断言相等(插册计划(空, 配公开), [插官方注册表], "计划-公开自身默认")
+  设 带回退 为 {"首选": 插官方注册表, "回退": ["https://fb1.com/"], "自解析": 插官方注册表}
+  断言相等(插册计划(空, 带回退), [插官方注册表, "https://fb1.com/"], "计划-首源先于回退")
+  断言相等(插册计划("https://fb1.com/", 带回退), ["https://fb1.com/", 插官方注册表], "计划-指定回退源排前")
+
+  # ===== 3. registryPlan：pnpm 自身源（插pnpm自）公开时入列 =====
+  设 配自 为 {"首选": 插pnpm自, "回退": [], "自解析": 插官方注册表}
+  断言相等(插册计划(空, 配自), [插pnpm自], "计划-自身公开问一次")
+
+  # ===== 4. registryPlan：私有/未知自身源只问自己，不回退公开 =====
+  设 配私有 为 {"首选": 插官方注册表, "回退": [], "自解析": "https://private.example.com/"}
+  断言相等(插册计划(空, 配私有), [插官方注册表], "计划-公开首选照常")
+  断言相等(插册计划(插pnpm自, 配私有), [插pnpm自], "计划-私有自身单独问")
+  断言相等(插册计划("https://private.example.com/", 配私有), ["https://private.example.com/"], "计划-指定私有源单独问")
+
+  # ===== 5. registryPlan：问到的源不在已知集 → 单独问 =====
+  断言相等(插册计划("https://other.example.com/", 配公开), ["https://other.example.com/"], "计划-未知源单独问")
+
+  # ===== 6. attributeFailure =====
+  断言相等(插册归属("build-blocked", "anything", ["种类": "registry"]), "other", "归因-不可下一跳=other")
+  断言相等(插册归属("network", "plain log", ["种类": "registry"]), "registry", "归因-registry源无宿主")
+  断言相等(插册归属("network", "plain log", ["种类": "git", "宿主": "github.com"]), "registry", "归因-日志未点名宿主")
+  断言相等(插册归属("network", "ERR_PNPM_FETCH https://github.com/user/repo", ["种类": "git", "宿主": "github.com"]), "spec-host", "归因-错误行点名git宿主")
+  断言相等(插册归属("not-found", "ERROR tarball at https://cdn.example.com/x.tgz", ["种类": "tarball", "宿主": "cdn.example.com"]), "spec-host", "归因-错误行点名tarball宿主")
+  断言相等(插册归属("timeout", "fatal: unable to access 'https://gitlab.com/'", ["种类": "git", "宿主": "gitlab.com"]), "spec-host", "归因-fatal行点名宿主")
+
+  # ===== 7. gitHost：简写 / scp / URL =====
+  断言相等(插册解析宿主("github:user/repo"), "github.com", "宿主-github简写")
+  断言相等(插册解析宿主("gitlab:user/repo"), "gitlab.com", "宿主-gitlab简写")
+  断言相等(插册解析宿主("gist:user/abcd"), "gist.github.com", "宿主-gist简写")
+  断言相等(插册解析宿主("git@bitbucket.org:user/repo.git"), "bitbucket.org", "宿主-scp")
+  断言相等(插册解析宿主("https://github.com/user/repo.git"), "github.com", "宿主-https URL")
+  断言相等(插册解析宿主("git+https://gitlab.com/u/r"), "gitlab.com", "宿主-带git+前缀")
+
+  写 "test_R87_B3_基建_插件注册表计划 PASS"
+
+主()

@@ -330,7 +330,7 @@
 段落 是网关错误码(值):
   如果 是字符串(值) == 假:
     返回 假
-  遍历 码 之 网关错误码表():
+  遍历 码 之 网关错误码表V2():
     如果 码 == 值:
       返回 真
   返回 假
@@ -348,6 +348,7 @@
   如果 字典包含键(值, "field") 且 是字符串(值["field"]) == 假:
     返回 假
   返回 真
+
 
 # =====================================================================
 # §3 远程事件（remote-events.ts）
@@ -425,3 +426,73 @@
     如果 值[键] != 真:
       返回 假
   返回 真
+
+# =====================================================================
+# §5 R87 · 0.1.7 增量：上行流帧 + 网关错误码扩充（api/gateway）
+# =====================================================================
+# 上游锚点 877717787c（0.1.6 锚点 ddefc45fbc 之上）：
+#   packages/api/gateway/src/stream-protocol.ts  RemoteStreamClientMessage 0.1.7：
+#     「open, one uplink item, uplink half-close, or cancel」——客户端→主机新增
+#     item（带可选无损 JSON value）与 end（上行半关闭）两帧；item 的 value 走
+#     isRemoteJsonValue（typert-protocol json-value.ts，本模块 §1 已有 网是远程JSON值）。
+#   packages/api/gateway/src/remote-error-codes.ts:27-38  新增
+#     'gateway/protocol' 与 'gateway/uplink-overflow' 两个 TypertGatewayFaultDetails 键。
+# 判据锚点：packages/api/gateway/tests/*.spec.ts（上行帧准入）。
+# 偏离登记：value 携带校验复用 §1 网是远程JSON值（深度上限近似循环检测，0.1.6 已登记）。
+# =====================================================================
+
+# 上行项帧准入：item + streamId，可选 value（存在时必须无损 JSON；缺省 value 即「顶层 undefined」线形）
+段落 是客户端上行项(值):
+  如果 是字典(值) == 假:
+    返回 假
+  如果 字典获取(值, "type", 空) != "item":
+    返回 假
+  如果 (网精确键(值, ["type", "streamId"]) == 假) 且 (网精确键(值, ["type", "streamId", "value"]) == 假):
+    返回 假
+  如果 网有效标识(字典获取(值, "streamId", 空)) == 假:
+    返回 假
+  如果 字典包含键(值, "value") 且 (网是远程JSON值(值["value"]) == 假):
+    返回 假
+  返回 真
+
+# 上行半关闭帧准入：end + streamId（0.1.7 与 cancel 同形状族，语义由端点区分）
+段落 是客户端上行收尾(值):
+  如果 是字典(值) == 假:
+    返回 假
+  返回 字典获取(值, "type", 空) == "end" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(字典获取(值, "streamId", 空))
+
+# 客户端→主机消息校验（0.1.7 口径）：open / item / end / cancel
+段落 网校验客户端消息V2(值):
+  设 型 为 字典获取(值, "type", 空)
+  设 流 为 字典获取(值, "streamId", 空)
+  如果 型 == "cancel" 且 网精确键(值, ["type", "streamId"]) 且 网有效标识(流):
+    返回 值
+  如果 是客户端上行项(值):
+    返回 值
+  如果 是客户端上行收尾(值):
+    返回 值
+  如果 型 == "open" 且 网精确键(值, ["type", "streamId", "endpoint", "payload"]) 且 网有效标识(流) 且 是字符串(字典获取(值, "endpoint", 空)) 且 字符串长度(字典获取(值, "endpoint", 空)) > 0:
+    返回 值
+  抛出 新建 错误("api gateway: invalid Remote stream client message")
+
+# 帧构造（0.1.7 对称补齐）
+段落 造上行项(流标识, 值 = 空):
+  如果 值 == 空:
+    返回 {"type": "item", "streamId": 流标识}
+  返回 {"type": "item", "streamId": 流标识, "value": 值}
+
+段落 造上行收尾(流标识):
+  返回 {"type": "end", "streamId": 流标识}
+
+# 0.1.7 网关错误码全表（remote-error-codes.ts:27-38，含新增 protocol / uplink-overflow）
+段落 网关错误码表V2:
+  返回 ["gateway/ambiguous-endpoint", "gateway/arguments-invalid", "gateway/binding-invalid",
+    "gateway/context-failed", "gateway/context-not-found", "gateway/context-unavailable",
+    "gateway/definition-unavailable", "gateway/input-invalid", "gateway/invocation-unavailable",
+    "gateway/lookup-failed", "gateway/lookup-not-found", "gateway/lookup-unavailable",
+    "gateway/method-unavailable", "gateway/protocol", "gateway/provider-mismatch",
+    "gateway/result-invalid", "gateway/service-unavailable", "gateway/signature-invalid",
+    "gateway/uplink-overflow"]
+
+导出 是客户端上行项, 是客户端上行收尾, 网校验客户端消息V2, 造上行项, 造上行收尾
+导出 网关错误码表V2
