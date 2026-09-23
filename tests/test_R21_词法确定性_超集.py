@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import pytest
 
@@ -39,12 +40,32 @@ SCAN_CODE = (
 )
 
 
+def _run_with_retry(argv, attempts=3, delay=1.0, **kwargs):
+    """带重试的子进程执行：只针对「瞬时 spawn 失败」（FileNotFoundError）。
+
+    R87-E 取证归因：0.82 全量高负载下 git archive 子进程偶发 FileNotFoundError
+    —— 单跑恒绿、复跑全绿、失败与任何一轮源码改动无关，属高负载下 fork/exec
+    瞬时故障（环境 flaky），非代码回归（证据链见 tests/flaky_registry.txt F-03）。
+    处置（R87-E「加重试降级」）：连续 attempts 次（线性退避）仍 FileNotFoundError
+    才抛出，由调用方降级为 skip；普通执行错误（rc!=0 等）不受重试影响。
+    """
+    last = None
+    for i in range(attempts):
+        try:
+            return subprocess.run(argv, **kwargs)
+        except FileNotFoundError as exc:
+            last = exc
+            time.sleep(delay * (i + 1))
+    raise last
+
+
 def _scan_all(src_dir, files):
     listfile = os.path.join(tempfile.gettempdir(), "r21_defs_%d.json" % os.getpid())
     with open(listfile, "w", encoding="utf-8") as f:
         json.dump(files, f, ensure_ascii=False)
-    r = subprocess.run([sys.executable, "-c", SCAN_CODE % src_dir, listfile],
-                       capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    r = _run_with_retry([sys.executable, "-c", SCAN_CODE % src_dir, listfile],
+                        capture_output=True, text=True, encoding="utf-8",
+                        errors="replace", timeout=300)
     os.remove(listfile)
     assert r.returncode == 0, "扫描子进程失败: %s" % r.stderr[-300:]
     return json.loads(r.stdout)
@@ -58,7 +79,8 @@ def scan_result():
     )
     tmp = tempfile.mkdtemp(prefix="r21_superset_")
     try:
-        ar = subprocess.run(["git", "archive", "d2857dd5", "src"], cwd=LM, capture_output=True)
+        ar = _run_with_retry(["git", "archive", "d2857dd5", "src"], cwd=LM,
+                             capture_output=True, timeout=300)
         if ar.returncode != 0:
             pytest.skip("git archive HEAD 不可用")
         tar = os.path.join(tmp, "src.tar")
@@ -71,6 +93,11 @@ def scan_result():
         old = _scan_all(os.path.join(tmp, "src"), files)
         new = _scan_all(LM_SRC, files)
         return files, old, new
+    except FileNotFoundError as exc:
+        # R87-E 降级：连续 3 次重试仍瞬时 spawn 失败 → 按环境 flaky 降级为 skip
+        # （不判红：与「git archive 不可用」同级的环境故障，非词法回归）。
+        pytest.skip("git/扫描子进程连续重试后仍 FileNotFoundError（高负载环境瞬时故障，"
+                    "非词法回归）: %s" % exc)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
