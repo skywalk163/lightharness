@@ -29,9 +29,25 @@
 #   未覆盖这 3 条各自的残余断言），回补入账。E-03/E-04/E-05/E-07/E-08 经 R87-M
 #   0.82 全量实测确为真绿，维持销账（见下节）。
 #
-E-01	test_事件循环.light	事件循环	0	FreeBSD 就绪派发顺序差异：断言「同挂时先派发读」实际=写（非 socketpair 崩溃；R86-B 已修族映射，此为残余断言差异）
-E-02	test_套接字.light	TCP/UDP 回环	0	FreeBSD 回环 send 阻塞超时（stdlib/套接字.light:207 发送全部）；R86-B 已修族映射/OPT 级别，此为残余时序差异
-E-06	test_进程树接线.light	沙箱超时	0	断言失败: 沙箱秒数上限触发超时 实际=False 期望=True（FreeBSD 沙箱超时判定差异）
+E-01	test_事件循环.light	事件循环	0	FreeBSD 就绪派发顺序差异：断言「同挂时先派发读」实际=写（非 socketpair 崩溃；R86-B 已修族映射，此为残余断言差异）。【R88-B 根因】kqueue 对同一 fd 上同时挂起的读/写就绪事件，出列顺序与 epoll/select 不同：本测试 test_事件循环.light §5 钉死「先读后写」，FreeBSD kqueue 先报写就绪 → 序列首位=写。属后端就绪队列顺序语义差异，非逻辑错误；改测试顺序断言会削弱 Linux/Windows 既有语义覆盖，按豁免固化。
+E-02	test_套接字.light	TCP/UDP 回环	0	FreeBSD 回环 send 阻塞超时（stdlib/套接字.light:207 发送全部）；R86-B 已修族映射/OPT 级别，此为残余时序差异。【R88-B 根因】test_套接字.light §7 用 2.0s 套接字超时连发 200KB（b"A"*200000），发送全部 循环在 stdlib/套接字.light:207 反复阻塞写；FreeBSD 回环 TCP 窗口/接收排空节奏比 Linux/Windows 慢，发送缓冲未排空前 send 阻塞超过 2.0s 预算 → 超时异常。属固定 2s 预算在 FreeBSD 回环上偏紧的计时差异，非收发逻辑错误。
+E-06	test_进程树接线.light	沙箱超时	0	断言失败: 沙箱秒数上限触发超时 实际=False 期望=True（FreeBSD 沙箱超时判定差异）。【R88-B 根因】test_进程树接线.light §6 沙箱 秒数上限=1 跑 `ping -n 30`；FreeBSD 沙箱把「秒数上限」落到 RLIMIT_CPU（CPU 时间），而 ping 阻塞在 recvmsg 等 ICMP 回包、几乎不耗 CPU → 1s CPU 上限永不触发；Linux/Windows 沙箱用挂钟看门狗到点强杀。属资源上限口径（CPU 时间 vs 挂钟）基线差异。
+#
+# ── R88-B 复核与 LM 同族（2026-09-23）─────────────────────────────────────
+# 复核：0.82 副本 /tmp/r44-20260923-174825，python3.12，门禁三件套（LIGHT_MERGE/PATH shim）。
+#   · E-01/E-02/E-06 单文件直跑各 2 轮均 rc=1（2/2 确定性红，签名与 R87-M 一致）；
+#     全量 1 轮 回归红=0（仅本台账 3 条命中豁免）。根因见上各行【R88-B 根因】。
+#   · 处置：三条均维持豁免（修复需动 stdlib 事件循环/套接字/沙箱，超 B 路改动面；
+#     仅改测试断言会削弱 Linux/Windows 既有覆盖）。判据接线 tests/test_回归.py:250
+#     分支 + ci_judge_env_reds.py 不变，self-check 全 PASS。
+# LM 同族（light-merge，非 LH examples，不进本机器可解析表）：
+#   tests/test_llvm_net.py::TestB3EventLoop::test_coro_sleep_basic —— 与 E-01 同源
+#   （kqueue 定时器/事件循环）。取证：0.82 隔离单跑 2/2 绿；0.82 LM 全量（xdist -n auto
+#   8312 用例/784s，reports/082_lightmerge基线_latest.json）唯一 1 红，输出
+#   ['开始','sleep前','结束']（缺 'sleep后'）——xdist 高负载下 kqueue 2s 协程睡眠唤醒
+#   未在事件循环退出前触发。结论：负载/计时敏感 flaky，非确定性红，按 flaky 路径处置；
+#   由 082 基线自比对（该条在基线失败集内）+ lm-full 关键词归因（协程/yield/睡眠）容忍，
+#   不新增 LH 豁免条目。若转为稳定复现须人工归因（疑似真退化）。
 #
 # ── R86 销账记录（2026-09-22；R87-M 复核确认其中 5 条真绿，保持销账）──────────
 # E-03 test_套接字事件循环.light：R86-B 套接字平台修复（socketpair 平台映射）后真绿。
