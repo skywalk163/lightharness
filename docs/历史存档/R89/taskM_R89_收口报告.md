@@ -15,7 +15,7 @@
 | **C** 残留 2 条 flaky | `_taskC_R89_flaky确定性处置报告.md` + 3 文件小改 | 全量复跑不再红、无新增红、不削弱断言 | ⚠️ 部分达成：杀树→条件 skip（3/3 证据充分）；心跳 8/8 未复现、不改代码。**全量出现 2 条环境/负载归因的新增红**（§4） |
 | **D** 纯逻辑面评估 | `_taskD_R89_alpha2纯逻辑面评估报告.md` + `src/会话历史分页.light`（新）+ 回归用例 | 三选一明确 + 门禁绿 | ✅ **(b) 半移植**；本机 `test_回归.py -k R89_D` 1 passed；0.82 单点 rc=0 |
 | **E** coro flake 监控 | `_taskE_R89_FreeBSD_coro_flake监控报告.md` + 台账留痕 | 5 轮隔离 + ≥1 轮负载有数据、判定明确 | ✅ 隔离 5/5 绿；全量负载 2 轮 **0 failed**；**维持 flaky，不入确定性台账** |
-| **M** 收口 | 本报告 + 归档 + push + 门禁复核 | 无新增红、远端同步 | ✅ 7 个远端全部 `ls-remote` 复核同步（github 502 为间歇性故障，同夜恢复后补推完成） |
+| **M** 收口 | 本报告 + 归档 + push + 门禁复核 | 无新增红、远端同步 | ✅ 8 个远端（含 fork）全部 `ls-remote` 复核同步（github 502 为间歇性故障，同夜恢复后补推完成） |
 
 ---
 
@@ -50,6 +50,11 @@
 > 推送踩坑记录：无头环境里 GCM（`git-credential-manager.exe`）会**静默挂住**（`git push` rc=124 超时）。
 > 解决：`git -c credential.helper= push http://user:pwd@host/path`（口令取自本机 `~/.git-credentials`，
 > 脚本内脱敏、不落盘不打日志）。建议写进下轮手册。
+> 补充坑：判断「URL 是否已带凭据」不能只看 netloc 里有没有 `@`——内网 remote 常写成
+> `http://user@host:port/path`（**只带用户名不带口令**），会被误判为已带凭据而跳过注入，
+> 结果 `terminal prompts disabled` rc=128。正确判据：解析出 host 后去 `~/.git-credentials`
+> 查表并**无条件**重建 `scheme://user:pwd@host/path`。
+> 另：github 经代理会**间歇性 502**（`CONNECT tunnel failed`），非凭据问题，隔几分钟重试即可。
 
 ---
 
