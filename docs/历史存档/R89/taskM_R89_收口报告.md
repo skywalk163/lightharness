@@ -2,7 +2,7 @@
 
 > 收口时间：2026-09-24 02:3x ｜ 承接 `R89_任务分发书_prompts.md`
 > 起始 HEAD：lightharness `d8d0909` ／ light-merge `9a9511bf` ／ fork `6bf98a4370`
-> 收口 HEAD：**lightharness `70ef6e6e`** ／ **light-merge `b511906b`** ／ **fork `23288644c9`**
+> 收口 HEAD：**lightharness `02d0058`**（含报告归档） ／ **light-merge `b511906b`** ／ **fork `23288644c9`**
 
 ---
 
