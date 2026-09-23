@@ -15,7 +15,7 @@
 | **C** 残留 2 条 flaky | `_taskC_R89_flaky确定性处置报告.md` + 3 文件小改 | 全量复跑不再红、无新增红、不削弱断言 | ⚠️ 部分达成：杀树→条件 skip（3/3 证据充分）；心跳 8/8 未复现、不改代码。**全量出现 2 条环境/负载归因的新增红**（§4） |
 | **D** 纯逻辑面评估 | `_taskD_R89_alpha2纯逻辑面评估报告.md` + `src/会话历史分页.light`（新）+ 回归用例 | 三选一明确 + 门禁绿 | ✅ **(b) 半移植**；本机 `test_回归.py -k R89_D` 1 passed；0.82 单点 rc=0 |
 | **E** coro flake 监控 | `_taskE_R89_FreeBSD_coro_flake监控报告.md` + 台账留痕 | 5 轮隔离 + ≥1 轮负载有数据、判定明确 | ✅ 隔离 5/5 绿；全量负载 2 轮 **0 failed**；**维持 flaky，不入确定性台账** |
-| **M** 收口 | 本报告 + 归档 + push + 门禁复核 | 无新增红、远端同步 | ✅（除 github 网络 502 待补） |
+| **M** 收口 | 本报告 + 归档 + push + 门禁复核 | 无新增红、远端同步 | ✅ 7 个远端全部 `ls-remote` 复核同步（github 502 为间歇性故障，同夜恢复后补推完成） |
 
 ---
 
@@ -37,13 +37,13 @@
 
 | 仓 | 远端 | 结果 |
 |---|---|---|
-| lightharness | origin(gitcode) | ✅ `70ef6e6e` |
-| lightharness | myrepo(内网 gitea) | ✅ `70ef6e6e` |
-| lightharness | github | ⚠️ push rc=0（`70ef6e6e..2bc55b8`），但 `ls-remote` 复核时
-| | | 代理返回 CONNECT 502，下轮补复核（本地 HEAD 已是最新） |
+| lightharness | origin(gitcode) | ✅ `cc48f41` |
+| lightharness | myrepo(内网 gitea) | ✅ `cc48f41` |
+| lightharness | github | ✅ `cc48f41`（`2bc55b8..cc48f41`；首次复核时代理 CONNECT 502，
+| | | 网络恢复后补推并 `ls-remote` 复核通过） |
 | light-merge | gitea(内网) | ✅ `b511906b` |
 | light-merge | gitcode | ✅ `b511906b` |
-| light-merge | github | ⚠️ **待补**：`CONNECT tunnel failed, response 502`（代理侧，两次均失败）；远端停在 `5316c3e3`（只差最后一条 skip 判据小提交） |
+| light-merge | github | ✅ `b511906b`（`5316c3e3..b511906b`；502 恢复后补推并 `ls-remote` 复核通过） |
 | light-merge | origin(本地镜像 g:\github\light) | ✅ `b511906b` |
 | fork | origin(内网 gitea) | ✅ `23288644c9`（`6bf98a4370..23288644c9`） |
 
@@ -97,7 +97,7 @@
 3. **`_等端口` 15s 上限**在全量负载下偏紧（3 条 distributed_eval 共用），下轮若再红建议放宽到 30s（只动等待窗口）。
 4. **fork 构建验证**：在 FreeBSD 目标机上跑 `pnpm install --frozen-lockfile` + `pnpm build:native-system`
    （本轮用 `--lockfile-only` 未落地 node_modules，Windows 非目标平台）。
-5. **light-merge → github** 待补推（`b511906b`，仅剩 1 个小提交）。
+5. ~~**light-merge → github** 待补推（`b511906b`）~~ **已完成**：代理 502 恢复后补推，`ls-remote` 复核 `b511906b` ✅。注：github 走代理会**间歇性 502**（非凭据问题），下轮遇到时先隔几分钟重试，别急着记待补。
 6. **本机 `.venv` 缺 `psutil`**：当前无对应红，仅 WARN 登记；出现进程树/资源类缺库红时在 `ensure_venv.py` 的 `LOCKED` 里补版本即可。
 7. **R88-A 记录校准**（两点）：`会话冷读.light` 没有历史分页（对齐的是 cold-read 全量读）；
    #49 不是 tool-jobs wake（是 agent-team lead 提醒）、#59 在本 fork 仓无法解析。
