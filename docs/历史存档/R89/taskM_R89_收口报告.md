@@ -39,7 +39,8 @@
 |---|---|---|
 | lightharness | origin(gitcode) | ✅ `70ef6e6e` |
 | lightharness | myrepo(内网 gitea) | ✅ `70ef6e6e` |
-| lightharness | github | ✅ `70ef6e6e` |
+| lightharness | github | ⚠️ push rc=0（`70ef6e6e..2bc55b8`），但 `ls-remote` 复核时
+| | | 代理返回 CONNECT 502，下轮补复核（本地 HEAD 已是最新） |
 | light-merge | gitea(内网) | ✅ `b511906b` |
 | light-merge | gitcode | ✅ `b511906b` |
 | light-merge | github | ⚠️ **待补**：`CONNECT tunnel failed, response 502`（代理侧，两次均失败）；远端停在 `5316c3e3`（只差最后一条 skip 判据小提交） |
