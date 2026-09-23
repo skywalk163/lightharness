@@ -72,3 +72,19 @@ E-06	test_进程树接线.light	沙箱超时	0	断言失败: 沙箱秒数上限�
 # test_R21_词法确定性_超集.py：0.82 全量偶发 ERROR（git archive 子进程
 #   FileNotFoundError）——R87-E 已根治（_run_with_retry 重试+降级 skip），
 #   不入 flaky 台账（根治后失败即真回归，须判红），详见 flaky_registry.txt 留档节。
+#
+# ── R89-E 复核（2026-09-24）：LM test_coro_sleep_basic flaky 监控 ──────────
+# 副本：0.82 /tmp/r44-20260923-174825/light-merge（与 R88-B 同一副本），python3.12，
+#       三件套 LIGHT_MERGE/PYTHONPATH/PATH=/tmp/r80b-shim。
+# 取证：
+#   · 隔离单跑 5 轮（无 xdist）：5/5 通过（3.63~4.06s/轮），PYTEST_RC=0。
+#   · 全量负载 2 轮（tests/ -n 8 --dist loadscope）：
+#       轮1 8177 passed / 122 skipped / 0 failed（457s）；
+#       轮2 8175 passed / 124 skipped / 0 failed（391s）；PYTEST_RC=0。
+#     两轮 grep 'coro_sleep' 均无命中 → 该用例在负载下未失败。
+# 判定：**维持 flaky 定性**，未转为稳定红 → 不新增确定性环境红台账条目；
+#   仍由 082 基线自比对 + lm-full 关键词归因容忍。
+# 注：单文件 `-n 8 --dist loadscope` 会产生与本用例无关的假红
+#   （loadscope 按 class 分组 → 同一 test_llvm_net.py 被拆到多 worker，
+#    acquire_test_port 从 19100 起并发撞端口）。负载取证必须用全量 tests/，
+#   不能用单文件 -n 8 代替。

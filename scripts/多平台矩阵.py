@@ -82,6 +82,10 @@ LM_LOCAL_PYTEST = ["-m", "pytest", "tests/", "-q", "--tb=no", "-rfE",
                    "-o", "addopts=",
                    "-n", "auto", "--dist", "loadscope"]
 
+# R89-B：本机 LM 全量前先固化 .venv 依赖（lunardate/requests 是 R88-C 手工补装的，
+# 重建 venv 会丢 → 14 条缺库红复现）。脚本幂等，异常只 WARN，绝不阻断门禁。
+ENSURE_VENV = LM_LOCAL_CWD / "scripts" / "ensure_venv.py"
+
 # LM 环境红判定关键词：跨平台（相对 0.86 基线）独有失败若命中发现，判为「环境红，
 # 可归因于平台约束」而非回归。覆盖：沙箱非代理、真实子进程/PTY、网络/抓取/webhook、
 # 缺第三方库（devpi/e2e_chain）、FreeBSD 平台专属（jail/ripgrep/native）等。
@@ -642,6 +646,31 @@ def _all_attributable(failure_records: list[dict]) -> bool:
     return True
 
 
+def _ensure_local_venv() -> None:
+    """R89-B：跑本机 LM 全量前先补固化 .venv 依赖（幂等，失败不阻断）。
+
+    R88-C 手工补装的 lunardate==0.3.0 / requests==2.34.2 在重建 venv 后会丢，
+    导致 test_datetime 农历 8 条 + test_lightpub_bridge 6 条复红。这里调用同仓
+    `light-merge/scripts/ensure_venv.py` 做幂等补齐；脚本缺失/网络异常只 WARN，
+    不允许把门禁本身搞挂。
+    """
+    if not ENSURE_VENV.exists():
+        print(f"[本机LM] ⚠️ 未找到 {ENSURE_VENV}，跳过 venv 固化")
+        return
+    try:
+        r = subprocess.run([python_cmd(), str(ENSURE_VENV)],
+                           cwd=str(LM_LOCAL_CWD), timeout=300,
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="ignore")
+        if r.returncode != 0:
+            print(f"[本机LM] ⚠️ ensure_venv rc={r.returncode}（不阻断）："
+                  f"{(r.stdout or '')[-300:]}")
+        else:
+            print("[本机LM] venv 固化检查完成（ensure_venv.py）")
+    except Exception as e:      # 环境脚本问题不允许阻断门禁
+        print(f"[本机LM] ⚠️ ensure_venv 调用异常（不阻断）：{e}")
+
+
 def lm_full_local_run(args, base_lib) -> dict | None:
     """本机 Windows LM 全量（.venv）→ 基线 → 落 本机lm基线_latest.json。
 
@@ -649,6 +678,7 @@ def lm_full_local_run(args, base_lib) -> dict | None:
     """
     REPORTS.mkdir(parents=True, exist_ok=True)
     LM_LOCAL_BASETEMP.mkdir(parents=True, exist_ok=True)
+    _ensure_local_venv()        # R89-B：先固化本机 venv 依赖，再跑全量
     history_before = _lm_history(LM_WIN_PREFIX)
 
     xml = REPORTS / f"_本机lm_results_{_stamp()}.xml"

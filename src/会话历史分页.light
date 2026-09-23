@@ -1,0 +1,138 @@
+# 会话历史分页.light —— 会话历史分页（纯逻辑面，对齐上游
+# packages/api/session-controller/src/history.ts 的 paginate + validateHistoryWindow）
+#
+# 上游 commit 50ba2c8bb2 `fix(session): align history pagination with turn boundaries`
+# 引入 SessionPageRequest.turnWindow{minMessages, minTurns}：历史分页在「已数够
+# minMessages 条消息、且已越过 minTurns 个 turn/start」时，停在 turn 边界上，
+# 保证页面不会从一轮的中间切开。
+#
+# 本模块只移植**纯算法面**（R89-D 结论 b：半移植）：
+#   ✔ 历史分页()      —— paginate 的完整循环语义（turn 计数 / 消息计数 / 组起点回退）
+#   ✔ 校验历史窗口()  —— validateHistoryWindow 的数值校验（返回原因串，不抛 RemoteError）
+#   ✘ SessionPageRequest / SessionFollowRequest 协议字段      —— host/client 双端契约，不移植
+#   ✘ RemoteError('gateway/bad-request', ...) 错误码与抛掷     —— 宿主传输错误面，不移植
+#   ✘ transport.ts / session.ts / 校验 RemoteError 接线        —— 宿主网络面，不移植
+#
+# 光明侧映射说明：
+#   - 事件用字典表示：["序号": int, "类型": str, "界面操作": "append"|..., "来源序号表": [..] 可选]
+#     （对应上游 SessionEvent 的 seq / type / surfaceOp / sourceEventSeqs）
+#   - MESSAGE_TYPES = {'user/message', 'assistant/message'}（上游 history.ts:39）
+#   - isAppendSurfaceEvent = isSurfaceEvent(e) && e.surfaceOp === 'append'；光明侧简化为
+#     事件未标界面操作（非界面事件）或显式 "append" 均按「可数」处理，
+#     显式非 append（如 "replace"）不计入消息数——与上游语义一致。
+#   - 空 = Python None（对应 undefined）
+
+设 历史消息类型表 为 ["user/message", "assistant/message"]
+
+# ---- 是否消息类事件（MESSAGE_TYPES）----
+段落 是消息类型(类型):
+  返回 列表包含(历史消息类型表, 类型)
+
+# ---- 是否「追加型界面事件」（isAppendSurfaceEvent）----
+# 上游：isSurfaceEvent(event) && event.surfaceOp === 'append'
+# 光明侧：没有 界面操作 字段 → 按普通事件计；显式 "append" → 计；其它值（replace）→ 不计。
+段落 是追加界面事件(事件):
+  如果 事件.包含("界面操作") == 假:
+    返回 真
+  返回 事件["界面操作"] == "append"
+
+# ---- 是否计入消息数的事件 ----
+段落 计入消息(事件):
+  如果 是消息类型(事件["类型"]) == 假:
+    返回 假
+  返回 是追加界面事件(事件)
+
+# ---- 窗口校验（对齐 validateHistoryWindow，返回原因串而非抛 RemoteError）----
+# 返回 "" 表示合法；非空串为不合法原因（上游对应 RemoteError 文案）。
+段落 校验历史窗口(最大消息数, 轮次窗口):
+  如果 最大消息数 != 空:
+    如果 最大消息数 <= 0:
+      返回 "maxMessages must be a positive safe integer"
+  如果 轮次窗口 == 空:
+    返回 ""
+  如果 轮次窗口.包含("最少消息") == 假:
+    返回 "turnWindow.minMessages is required"
+  如果 轮次窗口.包含("最少轮次") == 假:
+    返回 "turnWindow.minTurns is required"
+  设 最少消息 为 轮次窗口["最少消息"]
+  设 最少轮次 为 轮次窗口["最少轮次"]
+  如果 最少消息 == 空 或 最少轮次 == 空:
+    返回 "turnWindow minima must be safe integers"
+  如果 最少消息 <= 0:
+    返回 "turnWindow.minMessages must be a positive safe integer no greater than maxMessages"
+  如果 最大消息数 != 空:
+    如果 最少消息 > 最大消息数:
+      返回 "turnWindow.minMessages must be a positive safe integer no greater than maxMessages"
+  如果 最少轮次 <= 0:
+    返回 "turnWindow.minTurns must be a positive safe integer"
+  返回 ""
+
+# ---- 历史分页（对齐 paginate 全循环）----
+# 参数：
+#   事件表     —— 全量事件（按 seq 升序）
+#   前序号     —— beforeSeq（上游 undefined 表示不限）：只取 序号 < 前序号 的部分
+#   最大消息数 —— maxMessages
+#   截止序号   —— throughSeq（默认取末事件 seq）
+#   轮次窗口   —— ["最少消息": n, "最少轮次": m] 或 空
+# 返回：["事件表": 切片, "还有更多": 真/假]
+段落 历史分页(事件表, 前序号, 最大消息数, 截止序号, 轮次窗口):
+  设 末序号 为 截止序号
+  如果 末序号 == 空:
+    如果 长度(事件表) > 0:
+      设 末序号 为 事件表[长度(事件表) - 1]["序号"]
+    否则:
+      设 末序号 为 -1
+  设 止 为 末序号 + 1
+  如果 前序号 != 空:
+    如果 前序号 < 止:
+      设 止 为 前序号
+  设 计数 为 0
+  设 轮数 为 0
+  设 切 为 0
+  设 序 为 止 - 1
+  当 序 >= 0:
+    设 事件 为 事件表[序]
+    如果 轮次窗口 != 空:
+      如果 事件["类型"] == "turn/start":
+        设 轮数 为 轮数 + 1
+        如果 计数 >= 轮次窗口["最少消息"] 且 轮数 >= 轮次窗口["最少轮次"]:
+          设 切 为 事件["序号"]
+          设 序 为 -1
+        结束
+      结束
+    结束
+    如果 序 >= 0:
+      如果 计入消息(事件) == 真:
+        设 计数 为 计数 + 1
+        设 组起点 为 事件["序号"]
+        如果 事件.包含("来源序号表") == 真:
+          设 来源表 为 事件["来源序号表"]
+          遍历 源 之 来源表:
+            如果 源 < 组起点:
+              设 组起点 为 源
+            结束
+          结束
+        结束
+        如果 计数 >= 最大消息数:
+          设 切 为 组起点
+          设 序 为 -1
+        结束
+      结束
+    结束
+    如果 序 >= 0:
+      设 序 为 序 - 1
+    结束
+  结束
+  返回 ["事件表": 事件切片(事件表, 切, 止), "还有更多": 切 > 0]
+
+# ---- 按序号区间切片（序号 >= 起点 且 序号 < 止）----
+段落 事件切片(事件表, 起点, 止):
+  设 结果 为 []
+  遍历 事件 之 事件表:
+    如果 事件["序号"] >= 起点 且 事件["序号"] < 止:
+      列表追加(结果, 事件)
+    结束
+  结束
+  返回 结果
+
+导出 历史分页, 校验历史窗口, 是消息类型, 是追加界面事件, 计入消息, 历史消息类型表
