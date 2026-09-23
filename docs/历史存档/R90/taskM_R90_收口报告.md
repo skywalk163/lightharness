@@ -2,7 +2,7 @@
 
 > 轮次：R90 ｜ 2026-09-24 凌晨 ｜ 承接 R89 收口 §6 遗留 8 条
 > 执行顺序：**A → B → C → D → E → M（严格串行，无并发）**
-> 本轮 HEAD：light-merge **`1a530844`**（四远端已同步）；lightharness `40da3ee`（三远端同步，本轮无改动）；fork `23288644c9`（未动，C 路验证通过）
+> 本轮 HEAD：light-merge **`1a530844`**（四远端已同步）；lightharness **`5db9b00`**（三远端已同步，本轮无代码改动，仅归档报告）；fork `23288644c9`（未动，C 路验证通过）
 
 ---
 
@@ -27,7 +27,7 @@
 | light-merge | `462a5b07` | R90-B：Windows LM 环境红台账（11 条）+ 判据脚本（judge/self-check）；修 process_tree 杀树孪生用例 |
 | light-merge | `f19ee00f` | R90-E：`_等端口` 等待窗口 15s→30s |
 | light-merge | `1a530844` | R90-M：台账补 W-12/W-13（满负载偶发，隔离恒绿） |
-| lightharness | （无新提交） | 本轮只归档报告（本报告归档后追加 1 个 commit） |
+| lightharness | `5db9b00` | R90-M：归档 A-E+M 六份报告到 `docs/历史存档/R90/`（本轮 LH 无代码改动） |
 | fork | （无） | C 路验证通过，不需要改 lock |
 
 语法核心（lexer / parser / codegen）**零改动**；`git add <显式文件>`，无 `git add .`。
@@ -40,7 +40,7 @@
 | light-merge | gitcode | ✅ `1a530844` |
 | light-merge | github | ✅ `1a530844` |
 | light-merge | origin(本地镜像 g:\github\light) | ✅ `1a530844` |
-| lightharness | origin(gitcode) / myrepo(内网) / github | ✅ `40da3ee`（本轮无改动） |
+| lightharness | origin(gitcode) / myrepo(内网) / github | ✅ `5db9b00`（本轮仅报告归档提交） |
 | fork（deepseek-harness） | origin(内网 gitea) | ✅ `23288644c9`（未动） |
 
 **8/8 远端同步**（R89 的 github 502 问题本轮未复现）。
