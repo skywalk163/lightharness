@@ -9,8 +9,9 @@
     值不入档、不落日志、不上传。
   * 打包用 `git ls-files` 取 tracked 树（干净、不含 .venv/垃圾/未跟踪 scratch）。
     --with-git 时额外把 .git 一并带上（远端副本成为真正的 git 工作树）。
-  * 远端**不碰系统 Python**：在 /tmp 建用户级 venv 装 pytest + xdist + pytest-timeout
-    + psutil + aiohttp + sympy（后两者 R87-F 固化，R86 曾手工补装），所有 pytest 用该
+    * 远端**不碰系统 Python**：在 /tmp 建用户级 venv 装 pytest + xdist + pytest-timeout
+    + psutil + aiohttp + sympy + requests + cryptography + numpy + pandas + matplotlib
+    + lunardate + antlr4==4.13.2（后九者 R87-F 固化，R86 曾手工补装），所有 pytest 用该
     venv 跑；PATH 注入 venv/bin（同时解决 Linux 上
     可能没有 `python` 命令、只有 `python3` 的问题）。
   * 新增 probe：探测 OS 发行版 / Python 版本 / sudo 可用性 / git 版本 / CPU 核数 /
@@ -249,11 +250,14 @@ def build_tarball(out_path: Path) -> int:
 
 # ---------------------------------------------------------------- venv + shim
 def ensure_venv(cli) -> str:
-    """在 0.86 建 /tmp 用户级 venv（含 pytest + xdist + timeout + psutil + aiohttp + sympy）。
+    """在 0.86 建 /tmp 用户级 venv（含 pytest + xdist + timeout + psutil + aiohttp + sympy
+    + requests + cryptography + numpy + pandas + matplotlib + lunardate + antlr4==4.13.2）。
     返回 venv python 绝对路径。
 
-    R87-F 固化：aiohttp / sympy 为 R86 手工补装（重建 venv 会丢），现固化进 venv 初始化
-    步骤，保证「删 venv 重建后 test-lm full 仍 0 failed（或 e2e 缺依赖 skip 与 R86 基线一致）」。
+    R87-F 固化完整依赖集（对齐 R86 手工 venv）：aiohttp/sympy/requests/cryptography/
+    numpy/pandas/matplotlib/lunardate 为 R86 手工补装（重建 venv 会丢），现固化进 venv
+    初始化步骤，保证「删 venv 重建后 test-lm full 仍 0 failed（或 e2e 缺依赖 skip 与 R86
+    基线一致）」。antlr4 严格锁 4.13.2（光明生成解析器运行时契约）。
     pip install 幂等：已装则 satisfied，不重复下载。"""
     # 1) 探测系统 python3
     rc, out = run_remote(cli, "command -v python3 || command -v python", quiet=True)
@@ -281,9 +285,33 @@ def ensure_venv(cli) -> str:
     # 3) 装依赖
     pip = f"{VENV_DIR}/bin/pip"
     run_remote(cli, f"{pip} install -q --upgrade pip", timeout=300, quiet=True)
-    # R87-F 固化：aiohttp / sympy 为 R86 手工补装依赖，重建 venv 会丢 → 一并固化
-    pkgs = "pytest pytest-xdist pytest-timeout psutil aiohttp sympy"
-    rc, out = run_remote(cli, f"{pip} install -q {pkgs}", timeout=600, quiet=True)
+    # R87-F 固化完整依赖集（对齐 R86 手工 venv，重建不丢）：
+    #   · pytest* + psutil    —— 门禁运行器全家桶
+    #   · aiohttp / sympy     —— R86 手工补装（异步运行时 / 数学示例），版本已实测确认
+    #   · requests            —— stdlib/lightpub HTTP客户端、test_lightpub_bridge、test_L4_python_e2e
+    #   · cryptography        —— stdlib/加密、test_tls_light、test_async_io_light、test_llvm_tls
+    #   · numpy/pandas/matplotlib —— test_L4_python_e2e（原生 L4 数据/图示例）
+    #   · lunardate           —— stdlib/历法、stdlib/日期时间、test_datetime
+    #   · antlr4-python3-runtime==4.13.2 —— 关键：光明生成的 LightLangParser 绑定该运行时版本，
+    #     版本不符会导致 ANTLR 腿编译/运行静默失败（与 0.82 同口径，必须 4.13.2）。
+    # 版本策略：antlr4 严格锁 4.13.2（运行时契约）；其余锁 R87-F 实测冻结版本
+    # （0.86 重建后 `pip freeze` 落盘，保证「删 venv 重建 → 完全一致」可复现）。
+    PKGS = (
+        "pytest==9.1.1 "
+        "pytest-xdist==3.8.0 "
+        "pytest-timeout==2.4.0 "
+        "psutil==7.2.2 "
+        "aiohttp==3.14.3 "
+        "sympy==1.14.0 "
+        "requests==2.34.2 "
+        "cryptography==50.0.1 "
+        "numpy==2.5.3 "
+        "pandas==3.0.6 "
+        "matplotlib==3.11.2 "
+        "lunardate==0.3.0 "
+        "antlr4-python3-runtime==4.13.2"
+    )
+    rc, out = run_remote(cli, f"{pip} install -q {PKGS}", timeout=900, quiet=True)
     if rc != 0:
         print(f"[同步0.86] ⚠️ venv 依赖安装返回 rc={rc}：{out.strip()[:300]}")
     # 4) 建备用 shim（python/python3 → venv python），防止子进程裸调 `python` 找不到

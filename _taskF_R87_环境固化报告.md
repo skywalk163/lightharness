@@ -1,8 +1,11 @@
 # _taskF_R87_环境固化报告.md —— R87 任务 F · 环境固化（运维债）
 
 > 执行：R87-F 路 agent ｜ 日期：2026-09-23 ｜ 依据：`R87_agent任务分发_prompts.md` §8
-> 结论速览：**1 新建幂等恢复脚本 `freebsd/初始化.sh` + 1 处 venv 依赖固化（`同步0.86.py ensure_venv` 增 aiohttp/sympy）+ 台账互引复核补全**。两脚本已通过 `sh -n` / `py_compile` 语法校验，幂等设计到位；真机「执行后门禁」验证由 M 路在 0.82 / 0.86 实跑（F 路不持有真机执行授权，且红线禁止 commit/push）。
-> 红线遵守：未 commit / 未 push；0.82 仅用 /tmp 副本与用户侧（pip --user）插件，未碰系统主 Python 环境；未触源码仓库与宿主接线文件；未扩语法。
+> **M 路收口更新（2026-09-23）**：两交付物已在真机实跑验收，均 PASS ✅
+>   - 交付物 1 `freebsd/初始化.sh`：0.82 实跑 `--jail-only` → **jail e2e 5/5 全绿，退出 0**。
+>   - 交付物 2 `同步0.86.py ensure_venv`：原固化只含 aiohttp/sympy，**M 路实跑发现依赖集不全**（重建后 test-lm full 27 failed —— 缺 requests/cryptography/numpy/pandas/matplotlib/lunardate/antlr4）。**已补全为 13 包完整集并锁定版本**；`rm -rf /tmp/r85-venv` 后重建 → **test-lm full 0 failed（8193 passed / 0 failed / 94 skipped，8298 收集，407.7s）**，与 R86 基线一致。
+> 结论速览：**1 新建幂等恢复脚本 `freebsd/初始化.sh` + 1 处 venv 依赖集补全固化（`同步0.86.py ensure_venv` 13 包全锁定）+ 台账互引复核补全**。
+> 红线遵守：F 路 agent 未 commit / 未 push；真机实跑与 commit/push 由 **M 路**（唯一授权路）在 0.82 / 0.86 执行；0.82 仅用 /tmp 副本与用户侧（pip --user）插件，未碰系统主 Python 环境；0.86 仅用 /tmp/r85-venv；未触源码仓库与宿主接线文件；未扩语法。
 
 ---
 
@@ -65,18 +68,37 @@ sh freebsd/初始化.sh --verify           # 巡检：期望全部 ✅
 
 ## 3. 交付物 2：`同步0.86.py ensure_venv` 依赖固化
 
-### 3.1 改动
+### 3.1 改动（F 路初版 → M 路补全）
 
 `lightharness/scripts/同步0.86.py` 的 `ensure_venv()`：
 
 ```python
-# 改前
-pkgs = "pytest pytest-xdist pytest-timeout psutil"
-# 改后（R87-F 固化：aiohttp / sympy 为 R86 手工补装，重建 venv 会丢）
+# 改前（F 路初版）
 pkgs = "pytest pytest-xdist pytest-timeout psutil aiohttp sympy"
+
+# 改后（M 路补全：对齐 R86 手工 venv 的完整依赖集，且逐包锁版本）
+PKGS = (
+    "pytest==9.1.1 pytest-xdist==3.8.0 pytest-timeout==2.4.0 psutil==7.2.2 "
+    "aiohttp==3.14.3 sympy==1.14.0 "
+    "requests==2.34.2 cryptography==50.0.1 numpy==2.5.3 pandas==3.0.6 "
+    "matplotlib==3.11.2 lunardate==0.3.0 "
+    "antlr4-python3-runtime==4.13.2"    # 光明生成解析器运行时契约，必须 4.13.2
+)
 ```
 
-同步更新函数 docstring 与文件头 docstring，说明 aiohttp/sympy 为 R87-F 固化项（R86 曾手工补装）。`pip install` 本身幂等（已装则 satisfied），故「删 `/tmp/r85-venv` 重建」后仍会重新装齐，保证 0.86 LM 全量（`test-lm full`）依赖齐全。
+**为什么必须补全**：0.86 实跑（删 venv 重建 + test-lm full）暴露 **27 failed / 9 errors**，逐条核对为**缺可选依赖**（不是回归）：
+
+| 缺依赖 | 受影响测试 | 条数 |
+|---|---|---|
+| `lunardate` | `test_datetime.py`（公历转农历/春节/中秋/端午/节假日） | 8 |
+| `requests` | `test_lightpub_bridge.py` + `tests/e2e/test_L4_python_e2e.py` | 6 |
+| `cryptography` | `test_tls_light.py` + `test_async_io_light.py` + `test_llvm_tls.py` | 4+ |
+| `numpy`/`pandas`/`matplotlib` | `tests/e2e/test_L4_python_e2e.py` | 4 |
+| `antlr4` | `tests/unit/test_antlr_standalone_artifact.py`（ANTLR 腿编译 `--backend antlr`） | 3 |
+
+补全后重建 → **全绿**（见 §3.3）。已确认 `pydantic/PIL/torch/sklearn/scipy` **不被任何 pytest 用例导入**（仅存在于 examples/stdlib/tools，未被测试触达），故不纳入固化集。
+
+同步更新函数 docstring 与文件头 docstring。`pip install` 本身幂等（已装则 satisfied），故「删 `/tmp/r85-venv` 重建」后仍会重新装齐全部 13 包，保证 0.86 LM 全量（`test-lm full`）依赖齐全且**位级可复现**（版本已锁）。
 
 ### 3.2 语法校验
 
@@ -84,15 +106,17 @@ pkgs = "pytest pytest-xdist pytest-timeout psutil aiohttp sympy"
 python -m py_compile scripts/同步0.86.py   →  PY_COMPILE_OK
 ```
 
-### 3.3 真机验收步骤（待 M 路执行）
+### 3.3 真机验收（M 路已执行，结果 ✅ PASS）
 
 ```bash
 # 在 0.86 上
-rm -rf /tmp/r85-venv
-python scripts/同步0.86.py sync            # ensure_venv 重建 venv 并装齐 aiohttp/sympy
-python scripts/同步0.86.py test-lm --mode full
-# 期望：0 failed（或 e2e 缺依赖 skip 与 R86 基线一致）
+rm -rf /tmp/r85-venv                                       # 真·删库重建
+python scripts/同步0.86.py test-lm --mode full             # ensure_venv 内部重建 venv + 装齐 13 包
 ```
+
+**实测结果**：`totals = {total:8298, passed:8193, failed:0, error:0, skipped:94, xfailed:11}`（407.7s），
+与 R86 基线（0 failed / 94 skipped）**逐项一致**。重建后 venv 经 `pip list` 核对为上述 13 包精确版本（mtime 确认为删除后重建）。
+判据「删 venv 重建后 test-lm full 仍 0 failed」**达成** ✅。
 
 ---
 
