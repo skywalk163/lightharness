@@ -1,0 +1,471 @@
+{
+  "schema": 1,
+  "round": "R55",
+  "generated_at": "2026-09-23T14:09:46+08:00",
+  "target": {
+    "name": "light-merge",
+    "platform": "本机 Windows 10",
+    "host": "localhost",
+    "remote_dir": "",
+    "cwd": "G:\\dswork\\duan-light-merge\\light-merge"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": true,
+    "dist": "loadscope",
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider -o addopts= -n auto --dist loadscope",
+    "elapsed_sec": 1212.4,
+    "pytest_rc": 1,
+    "venv": "G:/dswork/duan-light-merge/light-merge/.venv/Scripts/python.exe",
+    "env": {
+      "CODEBUDDY_SAFE_DELETE_ENABLED": "0",
+      "addopts_override": "cleared"
+    }
+  },
+  "totals": {
+    "total": 8264,
+    "failure": 41,
+    "error": 6,
+    "skipped": 90,
+    "xfailed": 12,
+    "xpassed": 0,
+    "passed": 8115,
+    "failed": 47,
+    "duration_sec": 1209.993
+  },
+  "failed": [
+    {
+      "id": "tests/test_datetime.py::test_公历转农历",
+      "cid": "tests.test_datetime::test_公历转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_农历转公历",
+      "cid": "tests.test_datetime::test_农历转公历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期时间转农历",
+      "cid": "tests.test_datetime::test_日期时间转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_日期转农历",
+      "cid": "tests.test_datetime::test_日期转农历",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_春节日期",
+      "cid": "tests.test_datetime::test_春节日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中秋日期",
+      "cid": "tests.test_datetime::test_中秋日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_端午日期",
+      "cid": "tests.test_datetime::test_端午日期",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_datetime.py::test_中国节假日",
+      "cid": "tests.test_datetime::test_中国节假日",
+      "status": "failure",
+      "file": "tests/test_datetime.py",
+      "message": "RuntimeError: 农历转换需要 lunardate 库，请执行: pip install lunardate"
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_正常执行取输出和退出码",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_正常执行取输出和退出码",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "assert '退出码: 0' in \"命令启动失败: G:\\\\dswork\\\\duan-light-merge\\\\light-merge\\\\.venv\\\\Scripts\\\\python.exe -c print('hello from cmd') :: '_fields_' must be a sequence of (name, C type) pairs\""
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_非零退出码",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_非零退出码",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "assert '退出码: 42' in \"命令启动失败: G:\\\\dswork\\\\duan-light-merge\\\\light-merge\\\\.venv\\\\Scripts\\\\python.exe -c import sys; sys.exit(42) :: '_fields_' must be a sequence of (name, C type) pairs\""
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_超时杀整棵树含孙子进程",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_超时杀整棵树含孙子进程",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: 没抓到孙子 PID，本用例无法判定杀树："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_cwd在沙箱内",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_cwd在沙箱内",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "assert '退出码: 0' in \"命令启动失败: G:\\\\dswork\\\\duan-light-merge\\\\light-merge\\\\.venv\\\\Scripts\\\\python.exe -c import os; print(os.getcwd()) :: '_fields_' must be a sequence of (name, C type) pairs\""
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_默认不走shell",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_默认不走shell",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "assert '退出码: 0' in \"命令启动失败: G:\\\\dswork\\\\duan-light-merge\\\\light-merge\\\\.venv\\\\Scripts\\\\python.exe -c print('no_shell_needed') :: '_fields_' must be a sequence of (name, C type) pairs\""
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_溢出文件落在沙箱内且只回显相对名",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_溢出文件落在沙箱内且只回显相对名",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: 40KB 输出应触发溢出："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_敏感过滤不误伤普通变量[PATH]",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_敏感过滤不误伤普通变量[PATH]",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: PATH 被敏感过滤误伤（拒了）："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_敏感过滤不误伤普通变量[HOME]",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_敏感过滤不误伤普通变量[HOME]",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: HOME 被敏感过滤误伤（拒了）："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_敏感过滤不误伤普通变量[LANG]",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_敏感过滤不误伤普通变量[LANG]",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: LANG 被敏感过滤误伤（拒了）："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_敏感过滤不误伤普通变量[TMPDIR]",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_敏感过滤不误伤普通变量[TMPDIR]",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: TMPDIR 被敏感过滤误伤（拒了）："
+    },
+    {
+      "id": "tests/test_agent_tools_light.py::test_敏感过滤不误伤普通变量[USERPROFILE]",
+      "cid": "tests.test_agent_tools_light.TestRunCommand::test_敏感过滤不误伤普通变量[USERPROFILE]",
+      "status": "failure",
+      "file": "tests/test_agent_tools_light.py",
+      "message": "AssertionError: USERPROFILE 被敏感过滤误伤（拒了）："
+    },
+    {
+      "id": "tests/test_stdlib_phase3.py::test_进程类",
+      "cid": "tests.test_stdlib_phase3.Test进程::test_进程类",
+      "status": "failure",
+      "file": "tests/test_stdlib_phase3.py",
+      "message": "RuntimeError: 进程执行超时"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_默认编码按平台探测而非硬编码UTF8",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_默认编码按平台探测而非硬编码UTF8",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_显式指定编码优先于平台探测",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_显式指定编码优先于平台探测",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_字节接口给原始字节且可自行解码",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_字节接口给原始字节且可自行解码",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_坏字节走replace并置失真标志",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_坏字节走replace并置失真标志",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_解码策略可配为ignore且仍报失真",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_解码策略可配为ignore且仍报失真",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_窗口边界切在多字节字符中间也不产生半个字符",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_窗口边界切在多字节字符中间也不产生半个字符",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_UTF8与GBK混流不崩",
+      "cid": "tests.test_process_tree_light.Test解码口径::test_UTF8与GBK混流不崩",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_distributed_eval_light.py::test_分发与结果汇聚",
+      "cid": "tests.test_distributed_eval_light::test_分发与结果汇聚",
+      "status": "failure",
+      "file": "tests/test_distributed_eval_light.py",
+      "message": "AssertionError: 主控未在 15.0 秒内写出端口"
+    },
+    {
+      "id": "tests/test_distributed_eval_light.py::test_重派与心跳_杀节点后重派且无静默丢条",
+      "cid": "tests.test_distributed_eval_light::test_重派与心跳_杀节点后重派且无静默丢条",
+      "status": "failure",
+      "file": "tests/test_distributed_eval_light.py",
+      "message": "AssertionError: 测试自身：被杀 worker#1 未写出节点ID（身份断言无从谈起）"
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP提交",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_HTTP提交",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_HTTP获取",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_HTTP获取",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_URL编码解码",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_URL编码解码",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_导入",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_导入",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_拼接URL",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_拼接URL",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_lightpub_bridge.py::test_获取JSON",
+      "cid": "tests.test_lightpub_bridge.TestHTTP客户端Bridge::test_获取JSON",
+      "status": "error",
+      "file": "tests/test_lightpub_bridge.py",
+      "message": "failed on setup with \"ModuleNotFoundError: No module named 'requests'\""
+    },
+    {
+      "id": "tests/test_harness_e2e_light.py::test_限时大于延迟时与不限时逐项等价",
+      "cid": "tests.test_harness_e2e_light.Test单条超时::test_限时大于延迟时与不限时逐项等价",
+      "status": "failure",
+      "file": "tests/test_harness_e2e_light.py",
+      "message": "assert [0, 0, 0, 0, 0, 0] == [1, 0, 1, 0, 1, 0]"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_正常退出取输出",
+      "cid": "tests.test_process_tree_light.Test基本退出::test_正常退出取输出",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_非零退出码",
+      "cid": "tests.test_process_tree_light.Test基本退出::test_非零退出码",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_stderr与stdout分离",
+      "cid": "tests.test_process_tree_light.Test基本退出::test_stderr与stdout分离",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_path_a_process_isolation_light.py::test_限时运行进程_超时硬杀挂起命令",
+      "cid": "tests.test_path_a_process_isolation_light::test_限时运行进程_超时硬杀挂起命令",
+      "status": "failure",
+      "file": "tests/test_path_a_process_isolation_light.py",
+      "message": "AttributeError: 'NoneType' object has no attribute '是否超时'"
+    },
+    {
+      "id": "tests/test_path_a_process_isolation_light.py::test_限时运行进程_未超时正常返回",
+      "cid": "tests.test_path_a_process_isolation_light::test_限时运行进程_未超时正常返回",
+      "status": "failure",
+      "file": "tests/test_path_a_process_isolation_light.py",
+      "message": "AttributeError: 'NoneType' object has no attribute '是否超时'"
+    },
+    {
+      "id": "tests/test_path_a_process_isolation_light.py::test_限时运行进程_不过杀_命令正常完成并写DONE",
+      "cid": "tests.test_path_a_process_isolation_light::test_限时运行进程_不过杀_命令正常完成并写DONE",
+      "status": "failure",
+      "file": "tests/test_path_a_process_isolation_light.py",
+      "message": "AttributeError: 'NoneType' object has no attribute '是否超时'"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_超界触发spill与省略标记",
+      "cid": "tests.test_process_tree_light.Test有界输出与spill::test_超界触发spill与省略标记",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_未超界不建spill",
+      "cid": "tests.test_process_tree_light.Test有界输出与spill::test_未超界不建spill",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_超时杀整棵树含孙子进程",
+      "cid": "tests.test_process_tree_light.Test超时杀树::test_超时杀整棵树含孙子进程",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    },
+    {
+      "id": "tests/test_harness_agent_light.py::test_限时宽松时与不限时同结论",
+      "cid": "tests.test_harness_agent_light.TestM18超时::test_限时宽松时与不限时同结论",
+      "status": "failure",
+      "file": "tests/test_harness_agent_light.py",
+      "message": "assert 0 == 2"
+    },
+    {
+      "id": "tests/test_process_tree_light.py::test_环境黑名单过滤",
+      "cid": "tests.test_process_tree_light.Test环境控制::test_环境黑名单过滤",
+      "status": "failure",
+      "file": "tests/test_process_tree_light.py",
+      "message": "assert False is True"
+    }
+  ],
+  "skipped": [
+    "::tests.test_http_client",
+    "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[E\\u9636\\u6bb5_L3L4\\u539f\\u751f\\u8bed\\u6cd5/E4_L4_\\u6c99\\u7bb1\\u9694\\u79bb\\u9a8c\\u8bc1.light]",
+    "tests/test_agent_tools_light.py::test_shell命令替换与反引号注入面",
+    "tests/test_module_system.py::test_regex_escape",
+    "tests/test_module_system.py::test_regex_findall",
+    "tests/test_module_system.py::test_regex_is_match",
+    "tests/test_module_system.py::test_regex_replace",
+    "tests/test_module_system.py::test_regex_search",
+    "tests/test_module_system.py::test_stat_mean",
+    "tests/test_module_system.py::test_stat_median",
+    "tests/test_module_system.py::test_stat_stdev",
+    "tests/test_module_system.py::test_time_day_name",
+    "tests/test_module_system.py::test_time_days_after",
+    "tests/test_module_system.py::test_time_is_weekday",
+    "tests/test_module_system.py::test_time_weekday",
+    "tests/test_stdlib_phase4.py::test_验证IP地址",
+    "tests/test_stdlib_phase4.py::test_验证JSON",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/all_in_one_demo.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo1_numpy_mean.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo2_pandas_csv.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo3_matplotlib_plot.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_run[L4_python/demo5_sklearn_iris.light]",
+    "tests/test_self_host_bootstrap.py::test_binary_mod",
+    "tests/test_stdlib_phase4.py::test_Base64",
+    "tests/test_stdlib_phase4.py::test_二进制十六进制转换",
+    "tests/test_stdlib_phase4.py::test_字符集转换",
+    "tests/test_stdlib_phase4.py::test_字节字符串转换",
+    "tests/test_self_host_bootstrap.py::test_logical_not",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
+    "tests/test_v4_1_integration.py::test_compile_to_pyodide_error",
+    "tests/test_v4_1_integration.py::test_compile_to_python_error",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
+    "tests/test_level6_lexer.py::test_backtick_escape",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
+    "tests/e2e/test_L3_domain_e2e.py::test_derivative",
+    "tests/e2e/test_L3_domain_e2e.py::test_integrate",
+    "tests/e2e/test_L3_domain_e2e.py::test_matrix_multiply",
+    "tests/e2e/test_L3_domain_e2e.py::test_simplify",
+    "tests/e2e/test_L3_domain_e2e.py::test_solve_quadratic",
+    "tests/e2e/test_llvm_pipeline.py::test_simple_ir_generation",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
+    "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
+    "tests/unit/test_light_examples_run.py::test_dict_word_count",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[E\\u9636\\u6bb5_L3L4\\u539f\\u751f\\u8bed\\u6cd5/E4_L4_\\u6c99\\u7bb1\\u9694\\u79bb\\u9a8c\\u8bc1.light]",
+    "tests/e2e/test_L3_domain_e2e.py::test_email_validation",
+    "tests/e2e/test_L3_domain_e2e.py::test_extract_phone_numbers",
+    "tests/e2e/test_L3_domain_e2e.py::test_named_groups",
+    "tests/e2e/test_L3_domain_e2e.py::test_regex_substitution",
+    "tests/e2e/test_L3_domain_e2e.py::test_aggregate_query",
+    "tests/e2e/test_L3_domain_e2e.py::test_create_table",
+    "tests/e2e/test_L3_domain_e2e.py::test_parameterized_query",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_compiler_runs",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_files_exist",
+    "tests/e2e/test_bootstrap.py::test_bootstrap_self_compile",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L3_domain/demo3_math.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/all_in_one_demo.light]",
+    "tests/test_llm_client_light.py::test_stream_chat",
+    "tests/test_llm_client_light.py::test_nonstream_chat",
+    "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo1_numpy_mean.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo2_pandas_csv.light]",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
+    "tests/test_path_guard_light.py::test_链接指向沙箱外时经过链接的子路径也被拒_附变异反跑",
+    "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
+    "tests/test_pty_light.py::test_设窗口大小不炸",
+    "tests/test_pty_light.py::test_优雅关闭长驻进程",
+    "tests/test_semantic.py::test_number_type",
+    "tests/test_semantic.py::test_string_type",
+    "tests/test_semantic.py::test_binary_operation_type",
+    "tests/test_semantic.py::test_global_scope",
+    "tests/test_semantic.py::test_function_scope",
+    "tests/test_semantic.py::test_nested_scope",
+    "tests/test_semantic.py::test_variable_declaration",
+    "tests/test_semantic.py::test_function_declaration",
+    "tests/test_semantic.py::test_undefined_variable",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo3_matplotlib_plot.light]",
+    "tests/e2e/test_e2e_chain.py::test_duan_compile_and_run_product[L4_python/demo5_sklearn_iris.light]",
+    "tests/e2e/test_L4_python_e2e.py::test_numpy_basic_ops",
+    "tests/e2e/test_L4_python_e2e.py::test_numpy_mean",
+    "tests/e2e/test_full_programs.py::test_simple_program_compiles",
+    "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
+    "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
+    "tests/e2e/test_L4_python_e2e.py::test_multiple_blocks_independent",
+    "tests/e2e/test_L4_python_e2e.py::test_namespace_isolation",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
+    "tests/test_process_tree_light.py::test_posix信号语义跳过占位",
+    "tests/test_semantic.py::test_type_mismatch",
+    "tests/test_semantic.py::test_duplicate_definition",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
+    "tests/unit/test_ir_verify.py::test_llvmlite_invalid_ir_fails",
+    "tests/unit/test_ir_verify.py::test_llvmlite_valid_ir_passes",
+    "tests/e2e/test_L4_python_e2e.py::test_pandas_dataframe",
+    "tests/e2e/test_L4_python_e2e.py::test_matplotlib_non_blocking",
+    "tests/e2e/test_L4_python_e2e.py::test_requests_get",
+    "tests/test_cross_platform.py::test_symlink_support",
+    "tests/test_lsp_protocol_full.py::test",
+    "tests/unit/test_light_examples_run.py::test_dict_placeholder",
+    "tests/unit/test_light_examples_run.py::test_placeholder"
+  ]
+}

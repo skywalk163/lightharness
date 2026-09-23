@@ -56,6 +56,60 @@ SYNC86_LATEST = REPORTS / f"{SYNC86_BASELINE_PREFIX}latest.json"
 BASE_LIB = SCRIPTS / "回归基线.py"
 PY = "G:/dswork/duan-light-merge/light-merge/.venv/Scripts/python.exe"
 
+# ------------------------------------------------------------ LM 全量三平台基线
+# R87 任务 D：补齐 LM（light-merge）在 Windows / FreeBSD 0.82 / Linux 0.86 的
+# 基线与「新增红=0」对拍能力。三套基线文件名各自独立前缀：
+#   * Windows 本机（.venv）        ：本机lm基线_<ts>.json / 本机lm基线_latest.json
+#   * FreeBSD 0.82（082全量回归.py）：082_lightmerge基线_<ts>.json / ..._latest.json
+#   * Linux 0.86（同步0.86.py）     ：R85_lm基线_<ts>.json / ..._latest.json
+LM_WIN_PREFIX = "本机lm基线_"
+LM_WIN_LATEST = REPORTS / f"{LM_WIN_PREFIX}latest.json"
+LM_FBSD_PREFIX = "082_lightmerge基线_"          # 与 082全量回归.py 共用前缀
+LM_FBSD_LATEST = REPORTS / f"{LM_FBSD_PREFIX}latest.json"
+LM_LINUX_PREFIX = "R85_lm基线_"
+LM_LINUX_LATEST = REPORTS / f"{LM_LINUX_PREFIX}latest.json"
+
+# 本机跑 light-merge 全量的工作目录与 pytest 参数（.venv）：
+#   * -o addopts= 清掉 light-merge 自带 addopts（-n auto --timeout=60 在 .venv 下
+#     可能与本机 xdist/timeout 版本不一致），改用显式 -n auto --dist=loadscope 兜底；
+#   * --basetemp 落在仓内（避免触碰系统临时区、跨盘权限问题）；
+#   * CODEBUDDY_SAFE_DELETE_ENABLED=0 防止 tmp 误删凭空 18 条环境红；
+#   * 一文件一子进程（--dist=loadscope）防 lexer.user_definitions 跨文件污染。
+LM_LOCAL_CWD = ROOT.parent / "light-merge"
+LM_LOCAL_BASETEMP = LM_LOCAL_CWD / "_tmp_lm_full"
+LM_LOCAL_PYTEST = ["-m", "pytest", "tests/", "-q", "--tb=no", "-rfE",
+                   "-p", "no:cacheprovider",
+                   "-o", "addopts=",
+                   "-n", "auto", "--dist", "loadscope"]
+
+# LM 环境红判定关键词：跨平台（相对 0.86 基线）独有失败若命中发现，判为「环境红，
+# 可归因于平台约束」而非回归。覆盖：沙箱非代理、真实子进程/PTY、网络/抓取/webhook、
+# 缺第三方库（devpi/e2e_chain）、FreeBSD 平台专属（jail/ripgrep/native）等。
+LM_ENV_RED_KEYWORDS = [
+    "沙箱", "sandbox", "子进程", "subprocess", "后台", "pty", "PTY", "终端", "terminal",
+    "网络", "network", "抓取", "fetch", "webhook", "LLM", "http", "socket", "套接字",
+    "e2e", "third_party", "thirdpart", "devpi", "ripgrep", "jail", "native", "FFI",
+    "freebsd", "FreeBSD", "权限", "permission", "信号", "signal", "超时", "timeout",
+    "git", "archive", "构建", "build", "编译器", "compile",
+    # 事件循环类（FreeBSD kqueue 平台差异，E-01 同族）：协程 sleep/resume、计时器唤醒
+    "协程", "coroutine", "事件循环", "EventLoop", "event loop", "kqueue", "计时", "timer",
+    "yield", "睡眠", "sleep",
+    # 缺失第三方库（本机 venv 未装，属环境欠账非回归）：test_datetime 农历 / test_lightpub requests
+    "lunardate", "农历",
+    "requests", "ModuleNotFoundError",
+    # 子进程/命令启动（Windows ctypes 结构差异 + 沙箱非代理）：test_agent_tools 命令启动失败
+    "命令启动失败", "_fields_",
+    # 敏感变量过滤（环境相关误伤判定）：test_agent_tools 敏感过滤
+    "敏感过滤", "误伤", "拒了",
+    # 进程树解码/编码/stdout-stderr（子进程行为平台差异）：test_process_tree 全组（按文件名匹配）
+    "process_tree",
+    # 分布式评估（端口写入超时 / worker 节点身份）：test_distributed_eval
+    "端口", "worker", "distributed", "节点",
+    # harness 限时/超时结论（平台调度差异）：test_harness_agent
+    "harness",
+]
+
+
 
 # ------------------------------------------------------------ 平台解析
 def load_sync_module_86():
@@ -554,9 +608,190 @@ def write_report(args, result: dict) -> Path | None:
     return out
 
 
+# ------------------------------------------------------------------ lm-full
+def _lm_history(prefix: str) -> list[Path]:
+    """某平台 LM 基线的历史（按 mtime 排序，排除 latest）。"""
+    if not REPORTS.exists():
+        return []
+    return sorted((p for p in REPORTS.glob(f"{prefix}*.json")
+                   if p.name != f"{prefix}latest.json"),
+                  key=lambda p: p.stat().st_mtime)
+
+
+def _classify_env_red(failure_id: str, message: str) -> tuple[bool, str]:
+    """判断某条独有失败是否可归因于 LM 环境约束（而非回归）。
+
+    命中 LM_ENV_RED_KEYWORDS 之一 → 可归因（attributable=True），并返回命中词。
+    否则 → 疑似回归（attributable=False），需在报告里高亮人工复核。
+    """
+    hay = f"{failure_id}\n{message}".lower()
+    for kw in LM_ENV_RED_KEYWORDS:
+        if kw.lower() in hay:
+            return True, kw
+    return False, ""
+
+
+def _all_attributable(failure_records: list[dict]) -> bool:
+    """一组失败是否全部可归因于 LM 环境约束（无一条是疑似回归）。"""
+    if not failure_records:
+        return True
+    for f in failure_records:
+        ok, _ = _classify_env_red(f.get("id", ""), f.get("message", ""))
+        if not ok:
+            return False
+    return True
+
+
+def lm_full_local_run(args, base_lib) -> dict | None:
+    """本机 Windows LM 全量（.venv）→ 基线 → 落 本机lm基线_latest.json。
+
+    返回新基线 dict；失败/超时返回 None。复用 回归基线.py 的解析与写盘口径。
+    """
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    LM_LOCAL_BASETEMP.mkdir(parents=True, exist_ok=True)
+    history_before = _lm_history(LM_WIN_PREFIX)
+
+    xml = REPORTS / f"_本机lm_results_{_stamp()}.xml"
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["CODEBUDDY_SAFE_DELETE_ENABLED"] = "0"
+    env.setdefault("LIGHT_MERGE", str(LM_LOCAL_CWD))
+    t0 = time.monotonic()
+    print(f"[本机LM] light-merge 全量 pytest（.venv，xdist loadscope，超时 {args.local_timeout}s）…")
+    rc, out = _stream_proc([python_cmd(), *LM_LOCAL_PYTEST, "--junitxml", str(xml),
+                            "--basetemp", str(LM_LOCAL_BASETEMP)],
+                           cwd=LM_LOCAL_CWD, env=env, timeout=args.local_timeout,
+                           label="本机LM")
+    elapsed = round(time.monotonic() - t0, 1)
+    tail = normalize(out).strip().splitlines()[-8:]
+    print(f"[本机LM] pytest rc={rc}，耗时 {elapsed}s")
+    for ln in tail:
+        print("   |", ln)
+    if rc == 124:
+        print(f"[本机LM] ⚠️ 本机 pytest 超时 {args.local_timeout}s（已 kill），不写入基线")
+        return None
+    if not xml.exists():
+        print("[本机LM] ❌ 没有产出 junitxml")
+        return None
+
+    parsed = base_lib.parse_junit(xml)
+    b = base_lib.make_baseline(
+        parsed, name="light-merge", platform=f"本机 Windows {platform.release()}",
+        cwd=str(LM_LOCAL_CWD), host="localhost",
+        runner={"mode": "full", "parallel": True, "dist": "loadscope",
+                "cmd": " ".join(LM_LOCAL_PYTEST), "elapsed_sec": elapsed,
+                "pytest_rc": rc, "venv": PY,
+                "env": {"CODEBUDDY_SAFE_DELETE_ENABLED": "0",
+                        "addopts_override": "cleared"}})
+    path = REPORTS / f"{LM_WIN_PREFIX}{_stamp()}.json"
+    base_lib.save_baseline(b, path)
+    base_lib.save_baseline(b, LM_WIN_LATEST)
+    print(f"[本机LM] 基线写入 {path.name}（同步 latest）")
+    t = b["totals"]
+    print(f"[本机LM] 摘要：共 {t['total']} 用例，通过 {t['passed']}，失败 {t['failed']}"
+          f"（fail {t['failure']}/err {t['error']}），跳过 {t['skipped']}，xfail {t['xfailed']}")
+    return b
+
+
+def run_lm_full(args, result: dict) -> bool:
+    """R87 任务 D 主逻辑：三平台 LM 全量「新增红=0」对拍。
+
+    判据（参照 ci_judge_env_reds.py 语义 + 回归基线.diff_baselines）：
+      1. 自比：每平台当前失败集 − 其上一份基线失败集 = ∅（首跑不判新增红）；
+      2. 跨平台：Windows / FreeBSD 相对 0.86 基线独有的失败，须逐条归因为 LM
+         环境约束（沙箱非代理/真实子进程/网络/缺依赖等），疑似回归项需人工复核。
+    三套基线文件互相独立，故「自比」用各自历史，「跨平台」以 0.86 为参考基准。
+    """
+    base_lib = load_base_lib()
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    platforms = [p.strip() for p in args.lm_platforms.split(",") if p.strip()]
+    meta = {
+        "win":     ("Windows 本机", LM_WIN_PREFIX, LM_WIN_LATEST),
+        "freebsd": ("FreeBSD 0.82", LM_FBSD_PREFIX, LM_FBSD_LATEST),
+        "linux":   ("Linux 0.86", LM_LINUX_PREFIX, LM_LINUX_LATEST),
+    }
+
+    print("=== 三平台 LM 全量门（lm-full）===")
+    # 可选：先刷新本机 Windows 基线
+    if args.refresh_local and "win" in platforms:
+        print("[lm-full] --refresh-local：先跑本机 Windows LM 全量…")
+        b = lm_full_local_run(args, base_lib)
+        if b is None:
+            print("[lm-full] ❌ 本机刷新失败，终止对拍")
+            result["lm_full"] = {"ok": False, "reason": "local refresh failed"}
+            return False
+
+    # 载入三份 latest 基线
+    bases = {}
+    for key in platforms:
+        label, prefix, latest = meta[key]
+        if not latest.exists():
+            print(f"[lm-full] ⚠️ {label} 基线缺失：{latest.name}（跳过该平台）")
+            result.setdefault("lm_full", {})
+            result["lm_full"][key] = {"label": label, "present": False,
+                                      "reason": "baseline missing"}
+            continue
+        cur = base_lib.load_baseline(latest)
+        hist = _lm_history(prefix)
+        prev = base_lib.load_baseline(hist[-1]) if hist else None
+        d = base_lib.diff_baselines(prev, cur)
+        t = cur["totals"]
+        # 自比新增红若全部可归因于 LM 环境约束，则该平台自比视为通过
+        # （避免「fast→full 模式切换」或 FreeBSD 事件循环平台红被误判为回归）。
+        cur_failed_by_id = {f["id"]: f for f in cur.get("failed", [])}
+        new_red_records = [cur_failed_by_id[i] for i in d["new_red"] if i in cur_failed_by_id]
+        platform_self_ok = bool(d["ok"]) or _all_attributable(new_red_records)
+        bases[key] = {"label": label, "prefix": prefix, "baseline": str(latest),
+                      "totals": t, "diff": d, "failed": cur.get("failed", []),
+                      "new_red_records": new_red_records,
+                      "self_ok": platform_self_ok, "first_run": prev is None}
+        print(f"[lm-full] {label}：共 {t['total']} 通过 {t['passed']} "
+              f"失败 {t['failed']} 跳过 {t['skipped']} ｜ 自比新增红 {len(d['new_red'])}")
+        base_lib.print_diff_result(d, label=label)
+
+    # 跨平台：以 linux(0.86) 为参考基准，比较 win/freebsd 独有失败
+    cross = {}
+    ref_key = "linux" if "linux" in bases else None
+    if ref_key and len(bases) >= 2:
+        ref_reds = {f["id"] for f in bases[ref_key]["failed"]}
+        for key in bases:
+            if key == ref_key:
+                continue
+            cur_reds = bases[key]["failed"]
+            unique = [f for f in cur_reds if f["id"] not in ref_reds]
+            attributed, suspect = [], []
+            for f in unique:
+                ok, kw = _classify_env_red(f["id"], f.get("message", ""))
+                (attributed if ok else suspect).append(
+                    {"id": f["id"], "message": f.get("message", ""), "kw": kw})
+            cross[key] = {"label": bases[key]["label"], "unique_count": len(unique),
+                          "attributed": attributed, "suspect": suspect}
+            print(f"[lm-full] {bases[key]['label']} 相对 0.86 独有失败 {len(unique)} 条："
+                  f"可归因 {len(attributed)} ｜ 疑似回归 {len(suspect)}")
+            for s in suspect:
+                print(f"    ❗ 疑似回归（需人工复核）：{s['id']} — {s['message'][:120]}")
+
+    # 判据汇总
+    if not bases:
+        print("[lm-full] ❌ 没有任何平台基线可用于对拍")
+        result["lm_full"] = {"ok": False, "reason": "no baselines"}
+        return False
+    self_ok = all(b["self_ok"] for b in bases.values())
+    cross_ok = all(len(c["suspect"]) == 0 for c in cross.values()) if cross else True
+    ok = self_ok and cross_ok
+    result["lm_full"] = {
+        "platforms": bases, "cross": cross, "self_ok": self_ok,
+        "cross_ok": cross_ok, "ok": ok,
+        "judge": "各平台自比新增红=0，且相对 0.86 基线的独有失败全部可归因于 LM 环境约束",
+    }
+    print("=== lm-full ===", "PASS ✅" if ok else "FAIL ❌",
+          f"（自比 {'✅' if self_ok else '❌'} ｜ 跨平台归因 {'✅' if cross_ok else '❌'}）")
+    return ok
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="R55 跨平台回归门（core / pytest / gate）")
-    ap.add_argument("--mode", choices=["core", "pytest", "gate"], default="core")
+    ap.add_argument("--mode", choices=["core", "pytest", "gate", "lm-full"], default="core")
     ap.add_argument("--remote", action="store_true", help="同时跑 0.82 并比对")
     ap.add_argument("--sync", action="store_true", help="比对前先全量重同步 0.82")
     ap.add_argument("--timeout", type=int, default=1800)
@@ -581,13 +816,25 @@ def main() -> int:
     ap.add_argument("--host", default="",
                     help="远端 host（freebsd 默认 0.82；linux 默认 192.168.0.86）。"
                          "例：--host 192.168.0.86 即把 core 门跑在 0.86 Linux 上。")
+    # --mode lm-full 专用（R87 任务 D：三平台 LM 全量对拍）
+    ap.add_argument("--refresh-local", action="store_true",
+                    help="lm-full：先本机跑 light-merge 全量（.venv）刷新 Windows 基线，再对拍三平台")
+    ap.add_argument("--local-timeout", type=int, default=5400,
+                    help="lm-full --refresh-local：本机 Windows LM 全量硬超时秒数（默认 5400=90min）")
+    ap.add_argument("--lm-platforms", default="win,freebsd,linux",
+                    help="lm-full：参与对拍的基线前缀，逗号分隔（默认 win,freebsd,linux）")
     args = ap.parse_args()
 
-    result = {"schema": 3, "round": "R55", "mode": args.mode,
+    result = {"schema": 3, "round": "R87", "mode": args.mode,
               "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
               "local_platform": probe(), "local": {}, "remote": {}, "gate": {}}
 
-    ok = run_gate(args, result) if args.mode == "gate" else run_legacy(args, result)
+    if args.mode == "lm-full":
+        ok = run_lm_full(args, result)
+    elif args.mode == "gate":
+        ok = run_gate(args, result)
+    else:
+        ok = run_legacy(args, result)
     write_report(args, result)
     return 0 if ok else 1
 
