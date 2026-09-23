@@ -31,8 +31,9 @@
 # E-07	test_lambda_e2e.light	e2e（网络/通道）	0	AssertionError（e2e 网络/通道）
 # E-08	test_R70_交叉验证.light	flaky	1	隔离复跑恒绿；项目记忆已列「隔离复跑恒绿」
 #
-# ── 台账外全量偶发记录（非登记，仅备注，复跑恒绿）────────────────────────
-# test_终端PTY.light：0.82 全量偶发红（R86 复跑绿，单跑恒绿）——全量负载下 PTY
-#   计时 flaky，隔离复跑恒绿；销账后若复现将判为新增红，按 flaky 处置。
-# test_R21_词法确定性_超集.py：0.82 全量偶发 ERROR（git archive 子进程，
-#   FileNotFoundError），单跑恒绿、复跑全绿——并行/负载下 git 子进程偶发。
+# ── 台账外全量偶发记录（R87-E 处置后，指向 flaky_registry.txt）────────────
+# test_终端PTY.light：0.82 全量偶发红（单跑恒绿）——R87-E 取证 0.82 串行全量
+#   2 轮无复发，登记进 tests/flaky_registry.txt F-01（freebsd 平台豁免偶发红）。
+# test_R21_词法确定性_超集.py：0.82 全量偶发 ERROR（git archive 子进程
+#   FileNotFoundError）——R87-E 已根治（_run_with_retry 重试+降级 skip），
+#   不入 flaky 台账（根治后失败即真回归，须判红），详见 flaky_registry.txt 留档节。

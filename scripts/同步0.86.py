@@ -10,7 +10,8 @@
   * 打包用 `git ls-files` 取 tracked 树（干净、不含 .venv/垃圾/未跟踪 scratch）。
     --with-git 时额外把 .git 一并带上（远端副本成为真正的 git 工作树）。
   * 远端**不碰系统 Python**：在 /tmp 建用户级 venv 装 pytest + xdist + pytest-timeout
-    + psutil，所有 pytest 用该 venv 跑；PATH 注入 venv/bin（同时解决 Linux 上
+    + psutil + aiohttp + sympy（后两者 R87-F 固化，R86 曾手工补装），所有 pytest 用该
+    venv 跑；PATH 注入 venv/bin（同时解决 Linux 上
     可能没有 `python` 命令、只有 `python3` 的问题）。
   * 新增 probe：探测 OS 发行版 / Python 版本 / sudo 可用性 / git 版本 / CPU 核数 /
     内存 → reports/R85_linux_环境探测.json。
@@ -248,8 +249,12 @@ def build_tarball(out_path: Path) -> int:
 
 # ---------------------------------------------------------------- venv + shim
 def ensure_venv(cli) -> str:
-    """在 0.86 建 /tmp 用户级 venv（含 pytest + xdist + timeout + psutil）。
-    返回 venv python 绝对路径。"""
+    """在 0.86 建 /tmp 用户级 venv（含 pytest + xdist + timeout + psutil + aiohttp + sympy）。
+    返回 venv python 绝对路径。
+
+    R87-F 固化：aiohttp / sympy 为 R86 手工补装（重建 venv 会丢），现固化进 venv 初始化
+    步骤，保证「删 venv 重建后 test-lm full 仍 0 failed（或 e2e 缺依赖 skip 与 R86 基线一致）」。
+    pip install 幂等：已装则 satisfied，不重复下载。"""
     # 1) 探测系统 python3
     rc, out = run_remote(cli, "command -v python3 || command -v python", quiet=True)
     py3 = (out.strip().splitlines() or [""])[0].strip() or "/usr/bin/python3"
@@ -276,7 +281,8 @@ def ensure_venv(cli) -> str:
     # 3) 装依赖
     pip = f"{VENV_DIR}/bin/pip"
     run_remote(cli, f"{pip} install -q --upgrade pip", timeout=300, quiet=True)
-    pkgs = "pytest pytest-xdist pytest-timeout psutil"
+    # R87-F 固化：aiohttp / sympy 为 R86 手工补装依赖，重建 venv 会丢 → 一并固化
+    pkgs = "pytest pytest-xdist pytest-timeout psutil aiohttp sympy"
     rc, out = run_remote(cli, f"{pip} install -q {pkgs}", timeout=600, quiet=True)
     if rc != 0:
         print(f"[同步0.86] ⚠️ venv 依赖安装返回 rc={rc}：{out.strip()[:300]}")
