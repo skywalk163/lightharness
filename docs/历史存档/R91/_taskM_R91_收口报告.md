@@ -32,9 +32,24 @@
 - `git add <显式文件>`，无 `git add .`
 - **B 路只交付报告**（无代码改动 → 无 commit）
 
-## 3. push 回执
+## 3. push 回执（逐远端 `ls-remote` 复核）
 
-（推送中，M 路执行 `m_push_all.py`；见最终回执）
+| 仓 | 远端 | 结果 |
+|---|---|---|
+| light-merge | gitea(内网) | ✅ `5d44720596`（`1a530844..5d4472059`） |
+| light-merge | gitcode | ✅ `5d44720596` |
+| light-merge | github | ✅ `5d44720596` |
+| light-merge | origin(本地镜像 g:\github\light) | ✅ `5d44720596` |
+| lightharness | origin(gitcode) | ✅ `a654831122` |
+| lightharness | myrepo(内网 gitea) | ✅ `a654831122` |
+| lightharness | github | ✅ `a654831122` |
+| fork（deepseek-harness） | origin(内网 gitea) | ✅ `23288644c9`（未动） |
+
+**8/8 远端同步**（R89 github 502 问题本轮未复现）。
+
+**pre-push 断言质量守卫警告**（不阻塞，rc=0）：A 路 pid 文件轮询引入 2 条"非空断言式"
+（`assert 孙pid is not None` / `assert gc...`），pre-push 提示刷新 `tools/ci/assert_quality_baseline.json`。
+R92 建议：若 CI 长红，运行 `python tools/ci/assert_quality.py --root . --write-baseline tools/ci/assert_quality_baseline.json` 刷新基线（这 2 条是合理的非空断言，不是假绿）。
 
 ## 4. 三平台门禁矩阵
 
