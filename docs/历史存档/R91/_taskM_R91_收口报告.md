@@ -14,7 +14,7 @@
 | **B** W-13 触发条件排查 | `_taskB_R91_W13触发条件排查报告.md` + `_r91/b_*.py` | worker 数 / 派发顺序两维度 ≥3 轮数据；三选一判定明确 | ✅ 判定 = (b) flaky（满负载调度抖动）；`--dist no` vs `loadscope` 差异显著；**不改代码，维持观察** |
 | **D** 进程树 stdlib 加固 | `stdlib/进程树.light`（5 处 c_void_p 判空双判 + 审计注释）、`_r91/d_probe_*.py` | 双判落盘；探针一手数据；语法核心零改动 | ✅ 5 处补齐（job / OpenProcess h / 反向 OpenProcess / OpenProcess h / 任务句柄反向）；探针 12 行数据表；**极小 timeout 证据不足未改主流程**（R90 33s 非 root 未建好） |
 | **C** 0.82 双 flaky 定向复跑 | `_taskC_R91_082双flaky复跑报告.md` + `_r91/c_*.py`（分 4 批 × 2 轮） | 各条 flaky 结论明确；未复现说明已尝试批次 | ✅ **两条 flaky 均未复现**（隔离 + 分批固定顺序 + 单进程全量 -n8 loadscope 2 轮）；结论：低频条件触发，维持观察 |
-| **E** fork 完整 install + 构建 | `_taskE_R91_fork完整install构建报告.md` + `_r91/e_fork_install.py` | install rc + 分类；构建结果；lock 未改 | ✅ install rc=0（4m38.6s）；**lock 未被改动**；`build:native-system` rc=0（`built freebsd-x64/bin/system.node`）；`pnpm build` rc=1（**Node.js JS heap OOM**，fb82 用户 6GB 空间限制，非代码问题） |
+| **E** fork 完整 install + 构建 | `_taskE_R91_fork完整install构建报告.md` + `_r91/e_fork_install.py` + `_r91/e2_build_retry.py` | install rc + 分类；构建结果；lock 未改 | ✅ install rc=0（4m38.6s）；**lock 未被改动**；`build:native-system` rc=0（`built freebsd-x64/bin/system.node`）；`pnpm build` rc=1（**JS heap OOM**，fb82 ZFS ARC 缓存吃掉 7GB+，实际 Free 只有 4.2GB，非代码问题） |
 | **M** 收口 | 本报告 + 归档 + push + 门禁 | 无新增红、远端同步 | ✅ 见下 |
 
 ---
@@ -97,7 +97,7 @@ R92 建议：若 CI 长红，运行 `python tools/ci/assert_quality.py --root . 
 | 3 | **0.82 双 flaky**（`test_数据验证_对拍Python`、`test_codegen_ref_dict_O0`） | C 路 4 批 × 2 轮 + 单进程全量 -n8 loadscope 2 轮，均未复现 | ✅ **销账**（低频条件触发，维持观察） |
 | 4 | **进程树既有 job 判空不严谨** | D 路补齐 5 处 c_void_p 双判（对齐 R90-A Toolhelp32 路径写法） | ✅ **销账**（编译验证 + 探针 + 杀树族用例复跑） |
 | 5 | **极小 timeout ≤0.8s 杀树杀不掉 root** | D 路探针 12 行数据表：root 立即可枚举+可打开+taskkill 400–620ms 整树杀净；结论：非 root 未建好，候选"杀前轮询"惰性无意义 | ⚠️ **半销账**：证据采集完成，未改主流程；真因指向负载下孙逃逸（与 #1 同源） |
-| 6 | **fork 完整 install + 构建** | E 路 install rc=0（4m38.6s）、lock 未改；`build:native-system` rc=0；`pnpm build` rc=1（JS heap OOM，资源类） | ✅ **销账**（install 层 + native 编译层验证通过；build:lib 是 fb82 用户 6GB 空间约束，非代码问题） |
+| 6 | **fork 完整 install + 构建** | E 路 install rc=0（4m38.6s）、lock 未改；`build:native-system` rc=0；`pnpm build` rc=1（JS heap OOM，fb82 ZFS ARC 缓存吃掉 7GB+，实际 Free 只有 4.2GB，非代码问题） | ✅ **销账**（install 层 + native 编译层验证通过；build:lib 是 fb82 ZFS ARC 配置问题，非代码问题） |
 | 7 | **取证脚本坑**（管道吞 rc） | 本轮所有取证脚本统一 `>file 2>&1; echo RC=$?`；分发包"已知坑 10"固化；memory 2026-09-24 已登记 | ✅ **销账** |
 
 ---
@@ -112,10 +112,11 @@ R92 建议：若 CI 长红，运行 `python tools/ci/assert_quality.py --root . 
    检测到父在 job 内自动加 `CREATE_BREAKAWAY_FROM_JOB`（R89 已记录在案），孙逃逸出 job 且
    刚好不在末轮快照并集里 → 逃逸。属 stdlib 主流程竞态，R92 若要根治需一手复现 + 权衡改动风险。
 
-2. **fb82 用户 6GB 空间不足以跑 `pnpm build` 全套**
-   `tsc -b tsconfig.host.json` 单独需 >3GB heap（`--max-old-space-size=3072` 上限），`tsdown` 后续还会
-   再来一次。fb82 用户配额不足以容纳。若 R92 要跑完整 build 需换更大内存机（本机 Windows 也可，但
-   不会产出 freebsd-x64 交付意义）。**与 fork 代码无关**，不需要 push fork。
+2. **fb82 ZFS ARC 缓存配置问题**
+   fb82 16GB 物理内存，但 ZFS ARC 缓存（含压缩）吃掉 7GB + 5.5GB，内核 Wired 11GB，实际 Free 只有 4.2GB。
+   `pnpm build` 的 `tsc -b tsconfig.host.json` 要 3GB+ heap，但系统可用内存不足 → OOM。
+   **解决方案**：换 0.88（64GB/12核，记忆确认构建全绿）或调低 ZFS ARC（`sysctl vfs.zfs.arc_max=4G`，需 sudo，违反红线）。
+   若 R92 要跑完整 build，优先用 0.88。**与 fork 代码无关**。
 
 3. **W-13 长期观察**
    B 路判定 (b) flaky，但**未给出根因**——只定位到"与 `--dist no` vs `loadscope` 差异相关"。

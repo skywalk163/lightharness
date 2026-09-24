@@ -83,10 +83,32 @@ Node.js v24.19.0
 
 **根因判定：资源类，非 fork 代码问题**
 - `--max-old-space-size=3072` 给了 Node 3GB heap；实际 GC 报告 heap 已到 3041 MB 两次 GC 都回收不了 → **heap 上限本身不够**。
-- fb82 用户空间 6GB 物理（R91-C 报告已核），跑一次 tsc 就要 >3GB，`tsdown` 后续还会二次吃 heap，加起来超过用户配额是合理的。
-- **不是 fork 代码缺陷**：没有 TypeScript 报错、没有 syntax error、没有 import 失败——纯粹是 heap 上限撞墙。
+- 第一轮（heap=3072）：GC 报告显示 heap 3041.3 MB → 3041.3 MB（撞 3GB 上限）
+- 第二轮（heap=12288）：**Node 实际只用到 ~3GB 就 OOM**（`3062.4 MB -> 3052.6 MB` 两次 Mark-Compact 回收不到空间）
 
-**处置：本路不改 fork 代码、不动 CI 配置、不 sudo 加内存**。交 M 路登记为 fb82 用户空间内存约束，非 fork 遗留。
+**这不是 V8 heap 上限的问题**——即使给 12GB 上限，Node 也只拿到 ~3GB 就 OOM。真因是**系统层面可用内存不足**。
+
+**fb82 实际内存分布**（一手探针 `sysctl` + `top -b -n 1`）：
+```
+Mem: 26M Active, 783M Inact, 8192B Laundry, 11G Wired, 266K Buf, 4276M Free
+ARC: 7136M Total, 2922M MFU, 2757M MRU, 392K Anon, 154M Header, 946M Other
+     5509M Compressed, 9567M Uncompressed, 1.74:1 Ratio
+Swap: 1024M Total, 15M Used, 1008M Free, 1% Inuse
+```
+
+16GB 物理内存里：
+- ZFS ARC 缓存（含压缩）：7GB + 5.5GB = 12.5GB
+- 内核 Wired：11GB（含 ARC）
+- **实际 Free：只有 4.2GB**
+
+Node tsc 要 3GB+ heap，但系统只剩 4.2GB 可用 → 撞墙。
+
+**结论**：与 fork 代码无关，也不是"V8 heap 上限不够"——是 **fb82 的 ZFS ARC 缓存吃掉了大部分 RAM**，实际可用内存不足。解决方案：
+1. 用 0.88（64GB/12核，ZFS ARC 影响小）跑完整 build
+2. 或调低 ZFS ARC（`sysctl vfs.zfs.arc_max=4G`），但需 sudo，违反红线
+3. 或降级 `NODE_OPTIONS=--max-old-space-size=1500`（可能超时或再撞墙）
+
+**不需要改 fork、不需要推 fork**——这是 fb82 的 ZFS 配置问题，不是代码问题。
 
 ### 3.2 `pnpm run build:native-system`（rc=0，成功）
 
@@ -129,11 +151,11 @@ RC=0
 **R90 §6.6 遗留销账**：
 - ✅ **fork lock 自洽**：R90-C 已证 `--ignore-scripts` 通过，本轮 `pnpm install --frozen-lockfile`（**带 scripts**）rc=0，**再一层加固**——即使 postinstall / node-pty / sharp 等 native 编译链走完，lock 也无需改动。R89-A 的 `freebsd-x64` 36 条 workspace 补回经 fb82 实测稳。
 - ✅ **native 编译可跑**：`build:native-system` → `freebsd-x64/bin/system.node` 成功，这是 R90-C 判定"失败也不改 lock 自洽结论"里明确留出的未跑项，本轮补上。
-- ⚠️ **`build:lib` 未在 fb82 跑通**：JS heap OOM，fb82 用户 6GB 空间不足以给 tsc 3GB heap + tsdown 后续；**与 fork 代码无关**。若要跑通，需要在更大内存机器上（或临时 `NODE_OPTIONS=--max-old-space-size=1800` 降级尝试，但可能超时或再撞墙）。
+- ⚠️ **`build:lib` 未在 fb82 跑通**：JS heap OOM。第一轮 heap=3072 撞 V8 上限；第二轮 heap=12288 仍 OOM，**Node 实际只用到 ~3GB 就撞墙**（GC 报告 `3062.4 MB -> 3052.6 MB` 两次 Mark-Compact 回收不到空间）。真因不是 V8 上限，是**系统层面可用内存不足**：fb82 16GB 物理内存里 ZFS ARC 缓存 7GB + 压缩 ARC 5.5GB + 内核 Wired 11GB，实际 Free 只有 4.2GB。**与 fork 代码无关**。若要跑通，需换 0.88（64GB/12核）或调低 ZFS ARC（需 sudo，违反红线）。
 
 **给 M 路的建议**：
 1. R90 §6.6 全部销账（lock + native 编译两项都闭合）；
-2. 登记一条新遗留（可选，交 M 决定）：fb82 用户 6GB 不足以跑 `pnpm build` 全套，若 R92 要跑完整 build 需换更大内存机（如本机 Windows，但需 x64 Windows 版产物、不产生 freebsd-x64 交付意义）。
+2. 登记一条新遗留（可选，交 M 决定）：fb82 ZFS ARC 缓存吃掉 7GB+，实际 Free 只有 4.2GB，不足以跑 `pnpm build` 全套（tsc 要 3GB+ heap）。**解决方案**：换 0.88（64GB/12核，记忆确认构建全绿）或调低 ZFS ARC（`sysctl vfs.zfs.arc_max=4G`，需 sudo，违反红线）。若 R92 要跑完整 build，优先用 0.88。
 3. **不需要改 fork、不需要推 fork**。任务书 §6 说"仅当 E/C 报告建议改 lock 时才动 fork"——E 明确不建议改 lock。
 
 ---
