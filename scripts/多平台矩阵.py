@@ -80,7 +80,17 @@ LM_LOCAL_BASETEMP = LM_LOCAL_CWD / "_tmp_lm_full"
 LM_LOCAL_PYTEST = ["-m", "pytest", "tests/", "-q", "--tb=no", "-rfE",
                    "-p", "no:cacheprovider",
                    "-o", "addopts=",
-                   "-n", "auto", "--dist", "loadscope"]
+                   # R94 裁定 1：Windows 本机全量 worker 固定 **4**（原 -n auto=10）。
+                   #   实测 -n 8 → node down + 挂死；-n 6 → 3 红；-n 4 低负载连续 3 轮
+                   #   结构干净且 judge 新增红 0。⚠️ -n 4 **不是修复**，只降低资源争抢
+                   #   与暴露面；CPU ≥80% 时仍会崩（见 light-merge/docs/known-issues/
+                   #   R94-xdist-worker-kill.md），故入口前还有跑前 CPU 门禁。
+                   "-n", "4", "--dist", "loadscope"]
+
+# R94 裁定 1b：跑前 CPU 门禁（平均 CPU ≥80% → 不跑 / 结果 invalid，不判红绿）
+LM_LOCAL_CPU_GATE = LM_LOCAL_CWD / "scripts" / "跑前CPU门禁.py"
+LM_LOCAL_CPU_THRESHOLD = "80"
+LM_LOCAL_CPU_SAMPLE = "10"
 
 # R89-B：本机 LM 全量前先固化 .venv 依赖（lunardate/requests 是 R88-C 手工补装的，
 # 重建 venv 会丢 → 14 条缺库红复现）。脚本幂等，异常只 WARN，绝不阻断门禁。
@@ -671,6 +681,37 @@ def _ensure_local_venv() -> None:
         print(f"[本机LM] ⚠️ ensure_venv 调用异常（不阻断）：{e}")
 
 
+def _cpu_gate_local() -> bool:
+    """R94 裁定 1b：Windows 本机 LM 全量**跑前 CPU 门禁**。
+
+    平均 CPU ≥ 阈值(80%) → 拒绝运行：高负载下的结果既不能判绿也不能判红
+    （node down / INTERNALERROR / 挂死与代码无关），写进基线只会污染判据。
+    门禁脚本缺失或自身异常 → 只 WARN、不阻断（门禁不能把门禁搞挂）。
+    """
+    if not LM_LOCAL_CPU_GATE.exists():
+        print(f"[本机LM] ⚠️ 未找到 {LM_LOCAL_CPU_GATE}，跳过 CPU 门禁")
+        return True
+    try:
+        r = subprocess.run([python_cmd(), str(LM_LOCAL_CPU_GATE),
+                            "--threshold", LM_LOCAL_CPU_THRESHOLD,
+                            "--sample", LM_LOCAL_CPU_SAMPLE],
+                           cwd=str(LM_LOCAL_CWD), timeout=180,
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="ignore")
+    except Exception as e:
+        print(f"[本机LM] ⚠️ CPU 门禁调用异常（不阻断）：{e}")
+        return True
+    if r.returncode == 3:
+        print(f"[本机LM] ⛔ CPU 门禁拒绝（平均 CPU ≥{LM_LOCAL_CPU_THRESHOLD}%）："
+              f"本轮 **INVALID**，不跑全量、不写基线。"
+              f"（高负载 Windows 本机全量不在支持矩阵内）")
+        return False
+    if r.returncode != 0:
+        print(f"[本机LM] ⚠️ CPU 门禁 rc={r.returncode}（非 0/3，不阻断）："
+              f"{((r.stdout or '') + (r.stderr or ''))[-200:]}")
+    return True
+
+
 def lm_full_local_run(args, base_lib) -> dict | None:
     """本机 Windows LM 全量（.venv）→ 基线 → 落 本机lm基线_latest.json。
 
@@ -679,6 +720,8 @@ def lm_full_local_run(args, base_lib) -> dict | None:
     REPORTS.mkdir(parents=True, exist_ok=True)
     LM_LOCAL_BASETEMP.mkdir(parents=True, exist_ok=True)
     _ensure_local_venv()        # R89-B：先固化本机 venv 依赖，再跑全量
+    if not _cpu_gate_local():   # R94：CPU ≥80% → 不跑（结果 invalid，不写基线）
+        return None
     history_before = _lm_history(LM_WIN_PREFIX)
 
     xml = REPORTS / f"_本机lm_results_{_stamp()}.xml"
