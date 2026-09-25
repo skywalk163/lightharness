@@ -162,11 +162,14 @@ lightharness/
 - 外发任务 O–S 及并行修复 R2/补强 S2（对标 #65–#70，agent-team 多智能体团队纯逻辑）已合并推送；其中 #69 已同步 deepseek-harness v0.1.2 升级新增的视图/变更结果/部署上限/远端路由纯逻辑。
 - Web 启动四路（W1 前端 / W2 认证 / W3 服务端 / W4 启动器）已集成交付，集成验收 12 项 curl + 5 项浏览器全过。
 - 大模型配置引导（网页面板 + .env 手工编辑 + 热更新）已交付。
-- 回归门禁 `python -m pytest tests/`：**188 passed** 全绿。
+- 回归门禁：三平台（Windows / FreeBSD 0.82 / 0.86）全量 **≈1400 用例 0 失败**（R87 实测，详见 `docs/功能对标/` 与 `docs/历史存档/`）。
 
 ## 回归门禁
 
-`python -m pytest tests/` 跑全量 examples 用例（含缺陷复现套件），任一带退出码断言失败即红；反跑判据见 `docs/功能对标/反跑判据.md`。
+`python -m pytest tests/test_回归.py` 跑全量回归用例（约 1400，含缺陷复现套件），任一带退出码断言失败即红；反跑判据见 `docs/功能对标/反跑判据.md`。
+
+- 本机全量：`python -m pytest tests/`（pytest.ini 默认 `--timeout=60 -n auto`）；本机 Windows 固定 `-n 4` 时加 `-o "addopts="`（绕过 ini 的 `-n auto`）。
+- 数量基线：以 `tests/ci_environment_reds.txt` 台账为权威，按「新增红」判据（本轮失败 − 基线失败）而非裸 passed 数。
 
 `python 运行.py examples/test_终端PTY.light` 单独验证终端 PTY（真 tty，需 Win10 1809+）。
 
@@ -178,3 +181,11 @@ lightharness 的部分测试用例依赖光明编译器的 O0（优化级别 0�
 - **本地未安装时**：O0 相关用例会跳过或失败，不影响 Python 层全量回归（`python -m pytest tests/`）。
 - **CI 默认执行**：gitea CI（192.168.1.5）已预装 LLVM 工具链，O0 测试在 CI 上全量执行。
 - **如需本地安装**：推荐 `zig`（单文件、自带 libc 头文件、无系统级安装依赖），或 `clang`/`LLVM`。
+
+## 许可证与社区
+
+- **许可证**：[LICENSE](LICENSE)（MIT）
+- **贡献**：[CONTRIBUTING.md](CONTRIBUTING.md) —— 本地环境、跑测试、`.light` 书写规范、提交规范与三条工程铁律
+- **变更记录**：[CHANGELOG.md](CHANGELOG.md)
+- **行为准则**：[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- **安全漏洞**：[SECURITY.md](SECURITY.md) —— 请走私密渠道，勿公开 Issue 披露
