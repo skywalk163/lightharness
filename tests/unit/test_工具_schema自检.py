@@ -120,6 +120,79 @@ def test_坏schema_缺parameters_注册期报错():
     out_contains(r, "INVALID_TOOL_SCHEMA")
 
 
+def test_坏schema_properties空列表_注册期报错():
+    """LP-D-017 头号真凶：光明里空映射写 {}、空列表写 []，混用后
+    注册成功、直接调 execute 也正常，只有按 schema 造参才炸在 stdlib 内部。"""
+    r = run_light_source('''
+从 工具 导入 工具注册表, 造工具定义
+段落 主程序:
+  设 reg 为 新建 工具注册表()
+  设 坏 为 造工具定义("list_tool", "d", ["type": "object", "properties": [], "required": []], 空)
+  reg.注册(坏)
+  打印("不应到达")
+''')
+    assert_failure(r)
+    out_contains(r, "INVALID_TOOL_SCHEMA")
+    out_contains(r, "list_tool")
+    out_contains(r, "properties")
+
+
+def test_坏schema_properties非空列表_注册期报错():
+    r = run_light_source('''
+从 工具 导入 工具注册表, 造工具定义
+段落 主程序:
+  设 reg 为 新建 工具注册表()
+  设 名单 为 ["a", "b"]
+  设 坏 为 造工具定义("list2_tool", "d", ["type": "object", "properties": 名单], 空)
+  reg.注册(坏)
+  打印("不应到达")
+''')
+    assert_failure(r)
+    out_contains(r, "INVALID_TOOL_SCHEMA")
+    out_contains(r, "properties")
+
+
+def test_坏schema_顶层缺type_注册期报错():
+    r = run_light_source('''
+从 工具 导入 工具注册表, 造工具定义
+段落 主程序:
+  设 reg 为 新建 工具注册表()
+  设 坏 为 造工具定义("notype_tool", "d", ["properties": {}], 空)
+  reg.注册(坏)
+  打印("不应到达")
+''')
+    assert_failure(r)
+    out_contains(r, "INVALID_TOOL_SCHEMA")
+    out_contains(r, "type")
+
+
+def test_坏schema_顶层type非object_注册期报错():
+    r = run_light_source('''
+从 工具 导入 工具注册表, 造工具定义
+段落 主程序:
+  设 reg 为 新建 工具注册表()
+  设 坏 为 造工具定义("str_tool", "d", ["type": "string"], 空)
+  reg.注册(坏)
+  打印("不应到达")
+''')
+    assert_failure(r)
+    out_contains(r, "INVALID_TOOL_SCHEMA")
+    out_contains(r, "object")
+
+
+def test_正常schema_properties空映射_注册成功():
+    """空映射 {} 是「无字段」的正确写法，必须放行（否则所有无参工具都会挂）。"""
+    r = run_light_source('''
+从 工具 导入 工具注册表, 造工具定义
+段落 主程序:
+  设 reg 为 新建 工具注册表()
+  reg.注册(造工具定义("empty_ok", "无参工具", ["type": "object", "properties": {}], 空))
+  打印("OK=" + 转字符串(长(reg.名单())))
+''')
+    assert_success(r)
+    out_contains(r, "OK=1")
+
+
 def test_正常schema_注册成功():
     r = run_light_source('''
 从 工具 导入 工具注册表, 造工具定义

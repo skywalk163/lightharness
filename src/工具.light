@@ -359,6 +359,12 @@
   如果 type(模式) != dict:
     记schema错误(错误表, 段表, "schema", "schema 必须是字典（JSON Schema 对象）")
     返回
+  # 顶层（工具 parameters 根）必须是对象型：段表空 = 根
+  如果 长(段表) == 0:
+    如果 字典包含键(模式, "type") == 假:
+      记schema错误(错误表, 段表, "type", "工具参数 schema 顶层必须声明 type 为 object")
+    否则 如果 模式["type"] != "object":
+      记schema错误(错误表, 段表, "type", "工具参数 schema 顶层 type 必须是 object，实际得到 " + 转字符串(模式["type"]))
   # 类型合法性
   如果 字典包含键(模式, "type"):
     设 期望型 为 模式["type"]
@@ -367,28 +373,30 @@
   # object 层：properties + required（required 仅在 object schema 校验，规避属性 schema 内夹带的 stray required）
   如果 字典包含键(模式, "properties"):
     设 属性表 为 模式["properties"]
-    # properties 接受字典（逐条递归校验）或列表（含空列表）——运行时对 properties 仅做遍历，
-    # 空列表与空字典等价、无害；非空列表亦按运行时口径跳过（不引入新的误报面）。
-    如果 (type(属性表) == dict) == 假 且 (type(属性表) == list) == 假:
-      记schema错误(错误表, 段表, "properties", "properties 必须是字典或空列表")
-    否则 如果 type(属性表) == dict:
+    # ⚠️ properties **必须是字典**。光明里空映射写 {}、空列表写 []，两者极易混用：
+    #   写成 [] 时注册成功、直接调 execute 也正常，只有按 schema 造参（遍历 字典键列表(属性表)）
+    #   才炸在 stdlib 内部，报错位置与出错插件毫无关系（LP-D-017）。
+    #   历史口径：初版为兼容存量而**容忍空列表**，第 11 批已把存量 16 处全改成 {}，故收紧为严格字典。
+    如果 type(属性表) != dict:
+      记schema错误(错误表, 段表, "properties", "properties 必须是字典（无字段请写空映射 {}，不要写空列表 []）")
+    否则:
       遍历 键 之 属性表:
         设 新段 为 复制参数路径(段表)
         新段.追加(键)
         校验_单个模式(属性表[键], 新段, 错误表)
-    如果 字典包含键(模式, "required"):
-      设 必填表 为 模式["required"]
-      如果 type(必填表) != list:
-        记schema错误(错误表, 段表, "required", "required 必须是字符串列表")
-      否则:
-        设 i 为 0
-        当 i < 长(必填表):
-          设 项 为 必填表[i]
-          如果 type(项) != str:
-            记schema错误(错误表, 段表, "required", "required 第 " + 转字符串(i) + " 项必须是字符串")
-          否则 如果 属性表.包含(项) == 假:
-            记schema错误(错误表, 段表, "required", "required 引用了未声明的属性 \"" + 项 + "\"")
-          设 i 为 i + 1
+      如果 字典包含键(模式, "required"):
+        设 必填表 为 模式["required"]
+        如果 type(必填表) != list:
+          记schema错误(错误表, 段表, "required", "required 必须是字符串列表")
+        否则:
+          设 i 为 0
+          当 i < 长(必填表):
+            设 项 为 必填表[i]
+            如果 type(项) != str:
+              记schema错误(错误表, 段表, "required", "required 第 " + 转字符串(i) + " 项必须是字符串")
+            否则 如果 属性表.包含(项) == 假:
+              记schema错误(错误表, 段表, "required", "required 引用了未声明的属性 \"" + 项 + "\"")
+            设 i 为 i + 1
   # enum 合法性（type-gated）
   如果 字典包含键(模式, "enum"):
     设 枚举 为 模式["enum"]
