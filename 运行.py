@@ -65,7 +65,10 @@ def main(argv=None):
         return 1
     # 委托给光明 CLI（run 子命令）
     from cli.light import main as light_main
-    argv = ['light', 'run', entry] + argv[2:]
+    # R98/D 修复：显式传入 lightharness 自带 stdlib，使地板 builtins.py 稳定加载
+    # （转字符串 等内置走英文 str 口径），不再依赖 cwd 探测 —— 从任意目录（含
+    # pytest 子进程 cwd=临时目录）运行都不会回退到中文兜底 lambda。
+    argv = ['light', 'run', '--stdlib-dir', STDLIB, entry] + argv[2:]
     sys.argv = argv
     return light_main()
 
