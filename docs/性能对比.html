@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>lightharness 三后端性能对比</title>
+<style>
+  body { font-family: -apple-system, "Microsoft YaHei", sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; background: #fafafa; }
+  h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+  h2 { color: #2c3e50; margin-top: 40px; }
+  .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin: 20px 0; }
+  .hero .big { font-size: 48px; font-weight: bold; }
+  .hero .sub { font-size: 18px; opacity: 0.9; margin-top: 8px; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  th { background: #2c3e50; color: white; padding: 12px 16px; text-align: left; }
+  td { padding: 12px 16px; border-bottom: 1px solid #eee; }
+  tr:hover { background: #f8f9fa; }
+  .fast { color: #27ae60; font-weight: bold; }
+  .slow { color: #7f8c8d; }
+  .bar-container { background: #ecf0f1; border-radius: 4px; height: 24px; margin: 4px 0; position: relative; }
+  .bar { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 12px; font-weight: bold; }
+  .bar-src { background: #95a5a6; width: 100%; }
+  .bar-antlr { background: #3498db; width: 95.6%; }
+  .bar-llvm { background: #27ae60; width: 12.1%; }
+  .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 20px 0; border-radius: 4px; }
+  .code { background: #2d2d2d; color: #f8f8f2; padding: 16px; border-radius: 8px; font-family: "Cascadia Code", monospace; font-size: 13px; overflow-x: auto; }
+  .code .c { color: #6a9955; }
+</style>
+</head>
+<body>
+
+<h1>lightharness 光明语言 · 三后端性能实测</h1>
+
+<div class="hero">
+  <div class="big">8.3×</div>
+  <div class="sub">LLVM 原生编译后端 vs Python 解释后端 · 纯计算 benchmark</div>
+</div>
+
+<h2>测试环境</h2>
+<table>
+  <tr><th>项目</th><th>配置</th></tr>
+  <tr><td>语言</td><td>光明（Light）v3.2 语法</td></tr>
+  <tr><td>benchmark</td><td>20 万次循环累加 + 斐波那契(28)递归 + 2000 次字符串拼接</td></tr>
+  <tr><td>测试方法</td><td>先编译产物，再独立运行 5 次取最佳值（排除编译时间）</td></tr>
+  <tr><td>机器</td><td>Windows Python 3.14</td></tr>
+</table>
+
+<h2>运行速度对比</h2>
+<table>
+  <tr><th>后端</th><th>最佳耗时</th><th>相对 src</th><th>可视化</th></tr>
+  <tr>
+    <td><strong>SRC</strong>（Python 解释，默认）</td>
+    <td class="slow">1049 ms</td>
+    <td class="slow">1.00×（基准）</td>
+    <td><div class="bar-container"><div class="bar bar-src">1049ms</div></div></td>
+  </tr>
+  <tr>
+    <td><strong>ANTLR</strong>（ANTLR 解析器）</td>
+    <td class="slow">1003 ms</td>
+    <td class="slow">0.96×</td>
+    <td><div class="bar-container"><div class="bar bar-antlr">1003ms</div></div></td>
+  </tr>
+  <tr>
+    <td><strong>LLVM</strong>（原生编译 O2）</td>
+    <td class="fast">127 ms</td>
+    <td class="fast">0.12×（快 8.3 倍）</td>
+    <td><div class="bar-container"><div class="bar bar-llvm">127ms</div></div></td>
+  </tr>
+</table>
+
+<h2>编译时间对比</h2>
+<table>
+  <tr><th>后端</th><th>编译耗时</th><th>产物</th></tr>
+  <tr><td>SRC</td><td>559 ms</td><td>.py 脚本（依赖 Python 运行时）</td></tr>
+  <tr><td>ANTLR</td><td>3694 ms</td><td>.py 脚本（依赖 antlr4 runtime）</td></tr>
+  <tr><td>LLVM</td><td>4736 ms</td><td>.exe 独立可执行文件（无需 Python）</td></tr>
+</table>
+
+<h2>怎么选后端？</h2>
+<table>
+  <tr><th>场景</th><th>推荐后端</th><th>原因</th></tr>
+  <tr><td>开发调试、快速迭代</td><td><strong>SRC</strong>（默认）</td><td>零依赖，改完即跑，编译 < 1 秒</td></tr>
+  <tr><td>兼容测试、跨解析器验证</td><td><strong>ANTLR</strong></td><td>验证语法在 ANTLR 解析器下行为一致</td></tr>
+  <tr><td>生产部署、性能敏感</td><td><strong>LLVM</strong></td><td>快 8.3 倍，产出独立 .exe，客户无需装 Python</td></tr>
+</table>
+
+<h2>一行命令切换</h2>
+<div class="code">
+<span class="c"># 默认：Python 解释（零依赖）</span>
+python 运行.py examples/benchmark.light
+
+<span class="c"># ANTLR 解析器（需 pip install antlr4-python3-runtime）</span>
+python 运行.py examples/benchmark.light --backend antlr
+
+<span class="c"># LLVM 原生编译（需 clang，产出 .exe）</span>
+light compile examples/benchmark.light --backend llvm-typed --optimize O2 -o benchmark.exe
+./benchmark.exe
+</div>
+
+<div class="note">
+  <strong>结论：</strong>光明语言三套后端共用同一套 stdlib 和 v3.2 语法，业务代码零修改即可切换。
+  开发期用 SRC 快迭代，发布时用 LLVM 编译成独立 exe——性能和部署体验兼得。
+</div>
+
+</body>
+</html>
