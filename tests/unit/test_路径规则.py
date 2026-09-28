@@ -13,7 +13,7 @@ def test_判定盘符头_字母冒号为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定盘符头_长度不符为假():
@@ -24,7 +24,7 @@ def test_判定盘符头_长度不符为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_判定盘符根_盘符斜杠为真():
@@ -35,7 +35,7 @@ def test_判定盘符根_盘符斜杠为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定盘符根_无斜杠为假():
@@ -46,7 +46,7 @@ def test_判定盘符根_无斜杠为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_归一平台路径_win32斜杠转反斜杠():
@@ -119,7 +119,7 @@ def test_判定读许可_未观测拒绝():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_判定读许可_已观测放行():
@@ -132,7 +132,7 @@ def test_判定读许可_已观测放行():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定写许可_缺失即建须缺席():
@@ -144,7 +144,7 @@ def test_判定写许可_缺失即建须缺席():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定写许可_按版本替换须在场():
@@ -156,7 +156,7 @@ def test_判定写许可_按版本替换须在场():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定写许可_写意图空拒绝():
@@ -168,7 +168,7 @@ def test_判定写许可_写意图空拒绝():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_补换行_无尾换行补一个():
@@ -201,7 +201,7 @@ def test_判定唯一性_恰好一次为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_判定唯一性_多次出现为假():
@@ -212,7 +212,7 @@ def test_判定唯一性_多次出现为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_替换文本_唯一替换成功():

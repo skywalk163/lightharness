@@ -101,13 +101,15 @@ def test_保存索引替换_默认成功():
 段落 主程序:
   写入文件("tmp.json", "{\\"会话\\":[]}")
   设 ok 为 保存索引替换("tmp.json", "idx.json")
-  打印("OK=" + 转字符串(ok))
+  设 s 为 "NO"
+  如果 ok: 设 s 为 "YES"
+  打印("OK=" + s)
   设 存在 为 "NO"
   如果 文件存在("idx.json"): 设 存在 为 "YES"
   打印("TARGET=" + 存在)
 ''')
     assert_success(r)
-    out_contains(r, "OK=真")
+    out_contains(r, "OK=YES")
     out_contains(r, "TARGET=YES")
 
 

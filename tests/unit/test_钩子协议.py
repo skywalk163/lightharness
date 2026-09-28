@@ -14,10 +14,10 @@ def test_判通配_三态():
   打印("D=" + 转字符串(判通配("Bash")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=真")
-    out_contains(r, "D=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=True")
+    out_contains(r, "D=False")
 
 
 def test_判字面式():
@@ -29,9 +29,9 @@ def test_判字面式():
   打印("C=" + 转字符串(判字面式(123)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
 
 
 def test_甄别命中_通配恒真():
@@ -42,8 +42,8 @@ def test_甄别命中_通配恒真():
   打印("B=" + 转字符串(甄别命中(空, "任意工具", 方言科德)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
 
 
 def test_甄别命中_克劳德字面竖线():
@@ -54,8 +54,8 @@ def test_甄别命中_克劳德字面竖线():
   打印("B=" + 转字符串(甄别命中("Bash|Edit", "Read", 方言克劳德)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
 
 
 def test_甄别命中_正则与非法():
@@ -67,9 +67,9 @@ def test_甄别命中_正则与非法():
   打印("C=" + 转字符串(甄别命中("([unclosed", "x", 方言科德)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
 
 
 def test_读字符串_缺省与类型():
@@ -109,7 +109,7 @@ def test_读布尔_严格bool():
     打印("C=非空")
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
+    out_contains(r, "A=True")
     out_contains(r, "B=空")
     out_contains(r, "C=空")
 
@@ -130,7 +130,7 @@ def test_读对象_仅字典():
     打印("C=非空")
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
+    out_contains(r, "A=True")
     out_contains(r, "B=空")
     out_contains(r, "C=空")
 
@@ -198,7 +198,7 @@ def test_解析钩子产出_普通stdout无裁定():
   打印("有=" + 转字符串(有裁定))
 ''')
     assert_success(r)
-    out_contains(r, "有=假")
+    out_contains(r, "有=False")
 
 
 def test_裁定等级与等级裁定():
@@ -274,7 +274,7 @@ def test_概要化标准错误():
 ''')
     assert_success(r)
     out_contains(r, "空=空")
-    out_contains(r, "截=真")
+    out_contains(r, "截=True")
 
 
 def test_运行时长毫秒与落码归一():

@@ -13,9 +13,9 @@ def test_校验变量名_合法():
   打印("C=" + 转字符串(校验变量名("x")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=True")
 
 
 def test_校验变量名_非法():
@@ -29,11 +29,11 @@ def test_校验变量名_非法():
   打印("E=" + 转字符串(校验变量名(123)))
 ''')
     assert_success(r)
-    out_contains(r, "A=假")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
-    out_contains(r, "D=假")
-    out_contains(r, "E=假")
+    out_contains(r, "A=False")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
+    out_contains(r, "D=False")
+    out_contains(r, "E=False")
 
 
 def test_扫描变量引用():

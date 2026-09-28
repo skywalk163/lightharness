@@ -19,7 +19,7 @@ def test_造根上下文_形状():
     assert_success(r)
     out_contains(r, "标识=root")
     out_contains(r, "父=空")
-    out_contains(r, "销毁=假")
+    out_contains(r, "销毁=False")
 
 
 def test_造子上下文_标识递增():
@@ -76,8 +76,8 @@ def test_自有属性_不泄露父层():
   打印("根有a=" + 转字符串(自有属性(root, "a")))
 ''')
     assert_success(r)
-    out_contains(r, "子有a=假")
-    out_contains(r, "根有a=真")
+    out_contains(r, "子有a=False")
+    out_contains(r, "根有a=True")
 
 
 def test_获取属性_未命中返回空():
@@ -143,7 +143,7 @@ def test_快照与恢复():
   打印("恢复=" + 转字符串(获取属性(root, "x")))
 ''')
     assert_success(r)
-    out_contains(r, "删后=空")
+    out_contains(r, "删后=None")
     out_contains(r, "恢复=1")
 
 
@@ -158,7 +158,7 @@ def test_销毁上下文_标记与读取():
   打印("读后=" + 转字符串(获取属性(root, "a")))
 ''')
     assert_success(r)
-    out_contains(r, "已销毁=真")
+    out_contains(r, "已销毁=True")
     out_contains(r, "读后=1")
 
 
@@ -190,12 +190,12 @@ def test_作用域匹配_global通配():
     r = run_light_source('''
 从 宿主上下文 导入 造作用域, 作用域匹配
 段落 主程序:
-  设 global 为 造作用域("global", "*", 空)
+  设 g 为 造作用域("global", "*", 空)
   设 ev 为 造作用域("session", "s1", 空)
-  打印("匹配=" + 转字符串(作用域匹配(ev, global)))
+  打印("匹配=" + 转字符串(作用域匹配(ev, g)))
 ''')
     assert_success(r)
-    out_contains(r, "匹配=真")
+    out_contains(r, "匹配=True")
 
 
 def test_作用域匹配_同类型同目标():
@@ -209,8 +209,8 @@ def test_作用域匹配_同类型同目标():
   打印("异=" + 转字符串(作用域匹配(ev, other)))
 ''')
     assert_success(r)
-    out_contains(r, "同=真")
-    out_contains(r, "异=假")
+    out_contains(r, "同=True")
+    out_contains(r, "异=False")
 
 
 def test_作用域匹配_祖先链():
@@ -222,7 +222,7 @@ def test_作用域匹配_祖先链():
   打印("祖先=" + 转字符串(作用域匹配(child, root)))
 ''')
     assert_success(r)
-    out_contains(r, "祖先=真")
+    out_contains(r, "祖先=True")
 
 
 def test_作用域链():

@@ -32,10 +32,10 @@ def test_是绝对():
   打印("D=" + 转字符串(是绝对("")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=假")
-    out_contains(r, "D=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=False")
+    out_contains(r, "D=False")
 
 
 def test_前缀是():
@@ -46,8 +46,8 @@ def test_前缀是():
   打印("B=" + 转字符串(前缀是("/other/p", "/home/u")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
 
 
 def test_标识合法():
@@ -62,12 +62,12 @@ def test_标识合法():
   打印("F=" + 转字符串(标识合法("has space")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=假")
-    out_contains(r, "D=假")
-    out_contains(r, "E=假")
-    out_contains(r, "F=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=False")
+    out_contains(r, "D=False")
+    out_contains(r, "E=False")
+    out_contains(r, "F=False")
 
 
 def test_可用文本():
@@ -125,8 +125,8 @@ def test_行启用():
   打印("B=" + 转字符串(行启用({"name":"y", "disabled":真})))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
 
 
 def test_条目列表问题_合法列表():
@@ -178,8 +178,8 @@ def test_应前_按order再id():
   打印("B=" + 转字符串(应前(c, d)))
 ''')
     assert_success(r)
-    out_contains(r, "A=假")
-    out_contains(r, "B=真")
+    out_contains(r, "A=False")
+    out_contains(r, "B=True")
 
 
 def test_扫描根排序():
@@ -225,9 +225,9 @@ def test_在纤维内_沿父链():
   打印("C=" + 转字符串(在纤维内(表, "root", "root")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
-    out_contains(r, "C=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
+    out_contains(r, "C=True")
 
 
 def test_排序名():
@@ -272,7 +272,7 @@ def test_可删判定_合法():
   打印("可删=" + 转字符串(可删判定(p, "/home/u")))
 ''')
     assert_success(r)
-    out_contains(r, "可删=真")
+    out_contains(r, "可删=True")
 
 
 def test_可删判定_内置不可删():

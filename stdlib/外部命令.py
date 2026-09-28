@@ -86,6 +86,12 @@ def 执行命令(
     命令列表 = 命令 if isinstance(命令, list) else 命令
     shell = isinstance(命令, str)
 
+    # Windows 上用 PowerShell 执行（比 cmd.exe 兼容更多 bash 命令别名）
+    if shell and sys.platform == 'win32':
+        if not str(命令列表).startswith('powershell'):
+            转义后 = str(命令列表).replace('"', '`"')
+            命令列表 = f'powershell.exe -NoProfile -Command "{转义后}"'
+
     环境 = None
     if 环境变量:
         环境 = dict(os.environ)

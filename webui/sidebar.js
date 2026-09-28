@@ -45,8 +45,12 @@
   }
 
   // ---------- API ----------
+  // token 从 URL ?token=... 读取（与 app.js 口径一致）；启用认证时必须带 X-Auth-Token
+  var authToken = new URLSearchParams(location.search).get("token") || "";
+
   function api(method, url, body) {
     var initObj = { method: method, headers: {} };
+    if (authToken) initObj.headers["X-Auth-Token"] = authToken;
     if (body != null) {
       initObj.headers["Content-Type"] = "application/json";
       initObj.body = JSON.stringify(body);
@@ -56,7 +60,10 @@
         var data = null;
         try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
         if (!res.ok) {
-          var msg = (data && (data.error || data.message)) || "HTTP " + res.status;
+          var raw = data && (data.error || data.message);
+          var msg = typeof raw === "string" ? raw
+                  : (raw && typeof raw === "object") ? JSON.stringify(raw)
+                  : ("HTTP " + res.status);
           var err = new Error(msg);
           err.status = res.status;
           err.data = data;

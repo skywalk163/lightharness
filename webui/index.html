@@ -112,6 +112,7 @@
   <!-- 配置引导面板（未配置大模型时显示；也可通过设置按钮打开） -->
   <div id="config-panel" class="config-overlay" hidden>
     <div class="config-card">
+      <button type="button" id="cfg-close-btn" class="config-close" title="关闭（Esc）" aria-label="关闭">×</button>
       <h2>配置大模型</h2>
       <p class="config-desc">首次使用需要配置大模型连接信息。配置保存在本地 <code>.env</code> 文件中，也可以手工编辑该文件。</p>
       <div class="config-field">
@@ -124,7 +125,7 @@
       </div>
       <div class="config-field">
         <label for="cfg-model">模型名</label>
-        <input type="text" id="cfg-model" value="deepseek-chat" placeholder="deepseek-chat">
+        <input type="text" id="cfg-model" value="deepseek-flash" placeholder="deepseek-flash">
       </div>
       <div class="config-actions">
         <button id="cfg-save-btn" class="btn btn-send">保存并连接</button>

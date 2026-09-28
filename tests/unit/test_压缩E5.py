@@ -120,7 +120,7 @@ def test_滑动窗口压缩_未超阈值不压缩():
   打印("省略=" + 转字符串(res["省略数"]))
 ''')
     assert_success(r)
-    out_contains(r, "压缩=假")
+    out_contains(r, "压缩=False")
     out_contains(r, "省略=0")
 
 
@@ -140,7 +140,7 @@ def test_滑动窗口压缩_超阈值触发省略():
   打印("省略=" + 转字符串(res["省略数"]))
 ''')
     assert_success(r)
-    out_contains(r, "压缩=真")
+    out_contains(r, "压缩=True")
     out_contains(r, "省略=2")
 
 

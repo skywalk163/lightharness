@@ -336,6 +336,7 @@ body {
 .config-overlay[hidden] { display: none; }
 
 .config-card {
+  position: relative;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -348,6 +349,29 @@ body {
 .config-card h2 {
   margin: 0 0 8px;
   font-size: 20px;
+  color: var(--text);
+}
+
+.config-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim, #8b949e);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.config-close:hover {
+  background: rgba(255,255,255,0.08);
   color: var(--text);
 }
 

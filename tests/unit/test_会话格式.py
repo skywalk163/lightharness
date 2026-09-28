@@ -13,7 +13,7 @@ def test_安全整数_零通过():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_安全整数_正整数通过():
@@ -24,7 +24,7 @@ def test_安全整数_正整数通过():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_安全整数_大数通过():
@@ -35,7 +35,7 @@ def test_安全整数_大数通过():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_安全整数_负数报错():
@@ -80,7 +80,7 @@ def test_同版本_相等为真():
   打印("VAL=" + 转字符串(c))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_版本小_次版本比较():
@@ -93,7 +93,7 @@ def test_版本小_次版本比较():
   打印("VAL=" + 转字符串(c))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_造事件_字段齐全():
@@ -118,7 +118,7 @@ def test_事件带来源_附加来源表():
   打印("HAS=" + 转字符串(字典包含键(e2, "来源事件序号")))
 ''')
     assert_success(r)
-    out_contains(r, "HAS=真")
+    out_contains(r, "HAS=True")
 
 
 def test_编码V2事件_解码V3事件往返():
@@ -155,7 +155,7 @@ def test_是图像块_图像为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是图像块_文本为假():
@@ -166,7 +166,7 @@ def test_是图像块_文本为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_是工具结果块_工具结果为真():
@@ -177,7 +177,7 @@ def test_是工具结果块_工具结果为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_已知事件类型_已知为真():
@@ -188,7 +188,7 @@ def test_已知事件类型_已知为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_已知事件类型_未知为假():
@@ -199,4 +199,4 @@ def test_已知事件类型_未知为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")

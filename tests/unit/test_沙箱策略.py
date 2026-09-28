@@ -13,9 +13,9 @@ def test_是有效模式_合法():
   打印("C=" + 转字符串(是有效模式("danger-full-access")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=True")
 
 
 def test_是有效模式_非法():
@@ -27,9 +27,9 @@ def test_是有效模式_非法():
   打印("C=" + 转字符串(是有效模式("no-such-mode")))
 ''')
     assert_success(r)
-    out_contains(r, "A=假")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
+    out_contains(r, "A=False")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
 
 
 def test_折叠绝对路径_消解点点点():
@@ -181,8 +181,8 @@ def test_危险全访问判定():
   打印("B=" + 转字符串(危险全访问({"模式":"read-only"})))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
 
 
 def test_渲染策略上下文_三模式():
@@ -197,6 +197,6 @@ def test_渲染策略上下文_三模式():
   打印("D=" + 转字符串(字符串包含(t3, "does not restrict")))
 ''')
     assert_success(r)
-    out_contains(r, "R=真")
-    out_contains(r, "W=真")
-    out_contains(r, "D=真")
+    out_contains(r, "R=True")
+    out_contains(r, "W=True")
+    out_contains(r, "D=True")

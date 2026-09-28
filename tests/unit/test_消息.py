@@ -52,7 +52,7 @@ def test_造工具结果块_错误标记():
 ''')
     assert_success(r)
     out_contains(r, "T=tool-result")
-    out_contains(r, "ERR=真")
+    out_contains(r, "ERR=True")
 
 
 def test_造用户消息_role为user():
@@ -96,7 +96,7 @@ def test_助手消息内容为空_空内容为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_取消息文本_拼接文本块():
@@ -155,7 +155,7 @@ def test_内容含图片_有图片为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_内容含图片_无图片为假():
@@ -167,7 +167,7 @@ def test_内容含图片_无图片为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_块已卸载_已标记为真():
@@ -178,7 +178,7 @@ def test_块已卸载_已标记为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_块已卸载_未标记为假():
@@ -189,7 +189,7 @@ def test_块已卸载_未标记为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_基64长度_三字节四字符():

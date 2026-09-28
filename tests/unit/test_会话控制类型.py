@@ -13,7 +13,7 @@ def test_是否会话状态_已知为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是否会话状态_未知为假():
@@ -24,7 +24,7 @@ def test_是否会话状态_未知为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_状态运行中_running为真():
@@ -35,7 +35,7 @@ def test_状态运行中_running为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_状态运行中_idle为假():
@@ -46,7 +46,7 @@ def test_状态运行中_idle为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_造会话状态值_running带标记():
@@ -59,7 +59,7 @@ def test_造会话状态值_running带标记():
 ''')
     assert_success(r)
     out_contains(r, "ST=running")
-    out_contains(r, "RUN=真")
+    out_contains(r, "RUN=True")
 
 
 def test_造会话状态值_idle不运行():
@@ -70,7 +70,7 @@ def test_造会话状态值_idle不运行():
   打印("RUN=" + 转字符串(v["running"]))
 ''')
     assert_success(r)
-    out_contains(r, "RUN=假")
+    out_contains(r, "RUN=False")
 
 
 def test_造会话状态值_未知状态报错():
@@ -103,7 +103,7 @@ def test_会话错误种类_未知返回空():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是否提示内容部件_text部件合法():
@@ -114,7 +114,7 @@ def test_是否提示内容部件_text部件合法():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是否提示内容部件_缺text非法():
@@ -125,7 +125,7 @@ def test_是否提示内容部件_缺text非法():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_是否队列动作_remove为真():
@@ -136,7 +136,7 @@ def test_是否队列动作_remove为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是否队列动作_edit空内容为假():
@@ -147,7 +147,7 @@ def test_是否队列动作_edit空内容为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_是否会话地址_session合法():
@@ -158,7 +158,7 @@ def test_是否会话地址_session合法():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_造模型选择_字段齐全():
@@ -204,7 +204,7 @@ def test_是远程事件种类_已知为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_是远程事件种类_未知为假():
@@ -215,4 +215,4 @@ def test_是远程事件种类_未知为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")

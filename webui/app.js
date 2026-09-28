@@ -626,7 +626,7 @@
       if (msgs[i].role === "assistant" && msgs[i].content === "") msgs.pop();
       else break;
     }
-    var body = { model: "deepseek-chat", messages: msgs, stream: true };
+    var body = { model: "deepseek-flash", messages: msgs, stream: true };
     if (sessionId) body.session_id = sessionId;       // 会话延续
 
     var headers = { "Content-Type": "application/json" };
@@ -722,24 +722,41 @@
   // ---------- 大模型配置 ----------
   var currentConfig = null;
 
+  // 打开时的表单快照，用于未保存保护（apiKey 留空不算改动，因为已配置时留空=不修改）
+  var cfgSnapshot = null;
+  function snapshotConfig() {
+    cfgSnapshot = { apiKey: cfgApiKey.value, baseUrl: cfgBaseUrl.value, model: cfgModel.value };
+  }
+  function configDirty() {
+    if (!cfgSnapshot) return false;
+    return cfgApiKey.value !== cfgSnapshot.apiKey
+        || cfgBaseUrl.value !== cfgSnapshot.baseUrl
+        || cfgModel.value !== cfgSnapshot.model;
+  }
+
   function showConfigPanel() {
     // 已配置时回填（api_key 不回填，留空提示重新输入即覆盖）
     if (currentConfig && currentConfig.configured) {
       cfgBaseUrl.value = currentConfig.endpoint || "https://api.deepseek.com";
-      cfgModel.value = currentConfig.model || "deepseek-chat";
+      cfgModel.value = currentConfig.model || "deepseek-flash";
       cfgApiKey.placeholder = "（已保存，留空则不修改）";
     } else {
       cfgBaseUrl.value = "https://api.deepseek.com";
-      cfgModel.value = "deepseek-chat";
+      cfgModel.value = "deepseek-flash";
       cfgApiKey.placeholder = "sk-xxxxxxxxxxxxxxxx";
     }
     cfgError.hidden = true;
     cfgError.textContent = "";
     configPanel.hidden = false;
+    snapshotConfig();
   }
 
-  function hideConfigPanel() {
+  function hideConfigPanel(force) {
+    if (!force && configDirty()) {
+      if (!window.confirm("有未保存的配置改动，确定要关闭吗？")) return;
+    }
     configPanel.hidden = true;
+    cfgSnapshot = null;
   }
 
   function checkConfig() {
@@ -748,8 +765,9 @@
       .then(function (cfg) {
         currentConfig = cfg;
         updateModelBadge(cfg.configured ? (cfg.model || "") : "");
-        // 未配置（mock 模式或无密钥）→ 自动弹出配置引导
-        if (!cfg.configured) {
+        // 未配置 → 自动弹出配置引导；但 mock 模式（cfg.mock=true）服务已可用，
+        // 不弹面板遮挡聊天界面，用户需要配真实 key 时可点右上角设置按钮。
+        if (!cfg.configured && !cfg.mock) {
           showConfigPanel();
         }
       })
@@ -759,7 +777,7 @@
   function saveConfig() {
     var apiKey = cfgApiKey.value.trim();
     var baseUrl = cfgBaseUrl.value.trim() || "https://api.deepseek.com";
-    var model = cfgModel.value.trim() || "deepseek-chat";
+    var model = cfgModel.value.trim() || "deepseek-flash";
     // 未配置时 api_key 必填；已配置时留空表示不修改（但当前实现是覆盖式写 .env，所以仍需填）
     if (!apiKey) {
       cfgError.textContent = "API Key 不能为空";
@@ -779,7 +797,7 @@
       .then(function (r) {
         if (r.ok && r.data.ok) {
           currentConfig = r.data.config;
-          hideConfigPanel();
+          hideConfigPanel(true);
           updateModelBadge(currentConfig.model || model);
           addSystem("大模型配置已保存并热更新，当前模型：" + (currentConfig.model || model));
           setStatus("ok");
@@ -812,9 +830,23 @@
   stopBtn.addEventListener("click", stopStreaming);
   settingsBtn.addEventListener("click", function () {
     if (configPanel.hidden) showConfigPanel();
-    else hideConfigPanel();
+    else hideConfigPanel(true);
   });
   cfgSaveBtn.addEventListener("click", saveConfig);
+
+  // 配置面板关闭：X 按钮 / 点遮罩 / Esc，均带未保存保护
+  var cfgCloseBtn = document.getElementById("cfg-close-btn");
+  if (cfgCloseBtn) cfgCloseBtn.addEventListener("click", function () { hideConfigPanel(false); });
+  // 点遮罩（overlay 本身，非 card）关闭
+  configPanel.addEventListener("mousedown", function (e) {
+    if (e.target === configPanel) hideConfigPanel(false);
+  });
+  // Esc 关闭
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !configPanel.hidden) {
+      hideConfigPanel(false);
+    }
+  });
 
   // E3：三栏交互
   if (sidebarToggle) sidebarToggle.addEventListener("click", function () {

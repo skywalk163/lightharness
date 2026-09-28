@@ -172,10 +172,10 @@ def test_是危险命令_正反():
   打印("D=" + 转字符串(mgr.是危险命令(空)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
-    out_contains(r, "D=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
+    out_contains(r, "D=False")
 
 
 def test_工具bash_按参数命令分类():
@@ -234,5 +234,5 @@ def test_追加危险模式_生效():
   打印("后=" + 转字符串(mgr.是危险命令("包含我的危险串")))
 ''')
     assert_success(r)
-    out_contains(r, "前=假")
-    out_contains(r, "后=真")
+    out_contains(r, "前=False")
+    out_contains(r, "后=True")

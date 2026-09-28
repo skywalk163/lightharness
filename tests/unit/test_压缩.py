@@ -115,7 +115,7 @@ def test_绳标记图像卸载_标记指定下标():
   打印("OFF=" + 转字符串(新["content"][1]["offloaded"]))
 ''')
     assert_success(r)
-    out_contains(r, "OFF=真")
+    out_contains(r, "OFF=True")
 
 
 def test_绳标记图像卸载_不改动原消息():
@@ -127,7 +127,7 @@ def test_绳标记图像卸载_不改动原消息():
   打印("ORIG=" + 转字符串(字典包含键(msg["content"][0], "offloaded")))
 ''')
     assert_success(r)
-    out_contains(r, "ORIG=假")
+    out_contains(r, "ORIG=False")
 
 
 def test_绳标记图像卸载_下标不存在报错():

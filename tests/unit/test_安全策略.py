@@ -13,9 +13,9 @@ def test_校验凭证名_合法():
   打印("C=" + 转字符串(校验凭证名("k")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=True")
 
 
 def test_校验凭证名_非法():
@@ -28,10 +28,10 @@ def test_校验凭证名_非法():
   打印("D=" + 转字符串(校验凭证名("has space")))
 ''')
     assert_success(r)
-    out_contains(r, "A=假")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
-    out_contains(r, "D=假")
+    out_contains(r, "A=False")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
+    out_contains(r, "D=False")
 
 
 def test_判定敏感名_命中():
@@ -44,9 +44,9 @@ def test_判定敏感名_命中():
   打印("C=" + 转字符串(判定敏感名("normal_name", 黑)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=False")
 
 
 def test_脱敏值_保留首尾():
@@ -104,8 +104,8 @@ def test_判定已脱敏():
   打印("B=" + 转字符串(判定已脱敏("plain text")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
 
 
 def test_计算哈希_确定性():
@@ -119,8 +119,8 @@ def test_计算哈希_确定性():
   打印("DIFF=" + 转字符串(h1 == h3))
 ''')
     assert_success(r)
-    out_contains(r, "SAME=真")
-    out_contains(r, "DIFF=假")
+    out_contains(r, "SAME=True")
+    out_contains(r, "DIFF=False")
 
 
 def test_转十六进制():
@@ -149,9 +149,9 @@ def test_构造匿名标识_往返校验():
 ''')
     assert_success(r)
     out_contains(r, "ID=anon-")
-    out_contains(r, "合法=真")
-    out_contains(r, "一致=真")
-    out_contains(r, "不一致=假")
+    out_contains(r, "合法=True")
+    out_contains(r, "一致=True")
+    out_contains(r, "不一致=False")
 
 
 def test_校验匿名标识_非法格式():
@@ -163,9 +163,9 @@ def test_校验匿名标识_非法格式():
   打印("C=" + 转字符串(校验匿名标识("anon-XXXXXXXX")))
 ''')
     assert_success(r)
-    out_contains(r, "A=假")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
+    out_contains(r, "A=False")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
 
 
 def test_策略谓词_默认与规则():
@@ -181,9 +181,9 @@ def test_策略谓词_默认与规则():
   打印("回退=" + 转字符串(p.判定("读", {"路径":"/tmp"})))
 ''')
     assert_success(r)
-    out_contains(r, "默认=真")
-    out_contains(r, "拒绝=假")
-    out_contains(r, "回退=真")
+    out_contains(r, "默认=True")
+    out_contains(r, "拒绝=False")
+    out_contains(r, "回退=True")
 
 
 def test_解析界限规则_合法():
@@ -200,8 +200,8 @@ def test_解析界限规则_合法():
     assert_success(r)
     out_contains(r, "主体=SID-1")
     out_contains(r, "权限=read")
-    out_contains(r, "允许1=真")
-    out_contains(r, "允许2=假")
+    out_contains(r, "允许1=True")
+    out_contains(r, "允许2=False")
 
 
 def test_解析界限规则_格式错误():
@@ -239,9 +239,9 @@ def test_界限判定器_拒绝优先():
   打印("无规则=" + 转字符串(d.判定("U3", "read")))
 ''')
     assert_success(r)
-    out_contains(r, "拒绝优先=假")
-    out_contains(r, "通配=真")
-    out_contains(r, "无规则=假")
+    out_contains(r, "拒绝优先=False")
+    out_contains(r, "通配=True")
+    out_contains(r, "无规则=False")
 
 
 def test_构造溢出目录名与超阈():
@@ -255,8 +255,8 @@ def test_构造溢出目录名与超阈():
 ''')
     assert_success(r)
     out_contains(r, "名=spill-sess1-3")
-    out_contains(r, "超=真")
-    out_contains(r, "未超=假")
+    out_contains(r, "超=True")
+    out_contains(r, "未超=False")
 
 
 def test_判定超阈_负数上限报错():

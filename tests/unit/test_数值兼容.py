@@ -57,7 +57,7 @@ def test_JS真值_空为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_JS真值_零为假():
@@ -68,7 +68,7 @@ def test_JS真值_零为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_JS真值_空串为假():
@@ -79,7 +79,7 @@ def test_JS真值_空串为假():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_JS真值_零字符串为真():
@@ -90,7 +90,7 @@ def test_JS真值_零字符串为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_JS真值_列表为真():
@@ -101,7 +101,7 @@ def test_JS真值_列表为真():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_JS相等_同值同类型():
@@ -112,7 +112,7 @@ def test_JS相等_同值同类型():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=真")
+    out_contains(r, "VAL=True")
 
 
 def test_JS相等_跨类型严格不等():
@@ -123,7 +123,7 @@ def test_JS相等_跨类型严格不等():
   打印("VAL=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "VAL=假")
+    out_contains(r, "VAL=False")
 
 
 def test_指数解析_整数指数():
@@ -200,7 +200,7 @@ def test_除零安全_正常返回商():
   打印("Q=" + 转字符串(res["商"]))
 ''')
     assert_success(r)
-    out_contains(r, "OK=真")
+    out_contains(r, "OK=True")
     out_contains(r, "Q=5")
 
 
@@ -213,5 +213,5 @@ def test_除零安全_除零返回失败标记():
   打印("ERR=" + res["错误"])
 ''')
     assert_success(r)
-    out_contains(r, "OK=假")
+    out_contains(r, "OK=False")
     out_contains(r, "ERR=除零")

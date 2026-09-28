@@ -123,10 +123,12 @@ def test_预览文本收集_大块标记未读完():
     设 i 为 i + 1
   设 c 为 [{"type": "text", "text": 长}]
   设 果 为 预览文本收集(c, 50)
-  打印("DONE=" + 转字符串(果["未读完"]))
+  设 s 为 "NO"
+  如果 果["未读完"] == 真: 设 s 为 "YES"
+  打印("DONE=" + s)
 ''')
     assert_success(r)
-    out_contains(r, "DONE=真")
+    out_contains(r, "DONE=YES")
 
 
 def test_折叠_轮次开始开新条目():

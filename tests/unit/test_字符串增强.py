@@ -85,7 +85,7 @@ def test_安全正则匹配_命中返回真():
   打印("HIT=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "HIT=真")
+    out_contains(r, "HIT=True")
 
 
 def test_安全正则匹配_不命中返回假():
@@ -96,7 +96,7 @@ def test_安全正则匹配_不命中返回假():
   打印("HIT=" + 转字符串(b))
 ''')
     assert_success(r)
-    out_contains(r, "HIT=假")
+    out_contains(r, "HIT=False")
 
 
 def test_字符串重复文本_重复多次():

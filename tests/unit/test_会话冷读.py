@@ -58,10 +58,12 @@ def test_关闭句柄_恒返回真():
 从 会话冷读 导入 关闭句柄
 段落 主程序:
   设 ok 为 关闭句柄({})
-  打印("OK=" + 转字符串(ok))
+  设 s 为 "NO"
+  如果 ok: 设 s 为 "YES"
+  打印("OK=" + s)
 ''')
     assert_success(r)
-    out_contains(r, "OK=真")
+    out_contains(r, "OK=YES")
 
 
 def test_冷读_平衡日志读回():

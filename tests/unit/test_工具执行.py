@@ -29,9 +29,9 @@ def test_具是级别():
   打印("C=" + 转字符串(具是级别("bogus")))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=真")
-    out_contains(r, "C=假")
+    out_contains(r, "A=True")
+    out_contains(r, "B=True")
+    out_contains(r, "C=False")
 
 
 def test_具注册工具_可取回():
@@ -96,10 +96,10 @@ def test_具可否见_可见矩阵():
   打印("D=" + 转字符串(具可否见(级内部, 级私有)))
 ''')
     assert_success(r)
-    out_contains(r, "A=真")
-    out_contains(r, "B=假")
-    out_contains(r, "C=假")
-    out_contains(r, "D=真")
+    out_contains(r, "A=True")
+    out_contains(r, "B=False")
+    out_contains(r, "C=False")
+    out_contains(r, "D=True")
 
 
 def test_权限判定_公开放行():
@@ -114,8 +114,8 @@ def test_权限判定_公开放行():
   打印("可调=" + 转字符串(d["可调用"]))
 ''')
     assert_success(r)
-    out_contains(r, "可见=真")
-    out_contains(r, "可调=真")
+    out_contains(r, "可见=True")
+    out_contains(r, "可调=True")
 
 
 def test_权限判定_私有拒绝():
@@ -130,7 +130,7 @@ def test_权限判定_私有拒绝():
   打印("码=" + d["错误码"])
 ''')
     assert_success(r)
-    out_contains(r, "可调=假")
+    out_contains(r, "可调=False")
     out_contains(r, "码=PERMISSION_DENIED")
 
 
@@ -157,9 +157,9 @@ def test_取消令牌_流程():
   打印("仍取消=" + 转字符串(是否取消(tok)))
 ''')
     assert_success(r)
-    out_contains(r, "初始=假")
-    out_contains(r, "取消后=真")
-    out_contains(r, "仍取消=真")
+    out_contains(r, "初始=False")
+    out_contains(r, "取消后=True")
+    out_contains(r, "仍取消=True")
 
 
 def test_检查取消_抛出():

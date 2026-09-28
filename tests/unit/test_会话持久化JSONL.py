@@ -246,14 +246,17 @@ def test_增量行序列_只取起始之后():
 
 
 def test_行号映射_映射到seq():
+    # 注意：光明字符串字面量具备 f-string 语义，{{\"data\":{}}} 这类 {{/}} 在源码期被折叠，
+    # 直接用转义字面量写 JSON 会把末尾 } 吞掉或令编译器挂死。改用 构造JSON字符串 在运行时
+    # 由字典字面量安全序列化，规避 f-string 花括号陷阱。
     r = run_light_source('''
 从 会话持久化JSONL 导入 行号映射
+从 字符串增强 导入 构造JSON字符串
 段落 主程序:
-  设 表 为 [
-    "{\\"type\\":\\"session\\"}",
-    "{\\"seq\\":0,\\"type\\":\\"turn/start\\",\\"data\\":{}}",
-    "{\\"seq\\":1,\\"type\\":\\"turn/start\\",\\"data\\":{}}"
-  ]
+  设 行0 为 构造JSON字符串({"type":"session"})
+  设 行1 为 构造JSON字符串({"seq":0,"type":"turn/start","data":{}})
+  设 行2 为 构造JSON字符串({"seq":1,"type":"turn/start","data":{}})
+  设 表 为 [行0, 行1, 行2]
   设 m 为 行号映射(表)
   打印("N=" + 转字符串(列表长度(m)))
   打印("FIRST=" + 转字符串(m[0]["seq"]))
@@ -276,10 +279,12 @@ def test_校验迁移_合法日志通过():
   设 行表 为 生成行序列(头, 0, [e0, e1])
   设 日志 为 连接字符串(行表, "")
   设 果 为 校验迁移(日志)
-  打印("PASS=" + 转字符串(果["通过"]))
+  设 ps 为 "NO"
+  如果 果["通过"]: 设 ps 为 "YES"
+  打印("PASS=" + ps)
 ''')
     assert_success(r)
-    out_contains(r, "PASS=真")
+    out_contains(r, "PASS=YES")
 
 
 def test_校验迁移_序号不连续失败():
@@ -295,11 +300,13 @@ def test_校验迁移_序号不连续失败():
   设 行表 为 生成行序列(头, 0, [e0, e1])
   设 日志 为 连接字符串(行表, "")
   设 果 为 校验迁移(日志)
-  打印("PASS=" + 转字符串(果["通过"]))
+  设 ps 为 "NO"
+  如果 果["通过"]: 设 ps 为 "YES"
+  打印("PASS=" + ps)
   打印("ERRN=" + 转字符串(列表长度(果["错误表"])))
 ''')
     assert_success(r)
-    out_contains(r, "PASS=假")
+    out_contains(r, "PASS=NO")
     out_contains(r, "ERRN=1")
 
 
@@ -316,7 +323,9 @@ def test_校验迁移_未知类型失败():
   设 行表 为 生成行序列(头, 0, [e0, e1])
   设 日志 为 连接字符串(行表, "")
   设 果 为 校验迁移(日志)
-  打印("PASS=" + 转字符串(果["通过"]))
+  设 ps 为 "NO"
+  如果 果["通过"]: 设 ps 为 "YES"
+  打印("PASS=" + ps)
 ''')
     assert_success(r)
-    out_contains(r, "PASS=假")
+    out_contains(r, "PASS=NO")

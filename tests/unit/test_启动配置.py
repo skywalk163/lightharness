@@ -1,11 +1,47 @@
 # -*- coding: utf-8 -*-
+# 注意：本模块经 主目录路径 → 字符串工具 这条传递导入链，会触发光明 stdlib
+# 引导按「入口 .light 所在目录」向上找 stdlib。基建 run_light_source 把入口写在
+# 系统临时目录，向上找不到 lightharness/stdlib，会回退到兄弟编译器仓库
+# light-merge/stdlib 的纯光明版 字符串工具.light（其 `从 re 导入 re_花括号`
+# 会报 No module named '_light_re'）。实测：只要入口 .light 落在 lightharness/
+# 根目录下，引导即命中自带 stdlib/字符串工具.py，一切正常。故本文件自写一个
+# run_in_repo：把片段写到 lightharness 根目录的临时 .light，跑完即删。
+import os
+import subprocess
+import sys
+import uuid
+
 from test_support import (
-    run_light_source, assert_success, assert_failure, out_contains, out_not_contains,
+    assert_success, assert_failure, out_contains, out_not_contains, LightResult,
 )
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+RUNNER = os.path.join(ROOT, '运行.py')
+
+
+def run_in_repo(source: str, timeout: int = 60) -> LightResult:
+    name = f"_unit_tmp_{os.getpid()}_{uuid.uuid4().hex[:6]}.light"
+    path = os.path.join(ROOT, name)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(source)
+    try:
+        p = subprocess.run(
+            [sys.executable, RUNNER, path],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            cwd=ROOT, timeout=timeout,
+            env={**os.environ, "HARNESS_PY": sys.executable},
+        )
+        return LightResult(rc=p.returncode, stdout=p.stdout or "", stderr=p.stderr or "",
+                           workdir=ROOT, light_file=path)
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 def test_解析profile目录_合法():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析profile目录
 段落 主程序:
   设 p 为 解析profile目录("myprof", "/home/u")
@@ -17,7 +53,7 @@ def test_解析profile目录_合法():
 
 
 def test_解析profile目录_空名报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析profile目录
 段落 主程序:
   设 p 为 解析profile目录("", "/home/u")
@@ -27,7 +63,7 @@ def test_解析profile目录_空名报错():
 
 
 def test_解析profile目录_斜杠报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析profile目录
 段落 主程序:
   设 p 为 解析profile目录("a/b", "/home/u")
@@ -38,7 +74,7 @@ def test_解析profile目录_斜杠报错():
 
 
 def test_解析profile目录_node_modules报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析profile目录
 段落 主程序:
   设 p 为 解析profile目录("node_modules", "/home/u")
@@ -48,7 +84,7 @@ def test_解析profile目录_node_modules报错():
 
 
 def test_合并配置_浅覆盖():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 合并配置
 段落 主程序:
   设 entry 为 {"id":"x", "a":1}
@@ -63,7 +99,7 @@ def test_合并配置_浅覆盖():
 
 
 def test_合并配置_非对象报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 合并配置
 段落 主程序:
   设 entry 为 {"id":"x"}
@@ -75,13 +111,13 @@ def test_合并配置_非对象报错():
 
 
 def test_应用补丁_新建entry():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 应用补丁
 段落 主程序:
   设 顺序表 为 []
   设 索引表 为 {}
   应用补丁({"id":"x", "config":{"k":1}}, 顺序表, 索引表)
-  打印("数=" + 转字符串(长度(顺序表)))
+  打印("数=" + 转字符串(长(顺序表)))
   打印("K=" + 转字符串(顺序表[0]["k"]))
 ''')
     assert_success(r)
@@ -90,14 +126,14 @@ def test_应用补丁_新建entry():
 
 
 def test_应用补丁_同id覆盖():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 应用补丁
 段落 主程序:
   设 顺序表 为 []
   设 索引表 为 {}
   应用补丁({"id":"x", "config":{"k":1}}, 顺序表, 索引表)
   应用补丁({"id":"x", "config":{"k":2}}, 顺序表, 索引表)
-  打印("数=" + 转字符串(长度(顺序表)))
+  打印("数=" + 转字符串(长(顺序表)))
   打印("K=" + 转字符串(顺序表[0]["k"]))
 ''')
     assert_success(r)
@@ -106,16 +142,15 @@ def test_应用补丁_同id覆盖():
 
 
 def test_应用补丁_insert子条目():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 应用补丁
-从 JSON 导入 序列化JSON
 段落 主程序:
   设 顺序表 为 []
   设 索引表 为 {}
   应用补丁({"id":"base", "config":{"a":1}}, 顺序表, 索引表)
   设 补丁 为 {"id":"base", "insert":[{"id":"child", "config":{"b":2}}]}
   应用补丁(补丁, 顺序表, 索引表)
-  打印("数=" + 转字符串(长度(顺序表)))
+  打印("数=" + 转字符串(长(顺序表)))
   打印("ID=" + 顺序表[1]["id"])
 ''')
     assert_success(r)
@@ -124,7 +159,7 @@ def test_应用补丁_insert子条目():
 
 
 def test_组合条目_多层叠加():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 组合条目
 段落 主程序:
   设 layers 为 [
@@ -132,7 +167,7 @@ def test_组合条目_多层叠加():
     [{"id":"base", "config":{"b":2}}, {"id":"extra", "config":{"c":3}}]
   ]
   设 表 为 组合条目(layers)
-  打印("数=" + 转字符串(长度(表)))
+  打印("数=" + 转字符串(长(表)))
   打印("A=" + 转字符串(表[0]["a"]))
   打印("B=" + 转字符串(表[0]["b"]))
 ''')
@@ -143,7 +178,7 @@ def test_组合条目_多层叠加():
 
 
 def test_解析启动参数_基本profile():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["--profile", "tui"])
@@ -156,7 +191,7 @@ def test_解析启动参数_基本profile():
 
 
 def test_解析启动参数_缺profile报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数([])
@@ -167,7 +202,7 @@ def test_解析启动参数_缺profile报错():
 
 
 def test_解析启动参数_多patch收集():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 从 JSON 导入 序列化JSON
 段落 主程序:
@@ -180,7 +215,7 @@ def test_解析启动参数_多patch收集():
 
 
 def test_解析启动参数_innerargs透传():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 从 JSON 导入 序列化JSON
 段落 主程序:
@@ -193,7 +228,7 @@ def test_解析启动参数_innerargs透传():
 
 
 def test_解析启动参数_version短路():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["-V"])
@@ -204,7 +239,7 @@ def test_解析启动参数_version短路():
 
 
 def test_解析启动参数_dump_config():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["--dump-config", "--profile", "p"])
@@ -215,7 +250,7 @@ def test_解析启动参数_dump_config():
 
 
 def test_解析启动参数_dump互斥报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["--dump-config", "--dump-default-config", "--profile", "p"])
@@ -226,7 +261,7 @@ def test_解析启动参数_dump互斥报错():
 
 
 def test_解析启动参数_plugin子命令():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["plugin", "--profile", "p", "add", "pkg"])
@@ -239,7 +274,7 @@ def test_解析启动参数_plugin子命令():
 
 
 def test_解析启动参数_plugin缺profile报错():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 解析启动参数
 段落 主程序:
   设 o 为 解析启动参数(["plugin", "add", "pkg"])
@@ -249,7 +284,7 @@ def test_解析启动参数_plugin缺profile报错():
 
 
 def test_已发布模板_含acp():
-    r = run_light_source('''
+    r = run_in_repo('''
 从 启动配置 导入 已发布模板
 段落 主程序:
   设 b 为 已发布模板["acp"]["bundles"]

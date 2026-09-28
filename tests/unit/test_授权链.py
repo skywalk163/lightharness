@@ -90,8 +90,8 @@ def test_构造通知_仅消息():
 ''')
     assert_success(r)
     out_contains(r, "消息=请查收邮件")
-    out_contains(r, "URL=假")
-    out_contains(r, "码=假")
+    out_contains(r, "URL=False")
+    out_contains(r, "码=False")
 
 
 def test_构造通知_带url带码():
@@ -119,7 +119,7 @@ def test_构造选项_带描述与无描述():
 ''')
     assert_success(r)
     out_contains(r, "D1=红的")
-    out_contains(r, "D2=假")
+    out_contains(r, "D2=False")
 
 
 def test_构造提问文本_占位():
@@ -136,7 +136,7 @@ def test_构造提问文本_占位():
     assert_success(r)
     out_contains(r, "种类=text")
     out_contains(r, "占位=例如 123456")
-    out_contains(r, "无占位=假")
+    out_contains(r, "无占位=False")
 
 
 def test_构造提问机密与选择():

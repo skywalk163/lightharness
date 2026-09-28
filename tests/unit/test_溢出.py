@@ -143,8 +143,8 @@ def test_校验上限_合法值通过():
   打印("N=" + 转字符串(校验上限(1024)))
 ''')
     assert_success(r)
-    out_contains(r, "Z=真")
-    out_contains(r, "N=真")
+    out_contains(r, "Z=True")
+    out_contains(r, "N=True")
 
 
 def test_校验上限_负数报错():
@@ -246,8 +246,8 @@ def test_溢出提示_拼装定位符():
     r = run_light_source('''
 从 溢出 导入 溢出提示
 段落 主程序:
-  设 引 为 {"定位符":"spill://s1/part1", "检索提示":"Read the full file to see all content."}
-  设 s 为 溢出提示({"种类":"精确", "计数":5}, 引)
+  设 标记 为 {"定位符":"spill://s1/part1", "检索提示":"Read the full file to see all content."}
+  设 s 为 溢出提示({"种类":"精确", "计数":5}, 标记)
   打印("OUT=" + s)
 ''')
     assert_success(r)
@@ -261,10 +261,10 @@ def test_模拟保存文本_返回引用三元组():
 从 溢出 导入 模拟保存文本
 段落 主程序:
   设 输入 为 {"拥有者":{"会话id":"s1"}, "建议名":"part1", "内容":"abc"}
-  设 引 为 模拟保存文本(输入)
-  打印("LOC=" + 引["定位符"])
-  打印("LEN=" + 转字符串(引["字节长度"]))
-  打印("HINT=" + 引["检索提示"])
+  设 结果 为 模拟保存文本(输入)
+  打印("LOC=" + 结果["定位符"])
+  打印("LEN=" + 转字符串(结果["字节长度"]))
+  打印("HINT=" + 结果["检索提示"])
 ''')
     assert_success(r)
     out_contains(r, "LOC=spill://s1/part1")
@@ -276,8 +276,8 @@ def test_溢出替换_充足预算返回预览加提示():
     r = run_light_source('''
 从 溢出 导入 溢出替换
 段落 主程序:
-  设 引 为 {"定位符":"spill://s1/p", "检索提示":"Read the full file to see all content."}
-  设 结果 为 溢出替换("abc", 3, 200, 引)
+  设 标记 为 {"定位符":"spill://s1/p", "检索提示":"Read the full file to see all content."}
+  设 结果 为 溢出替换("abc", 3, 200, 标记)
   如果 结果 == 空:
     打印("GOT=空")
   否则:
@@ -293,8 +293,8 @@ def test_溢出替换_极小预算返回空():
     r = run_light_source('''
 从 溢出 导入 溢出替换
 段落 主程序:
-  设 引 为 {"定位符":"spill://s1/p", "检索提示":"Read the full file to see all content."}
-  设 结果 为 溢出替换("abc", 3, 1, 引)
+  设 标记 为 {"定位符":"spill://s1/p", "检索提示":"Read the full file to see all content."}
+  设 结果 为 溢出替换("abc", 3, 1, 标记)
   如果 结果 == 空:
     打印("GOT=空")
   否则:
