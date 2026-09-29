@@ -13,7 +13,7 @@
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
   ],
-  "版本": "覆盖记录至 R101（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格；FreeBSD fork 已同步 v0.2.0-rc.1）",
+  "版本": "覆盖记录至 R102（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -3445,6 +3445,71 @@
         "examples/test_插件注册表.light"
       ],
       "反跑判据": "反跑1：选首个响应注册表里「首个可达即返回」改成「选延迟最小」→ 顺序敏感用例（npmjs 50ms 比 npmmirror 200ms 更快但排第二）立红；反跑2：造安装规格里 version-unresolved 分支删掉 → 9.9.9 无解被当成功返回立红；反跑3：归类安装失败里 integrity-mismatch 分支删掉 → integrity 错误落 unknown 立红；反跑4：推导启停后清单里「卸=删条目」改成「保留但禁用」→ 卸后清单仍含 b 立红。四组均单点破坏-还原验证，还原后 examples/test_插件注册表.light 退出码0。"
+    },
+    {
+      "编号": 244,
+      "功能": "扩展名→语法高亮语言表（util/code-language：languageForPath 大小写不敏感查表 + readLangHintForPath 短 id 投影 + CODE_HIGHLIGHT_EXTENSIONS 后缀清单；纯查表无状态）",
+      "原版包": "packages/util/code-language（src/index.ts 纯逻辑面；对齐 0.2.0-rc.1 commit e5b5ccbfcb）",
+      "光明模块": "src/代码语言.light",
+      "状态": "done",
+      "本轮目标": "R102：0.2.0-rc.1 广度（新纯逻辑包）",
+      "证据": [
+        "src/代码语言.light",
+        "examples/test_代码语言.light"
+      ],
+      "反跑判据": "反跑1：后缀语法表里「py→python」改成「py→python3」→ languageForPath(\"foo.py\") 期望 python 用例立红；反跑2：路径剥扩展名里「转小写」去掉（改大小写敏感）→ languageForPath(\"foo.JSON\") 期望 json 用例立红；反跑3：readLangHintForPath 里「历史值非空则保持」改成「永远重算」→ readLangHintForPath(\"foo.py\",\"python3\") 期望 python3 保持用例立红。三组均单点破坏-还原验证，还原后 examples/test_代码语言.light 退出码0。"
+    },
+    {
+      "编号": 245,
+      "功能": "time-context 0.2.0-rc.1 深度补缺：经过时长（formatDuration floor+钳零+unavailable）、最小间隔门（refreshIntervalMs>=语义/0=每步注入/挂钟倒退注入）、请求区判定（新轮/续跑/工具回环，工具回环不注入）、时区混杂缺失引导文案（invariant「告诉模型去问」分支）",
+      "原版包": "packages/context/time-context（index.ts formatDuration + renderText elapsed 行 + agent/pre-step 间隔门 / invariant.ts 引导分支）",
+      "光明模块": "src/时间上下文.light（0.2.0-rc.1 扩展段）",
+      "状态": "done",
+      "本轮目标": "R102：0.2.0-rc.1 深度补缺",
+      "证据": [
+        "src/时间上下文.light",
+        "examples/test_时间上下文扩展.light"
+      ],
+      "反跑判据": "反跑1：间隔门从 >= 改成 > → 恰好等于最小间隔的边界用例立红；反跑2：interval=0「永远注入」改成「永远不注入」→ interval=0 用例立红；反跑3：经过时长分钟分支 floor 改成 round → 119s 用例（1 分钟前→2 分钟前）立红；反跑4：挂钟倒退钳零删掉 → 倒退用例立红；反跑5：请求区判定「工具回环」分支删掉 → 工具回环用例落成 新轮/续跑 立红；反跑6：时区引导 mixed/missing 分支删掉（一律返回空）→ 缺失/混杂用例立红。六组均单点破坏-还原验证，还原后 examples/test_时间上下文扩展.light 与既有 examples/test_时间上下文.light 退出码均 0。"
+    },
+    {
+      "编号": 246,
+      "功能": "credentials/authorization 对 0.2.0 审计补缺：session.commit 守卫(CANCELLED：已中止/槽释放/尝试令牌不匹配) + committing 标志(提交期 cancel 不打断) + 提交后删记录第二支 NOT_COMMITTED(configured=false) + settled 键释放不变式",
+      "原版包": "packages/credentials/authorization（index.ts 20013 + invariant.ts 1961 + types.ts 3132；纯逻辑面，真实网络/磁盘 token/浏览器 OAuth 留宿主层）",
+      "光明模块": "src/授权补充.light（新）+ src/授权链.light（接线：码已取消/提交中门/尝试令牌/删记录第二支）",
+      "状态": "done",
+      "本轮目标": "R102：0.2.0-rc.1 深度补缺",
+      "证据": [
+        "src/授权补充.light",
+        "examples/test_授权补充.light"
+      ],
+      "反跑判据": "反跑1：提交守卫删掉「槽在」判断→槽不在也放行，A2(槽不在→CANCELLED)立红；反跑2：取消应中止把「提交中→假」改成「永远真」→B1(提交中cancel不中止)立红；反跑3：提交后授权判定删掉「存储仍配置」分支→删记录被当成功，C2(删记录→NOT_COMMITTED)立红。三组均单点破坏-还原验证，还原后 examples/test_授权补充.light 退出码0；既有 examples/test_授权链.light 回归退出码0。"
+    },
+    {
+      "编号": 247,
+      "功能": "/compact 命令纯逻辑（compaction/command-compact：压缩可用性判定 + 排队提示文案 + 结果摘要 + 不消耗模型轮次；Cordis 注册层不移植）",
+      "原版包": "packages/compaction/command-compact（src/index.ts 纯逻辑面；对齐 0.2.0-rc.1 commit e5b5ccbfcb）",
+      "光明模块": "src/压缩命令.light",
+      "状态": "done",
+      "本轮目标": "R102：0.2.0-rc.1 广度（新纯逻辑包）",
+      "证据": [
+        "src/压缩命令.light",
+        "examples/test_压缩命令.light"
+      ],
+      "反跑判据": "反跑1：压缩可用性里「压缩在跑→不可用」改成「允许」→ 压缩在跑用例（可用期望假）立红；反跑2：压缩可用性里「代理在跑→不可用」改成「允许」→ 代理在跑用例（可用期望假）立红；反跑3：压缩结果摘要里把 token 数丢掉（只报条数）→ 摘要含 token 用例立红。三组均单点破坏-还原验证，还原后 examples/test_压缩命令.light 退出码0。"
+    },
+    {
+      "编号": 248,
+      "功能": "compaction/core 深度审计：checkpoint 保存-恢复 + tool-pairing 配对规则核对（已覆盖确认），补缺 bracket 状态机（双重触发防护/孤儿 summary·end/标识与命令配对/summary 一次性/成功 end 需 summary/error end 回滚）+ 遮蔽序号表校验",
+      "原版包": "packages/compaction/compaction（checkpoint.ts + tool-pairing.ts + invariant.ts + types.ts；纯逻辑面，Cordis ctx/真实 LLM/SurfaceManager 实时事件流不移植）",
+      "光明模块": "src/压缩状态机.light（新）；checkpoint/tool-pairing 已在 src/压缩配套.light §三§五",
+      "状态": "done",
+      "本轮目标": "R102：0.2.0-rc.1 深度补缺",
+      "证据": [
+        "src/压缩状态机.light",
+        "examples/test_压缩检查点.light"
+      ],
+      "反跑判据": "反跑1：推进开始删掉「已有压缩在进行」判断→双重 start 用例立红；反跑2：推进摘要删掉「标识与 start 不匹配」判断→id 错配用例立红；反跑3：推进结束删掉「成功 end 需 summary」判断→无 summary 成功 end 立红；反跑4：推进摘要删掉「重复 summary」判断→二次 summary 用例立红。四组均单点破坏-还原验证，还原后 examples/test_压缩检查点.light 退出码0；既有 test_压缩/压缩配套/压缩E5/压缩自动/压缩命令 回归退出码0。"
     }
   ]
 }

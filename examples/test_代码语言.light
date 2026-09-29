@@ -1,0 +1,80 @@
+# test_代码语言.light —— R102 任务线 E：util/code-language 扩展名→语法表 复刻验收（#244）
+#
+# 覆盖（对齐上游 packages/util/code-language/src/index.ts 纯逻辑面；反跑点已标注）：
+#   1) languageForPath：大小写不敏感查表，路径/文件名→规范 grammar id
+#   2) 反例：未知扩展名 / 无扩展名 / 结尾点 / dotfile → 空
+#   3) readLangHintForPath：历史值存在时保持；不存在时取短名（含 tsx/tf/gradle 覆盖）
+#   4) CODE_HIGHLIGHT_EXTENSIONS：全部后缀列表完整
+#
+# 运行：python 运行.py examples/test_代码语言.light
+
+从 代码语言 导入 languageForPath, readLangHintForPath, 后缀语法表, 短名表, 短名覆盖表, CODE_HIGHLIGHT_EXTENSIONS, 路径剥扩展名
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+# ============ 1) languageForPath 正例（大小写不敏感） ============
+段落 用例languageForPath:
+  断言相等(languageForPath("foo.py"), "python", "py→python")           # 反跑点1：改 .py→python3 必立红
+  断言相等(languageForPath("foo.md"), "markdown", "md→markdown")
+  断言相等(languageForPath("foo.ts"), "typescript", "ts→typescript")
+  断言相等(languageForPath("foo.JSON"), "json", "JSON 大小写不敏感→json")  # 反跑点2：改敏感必立红
+  断言相等(languageForPath("a.TSX"), "typescript", "TSX 大写→typescript")
+  断言相等(languageForPath("src/main.go"), "go", "路径→go")
+  断言相等(languageForPath("C:\\dir\\main.PS1"), "powershell", "Windows 路径大写后缀→powershell")
+  断言相等(languageForPath("/home/user/run.sh"), "shellscript", "POSIX 路径→shellscript")
+  断言相等(languageForPath("x.cpp"), "cpp", "cpp→cpp")
+  断言相等(languageForPath("x.tfvars"), "hcl", "tfvars→hcl")
+  写 "通过: languageForPath 正例"
+
+# ============ 2) languageForPath 反例 ============
+段落 用例languageForPath反例:
+  断言相等(languageForPath("foo.unknown"), 空, "未知扩展名→空")
+  断言相等(languageForPath("Makefile"), 空, "无扩展名→空")     # makefile 后缀才识别，无点不识别
+  断言相等(languageForPath("foo."), 空, "结尾点→空")
+  断言相等(languageForPath(".gitignore"), 空, "dotfile→空（前导点仍算分隔符）")
+  断言相等(languageForPath("noext"), 空, "纯无点名→空")
+  断言相等(languageForPath(""), 空, "空串→空")
+  写 "通过: languageForPath 反例"
+
+# ============ 3) readLangHintForPath：历史值保持 + 短名 ============
+段落 用例readLangHint:
+  # 历史值存在时保持（反跑点3：改「永远重算」→ 此用例立红）
+  断言相等(readLangHintForPath("foo.py", "python3"), "python3", "保持历史值(py)")
+  断言相等(readLangHintForPath("foo.ts", "ts-old"), "ts-old", "保持历史值(ts)")
+  # 历史值缺省（空 / 空串）→ 取短名
+  断言相等(readLangHintForPath("foo.py", 空), "py", "缺历史值取短名(py→py)")
+  断言相等(readLangHintForPath("foo.py", ""), "py", "空串历史值取短名(py→py)")
+  断言相等(readLangHintForPath("foo.md", 空), "md", "md→md")
+  断言相等(readLangHintForPath("foo.json", 空), "json", "json 短名等同 grammar")
+  断言相等(readLangHintForPath("foo.kt", 空), "kotlin", "kotlin 短名等同 grammar（.kt→kotlin）")
+  # 后缀自身名更准确 → 覆盖
+  断言相等(readLangHintForPath("foo.tsx", 空), "tsx", "tsx 覆盖→tsx")
+  断言相等(readLangHintForPath("foo.jsx", 空), "jsx", "jsx 覆盖→jsx")
+  断言相等(readLangHintForPath("foo.tf", 空), "tf", "tf 覆盖→tf")
+  断言相等(readLangHintForPath("foo.tfvars", 空), "tfvars", "tfvars 覆盖→tfvars")
+  断言相等(readLangHintForPath("foo.gradle", 空), "gradle", "gradle 覆盖→gradle")
+  断言相等(readLangHintForPath("foo.ps1", 空), "ps1", "powershell→ps1 短名")
+  # 未知后缀 → 空
+  断言相等(readLangHintForPath("foo.unknown", 空), 空, "未知后缀→空")
+  断言相等(readLangHintForPath("Makefile", 空), 空, "无扩展名→空")
+  写 "通过: readLangHintForPath"
+
+# ============ 4) CODE_HIGHLIGHT_EXTENSIONS 完整性 ============
+段落 用例扩展名列表:
+  断言相等(长度(CODE_HIGHLIGHT_EXTENSIONS), 113, "后缀总数=113")
+  断言相等(字典包含键(后缀语法表, "gradle"), 真, "后缀表含 gradle")
+  断言相等(字典包含键(短名表, "groovy"), 真, "短名表含 groovy")
+  断言相等(字典包含键(短名覆盖表, "jsx"), 真, "覆盖表含 jsx")
+  断言相等(长度(短名表), 60, "短名表语言数=60")
+  写 "通过: CODE_HIGHLIGHT_EXTENSIONS"
+
+段落 主:
+  用例languageForPath()
+  用例languageForPath反例()
+  用例readLangHint()
+  用例扩展名列表()
+  打印 "test_代码语言 PASS"
+
+主()

@@ -1,0 +1,302 @@
+# 代码语言.light —— 复刻 dsh packages/util/code-language（纯逻辑面）
+#
+# 本包是仓库唯一的「文件扩展名 → 语法高亮语言」表，纯查表无状态：
+#   - languageForPath(路径)   ：大小写不敏感，剥路径取扩展名，查表得规范 grammar id。
+#   - readLangHintForPath(路径, 历史后缀值)：read 卡片持久化的短 id；
+#       已录制会话已持有该后缀的值（历史后缀值）时保持不动，其余取语言短名。
+#   - CODE_HIGHLIGHT_EXTENSIONS：全部可识别后缀列表（供预览注册声明）。
+# 不做：浏览器高亮器、Cordis service、运行时状态。
+#
+# 运行：python 运行.py examples/test_代码语言.light
+
+从 字符串工具轻量 导入 转小写, 字符串长度
+
+# ---- 常量表：后缀 → 规范语法 id（逐行对齐上游 index.ts 的 LANGUAGES；Map 防 Object.prototype 误命中）----
+设 后缀语法表 为 {
+  "ts": "typescript",
+  "tsx": "typescript",
+  "mts": "typescript",
+  "cts": "typescript",
+  "js": "javascript",
+  "jsx": "javascript",
+  "mjs": "javascript",
+  "cjs": "javascript",
+  "sh": "shellscript",
+  "bash": "shellscript",
+  "zsh": "shellscript",
+  "fish": "fish",
+  "json": "json",
+  "jsonc": "json",
+  "jsonl": "json",
+  "ndjson": "json",
+  "ipynb": "json",
+  "csv": "csv",
+  "py": "python",
+  "pyw": "python",
+  "pyi": "python",
+  "rb": "ruby",
+  "rake": "ruby",
+  "gemspec": "ruby",
+  "go": "go",
+  "rs": "rust",
+  "java": "java",
+  "c": "c",
+  "h": "c",
+  "cc": "cpp",
+  "cpp": "cpp",
+  "cxx": "cpp",
+  "hh": "cpp",
+  "hpp": "cpp",
+  "hxx": "cpp",
+  "cs": "csharp",
+  "kt": "kotlin",
+  "kts": "kotlin",
+  "swift": "swift",
+  "php": "php",
+  "yaml": "yaml",
+  "yml": "yaml",
+  "toml": "toml",
+  "ini": "ini",
+  "conf": "ini",
+  "cfg": "ini",
+  "properties": "ini",
+  "env": "dotenv",
+  "log": "log",
+  "diff": "diff",
+  "patch": "diff",
+  "http": "http",
+  "md": "markdown",
+  "markdown": "markdown",
+  "mdx": "mdx",
+  "rst": "rst",
+  "tex": "latex",
+  "sty": "latex",
+  "cls": "latex",
+  "bib": "bibtex",
+  "adoc": "asciidoc",
+  "html": "html",
+  "htm": "html",
+  "xhtml": "html",
+  "css": "css",
+  "scss": "scss",
+  "less": "less",
+  "sql": "sql",
+  "xml": "xml",
+  "xsd": "xml",
+  "xsl": "xml",
+  "xslt": "xml",
+  "plist": "xml",
+  "svg": "xml",
+  "lua": "lua",
+  "bat": "bat",
+  "cmd": "bat",
+  "ps1": "powershell",
+  "psm1": "powershell",
+  "psd1": "powershell",
+  "r": "r",
+  "jl": "julia",
+  "dart": "dart",
+  "scala": "scala",
+  "clj": "clojure",
+  "cljs": "clojure",
+  "edn": "clojure",
+  "erl": "erlang",
+  "hrl": "erlang",
+  "ex": "elixir",
+  "exs": "elixir",
+  "hs": "haskell",
+  "fs": "fsharp",
+  "fsi": "fsharp",
+  "fsx": "fsharp",
+  "vb": "vb",
+  "pl": "perl",
+  "pm": "perl",
+  "v": "verilog",
+  "graphql": "graphql",
+  "gql": "graphql",
+  "proto": "proto",
+  "tf": "hcl",
+  "tfvars": "hcl",
+  "hcl": "hcl",
+  "nix": "nix",
+  "vue": "vue",
+  "svelte": "svelte",
+  "makefile": "make",
+  "mk": "make",
+  "cmake": "cmake",
+  "gradle": "groovy",
+  "groovy": "groovy"
+}
+
+# ---- 常量表：规范语言 id → 短名（对齐上游 SHORT_BY_LANGUAGE；kotlin/swift/json 等短名等同 grammar id）----
+设 短名表 为 {
+  "typescript": "ts",
+  "javascript": "js",
+  "shellscript": "sh",
+  "fish": "fish",
+  "json": "json",
+  "csv": "csv",
+  "python": "py",
+  "ruby": "rb",
+  "go": "go",
+  "rust": "rs",
+  "java": "java",
+  "c": "c",
+  "cpp": "cpp",
+  "csharp": "cs",
+  "kotlin": "kotlin",
+  "swift": "swift",
+  "php": "php",
+  "yaml": "yaml",
+  "toml": "toml",
+  "ini": "ini",
+  "dotenv": "env",
+  "log": "log",
+  "diff": "diff",
+  "http": "http",
+  "markdown": "md",
+  "mdx": "mdx",
+  "rst": "rst",
+  "latex": "tex",
+  "bibtex": "bib",
+  "asciidoc": "adoc",
+  "html": "html",
+  "css": "css",
+  "scss": "scss",
+  "less": "less",
+  "sql": "sql",
+  "xml": "xml",
+  "lua": "lua",
+  "bat": "bat",
+  "powershell": "ps1",
+  "r": "r",
+  "julia": "jl",
+  "dart": "dart",
+  "scala": "scala",
+  "clojure": "clj",
+  "erlang": "erl",
+  "elixir": "ex",
+  "haskell": "hs",
+  "fsharp": "fs",
+  "vb": "vb",
+  "perl": "pl",
+  "verilog": "v",
+  "graphql": "graphql",
+  "proto": "proto",
+  "hcl": "hcl",
+  "nix": "nix",
+  "vue": "vue",
+  "svelte": "svelte",
+  "make": "make",
+  "cmake": "cmake",
+  "groovy": "groovy"
+}
+
+# ---- 常量表：特定后缀的短名覆盖（后缀自身名更准确；对齐上游 READ_LANG_BY_EXTENSION）----
+设 短名覆盖表 为 {
+  "tsx": "tsx",
+  "jsx": "jsx",
+  "tf": "tf",
+  "tfvars": "tfvars",
+  "gradle": "gradle"
+}
+
+# ---- 常量表：全部可识别后缀（对齐上游 CODE_HIGHLIGHT_EXTENSIONS）----
+设 CODE_HIGHLIGHT_EXTENSIONS 为 [
+  "ts", "tsx", "mts", "cts",
+  "js", "jsx", "mjs", "cjs",
+  "sh", "bash", "zsh",
+  "fish",
+  "json", "jsonc", "jsonl", "ndjson", "ipynb",
+  "csv",
+  "py", "pyw", "pyi",
+  "rb", "rake", "gemspec",
+  "go",
+  "rs",
+  "java",
+  "c", "h",
+  "cc", "cpp", "cxx", "hh", "hpp", "hxx",
+  "cs",
+  "kt", "kts",
+  "swift",
+  "php",
+  "yaml", "yml",
+  "toml",
+  "ini", "conf", "cfg", "properties",
+  "env",
+  "log",
+  "diff", "patch",
+  "http",
+  "md", "markdown",
+  "mdx",
+  "rst",
+  "tex", "sty", "cls",
+  "bib",
+  "adoc",
+  "html", "htm", "xhtml",
+  "css",
+  "scss",
+  "less",
+  "sql",
+  "xml", "xsd", "xsl", "xslt", "plist", "svg",
+  "lua",
+  "bat", "cmd",
+  "ps1", "psm1", "psd1",
+  "r",
+  "jl",
+  "dart",
+  "scala",
+  "clj", "cljs", "edn",
+  "erl", "hrl",
+  "ex", "exs",
+  "hs",
+  "fs", "fsi", "fsx",
+  "vb",
+  "pl", "pm",
+  "v",
+  "graphql", "gql",
+  "proto",
+  "tf", "tfvars", "hcl",
+  "nix",
+  "vue",
+  "svelte",
+  "makefile", "mk",
+  "cmake",
+  "gradle", "groovy"
+]
+
+# ---- 剥路径取扩展名（小写）：取最后一段最后一个点之后文本；前导点仍算分隔符；无点/无扩展名→空 ----
+段落 路径剥扩展名(路径):
+  设 斜杠 为 最后索引(路径, "/")
+  设 反斜 为 最后索引(路径, "\\")
+  如果 反斜 > 斜杠: 设 斜杠 为 反斜
+  设 基 为 截取(路径, 斜杠 + 1, 字符串长度(路径))
+  设 点 为 最后索引(基, ".")
+  如果 点 < 0: 返回 空
+  返回 转小写(截取(基, 点 + 1, 字符串长度(基)))
+
+# ---- languageForPath：路径/文件名 → 规范语法 id（大小写不敏感）；未知/无扩展名 → 空 ----
+段落 languageForPath(路径):
+  设 扩展名 为 路径剥扩展名(路径)
+  如果 扩展名 == 空: 返回 空
+  如果 字典包含键(后缀语法表, 扩展名) == 真:
+    返回 后缀语法表[扩展名]
+  返回 空
+
+# ---- readLangHintForPath：路径 → read 卡片持久化的短 id ----
+#   已录制会话已持有该后缀的值（历史后缀值，非空）时保持不动；其余取语言短名
+#   （powershell→ps1 等）；后缀自身名更准确者（tsx/tf/gradle）由 短名覆盖表 决定；
+#   无法识别的后缀 → 空（按纯文本渲染）。
+段落 readLangHintForPath(路径, 历史后缀值):
+  # 反跑点3：把「历史值非空则保持」改成「永远重算」→ 保持历史值用例立红
+  如果 历史后缀值 != 空 且 历史后缀值 != "":
+    返回 历史后缀值
+  设 扩展名 为 路径剥扩展名(路径)
+  如果 扩展名 == 空: 返回 空
+  如果 字典包含键(后缀语法表, 扩展名) == 假: 返回 空
+  设 规范 为 后缀语法表[扩展名]
+  如果 字典包含键(短名覆盖表, 扩展名) == 真:
+    返回 短名覆盖表[扩展名]
+  返回 短名表[规范]
+
+导出 后缀语法表, 短名表, 短名覆盖表, CODE_HIGHLIGHT_EXTENSIONS, 路径剥扩展名, languageForPath, readLangHintForPath

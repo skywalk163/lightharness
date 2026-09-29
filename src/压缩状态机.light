@@ -1,0 +1,141 @@
+# 压缩状态机.light —— R102 任务I：compaction/invariant.ts 括号状态机纯逻辑
+#
+# 上游 packages/compaction/compaction/src/invariant.ts（14867）纯逻辑面。
+# 既有覆盖（对照后确认，不重复移植）：
+#   - checkpoint.ts → 压缩配套.light §五 造检查点来源 / 是否检查点来源
+#     （kind:'compact-checkpoint' 适配为本地 种类=plugin/插件=compact 词表）
+#   - tool-pairing.ts → 压缩配套.light §三 条目增量/扩展缓存/同步平衡缓存/
+#     切口平衡/配对平衡前/后
+#
+# 本文件补缺：压缩日志流 bracket 状态机（compaction/start · summary · end）
+#   A. 双重触发防护：开启中有未闭合 bracket 时再来 start → 失败
+#   B. 孤儿事件：summary/end 无对应 start → 失败
+#   C. 标识配对：summary/end 的 压缩标识/命令标识 必须与 open 的 start 一致
+#   D. summary 一次性：同一 bracket 内 summary 重复 → 失败
+#   E. 成功 end 需 summary：无 error 的 end 必须落在一次 summary 之后；
+#      带 error 的 end 允许无 summary（取消/失败后状态回滚，清槽）
+#   F. 遮蔽序号表校验：非空、首末对齐 range、按表面区间逐节点全等
+#
+# 不移植（宿主层）：Cordis ctx / invariants.register / SurfaceManager 实时事件流 /
+#   internal/dispatch 预提交暂存 / turn 边界跨 bracket 检查 / end-seed 孤儿清理。
+
+# 构造空轨迹：无开启中的压缩 bracket
+段落 构造压缩轨迹:
+  返回 {"开启": 空}
+
+# 非空字符串判定（对齐上游 validateId）
+段落 串非空(值):
+  如果 是字符串(值) == 假:
+    返回 假
+  如果 字符串长度(值) == 0:
+    返回 假
+  返回 真
+
+# 推进 compaction/start：占槽。返回错误消息；空=通过（并写入开启 bracket）
+段落 推进开始(轨迹, 数据):
+  如果 串非空(数据["标识"]) != 真:
+    返回 "compaction/start 标识必须为非空字符串"
+  设 命令 为 取可选(数据, "命令")
+  如果 命令 != 空:
+    如果 串非空(命令) != 真:
+      返回 "compaction/start 命令标识必须为非空字符串"
+  # A. 双重触发防护
+  如果 轨迹["开启"] != 空:
+    返回 "compaction/start 时已有压缩在进行"
+  设 轨迹["开启"] 为 {"标识": 数据["标识"], "命令": 命令, "轮次": 取可选(数据, "轮次"), "已摘要": 假}
+  返回 空
+
+# 推进 compaction/summary：记录已摘要。返回错误消息；空=通过
+段落 推进摘要(轨迹, 数据):
+  如果 串非空(数据["标识"]) != 真:
+    返回 "compaction/summary 标识必须为非空字符串"
+  设 开启 为 轨迹["开启"]
+  # B. 孤儿 summary
+  如果 开启 == 空:
+    返回 "compaction/summary 无对应 compaction/start"
+  # C. 标识配对
+  如果 数据["标识"] != 开启["标识"]:
+    返回 "compaction/summary 标识与 start 不匹配"
+  设 命令 为 取可选(数据, "命令")
+  如果 命令 != 开启["命令"]:
+    返回 "compaction/summary 命令标识与 start 不一致"
+  # D. summary 一次性
+  如果 开启["已摘要"] == 真:
+    返回 "compaction/summary 在一次压缩内重复"
+  设 开启["已摘要"] 为 真
+  返回 空
+
+# 推进 compaction/end：释放槽。返回错误消息；空=通过（并清槽）
+段落 推进结束(轨迹, 数据):
+  如果 串非空(数据["标识"]) != 真:
+    返回 "compaction/end 标识必须为非空字符串"
+  设 开启 为 轨迹["开启"]
+  # B. 孤儿 end
+  如果 开启 == 空:
+    返回 "compaction/end 无对应 compaction/start"
+  # C. 标识/轮次配对
+  如果 数据["标识"] != 开启["标识"]:
+    返回 "compaction/end 标识与 start 不匹配"
+  设 命令 为 取可选(数据, "命令")
+  如果 命令 != 开启["命令"]:
+    返回 "compaction/end 命令标识与 start 不一致"
+  设 轮次 为 取可选(数据, "轮次")
+  如果 轮次 != 开启["轮次"]:
+    返回 "compaction/end 轮次与 start 不匹配"
+  # E. 成功 end 需一次 summary；带 error 的 end 视为取消/失败回滚，允许无 summary
+  设 出错 为 取可选(数据, "错误")
+  如果 出错 == 空:
+    如果 开启["已摘要"] != 真:
+      返回 "成功的 compaction/end 需要一次 compaction/summary"
+  设 轨迹["开启"] 为 空
+  返回 空
+
+# 单入口：按事件类别分发到 start/summary/end 推进；其余类别返回空（不关心）
+段落 推进压缩轨迹(轨迹, 事件):
+  设 类别 为 事件["类别"]
+  如果 类别 == "compaction/start":
+    返回 推进开始(轨迹, 事件["数据"])
+  如果 类别 == "compaction/summary":
+    返回 推进摘要(轨迹, 事件["数据"])
+  如果 类别 == "compaction/end":
+    返回 推进结束(轨迹, 事件["数据"])
+  返回 空
+
+# F. 校验遮蔽序号表（对齐上游 validateShadowedSeqs）
+#    节点表=当前表面节点序号表；起点/终点=shadowedRange；遮蔽表=shadowedSeqs。
+#    返回错误消息；空=通过。
+段落 校验遮蔽表(节点表, 起点, 终点, 遮蔽表):
+  设 蔽长 为 列表长度(遮蔽表)
+  如果 蔽长 == 0:
+    返回 "遮蔽序号表必须非空"
+  如果 遮蔽表[0] != 起点:
+    返回 "遮蔽序号表首项须等于 range.start"
+  设 末项 为 遮蔽表[蔽长 - 1]
+  如果 末项 != 终点:
+    返回 "遮蔽序号表末项须等于 range.end"
+  设 起索引 为 -1
+  设 终索引 为 -1
+  设 表长 为 列表长度(节点表)
+  设 序号 为 0
+  当 序号 < 表长:
+    如果 节点表[序号] == 起点:
+      设 起索引 为 序号
+    如果 节点表[序号] == 终点:
+      设 终索引 为 序号
+    设 序号 为 序号 + 1
+  如果 起索引 < 0:
+    返回 "遮蔽序号须命名一个当前表面区间"
+  如果 终索引 < 起索引:
+    返回 "遮蔽序号须命名一个更早的当前表面区间"
+  # 期望：表面 [起索引..终索引] 逐项全等遮蔽表，且长度一致
+  设 j 为 0
+  当 j < 蔽长:
+    设 k 为 起索引 + j
+    如果 k > 终索引:
+      返回 "遮蔽序号表须列出当前表面区间内每个节点"
+    如果 遮蔽表[j] != 节点表[k]:
+      返回 "遮蔽序号表须列出当前表面区间内每个节点"
+    设 j 为 j + 1
+  如果 终索引 - 起索引 + 1 != 蔽长:
+    返回 "遮蔽序号表须列出当前表面区间内每个节点"
+  返回 空
