@@ -86,12 +86,14 @@ def 执行命令(
     命令列表 = 命令 if isinstance(命令, list) else 命令
     shell = isinstance(命令, str)
 
-    # Windows 上用 PowerShell 执行（比 cmd.exe 兼容更多 bash 命令别名）
-    if shell and sys.platform == 'win32':
-        if not str(命令列表).startswith('powershell'):
-            转义后 = str(命令列表).replace('"', '`"')
-            命令列表 = f'powershell.exe -NoProfile -Command "{转义后}"'
-
+    # R100 路 B：撤回 9/25 批次的 PowerShell 包装。
+    # 该包装声称「兼容更多 bash 命令别名」，但实际破坏了两条既有契约：
+    #   1. 精确退出码——`"py" -c "exit(3)"` 被 PS 当 ParserError，恒返回 1
+    #      （PS -Command 不透传原生进程退出码）；
+    #   2. cmd 语法——`echo a & echo b` 在 PS 里 `&` 非法。
+    # test_子进程码 / test_子进程流式 的注释明写「POSIX sh 与 cmd.exe 双平台绿」，
+    # shell=True 在 Windows 上本就走 cmd.exe。如未来确需 PS 能力，应显式让
+    # 调用方写 powershell 命令（下方 startswith('powershell') 分支仍放行）。
     环境 = None
     if 环境变量:
         环境 = dict(os.environ)
