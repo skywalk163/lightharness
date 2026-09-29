@@ -1,0 +1,253 @@
+# 预设组合.light —— 第103轮 任务线A：四个内置 agent preset 的插件 / skill 组合数据表
+#
+# 上游（逐行复刻，未做改写）：
+#   packages/bundle/web-app/presets/standard.patch.yml（order 1）
+#   packages/bundle/web-app/presets/ptc.patch.yml      （order 2）
+#   packages/bundle/web-app/presets/minimal.patch.yml  （order 3）
+#   packages/bundle/web-app/presets/cordis.patch.yml   （order 4）
+# 每个 patch.yml 只做一件事：在 web patch 之后插入一条 `@deepseek-ai/dsh-agent-preset`
+#   声明行（id = preset-<预设标识>），其 config.plugins 即本模块的「插件行表」。
+#   Web 编辑器保存时按 id 覆盖该声明行的 config.plugins（见 web-app/README.zh.md）。
+#
+# 行形状（与 src/预设深化.light 的 行标识 / 是否组行 / 展平行 / 是动态禁用标记 对齐，
+#   B 线可直接用 预设深化.展平行 展平本表）：
+#   {"id": 串, "name": 串, "group": 布尔, "config": <子行表 或 标量字典>, "disabled": 布尔 或 {"js表达式": 串}}
+#   - 组行（group 真）name 恒为 "cordis:group"，其 config 是子行表；
+#   - 叶子行的 config 是标量字典（缺配置的叶子登记 {}）；
+#   - 上游省略 disabled 即「启用」，本表统一显式登记 "disabled": 假（语义等价，形状更齐）；
+#   - `!!js <expr>` 一律登记为 {"js表达式": "<expr> 原文"}，供宿主求值器判定；
+#   - config 只登记标量键（字符串 / 数字 / 布尔）。多行文案块（plan-mode 的 section、
+#     persistent-bash / persistent-pwsh 的 description）截断至首行；非标量值
+#     （cordis skill-filesystem 的 customSkillDirs：含 !!js 的单元素列表）不予登记。
+#     被截断或被省略的配置键名写进该行的 "已截断" 列表键——如实标注，不虚构内容。
+#
+# 计数口径（与 examples/test_预设组合.light 的对拍值一致）：
+#   声明   —— 每个 preset 恒 1 条（preset-<标识> 那一行，不在插件行表内）；
+#   插件行 —— 行树的递归计数（组行自身算 1 行 + 其子行递归）；
+#   展平后 —— 声明 + 插件行，即整棵行树（含声明行）的全部节点数。
+#   例：minimal = 1(preset-minimal) + 1(persona) + 1(persistent-shell 组行) + 5(组内子项) = 8。
+#
+# 语言限制遵守：L-047（字典/列表字面量不可直接作实参 → 一律先赋变量）；
+#   标识符避开关键字与含「文本」的名字；列表/字典字面量不内含换行符。
+
+从 内置核心字典 导入 字典包含键, 字典获取
+
+# =====================================================================
+# §1 共享组行（standard / ptc / cordis 三份 patch.yml 中逐字相同的部分）
+# =====================================================================
+
+# planning：cordis:group（isolate.planMode）+ 唯一子项 plan-mode
+#   plan-mode 的 config.section 上游是多段多行块标量，此处保留首段（首行），余下登记 已截断。
+段落 规划组行():
+  设 子表 为 [
+    {"id": "plan-mode", "name": "@deepseek-ai/dsh-plan-mode", "group": 假, "config": {"section": "You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode."}, "disabled": 假, "已截断": ["section"]}]
+  返回 {"id": "planning", "name": "cordis:group", "group": 真, "config": 子表, "disabled": 假}
+
+# compaction：cordis:group（isolate.compaction + isolate.toolResultPruner）+ 三子项
+段落 压缩组行():
+  设 子表 为 [
+    {"id": "compaction-basic", "name": "@deepseek-ai/dsh-compaction-basic", "group": 假, "config": {}, "disabled": 假},
+    {"id": "command-compact", "name": "@deepseek-ai/dsh-command-compact", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-result-pruner", "name": "@deepseek-ai/dsh-compaction-tool-result-pruner", "group": 假, "config": {"thresholdChars": 8192, "headChars": 4096, "tailChars": 1024}, "disabled": 假}]
+  返回 {"id": "compaction", "name": "cordis:group", "group": 真, "config": 子表, "disabled": 假}
+
+# delegation：cordis:group（isolate.workflowEngine）+ 九子项
+#   ptc 的 workflow-ptc / tool-workflow 额外 disabled: true；standard / cordis 不禁用。
+#   故以形参 工作流禁用 承载这一处差异，其余八项三预设完全一致。
+段落 委派组行(工作流禁用):
+  设 子表 为 [
+    {"id": "tool-subagent-control", "name": "@deepseek-ai/dsh-tool-subagent-control", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-subagent-list-agents", "name": "@deepseek-ai/dsh-tool-subagent-control/list-agents", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-subagent", "name": "@deepseek-ai/dsh-tool-subagent", "group": 假, "config": {"provider": "spawn", "toolName": "subagent", "modelSelectionSettings": 真, "backgroundMode": "continuable"}, "disabled": 假},
+    {"id": "tool-subagent-fork", "name": "@deepseek-ai/dsh-tool-subagent", "group": 假, "config": {"provider": "fork", "toolName": "subagent_fork", "backgroundMode": "continuable"}, "disabled": 假},
+    {"id": "tool-subagent-codex", "name": "@deepseek-ai/dsh-tool-subagent", "group": 假, "config": {"provider": "codex", "toolName": "subagent_codex", "backgroundMode": "one-shot", "maxDepth": "provider-managed"}, "disabled": 真},
+    {"id": "tool-subagent-claude-code", "name": "@deepseek-ai/dsh-tool-subagent", "group": 假, "config": {"provider": "claude-code", "toolName": "subagent_claude_code", "backgroundMode": "one-shot", "maxDepth": "provider-managed"}, "disabled": 真},
+    {"id": "workflow-ptc", "name": "@deepseek-ai/dsh-workflow-ptc", "group": 假, "config": {"provider": "spawn"}, "disabled": 工作流禁用},
+    {"id": "tool-workflow", "name": "@deepseek-ai/dsh-tool-workflow", "group": 假, "config": {}, "disabled": 工作流禁用},
+    {"id": "tool-ralph", "name": "@deepseek-ai/dsh-tool-ralph", "group": 假, "config": {"subagentProvider": "spawn", "maxRounds": 64}, "disabled": 真}]
+  返回 {"id": "delegation", "name": "cordis:group", "group": 真, "config": 子表, "disabled": 假}
+
+# =====================================================================
+# §2 四预设的插件行表（逐行对齐各自 patch.yml 的 config.plugins）
+# =====================================================================
+
+# standard（order 1）：19 个顶层行，其中 3 个组行共 13 个子项 → 递归 32 行
+段落 标准组合行表():
+  设 规划 为 规划组行()
+  设 压缩 为 压缩组行()
+  设 委派 为 委派组行(假)
+  设 表 为 [
+    {"id": "persona", "name": "@deepseek-ai/dsh-persona", "group": 假, "config": {"suffix": "Your working directory is {{cwd}}.", "prefix": "You are a coding agent powered by the {{model}} model."}, "disabled": 假},
+    {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
+    {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
+    {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
+    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
+    {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-skill", "name": "@deepseek-ai/dsh-tool-skill", "group": 假, "config": {}, "disabled": 假},
+    {"id": "command-goal", "name": "@deepseek-ai/dsh-command-goal", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-goal", "name": "@deepseek-ai/dsh-tool-goal", "group": 假, "config": {}, "disabled": 假},
+    规划,
+    压缩,
+    委派,
+    {"id": "tool-ask-user", "name": "@deepseek-ai/dsh-tool-ask-user", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-todo", "name": "@deepseek-ai/dsh-tool-todo", "group": 假, "config": {"allowParallelInProgress": 真}, "disabled": 假},
+    {"id": "tool-web", "name": "@deepseek-ai/dsh-tool-web", "group": 假, "config": {"fetch": 真, "searchTimeoutMs": 60000}, "disabled": 假},
+    {"id": "present", "name": "@deepseek-ai/dsh-tool-present", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-plugin-manager", "name": "@deepseek-ai/dsh-plugin-manager/tools", "group": 假, "config": {}, "disabled": 真}]
+  返回 表
+
+# ptc（order 2）：standard 全部 + tool-presentation（mode: ptc）；
+#   且 delegation 组内的 workflow-ptc / tool-workflow 置 disabled: true。
+#   20 个顶层行 + 13 个子项 → 递归 33 行
+段落 编码组合行表():
+  设 规划 为 规划组行()
+  设 压缩 为 压缩组行()
+  设 委派 为 委派组行(真)
+  设 表 为 [
+    {"id": "persona", "name": "@deepseek-ai/dsh-persona", "group": 假, "config": {"suffix": "Your working directory is {{cwd}}.", "prefix": "You are a coding agent powered by the {{model}} model."}, "disabled": 假},
+    {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
+    {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
+    {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
+    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
+    {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-skill", "name": "@deepseek-ai/dsh-tool-skill", "group": 假, "config": {}, "disabled": 假},
+    {"id": "command-goal", "name": "@deepseek-ai/dsh-command-goal", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-goal", "name": "@deepseek-ai/dsh-tool-goal", "group": 假, "config": {}, "disabled": 假},
+    规划,
+    压缩,
+    委派,
+    {"id": "tool-ask-user", "name": "@deepseek-ai/dsh-tool-ask-user", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-todo", "name": "@deepseek-ai/dsh-tool-todo", "group": 假, "config": {"allowParallelInProgress": 真}, "disabled": 假},
+    {"id": "tool-web", "name": "@deepseek-ai/dsh-tool-web", "group": 假, "config": {"fetch": 真, "searchTimeoutMs": 60000}, "disabled": 假},
+    {"id": "tool-presentation", "name": "@deepseek-ai/dsh-agent-tool-presentation", "group": 假, "config": {"mode": "ptc"}, "disabled": 假},
+    {"id": "present", "name": "@deepseek-ai/dsh-tool-present", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-plugin-manager", "name": "@deepseek-ai/dsh-plugin-manager/tools", "group": 假, "config": {}, "disabled": 真}]
+  返回 表
+
+# minimal（order 3）：persona + persistent-shell 组（cordis:group，isolate.terminals）
+#   组内 5 子项：pty / terminal-bash / persistent-bash / terminal-pwsh / persistent-pwsh。
+#   bash 系在 win32 禁用、pwsh 系在非 win32 禁用（均 !!js 表达式）。
+#   persistent-bash / persistent-pwsh 的 description 是多行块标量，此处保留首行。
+#   2 个顶层行 + 5 个子项 → 递归 7 行
+段落 极简组合行表():
+  设 壳组 为 {"id": "persistent-shell", "name": "cordis:group", "group": 真, "config": [
+    {"id": "pty", "name": "@deepseek-ai/dsh-terminal", "group": 假, "config": {}, "disabled": 假},
+    {"id": "terminal-bash", "name": "@deepseek-ai/dsh-terminal-bash", "group": 假, "config": {"timeoutMs": 300000}, "disabled": {"js表达式": "process.platform === 'win32'"}},
+    {"id": "persistent-bash", "name": "@deepseek-ai/dsh-tool-bash-persistent", "group": 假, "config": {"timeoutMs": 300000, "description": "Run commands in a bash shell"}, "disabled": {"js表达式": "process.platform === 'win32'"}, "已截断": ["description"]},
+    {"id": "terminal-pwsh", "name": "@deepseek-ai/dsh-terminal-bash", "group": 假, "config": {"shellDialect": "pwsh", "timeoutMs": 300000}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
+    {"id": "persistent-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh-persistent", "group": 假, "config": {"timeoutMs": 300000, "description": "Run commands in a PowerShell shell"}, "disabled": {"js表达式": "process.platform !== 'win32'"}, "已截断": ["description"]}], "disabled": 假}
+  设 表 为 [
+    {"id": "persona", "name": "@deepseek-ai/dsh-persona", "group": 假, "config": {"prefix": "You are a helpful software engineer assistant.", "complete": 真, "includeRuntimeContext": 假}, "disabled": 假},
+    壳组]
+  返回 表
+
+# cordis（order 4）：standard 去掉 tool-presentation，改为 tool-cordis；
+#   skill-filesystem 多一项 customSkillDirs（含 !!js 的单元素列表，非标量 → 不登记，记 已截断）；
+#   tool-plugin-manager 的 disabled 是 !!js "!ctx.get('profileContext')"（而非字面 true）。
+#   20 个顶层行 + 13 个子项 → 递归 33 行
+段落 组装组合行表():
+  设 规划 为 规划组行()
+  设 压缩 为 压缩组行()
+  设 委派 为 委派组行(假)
+  设 表 为 [
+    {"id": "persona", "name": "@deepseek-ai/dsh-persona", "group": 假, "config": {"suffix": "Your working directory is {{cwd}}.", "prefix": "You are a coding agent powered by the {{model}} model."}, "disabled": 假},
+    {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
+    {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
+    {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
+    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
+    {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "command-goal", "name": "@deepseek-ai/dsh-command-goal", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-goal", "name": "@deepseek-ai/dsh-tool-goal", "group": 假, "config": {}, "disabled": 假},
+    规划,
+    压缩,
+    委派,
+    {"id": "tool-ask-user", "name": "@deepseek-ai/dsh-tool-ask-user", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-todo", "name": "@deepseek-ai/dsh-tool-todo", "group": 假, "config": {"allowParallelInProgress": 真}, "disabled": 假},
+    {"id": "tool-web", "name": "@deepseek-ai/dsh-tool-web", "group": 假, "config": {"fetch": 真, "searchTimeoutMs": 60000}, "disabled": 假},
+    {"id": "tool-cordis", "name": "@deepseek-ai/dsh-tool-cordis", "group": 假, "config": {}, "disabled": 假},
+    {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem", "group": 假, "config": {}, "disabled": 假, "已截断": ["customSkillDirs"]},
+    {"id": "tool-skill", "name": "@deepseek-ai/dsh-tool-skill", "group": 假, "config": {}, "disabled": 假},
+    {"id": "present", "name": "@deepseek-ai/dsh-tool-present", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-plugin-manager", "name": "@deepseek-ai/dsh-plugin-manager/tools", "group": 假, "config": {}, "disabled": {"js表达式": "!ctx.get('profileContext')"}}]
+  返回 表
+
+# =====================================================================
+# §3 组合清单：每预设一条 {order, 插件行表}
+# =====================================================================
+段落 组合清单():
+  设 标准行 为 标准组合行表()
+  设 编码行 为 编码组合行表()
+  设 极简行 为 极简组合行表()
+  设 组装行 为 组装组合行表()
+  设 标准条目 为 {"order": 1, "插件行表": 标准行}
+  设 编码条目 为 {"order": 2, "插件行表": 编码行}
+  设 极简条目 为 {"order": 3, "插件行表": 极简行}
+  设 组装条目 为 {"order": 4, "插件行表": 组装行}
+  返回 {"standard": 标准条目, "ptc": 编码条目, "minimal": 极简条目, "cordis": 组装条目}
+
+段落 预设清单():
+  返回 ["standard", "ptc", "minimal", "cordis"]
+
+段落 是已知预设(预设标识):
+  如果 是字符串(预设标识) == 假:
+    返回 假
+  返回 字典包含键(组合清单(), 预设标识)
+
+# =====================================================================
+# §4 查询接口
+# =====================================================================
+
+# 组合(预设标识) → 插件行表；未知预设返回 空（不抛错，抛错语义留给上层 预设.造未知道错误）
+段落 组合(预设标识):
+  如果 是已知预设(预设标识) == 假:
+    返回 空
+  返回 组合清单()[预设标识]["插件行表"]
+
+# 组合行数：行树递归计数（组行自身 1 行 + 其子行递归）
+段落 组合行数(行表):
+  设 计数 为 0
+  遍历 行 之 行表:
+    设 计数 为 计数 + 1
+    如果 字典获取(行, "group", 假) == 真:
+      设 子表 为 字典获取(行, "config", [])
+      设 计数 为 计数 + 组合行数(子表)
+  返回 计数
+
+# 组合统计(预设标识) → {声明: 1, 插件行: n, 展平后: m}
+#   声明行（preset-*）不在插件行表内，故不计入「插件行」；
+#   展平后 = 声明 + 插件行（整棵行树的节点数）。未知预设三值全 0。
+段落 组合统计(预设标识):
+  设 行表 为 组合(预设标识)
+  如果 行表 == 空:
+    返回 {"声明": 0, "插件行": 0, "展平后": 0}
+  设 插件行 为 组合行数(行表)
+  返回 {"声明": 1, "插件行": 插件行, "展平后": 插件行 + 1}
+
+# 预设序(预设标识) → order 常量；未知返回 0
+段落 预设序(预设标识):
+  如果 是已知预设(预设标识) == 假:
+    返回 0
+  返回 组合清单()[预设标识]["order"]
+
+# =====================================================================
+# 导出
+# =====================================================================
+导出 组合清单
+导出 预设清单
+导出 是已知预设
+导出 组合
+导出 组合行数
+导出 组合统计
+导出 预设序
+导出 标准组合行表
+导出 编码组合行表
+导出 极简组合行表
+导出 组装组合行表
+导出 规划组行
+导出 压缩组行
+导出 委派组行

@@ -13,7 +13,7 @@
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
   ],
-  "版本": "覆盖记录至 R102（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -3510,6 +3510,32 @@
         "examples/test_压缩检查点.light"
       ],
       "反跑判据": "反跑1：推进开始删掉「已有压缩在进行」判断→双重 start 用例立红；反跑2：推进摘要删掉「标识与 start 不匹配」判断→id 错配用例立红；反跑3：推进结束删掉「成功 end 需 summary」判断→无 summary 成功 end 立红；反跑4：推进摘要删掉「重复 summary」判断→二次 summary 用例立红。四组均单点破坏-还原验证，还原后 examples/test_压缩检查点.light 退出码0；既有 test_压缩/压缩配套/压缩E5/压缩自动/压缩命令 回归退出码0。"
+    },
+    {
+      "编号": 249,
+      "功能": "四个内置 agent preset 的插件 / skill 组合数据表（bundle/web-app presets：standard.ptc.minimal.cordis 四份 patch.yml 的 config.plugins 逐行复刻 + order 常量 + 组合行数递归计数 + 组合统计展平）。实测插件行数/展平数：standard 32/33、ptc 33/34、minimal 7/8、cordis 33/34（展平后 = 插件行 + 1 条 preset-* 声明行）；minimal 的 persistent-shell 是 cordis:group 组行，组内 5 子项 pty / terminal-bash / persistent-bash / terminal-pwsh / persistent-pwsh；terminal-bash 的 disabled 是 !!js 表达式标记 {\"js表达式\": \"process.platform === 'win32'\"}",
+      "原版包": "packages/bundle/web-app/presets/{standard,ptc,minimal,cordis}.patch.yml（每份仅插入一条 id=preset-<标识> 的 @deepseek-ai/dsh-agent-preset 声明行；纯数据面，Cordis 装配与 web 编辑器保存逻辑不移植）",
+      "光明模块": "src/预设组合.light",
+      "状态": "done",
+      "本轮目标": "R103：0.2.0-rc.1 广度补缺（preset 组合数据表）",
+      "证据": [
+        "src/预设组合.light",
+        "examples/test_预设组合.light"
+      ],
+      "反跑判据": "反跑1：极简组合行表里 persistent-shell 的 group 真→假 → 用例 1i（minimal 插件行数 7）立红；反跑2：组合统计的 展平后 由 插件行+1 改成 +2 → 用例 4c（minimal 展平后 8）立红；反跑3：terminal-bash 的 js表达式 改成 'process.platform === \\'linux\\'' → 用例 3c 立红；反跑4（补充）：标准条目 order 1→9 → 用例 5a（standard order 1）立红。四组均单点破坏-还原验证，还原后 examples/test_预设组合.light 退出码 0（断言数 64），src/预设组合.light sha256 与破坏前一致（fe4decea3a61aa5d…）；既有 test_预设深化.light / test_预设.light 回归退出码 0。"
+    },
+    {
+      "编号": 250,
+      "功能": "按预设组合过滤注册表条目（只挂载该预设组合内的条目）：按预设过滤(注册表条目表, 预设标识, 求值能力=空)→[挂载条目表, 跳过条目表] + 过滤统计→[挂载数, 跳过数, 禁用跳过数] + 组合覆盖率；未知预设抛错（复用 src/预设.light 造未知道错误 文案）；禁用三态对齐 src/预设深化.light 的 禁用贡献/启用取值（字面真或 !!js 判真 → 字面禁用跳过；!!js 无法求值 → conditional 记条件禁用跳过）。实测扁平 id 集（预设深化.展平行 不产出组行自身）：minimal 6（persona / pty / terminal-bash / persistent-bash / terminal-pwsh / persistent-pwsh，组行 persistent-shell 不在集内）、standard 29、ptc 30、cordis 30 —— 与 #249 组合统计口径（minimal 插件行 7 / 展平后 8，含组行与 preset-* 声明行）不同口径，故可挂载上限是 6 而非 7/8；win32 求值能力下 terminal-bash / persistent-bash 禁用跳过 2，linux 求值能力下 terminal-pwsh / persistent-pwsh 禁用跳过 2（上游 minimal.patch.yml 二者对称，不存在「linux 全挂载」，与题面口径的差异已在交付报告记录）",
+      "原版包": "packages/preset/agent-presets/src/mount.ts（挂载预设 = 按组合声明装配条目；纯逻辑面，Cordis ctx / fiber 装配 / 真实注册表写入不移植）",
+      "光明模块": "src/预设挂载过滤.light（新）",
+      "状态": "done",
+      "本轮目标": "R103：0.2.0-rc.1 广度补缺（preset 挂载过滤）",
+      "证据": [
+        "src/预设挂载过滤.light",
+        "examples/test_预设挂载过滤.light"
+      ],
+      "反跑判据": "反跑1：挂扁平行表 删掉组行展开（按顶层 id 直接匹配）→ 用例 1a（minimal 扁平 id 数 6，变异后实测 2）与 2b（挂载 6）立红；反跑2：按预设过滤 删掉 disabled 禁用剔除（命中即挂载）→ 用例 3a（win32 挂载4/跳过2/禁用2，变异后实测 [6,0,0]）立红；反跑3：未知预设由抛错改为返回空表 → 用例 7a（应抛错未抛）立红。三组均单点破坏-还原验证，反跑后 src/预设挂载过滤.light sha256 与破坏前一致（9620ea8f28371f77…），还原后 examples/test_预设挂载过滤.light 退出码 0（断言数 58）；既有 test_预设深化.light / test_预设组合.light / test_预设.light 回归退出码 0。"
     }
   ]
 }
