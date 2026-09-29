@@ -31,11 +31,24 @@ if not os.path.isdir(os.path.join(LIGHT_MERGE, 'src')):
 
 
 def _setup_paths():
-    """把 lightharness 自包含 stdlib 与 light-merge 编译器放入 sys.path。"""
-    for p in [STDLIB, ROOT, SRC,
-              os.path.join(LIGHT_MERGE, 'src'),
+    """把 lightharness 自包含 stdlib 与 light-merge 编译器放入 sys.path。
+
+    R100 路 B 修复：**lightharness 自身路径必须排在 light-merge 之前**。
+    原实现 insert(0) 循环顺序使 LIGHT_MERGE 仓根反而位于 sys.path 前部，
+    生成代码引导 `import stdlib.FFI` 时 `stdlib` 常规包先命中
+    light-merge/stdlib（而非本仓 stdlib），其 builtins.py 顶层又把
+    light-merge/stdlib install 进导入钩子搜索路径——随后
+    `从 字符串工具 导入 …` 被钩子解析到 light-merge/stdlib/字符串工具.light
+    （纯光明版），其 `从 re 导入 re_花括号` 生成 `from _light_re import …`
+    别名导入，宿主运行期解析不到 → lightharness examples 恒红。
+    宿主运行期永远不该吃到兄弟仓的 .light stdlib，故本仓路径置前。
+    """
+    # 先放 light-merge（编译器），再放 lightharness 自身——最终 sys.path 前部
+    # 是 lightharness 的 SRC / ROOT / STDLIB，`import stdlib` 命中本仓 stdlib 包。
+    for p in [os.path.join(LIGHT_MERGE, 'src'),
               os.path.join(LIGHT_MERGE, 'antlrparser'),
-              LIGHT_MERGE]:
+              LIGHT_MERGE,
+              SRC, ROOT, STDLIB]:
         if p not in sys.path:
             sys.path.insert(0, p)
     # 安装「纯光明模块」导入钩子：让 .light 模块在运行时被找到
@@ -65,6 +78,17 @@ def main(argv=None):
         return 1
     # 委托给光明 CLI（run 子命令）
     from cli.light import main as light_main
+    # R100 路 B：cli.light 模块被 import 时会把 light-merge 的仓根/src/antlrparser
+    # 重新插到 sys.path 最前（cli/light.py:34-36）。而生成的代码引导对 stdlib 路径
+    # 用的是「已存在则不重复插」守卫——宿主 stdlib 已在 sys.path 里（只是不在最前）
+    # 时 insert(0) 变 no-op，随后 `import stdlib.FFI` 命中 light-merge/stdlib 包，
+    # 其 builtins.py 顶层再把 light-merge/stdlib install 进导入钩子搜索路径，
+    # 宿主运行期就开始吃到兄弟仓的 .light stdlib（uuid工具/字符串工具 等）。
+    # 这里在 CLI 导入之后重申宿主路径优先，保证 `import stdlib` 命中本仓 stdlib 包。
+    for _p in (STDLIB, ROOT, SRC):
+        while _p in sys.path:
+            sys.path.remove(_p)
+        sys.path.insert(0, _p)
     # R98/D 修复：显式传入 lightharness 自带 stdlib，使地板 builtins.py 稳定加载
     # （转字符串 等内置走英文 str 口径），不再依赖 cwd 探测 —— 从任意目录（含
     # pytest 子进程 cwd=临时目录）运行都不会回退到中文兜底 lambda。

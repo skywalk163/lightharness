@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 """类型系统.light 单元测试。
 
-环境绕过说明：本模块顶层 `从 字符串工具 导入 去除首尾空白` 在「入口文件位于
-临时目录」时会被编译器自带 stdlib 的损坏 字符串工具.light 遮蔽（`No module named
-'_light_re'`）。实测：把 .light 片段写到 lightharness 根目录、再以其为入口运行时，
-stdlib 引导可命中 lightharness/stdlib，导入链正常。故本文件用本地 helper 把片段写到
-根目录临时文件 `_frag.light` 后经 run_light_file 运行（不在 src/stdlib/runner 上做任何改动）。
+历史绕法（已拆除，R100 路 B）：本模块顶层 `从 字符串工具 导入 去除首尾空白` 曾在
+「入口文件位于临时目录」时被 light-merge stdlib 的 字符串工具.light 遮蔽
+（`No module named '_light_re'`，根因见 _taskB_R100_lightre根因.md）。当年被迫把
+.light 片段写到 lightharness 根目录共享文件 `_frag.light` 再以其为入口运行——
+该绕法在 pytest-xdist 下是跨 worker 竞态源（多 worker 写读同一 `_frag.light`，
+A 测试读到 B 测试的输出），全量跑 test_类型系统 非确定性红 13 条。
+
+R100 路 B 修复导入钩子根因后，临时目录入口的导入链已完全正常（实测 rc=0），
+`run_tp` 改走 `run_light_source` 的隔离临时目录，不再共享任何文件。
 """
-import os
 from test_support import (
-    run_light_file, ROOT,
+    run_light_source,
     assert_success, assert_failure, out_contains,
 )
 
-FRAG = os.path.join(ROOT, "_frag.light")
-
 
 def run_tp(source):
-    with open(FRAG, "w", encoding="utf-8") as fh:
-        fh.write(source)
-    return run_light_file("_frag.light")
+    return run_light_source(source, filename='_类型系统片段.light')
 
 
 def test_是词符_小写字母为真():

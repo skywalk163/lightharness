@@ -42,6 +42,15 @@ _CODE_CACHE: dict[str, str] = {}
 # 正在编译中的路径，防止循环导入导致无限递归
 _COMPILING: set[str] = set()
 
+# 编译嵌套深度（与 light-merge 版同步）：_compile_light 运行期间 > 0。
+# 编译期编译器 import 的标准库模块必须走真 CPython，不能让钩子编译同名 .light
+# 影子（light_parser_v3 → dataclasses → inspect 链会触发编译 inspect.light 循环）。
+_COMPILE_DEPTH: int = 0
+
+# 权威 Python 标准库模块名集合（3.10+ 提供）。钩子不得拦截这些名字的「直接 import」。
+# 别名形式（_light_re 等）不受此限——那是代码生成器刻意生成的纯光明别名。
+_STDLIB_MODULES = frozenset(getattr(sys, 'stdlib_module_names', ()))
+
 
 def _ensure_compiler_importable(stdlib_dir: str) -> None:
     """确保光明编译器（src/）在 sys.path 上。
@@ -64,22 +73,27 @@ def _ensure_compiler_importable(stdlib_dir: str) -> None:
 
 def _compile_light(light_path: str, stdlib_dir: str) -> str:
     """把 .light 文件编译成 Python 源码（带缓存）。"""
+    global _COMPILE_DEPTH
     key = os.path.abspath(light_path)
     cached = _CODE_CACHE.get(key)
     if cached is not None:
         return cached
 
-    _ensure_compiler_importable(stdlib_dir)
-    from light_parser_v3 import LightParser
-    from code_generator import PythonCodeGenerator
+    _COMPILE_DEPTH += 1
+    try:
+        _ensure_compiler_importable(stdlib_dir)
+        from light_parser_v3 import LightParser
+        from code_generator import PythonCodeGenerator
 
-    with open(light_path, 'r', encoding='utf-8') as fh:
-        source = fh.read()
+        with open(light_path, 'r', encoding='utf-8') as fh:
+            source = fh.read()
 
-    module_ast = LightParser().parse(source)
-    generated = PythonCodeGenerator().generate(module_ast)
-    _CODE_CACHE[key] = generated
-    return generated
+        module_ast = LightParser().parse(source)
+        generated = PythonCodeGenerator().generate(module_ast)
+        _CODE_CACHE[key] = generated
+        return generated
+    finally:
+        _COMPILE_DEPTH -= 1
 
 
 def _is_pure_light(light_file: str) -> bool:
@@ -165,14 +179,36 @@ class LightFinder(importlib.abc.MetaPathFinder):
         # 子模块（带点）交给标准机制
         if '.' in fullname:
             return None
+        # R100 路 B：纯光明别名支持（与 light-merge/stdlib/_light_import_hook.py 同步）。
+        # 代码生成器对 stdlib 纯光明模块（_PYTHON_LEG_PURE_LIGHT_ALIAS，现仅 re）
+        # 生成 `_light_<名>` 别名导入（规避 CPython 同名标准库 sys.modules 缓存抢名，
+        # 见 light-merge src/code_generator.py:5064-5077）。lightharness 旧版钩子
+        # 缺这条剥前缀逻辑，`from _light_re import re_花括号` 在宿主运行期
+        # ModuleNotFoundError——examples 52 条恒红的直接根因。这里剥掉前缀，
+        # 回落到真实的 <名>.light；模块仍以别名身份注册进 sys.modules。
+        realname = fullname
+        if fullname.startswith('_light_'):
+            realname = fullname[len('_light_'):]
+            if not realname or '.' in realname:
+                return None
+        # ---- 标准库保护（与 light-merge 版同步，防编译期循环导入）----
+        # 直接 import 一个与 Python 标准库同名的模块时，绝不让钩子去编译同名 .light
+        # 影子（编译器 import 链 light_parser_v3 → dataclasses → inspect 会触发
+        # 编译 inspect.light → 循环导入）。别名形式（_light_re 等）不受此限：
+        # 那是代码生成器刻意生成的纯光明别名，必须照常加载对应 .light 实现。
+        if fullname == realname and realname in _STDLIB_MODULES:
+            if _COMPILE_DEPTH > 0:
+                return None
+            if not any(_exists_exact(b, realname + '.py') for b in self.search_paths):
+                return None
         try:
             for base in self.search_paths:
-                light_file = os.path.join(base, fullname + '.light')
-                if not _exists_exact(base, fullname + '.light'):
+                light_file = os.path.join(base, realname + '.light')
+                if not _exists_exact(base, realname + '.light'):
                     continue
                 # 同名 .py 存在 => 除非 .light 显式声明「纯光明实现」，否则源文件只是
                 # 清单，让标准机制加载 .py（优先原则保持不变，只是开了纯光明出口）。
-                if _exists_exact(base, fullname + '.py'):
+                if _exists_exact(base, realname + '.py'):
                     if not _is_pure_light(light_file):
                         return None
                 loader = LightLoader(fullname, light_file, self._stdlib_dir)
