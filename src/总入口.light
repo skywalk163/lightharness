@@ -15,6 +15,9 @@
 #                       OPENAI_API_KEY；HARNESS_ENDPOINT / OPENAI_BASE_URL；HARNESS_MODEL / OPENAI_MODEL）
 #   HARNESS_ROOT        持久化根目录（默认 sessions）
 #   HARNESS_SESSION     会话标识（默认 cli_<时间戳>）
+#   HARNESS_PRESET      会话内切换的 agent preset（standard / ptc / minimal / cordis；空串 = 不指定）
+#     合法 → 按该预设的组合装配挂载集（切换效果超出 blank 窗口：首轮及以后都跑新组合）；
+#     非法/未知 → 报错退出并打印可用四键。见 src/预设切换.light（上游 agent-preset-registry/src/session.ts）
 #
 # 命令面（第 7 轮任务1；对齐 apps/cli/src/args.ts L1-25 + dump-config.ts）：
 #   上游哲学：launcher 只解析自己拥有的 flags（profile / --patch / config dumps），
@@ -43,6 +46,8 @@
 从 令牌计量 导入 单价表, 取单价
 从 压缩E5 导入 压缩配置
 从 内置核心字典 导入 字典键列表
+从 预设切换 导入 装配挂载集
+从 预设组合 导入 是已知预设
 从 内置核心字符串 导入 开头, 结尾, 截取, 截取到末尾, 去除空白, 查找子串
 从 内置核心判型 导入 是字典
 从 字符串工具轻量 导入 分割字符串, 连接字符串
@@ -88,6 +93,23 @@
   设 执行体 为 执行bash
   注册表.注册(造工具定义("bash", "在用户机器上执行 shell 命令并返回输出", ["type": "object", "properties": ["command": ["type": "string", "description": "要执行的命令"]]], 执行体))
   返回 新建 兼容注册表(注册表)
+
+# ---- 预设分叉支撑（第104轮 任务线A）：注册表工具名 → 条目表（供 装配挂载集 过滤）----
+# 条目形状与 src/预设挂载过滤.light 的 挂条目标识 对齐（取 "标识" 键）
+段落 造注册表条目表(注册表):
+  设 条目表 为 []
+  遍历 名字 之 注册表.名单():
+    条目表.追加(["标识": 名字])
+  返回 条目表
+
+# ---- 预设分叉：HARNESS_PRESET → 装配挂载集（可测试导出；未知预设抛错，不静默返回空表）----
+# 语义（上游 session.ts）：切换后**首轮及以后每一轮**都跑在新挂载的组合下，故装配一律
+#   以「切换后」的预设标识进行；重建读 agentPreset 投影而非只读 header（见 预设切换.重建预设）
+段落 解析预设装配(预设标识, 注册表):
+  如果 是已知预设(预设标识) == 假:
+    抛出 "未知 agent preset: " + 转字符串(预设标识) + "（可用: standard / ptc / minimal / cordis）"
+  设 条目表 为 造注册表条目表(注册表)
+  返回 装配挂载集(条目表, 预设标识)
 
 # ---- 统计会话已有轮次数（续写时 turn 序号连续）----
 段落 取已有轮数(会话对象):
@@ -254,6 +276,18 @@
     打印 "--- 已有会话列表（根: " + 根 + "） ---"
     列出会话(根)
     返回
+  # 预设分叉（第104轮 任务线A；对齐 :251 列表模式分叉写法）：HARNESS_PRESET 空串 = 不指定；
+  #   合法 → 装配挂载集并打印；非法/未知 → 报错退出并打印可用四键。
+  #   ⚠️ 仅新增环境变量分支与打印，不触碰 REPL / 列表 / 单轮三条主路径的控制流。
+  设 预设标识 为 环境变量("HARNESS_PRESET", "")
+  如果 预设标识 != 空 且 预设标识 != "":
+    如果 是已知预设(预设标识) == 假:
+      打印 "错误: 未知 agent preset \"" + 预设标识 + "\""
+      打印 "可用 preset: standard / ptc / minimal / cordis"
+      抛出 "未知 agent preset: " + 预设标识 + "（可用: standard / ptc / minimal / cordis）"
+    设 装配 为 解析预设装配(预设标识, 组装注册表())
+    打印 "--- agent preset: " + 预设标识 + " ---"
+    打印 "挂载条目数: " + 转字符串(长度(装配[0])) + "  跳过条目数: " + 转字符串(长度(装配[1]))
   # 密钥：环境变量 → 项目根 .env（DEEPSEEK_API_KEY / HARNESS_API_KEY / OPENAI_API_KEY）
   设 密钥 为 环境变量("HARNESS_API_KEY", 空)
   如果 密钥 == 空:
@@ -389,6 +423,7 @@
   行表.追加("  HARNESS_MSG / HARNESS_PROMPT_FILE  用户消息与提示文件")
   行表.追加("  HARNESS_RESUME / HARNESS_SESSION / HARNESS_ROOT  续写会话与持久化根（缺省 sessions）")
   行表.追加("  HARNESS_REPL=1 / HARNESS_LIST=1  交互模式与会话列表")
+  行表.追加("  HARNESS_PRESET=standard|ptc|minimal|cordis  会话内切换 agent preset（空串不指定；未知值报错退出并打印可用四键）")
   行表.追加("  HARNESS_ENDPOINT  端点（缺省 https://api.deepseek.com/chat/completions）")
   行表.追加("  HARNESS_MODEL  模型（缺省 取默认模型()，0.1.5 为 deepseek-flash）")
   行表.追加("  DEEPSEEK_API_KEY 或 HARNESS_API_KEY  密钥必填，亦可写入项目根 .env")

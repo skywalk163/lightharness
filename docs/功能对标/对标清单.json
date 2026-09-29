@@ -13,7 +13,7 @@
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -3536,6 +3536,59 @@
         "examples/test_预设挂载过滤.light"
       ],
       "反跑判据": "反跑1：挂扁平行表 删掉组行展开（按顶层 id 直接匹配）→ 用例 1a（minimal 扁平 id 数 6，变异后实测 2）与 2b（挂载 6）立红；反跑2：按预设过滤 删掉 disabled 禁用剔除（命中即挂载）→ 用例 3a（win32 挂载4/跳过2/禁用2，变异后实测 [6,0,0]）立红；反跑3：未知预设由抛错改为返回空表 → 用例 7a（应抛错未抛）立红。三组均单点破坏-还原验证，反跑后 src/预设挂载过滤.light sha256 与破坏前一致（9620ea8f28371f77…），还原后 examples/test_预设挂载过滤.light 退出码 0（断言数 58）；既有 test_预设深化.light / test_预设组合.light / test_预设.light 回归退出码 0。"
+    },
+    {
+      "编号": 251,
+      "功能": "会话内切换 agent preset（上游 agent-preset-registry/session.ts 语义 + 启动分叉接线）：可否切换(会话状态字典)→真假（仅 blank 未开轮可切换；既有模块无此判定，本模块自建 取轮次数 / 是否空白会话）；agentPreset 投影 —— 预设投影初始(头字典)=header.agentPreset 否则 空、预设投影推进(状态,事件)=命中 'agent-preset/selected' 取 data.agentPreset 否则保持原状态、预设投影视图=state 原样、预设投影版本=1（key=\"agentPreset\"、stateSchema=串|空）；造切换事件(预设标识)→{type:\"agent-preset/selected\",data:{agentPreset}}；装配挂载集(注册表条目表,预设标识,求值能力=空)→[挂载条目表,跳过条目表]（内部直接调 R103-B 的 预设挂载过滤.按预设过滤；未知预设抛出、沿用 预设.造未知道错误 文案，不静默返回空表）。上游语义保真：创建头里的 preset 是深冻结的创建事实（只读不写）；blank 期间仍可改 preset，且改动效果**超出 blank 窗口**（首轮及以后每一轮都跑在新挂载的组合下）；重建时读 agentPreset 投影、绝不只读 header（→ 重建预设）。投影机制复用 R101 #242 的 src/会话投影缓存.light（其 冷投影续算 的「投影步进」由本模块 预设投影步进 注入，不另造一套）。启动分叉接线：src/总入口.light 新增环境变量 HARNESS_PRESET（空串=不指定；合法→ 解析预设装配 装配挂载集并打印挂载/跳过数；未知→打印「可用 preset: standard / ptc / minimal / cordis」后抛出，进程非零退出），帮助行表追加该环境变量说明行；仅新增环境变量分支与打印，REPL / 列表 / 单轮三条主路径控制流未动。",
+      "原版包": "packages/preset/agent-preset-registry/src/session.ts（投影定义与 agent-preset/selected 事件；Cordis fiber / service store 宿主面不移植）+ src/mount.ts（只取「按组合声明装配条目」语义，livePresetMounts / standingMountFor / leakedServices 宿主面不移植）",
+      "光明模块": "src/预设切换.light（新）；src/总入口.light（HARNESS_PRESET 分叉接线 + 造注册表条目表 / 解析预设装配）",
+      "状态": "done",
+      "本轮目标": "R104：0.2.0-rc.1 广度补缺（会话内切换 agent preset + 启动分叉接线，收 R103 遗留）",
+      "证据": [
+        "src/预设切换.light",
+        "examples/test_预设切换.light",
+        "src/总入口.light"
+      ],
+      "反跑判据": "反跑1：可否切换 改成恒返回真（去掉 blank 判定）→ 用例 1b（已开轮 轮次数1 应假）实测「实际=True 期望=False」立红；反跑2：预设投影推进 删掉事件类型闸门、改成「任何带 data.agentPreset 的事件都取」→ 用例 3b（非命中事件应保持）实测「实际=zzz 期望=standard」立红；反跑3：装配挂载集 未知预设由抛错改为返回空表 → 用例 7a（应抛错未抛）立红。三组均单点破坏-还原验证，还原后 src/预设切换.light sha256 与破坏前一致（aea6ff4bfad00d9d…），examples/test_预设切换.light 退出码 0（断言数 61）；既有 test_预设组合.light / test_预设挂载过滤.light / test_预设深化.light / test_预设.light / test_总入口.light / test_CLI命令面.light / test_cli深化.light / test_联调CLI.light / test_会话投影缓存.light / test_入口默认模型.light / test_R74_路4_CLI宿主.light 回归退出码 0；实测 HARNESS_PRESET=minimal 打印「挂载条目数: 0 跳过条目数: 1」退出码 0，HARNESS_PRESET=zzz 打印可用四键后退出码 1。"
+    },
+    {
+      "编号": 252,
+      "功能": "包自持运行时不变量注册表（invariants）的宿主面剔除版纯逻辑移植：① 错误族 InvariantError —— code 恒 \"INVARIANT\"、name 恒 \"InvariantError\"、消息 `invariant violated by \"<包名>\": <消息>`，并暴露 packageName 字段（同时给中文别名键 包名/消息）；② 过滤表编译 compilePatterns 四条逐一 —— 空串或有前后空白→`invariants: <field> entries must be non-blank and have no surrounding whitespace`；重复条目→`invariants: <field> contains duplicate regex <条目JSON>`；非法正则→`invariants: <field> contains invalid regex <条目JSON>`；合法→编译成功（field 仅取 package_allowlist / package_blocklist 两值）；③ Config：enabled 默认真 / package_allowlist 默认空表 / package_blocklist 默认空表；④ 是否选中(配置, 包名, 匹配能力) -> 真假：enabled 假→假、白名单非空且无一命中→假、黑名单任一命中→假、否则真；⑤ 登记(槽表, 包名, 配置, 匹配能力) -> [新槽表, 释放函数]：包名为空/有前后空白/含内部空白→`invariants: packageName must be non-blank and contain no whitespace`，已登记→`invariants: package \"<包名>\" is already registered`，**即使被过滤掉（是否选中 为假）也占用名字**（对齐上游 registrations.add 早于 selected 判定），释放函数把名字从新槽表摘掉（原地改同一句柄并返回它）。⚠️ 光明无正则字面量：`new RegExp(source)` 与 `pattern.test(name)` 两面统一由入参 匹配能力(正则源, 包名) 承载（包名 传 空 = 只做编译校验，非法源由能力侧抛错；否则返回是否命中），手法同 src/预设挂载过滤.light 的 求值能力",
+      "原版包": "packages/runtime-diagnostics/invariants/src/index.ts（7644 字节全文）+ tests/service.spec.ts（12045 字节取判据与文案）；Cordis Context / Service / effect / plugin / fiber / dispose 与异步 installer 的 await 语义（ctx.effect(async …)、await child、await child.dispose()、PromiseLike<() => void> 双形态返回值、安装失败回滚与 dispose 排队）登记为宿主面不移植",
+      "光明模块": "src/不变量登记.light（新）",
+      "状态": "done",
+      "本轮目标": "R104：0.2.0-rc.1 四缺口收口（invariants 不变量登记表）",
+      "证据": [
+        "src/不变量登记.light",
+        "examples/test_不变量登记.light"
+      ],
+      "反跑判据": "反跑1：登记 去掉「空串/空白校验」（校验包名(包名) 调用换成取文案的空操作）→ 用例 4a（空串包名应抛错）立红，实测 ERR「断言失败[4a]：应抛错未抛」；反跑2：是否选中 去掉 blocklist 判定（删掉遍历黑表返回假的两行）→ 用例 3j（blocklist 命中应假）立红，实测「实际=True 期望=False」；反跑3：登记 改成「被过滤时不占名」（列表追加(新槽表, 包名) 加 选中==真 条件）→ 用例 5a（被过滤也占名）立红，实测「实际=0 期望=1」。三组均单点破坏-还原验证，还原后 src/不变量登记.light sha256=d5b008f641faccb3489c50f5bb21c347cb4307094005b6e36a0970b14624ff49 与基线逐字一致，examples/test_不变量登记.light 退出码 0（断言数 88）；既有 examples/test_预设挂载过滤.light、examples/test_预设组合.light 回归退出码 0（R103 产物未波及）"
+    },
+    {
+      "编号": 253,
+      "功能": "ssh 连接配置校验链与形状（Config 五必填 host/node/helper/helperHash/workspace + 可选 bootstrapPath/bootstrapHash 成对 + requestTimeoutMs/maxFrameBytes/maxPending/leaseMs 四个带默认值数值键；校验配置(配置字典, 平台名=\"linux\")→[是否通过, 错误文案表] 按上游 zod 字段顺序逐条收集 + 填充默认值 + 两个 getter 语义：节点可执行文件未就绪抛 SSH helper is not ready、引导路径未就绪或未配置抛 SSH PTC requires a verified bootstrapPath and bootstrapHash；平台门禁用可注入平台名，linux/darwin 之外抛 SSH runtime requires a POSIX client）",
+      "原版包": "packages/ssh/ssh/src/index.ts :17–:104（Config 接口 + 静态 schema + 构造期 zod 校验链 + 两个 getter；纯逻辑面，同包 spawn/socket/心跳/RPC/helper 进程/AbortController 登记为宿主面不移植）",
+      "光明模块": "src/ssh连接配置.light（新）",
+      "状态": "done",
+      "本轮目标": "R104：0.2.0-rc.1 四缺口收口（ssh 连接配置校验）",
+      "证据": [
+        "src/ssh连接配置.light",
+        "examples/test_ssh连接配置.light"
+      ],
+      "反跑判据": "反跑1：校验配置 成对规则条件恒假（去掉必须成对）→ 用例 5a（只给 path 应失败）立红；反跑2：哈希合法 正则放宽为 ^.+$（任意非空）→ 用例 4c（哈希非 64hex 应失败）立红；反跑3：平台门禁条件恒假（去掉 POSIX 门禁）→ 用例 6a（win32 应抛 SSH runtime requires a POSIX client）立红。三组均单点破坏-还原验证，还原后 examples/test_ssh连接配置.light 退出码 0，src/ssh连接配置.light sha256 与破坏前一致（84f1369fd4441d23…）；既有 examples/test_R52_ssh协议.light 回归退出码 0。"
+    },
+    {
+      "编号": 254,
+      "功能": "browser-use / computer-use 两个「能力独占注册槽」小包合为一个纯逻辑模块（命名空间隔离，互不串味）：造浏览器槽()/造计算机槽()->{名字:空}（初始未占用）；登记浏览器(槽字典,提供者名)/登记计算机(槽字典,提供者名)->[新槽,释放函数]——槽已占用即抛 browser use provider \"<占用名>\" is already registered / computer use provider \"<占用名>\" is already registered，上游语义即使当前同一名字再来一次也失败、不加「同名放行」短路；提供者名(槽字典)->槽字典[名字]，关闭资源期间仍返回占用名（释放函数已调用但仍持旧句柄时 getter 不清空，对齐上游 disposer await 关闭窗口语义）、只有改拿释放后的新空槽才回空；品牌 浏览器提供者名(名字)/计算机提供者名(名字)->名字原样透传（上游 brand 不校验不改写，含空串）。不可变口径：登记返回新槽、释放返回新空槽，不回写旧句柄（光明语无闭包捕获可变变量）",
+      "原版包": "packages/browser-use/browser-use/src/{index.ts,brand.ts}（index ~1559B / brand ~597B）+ packages/computer-use/computer-use/src/{index.ts,brand.ts}（同构，仅类名/文案不同）；Cordis Service/effect/scope 与异步 disposer（Promise<void> await 语义）登记为宿主面不移植",
+      "光明模块": "src/能力槽登记.light（新）",
+      "状态": "done",
+      "本轮目标": "R104：0.2.0-rc.1 四缺口收口（browser-use+computer-use 独占注册槽+品牌）",
+      "证据": [
+        "src/能力槽登记.light",
+        "examples/test_能力槽登记.light"
+      ],
+      "反跑判据": "反跑1：登记浏览器 占用判定加「同名放行」短路（改成 槽!=空 且 槽!=提供者名 才抛）→ 用例 3c（browser 同名再登记应抛，变异后实测「应抛错未抛」）立红；反跑2：释放函数改成回写旧句柄立刻置空 → 用例 1d（关闭期间旧句柄仍返回 alpha，变异后实测 None 期望 alpha）立红；反跑3：两能力造槽共用同一模块级字典且登记写穿透 → 用例 2a（computer 初始未占用，变异后实测实际=alpha 期望 None）立红。三组均单点破坏-还原验证，还原后 examples/test_能力槽登记.light 退出码 0（断言数 22）；既有 test_预设挂载过滤.light / test_预设组合.light / test_预设深化.light / test_预设.light 回归退出码 0。"
     }
   ]
 }
