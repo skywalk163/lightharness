@@ -13,7 +13,7 @@
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
   ],
-  "版本": "覆盖记录至 R85（0.1.6-alpha.2 全量，上游锚点 ddefc45fbc；新增 27 卡 #215-#241；Linux 平台补位启动）",
+  "版本": "覆盖记录至 R101（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格；FreeBSD fork 已同步 v0.2.0-rc.1）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -3419,6 +3419,32 @@
       ],
       "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
       "反跑判据": ""
+    },
+    {
+      "编号": 242,
+      "功能": "会话投影检查点缓存（session-projection-cache：持久逐会话投影检查点，冷读续算折叠前缀）",
+      "原版包": "packages/session/session-projection-cache（index.ts + spec.ts 纯逻辑面）",
+      "光明模块": "src/会话投影缓存.light",
+      "状态": "done",
+      "本轮目标": "R101：0.2.0-rc.1 纯逻辑移植",
+      "证据": [
+        "src/会话投影缓存.light",
+        "examples/test_会话投影缓存.light"
+      ],
+      "反跑判据": "反跑1：冷投影续算里「锚点缺失回退全量」改成「抛出」→ 用例3（检查点领先日志不抛）立红；反跑2：校验兼容里「格式版本存在性」检查删掉 → 缺版本坏记录不再干净返回假立红；反跑3：「序号非负」检查删掉 → 负序号记录被接受立红；反跑4：读检查点里「KV读失败返回空」改成「抛出」→ KV故障用例立红。四组均已单点破坏-还原验证，还原后 examples/test_会话投影缓存.light 退出码0。"
+    },
+    {
+      "编号": 243,
+      "功能": "插件注册表选择与安装规格（boot/plugin-manager：首个响应注册表选择 + install-spec 构造 + 失败五类归类 + 启停后清单推导）",
+      "原版包": "packages/boot/plugin-manager（registry.ts / install-spec.ts / failure.ts / types.ts / operations.ts 纯逻辑面；对齐 commit 3c50bf6b6c）",
+      "光明模块": "src/插件注册表.light",
+      "状态": "done",
+      "本轮目标": "R101：0.2.0-rc.1 纯逻辑移植",
+      "证据": [
+        "src/插件注册表.light",
+        "examples/test_插件注册表.light"
+      ],
+      "反跑判据": "反跑1：选首个响应注册表里「首个可达即返回」改成「选延迟最小」→ 顺序敏感用例（npmjs 50ms 比 npmmirror 200ms 更快但排第二）立红；反跑2：造安装规格里 version-unresolved 分支删掉 → 9.9.9 无解被当成功返回立红；反跑3：归类安装失败里 integrity-mismatch 分支删掉 → integrity 错误落 unknown 立红；反跑4：推导启停后清单里「卸=删条目」改成「保留但禁用」→ 卸后清单仍含 b 立红。四组均单点破坏-还原验证，还原后 examples/test_插件注册表.light 退出码0。"
     }
   ]
 }

@@ -1,0 +1,141 @@
+# 插件注册表.light —— boot/plugin-manager 纯逻辑面（R101 任务D，新卡 #243）
+#
+# 复刻范围（packages/boot/plugin-manager/src）：
+#   - commit 3c50bf6b6c「choose the first responsive public registry」的宿主选择纯逻辑
+#     （上游是 Promise.any race 最快响应；光明侧投影为「按表序第一个探测可达即胜出」——
+#      确定性、可单测；探测延迟由注入的 探测可达 返回，选择时不比较延迟大小）
+#   - install-spec.ts 的「注册表元数据 → 解析后版本/完整性哈希」构造面（不做 git/tarball/path 解析，
+#     那部分已在 插件注册表计划.light 的 parseInstallSpec 域）
+#   - failure.ts + types.ts PluginInstallFailureKind → 五类错误码归类
+#   - operations.ts 的「当前清单 × 启停装卸操作 → 新清单 + 变更说明」纯推导面
+#
+# 剔除：真实 pnpm 子进程 / 真实 HTTP / 真实 YAML·package.json 读写 / Cordis ctx / HMR 通知 /
+#   withFileLock / runProfilePnpm 的副作用编排。全部外部世界投影为注入函数。
+#
+# 错误码字典（对齐任务书五类）：
+#   registry-unreachable / version-unresolved / integrity-mismatch / write-denied / unknown
+
+# ---- 选首个响应注册表 ----
+# 按表序探测；第一个 探测可达(URL) 返回非空延迟的胜出；全不可达返回 空（不抛）。
+# 探测可达(URL) -> 延迟(数字) 或 空。
+段落 选首个响应注册表(注册表URL表, 探测可达):
+  遍历 网址 之 注册表URL表:
+    设 延迟 为 探测可达(网址)
+    # 反跑点1：把「首个可达即返回」改成「选延迟最小」必须让顺序敏感用例立红
+    如果 延迟 != 空:
+      返回 网址
+  返回 空
+
+# ---- 造安装规格 ----
+# 输入：包名、版本约束（空串 = 取 latest）、注册表URL、注入的 读注册表元数据(URL,包名)->元数据
+# 元数据形状（npm registry abbreviated manifest）：
+#   { "dist-tags": {"latest": "x.y.z"}, "versions": {"x.y.z": {"dist": {"shasum": "..."}}} }
+# 返回：
+#   成功 → {"包名","解析后版本","来源URL","完整性哈希","错误": 空}
+#   元数据缺失 → {"错误": "registry-unreachable", "文案": ...}（不抛）
+#   版本无解 → {"错误": "version-unresolved", "文案": ...}（不抛）
+段落 造安装规格(包名, 版本约束, 注册表URL, 读注册表元数据):
+  设 元数据 为 空
+  尝试:
+    设 元数据 为 读注册表元数据(注册表URL, 包名)
+  捕获 异常 e:
+    返回 {"错误": "registry-unreachable", "文案": "注册表读取失败: " + 转字符串(e)}
+  如果 元数据 == 空:
+    返回 {"错误": "registry-unreachable", "文案": "注册表无此包元数据: " + 包名}
+  设 版本表 为 字典获取(元数据, "versions", {})
+  如果 版本表 == {}:
+    返回 {"错误": "registry-unreachable", "文案": "注册表元数据无 versions: " + 包名}
+  设 目标版本 为 空
+  如果 版本约束 == 空 或 版本约束 == "":
+    设 标签 为 字典获取(元数据, "dist-tags", {})
+    设 最新 为 字典获取(标签, "latest", 空)
+    如果 最新 != 空:
+      如果 字典包含键(版本表, 最新):
+        设 目标版本 为 最新
+  否则:
+    # 简化的 semver 匹配：精确版本优先；否则取版本表里等于/满足约束的最高字面版本
+    # （光明侧不引 semver 库；这里做「精确等于 ^/~ 前缀剥离 + 字面包含」的最小可用面）
+    如果 字典包含键(版本表, 版本约束):
+      设 目标版本 为 版本约束
+    否则:
+      设 基 为 版本约束
+      如果 长度(基) > 0:
+        设 首 为 字符串获取(基, 0)
+        如果 首 == "^" 或 首 == "~" 或 首 == ">":
+          设 基 为 截取(基, 1, 长度(基))
+      # 直接以基串作为版本键查找
+      如果 字典包含键(版本表, 基):
+        设 目标版本 为 基
+  如果 目标版本 == 空:
+    # 反跑点2：删掉下面这行 version-unresolved 返回 → 测试里「版本无解落到 unknown」立红
+    返回 {"错误": "version-unresolved", "文案": "注册表无满足约束的版本: " + 包名 + "@" + 版本约束}
+  设 条目 为 版本表[目标版本]
+  设 dist 为 字典获取(条目, "dist", {})
+  设 哈希 为 字典获取(dist, "shasum", 空)
+  返回 {"包名": 包名, "解析后版本": 目标版本, "来源URL": 注册表URL, "完整性哈希": 哈希, "错误": 空}
+
+# ---- 归类安装失败 ----
+# 错误对象形状（调用方给）：{ "种类": PluginInstallFailureKind, "文案": str }
+# 对齐 types.ts PluginInstallFailureKind → 五类错误码：
+#   network/timeout             → registry-unreachable
+#   not-found/no-matching-version → version-unresolved
+#   integrity                    → integrity-mismatch
+#   disk-full/permission         → write-denied
+#   pnpm-missing/build-blocked/unknown → unknown
+段落 归类安装失败(错误对象):
+  设 种类 为 字典获取(错误对象, "种类", "unknown")
+  设 文案 为 字典获取(错误对象, "文案", "")
+  如果 种类 == "network" 或 种类 == "timeout":
+    返回 {"类别": "registry-unreachable", "文案": 文案}
+  如果 种类 == "not-found" 或 种类 == "no-matching-version":
+    返回 {"类别": "version-unresolved", "文案": 文案}
+  # 反跑点3：删掉下面这个 integrity 分支 → integrity 错误落到 unknown 立红
+  如果 种类 == "integrity":
+    返回 {"类别": "integrity-mismatch", "文案": 文案}
+  如果 种类 == "disk-full" 或 种类 == "permission":
+    返回 {"类别": "write-denied", "文案": 文案}
+  返回 {"类别": "unknown", "文案": 文案}
+
+# ---- 推导启停后清单 ----
+# 当前清单：{ 包名: {"启用": 真假, "版本": 字符串} }
+# 操作表：每条 ["启用", X] / ["禁用", Y] / ["装", Z, 版本?] / ["卸", W]
+# 返回 {"新清单": ..., "变更": [说明...]}
+段落 推导启停后清单(当前清单, 操作表):
+  设 新清单 为 {}
+  遍历 名 之 当前清单:
+    设 项 为 当前清单[名]
+    设 新项 为 {}
+    遍历 k 之 项:
+      新项[k] 为 项[k]
+    新清单[名] 为 新项
+  设 变更 为 []
+  遍历 操作 之 操作表:
+    设 动词 为 操作[0]
+    设 名 为 操作[1]
+    如果 动词 == "启用":
+      如果 字典包含键(新清单, 名) == 假:
+        设 新清单[名] 为 {"启用": 真, "版本": ""}
+      否则:
+        设 新清单[名]["启用"] 为 真
+      列表追加(变更, "启用 " + 名)
+    否则:
+      如果 动词 == "禁用":
+        如果 字典包含键(新清单, 名):
+          设 新清单[名]["启用"] 为 假
+        列表追加(变更, "禁用 " + 名)
+      否则:
+        如果 动词 == "装":
+          设 版本 为 ""
+          如果 长度(操作) >= 3:
+            设 版本 为 操作[2]
+          设 新清单[名] 为 {"启用": 真, "版本": 版本}
+          列表追加(变更, "装 " + 名 + "@" + 版本)
+        否则:
+          如果 动词 == "卸":
+            如果 字典包含键(新清单, 名):
+              # 反跑点4：把「删条目」改成「保留但标记卸载」必须让卸后清单无此包的用例立红
+              字典删除(新清单, 名)
+            列表追加(变更, "卸 " + 名)
+  返回 {"新清单": 新清单, "变更": 变更}
+
+导出 选首个响应注册表, 造安装规格, 归类安装失败, 推导启停后清单
