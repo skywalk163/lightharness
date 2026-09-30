@@ -1280,3 +1280,32 @@ body {
 
 /* 截断态视觉弱化（点击展开按钮恢复完整文本后移除 clamped） */
 .tool-params.clamped, .tool-result.clamped { color: var(--text-dim); }
+
+/* ==== 第6轮 D：斜杠命令面板 + 附件 chips ==== */
+.slash-palette {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+.slash-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; cursor: pointer; font-size: 13px;
+}
+.slash-item.active, .slash-item:hover { background: var(--bg-hover); }
+.slash-cmd { color: var(--green); font-family: monospace; min-width: 78px; }
+.slash-desc { color: var(--text-muted); }
+.attach-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 6px 0; }
+.attach-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-bubble); border: 1px solid var(--border);
+  border-radius: 12px; padding: 2px 8px; font-size: 12px; color: var(--text);
+}
+.attach-chip-x {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; line-height: 10px; padding: 0 2px;
+}
+.attach-chip-x:hover { color: var(--text); }

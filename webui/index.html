@@ -57,10 +57,12 @@
 
       <!-- 底部：输入区 + 按钮 -->
       <footer id="composer">
+        <div id="attach-chips" class="attach-chips" hidden></div>
+        <input type="file" id="attach-input" class="attach-input" multiple hidden>
         <div class="composer-row">
-          <button id="attach-btn" class="btn btn-ghost attach-btn" title="附件（即将支持）" disabled>📎</button>
+          <button id="attach-btn" class="btn btn-ghost attach-btn" title="添加附件（图片/文件）">📎</button>
           <textarea id="input" rows="1"
-            placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+            placeholder="输入消息，Enter 发送，Shift+Enter 换行；敲 / 呼出斜杠命令"></textarea>
           <button id="stop-btn" class="btn btn-stop" disabled>停止</button>
           <button id="send-btn" class="btn btn-send">发送</button>
         </div>
@@ -141,10 +143,11 @@
     </div>
   </div>
 
-  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 主应用 -->
+  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 斜杠命令面板 → 主应用 -->
   <script src="tool-card.js"></script>
   <script src="messages.js"></script>
   <script src="sidebar.js"></script>
+  <script src="slash-palette.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
