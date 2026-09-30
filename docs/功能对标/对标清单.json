@@ -12,9 +12,11 @@
     "【第18轮 2026-09-13】新增 #116~#121：缺陷修复轮6个工具库（字典增强/数值兼容/错误增强/字符串增强/函数增强/词法安全），修复/绕法32个已登记语言缺陷；语言缺陷账追加修复状态标注；行为差异清单 R18-D 段。",
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）",
-    "【第8轮 终轮收口 C 线 2026-09-30】跳号补卡扫描结论：#263–#268 确为编号洞（连续范围 263–268 无条目，R6 从未分配），但经对上游锚点 e5b5ccbfcb 的 packages/ 55 个包逐包比对，疑似未覆盖的 28 个包(browser-use/computer-use/credentials/telemetry/storage/settings/plan/goal/guard/host/identity/jobs/lsp/schedule/sdk/skill/spill/ssh/terminal/todo/typert/workspace/preset/ptc-runtime/runtime-diagnostics/bundle/client/shell)均已由现有卡覆盖——browser-use+computer-use→#254、runtime-diagnostics(invariants)→#252、sdk→#74、lsp→#63、jobs→#53/#101、guard→#23/#52/#61/#101/#113、schedule→#29/#52/#53/#101/#206、credentials→#24/#61/#90/#246、telemetry→#19、storage→#14/#59/#99、settings→#25/#115、goal→#35/#88、plan→#39/#272、host→#10–#21、identity→#90/#91、skill→#38/#249、spill→#27/#98、ssh→#190/#253、terminal→#15/#191/#212、todo→#22/#66、typert→#62/#96/#219/#276、workspace→#58/#208/#209、preset→#72/#249/#250、ptc-runtime→#20/#187、bundle→#11/#249、client→#16/#55/#104/#107、shell→#12/#46/#87/#236/#237。纯逻辑面复刻已随 #255–#291 全部收口（done/宿主桩已接(可测)/宿主登记），无真实空缺可填，故 #263–#268 维持为保留跳号、未硬填卡（遵循第8轮任务书 §0 实测更正「不能硬填 #263–#268」）。#198–#200 为空占位条目，标注「非对标条目（轮次报告）」保留。#197 lexer 收尾经 lexer 单元测试（16 passed / 1 skipped 绿）核验后销账 done；全量 0.82 权威门由路M 复核，本线不 commit。"
+    "【第8轮 终轮收口 C 线 2026-09-30】跳号补卡扫描结论：#263–#268 确为编号洞（连续范围 263–268 无条目，R6 从未分配），但经对上游锚点 e5b5ccbfcb 的 packages/ 55 个包逐包比对，疑似未覆盖的 28 个包(browser-use/computer-use/credentials/telemetry/storage/settings/plan/goal/guard/host/identity/jobs/lsp/schedule/sdk/skill/spill/ssh/terminal/todo/typert/workspace/preset/ptc-runtime/runtime-diagnostics/bundle/client/shell)均已由现有卡覆盖——browser-use+computer-use→#254、runtime-diagnostics(invariants)→#252、sdk→#74、lsp→#63、jobs→#53/#101、guard→#23/#52/#61/#101/#113、schedule→#29/#52/#53/#101/#206、credentials→#24/#61/#90/#246、telemetry→#19、storage→#14/#59/#99、settings→#25/#115、goal→#35/#88、plan→#39/#272、host→#10–#21、identity→#90/#91、skill→#38/#249、spill→#27/#98、ssh→#190/#253、terminal→#15/#191/#212、todo→#22/#66、typert→#62/#96/#219/#276、workspace→#58/#208/#209、preset→#72/#249/#250、ptc-runtime→#20/#187、bundle→#11/#249、client→#16/#55/#104/#107、shell→#12/#46/#87/#236/#237。纯逻辑面复刻已随 #255–#291 全部收口（done/宿主桩已接(可测)/宿主登记），无真实空缺可填，故 #263–#268 维持为保留跳号、未硬填卡（遵循第8轮任务书 §0 实测更正「不能硬填 #263–#268」）。#198–#200 为空占位条目，标注「非对标条目（轮次报告）」保留。#197 lexer 收尾经 lexer 单元测试（16 passed / 1 skipped 绿）核验后销账 done；全量 0.82 权威门由路M 复核，本线不 commit。",
+    "【R105 2026-10-01 收口】任务书 §3 原定卡号 A=#255 / C=#256 / D=#257 —— 实测三卡均已被第8轮终轮收口占用（#255 CLI 外壳 / #256 远端 API 总线宿主出口 / #257 ACP 内容准入投影），故按「不可硬填已占编号」原则顺延取当前空号 #296/#297/#298，B 线（webui/settings.js + settings.css 设置对话框复刻）按任务书不占卡。",
+    "【R105 2026-10-01 收口】合流点：src/设置页.light.渲染设置页() 的 模型/内置插件/Agent预设 三键已改调 src/设置页深化.light 导出；C 线 合并已存设置 已按 A 线 {配置文档, 行集} 形状复核通过，未启用临时校验器。"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -4070,6 +4072,48 @@
       "本轮目标": "第8轮A线：把 R7 桩从「仅可测」翻成「默认走真后端、桩为测试注入」——桩槽未接时外部命令/进程树/凭据/审批/遥测/e2b local-sim 真实执行接成默认路径，桩仅在测试注入；fail-closed 不变（真后端异常返回失败信封不崩）",
       "反跑判据": "① 默认后端或桩 桩判定反（桩槽 != 空 改 ==）-> 桩已接却走真后端，test_宿主默认后端 红（已验证改->红->还原）；② 真子进程执行 退出码映射错（结果.返回码 硬改 0）-> 非零退出码精确保留断言 2b 立（已验证改->红->还原）",
       "语言缺陷": "无新增（光明无闭包：真后端有状态实现经模块级 默认后端槽 共享；e2b/钩子适配本地定义避免循环导入）"
+    },
+    {
+      "编号": 296,
+      "功能": "设置对话框「通用设置」九行行集模型（R105 A线）：行集 permission(下拉)/language(下拉)/appearance(卡片三选)/fontSize(数字,px)/transcriptView(下拉)/performanceUsage(下拉)/linkOpening(下拉)/developerTools(开关)/shortcuts(按钮) 固定九行固定序 + 取通用行(行id) 未知行抛错 + 校验通用值(行id,新值)（下拉/卡片三选走选项值集、数字走 [最小,最大]、开关走真假）+ 权限需确认(fullAccess 需确认) + 通用设置块(已存值) 用持久化值覆盖默认 + 渲染设置页() 的 通用设置 键改为 {配置文档, 行集}、内置插件计数移出通用设置",
+      "原版包": "packages/client/ui-settings-general + ui-permission-presets + ui-theme + ui-chat（设置对话框通用设置页）",
+      "光明模块": "src/设置页.light（§3.5 通用设置行集 + §4 渲染设置页）",
+      "状态": "done",
+      "证据": [
+        "src/设置页.light",
+        "examples/test_设置页.light"
+      ],
+      "本轮目标": "R105 A线：把原版设置对话框通用设置页复刻成纯逻辑行集模型（截图实证八行 + 契约第九行），值/选项/校验/默认值全部可序列化，供前端与服务端消费；真实 profile patch 文件与 React 渲染永久宿主绑定",
+      "反跑判据": "① 校验通用值 把 fontSize 越界判为合法 -> test_设置页「值超过最大」断言立红；② 行集 少一行或 id 序错位 -> test_设置页「九行齐全且 id 序正确」立红；③ 通用设置块 不覆盖已存值 -> 已存值覆盖默认断言立红",
+      "语言缺陷": "无新增（L-047 字典/列表字面量不可直接作实参，已先赋变量规避）"
+    },
+    {
+      "编号": 297,
+      "功能": "Web 设置读写路由与持久化（R105 C线）：静态白名单追加 /settings.js + /settings.css（处理静态 分支链 + 路由分派 GET 白名单两处）+ GET /api/settings 返回前用 合并已存设置 把持久化值合并进 通用设置.行集（按钮行 shortcuts 无「值」跳过）+ GET /api/settings/document 返回 {路径, 可用} + POST /api/settings {行, 值} 走 校验通用值 校验后落盘 <服务持久化根>/settings.json 并返回 200 {状态, 行集}、非法值 400 {错误}；坏 JSON 与文件缺失一律退化为默认值不 500",
+      "原版包": "packages/host/web-server + web-app settings API（设置持久化与回读）",
+      "光明模块": "src/web服务器.light（处理静态 :181-186 / 读已存设置·写已存设置 :446-475 / 合并已存设置 :481 / 处理获取设置页 :519 / 处理获取设置文档 :561 / 处理保存设置 :585 / 路由分派 :1010,:1020,:1023）",
+      "状态": "done",
+      "证据": [
+        "src/web服务器.light",
+        "examples/test_web路由.light"
+      ],
+      "本轮目标": "R105 C线：让设置页从「只读占位」变成「可读可写可持久化」，前端 POST 一次即落盘并回读生效；真实配置文档路径与宿主页由宿主注入",
+      "反跑判据": "① 静态白名单漏加 /settings.js -> 静态 200 用例立红；② POST 合法值后 GET 回读未变 -> 持久化往返用例立红；③ 持久化文件写坏 JSON 后 GET 返 500 -> 坏 JSON 容错用例立红；④ 非法值不返 400 或缺「错误」键 -> 400 用例立红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 298,
+      "功能": "设置页其余三页签深化（R105 D线）：渲染模型页（provider/protocol/baseUrl/apiKeyStatus/model/modelAdvanced 六行占位结构，来源恒 宿主）+ 渲染插件页（说明+来源+按模式概览+按模式计数 33/34/8/34+清单占位行 全局插件/会话插件）+ 渲染预设页（四预设卡 = 元数据 + 区块.{模式说明, 如何使用} 上游 guide-locales.ts 逐字正文 + 默认预设）+ 渲染深化页(页签标识) 统一分派（未知标识抛错）",
+      "原版包": "packages/client/ui-settings-models + ui-settings-plugin-inventory + ui-agent-preset（PresetGuideDialog）",
+      "光明模块": "src/设置页深化.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/设置页深化.light",
+        "examples/test_设置页深化.light"
+      ],
+      "本轮目标": "R105 D线：把模型/内置插件/Agent预设三个页签从占位串深化为可渲染行结构与预设卡正文，收口时由 设置页.渲染设置页() 三键直接调用；插件清单数据与模型凭据永久宿主绑定",
+      "反跑判据": "① 按模式概览 计数重算改一处 -> test_设置页深化「33/34/8/34」与 test_设置页「按模式概览 取自 内置插件概览」双红；② 预设卡 区块.模式说明 置空 -> 正文非空断言立红；③ 渲染深化页 对未知标识不抛错 -> 未知页签用例立红",
+      "语言缺陷": "无新增（循环依赖：设置页 与 设置页深化 互导，改用 `导入 <模块>` + 调用点 `模块.段落()` 的点号访问规避半初始化模块 ImportError）"
     }
   ]
 }
