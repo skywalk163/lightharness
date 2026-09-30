@@ -22,6 +22,7 @@
   // ---------- DOM ----------
   var messagesEl = document.getElementById("messages");
   var inputEl = document.getElementById("input");
+  var modeSelectEl = document.getElementById("mode-select"); // 第5步：chat 框模式选择器
   var sendBtn = document.getElementById("send-btn");
   var stopBtn = document.getElementById("stop-btn");
   var subtitleEl = document.getElementById("subtitle");
@@ -628,6 +629,7 @@
     }
     var body = { model: "deepseek-flash", messages: msgs, stream: true };
     if (sessionId) body.session_id = sessionId;       // 会话延续
+    if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
 
     var headers = { "Content-Type": "application/json" };
     var started = false; // 是否已进入流式阶段（区分"连不上"和"中途断开"）
@@ -903,6 +905,19 @@
     else if (t.classList && t.classList.contains("reject-btn")) reject(id);
   });
   if (permPreset) permPreset.addEventListener("change", savePermission);
+
+  // 第5步：模式选择器——记忆上次选择 + 切换提示（随下一条消息生效）
+  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+  if (modeSelectEl) {
+    var savedMode = null;
+    try { savedMode = localStorage.getItem("lh.mode"); } catch (e) { savedMode = null; }
+    if (savedMode && MODE_NAMES[savedMode]) modeSelectEl.value = savedMode;
+    modeSelectEl.addEventListener("change", function () {
+      try { localStorage.setItem("lh.mode", modeSelectEl.value); } catch (e2) { /* 隐私模式忽略 */ }
+      addSystem("已切换到「" + (MODE_NAMES[modeSelectEl.value] || modeSelectEl.value) +
+        "」模式，下一条消息起按新模式挂载工具。", false);
+    });
+  }
 
   // 初始提示 + 状态探测 + 配置检测 + E4 权限加载
   addSystem("输入内容后发送，agent 会逐字流式回复；工具调用可在右侧「工具」面板查看时间线。");

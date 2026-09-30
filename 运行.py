@@ -23,6 +23,33 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 STDLIB = os.path.join(ROOT, 'stdlib')
 SRC = os.path.join(ROOT, 'src')
 
+# 第2步：lightplugin 生产接线根路径（默认取兄弟目录，可用 LIGHTPLUGIN 覆盖）
+LIGHTPLUGIN = os.environ.get('LIGHTPLUGIN', os.path.normpath(os.path.join(ROOT, '..', 'lightplugin')))
+
+
+def _lightplugin_paths():
+    """第2步：lightplugin 路径表（仓根 + 集成/ + 插件/ + 各插件一级目录）。
+
+    照抄 lightplugin/运行.py:38-47 的 _plugin_search_dirs：每个插件的一级目录都要
+    入搜索路径，否则插件之间无法互导（例：图片生成 要 `从 异步作业轮询 导入 提交作业`）。
+    lightplugin 不存在时返回空表（未接线的环境照旧只挂核心工具，不报错）。
+    """
+    dirs = []
+    if not os.path.isdir(LIGHTPLUGIN):
+        return dirs
+    dirs.append(LIGHTPLUGIN)
+    jicheng = os.path.join(LIGHTPLUGIN, '集成')
+    if os.path.isdir(jicheng):
+        dirs.append(jicheng)
+    plugins_dir = os.path.join(LIGHTPLUGIN, '插件')
+    if os.path.isdir(plugins_dir):
+        dirs.append(plugins_dir)
+        for name in sorted(os.listdir(plugins_dir)):
+            p = os.path.join(plugins_dir, name)
+            if os.path.isdir(p) and not name.startswith(('_', '.')):
+                dirs.append(p)
+    return dirs
+
 # 光明编译器来自 light-merge 仓库（语言本体），可用环境变量 LIGHT_MERGE 覆盖
 LIGHT_MERGE = os.environ.get('LIGHT_MERGE', r'G:\dswork\duan-light-merge\light-merge')
 if not os.path.isdir(os.path.join(LIGHT_MERGE, 'src')):
@@ -51,10 +78,17 @@ def _setup_paths():
               SRC, ROOT, STDLIB]:
         if p not in sys.path:
             sys.path.insert(0, p)
+    # 第2步：lightplugin 生产接线 —— 插件路径**追加**在宿主路径之后（不遮蔽本仓
+    # stdlib，保住 R100 修复的宿主优先序），照抄 lightplugin/运行.py:50-60 的 sys.path 段
+    for p in _lightplugin_paths():
+        if p not in sys.path:
+            sys.path.append(p)
     # 安装「纯光明模块」导入钩子：让 .light 模块在运行时被找到
     try:
         import _light_import_hook
-        _light_import_hook.install([SRC, STDLIB, ROOT])
+        # 第2步：宿主路径在前（保住 _stdlib_dir 取 search_paths[0] 的既有语义），
+        # lightplugin 路径追加在后；install 重复调用安全（extend 追加，见钩子 :229-234）
+        _light_import_hook.install([SRC, STDLIB, ROOT] + _lightplugin_paths())
     except Exception as exc:  # noqa: BLE001 - 钩子失败不致命，.py 版 stdlib 仍可用
         print(f'警告: 纯光明导入钩子安装失败: {exc}')
 
