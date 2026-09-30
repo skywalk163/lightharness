@@ -225,14 +225,16 @@
       "功能": "hooks 事件机制（三事件域）",
       "原版包": "core/hooks + hook-protocol",
       "光明模块": "src/钩子.light + src/事件.light(总线) + src/会话.light(会话域接线) + src/代理.light(代理/能力域接线)",
-      "状态": "v2；0.1.5已核对：hook-protocol 无 src 变化(hooks-claude-code/codex 提供方层未移植)；0.1.5第5轮确认：hooks 提供方包变更维持登记不移植(宿主层)",
+      "状态": "v2；0.1.5已核对：hook-protocol 无 src 变化(hooks-claude-code/codex 提供方层未移植)；0.1.5第5轮确认：hooks 提供方包变更维持登记不移植(宿主层)；第7轮B线(#291)：经宿主触发钩子 出口已接 宿主桩.宿主钩子事件总线桩（PreToolUse/PostToolUse/Stop 三域内存可派发可断言），状态=宿主桩已接(可测)/维持宿主登记",
       "宿主面": true,
       "证据": [
         "src/钩子.light",
         "examples/test_钩子.light",
         "src/会话.light(连接钩子)",
         "src/代理.light(连接钩子/发出代理事件/发出能力事件)",
-        "examples/test_一次性监听器.light"
+        "examples/test_一次性监听器.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done：三事件域总线(session/agent/capability)+钩子协议(处理器收上下文返回瀑布事件)+瀑布限深+取消订阅；会话域经会话.记录事件广播、代理/能力域经代理循环发出(turn/start/end、tool/executed)；v2 新增一次性监听器：订阅方法支持选项[\"一次性\"]=真，执行后自动从监听器表移除；事件总线发布/瀑布/造取消处理器、钩子系统分发方法均接入一次性移除逻辑；选项参数默认空以保持向后兼容",
       "反跑判据": "test_钩子.light：把 会话事件广播 断言改为 假 即红；v2：test_一次性监听器.light 把第二次发布后一次性计数断言1改2即红",
@@ -272,13 +274,15 @@
       "功能": "子进程执行（subprocess/shell 后端）",
       "原版包": "subprocess + shell",
       "光明模块": "src/子进程.light",
-      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植；R85改标（0.1.6）：linux-execve/linux-scope 纯逻辑已移植（src/子进程.light R85-B 段，test_R85_B_exec.light rc=0）；process-inspector→src/异步子进程.light；shell-activity/terminal/windows-job 纯逻辑→src/异步PTY.light；真实 execve/systemd-run/Job API/PTY fd 判定仍宿主面（F 批2 Linux 实测范围）",
+      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植；R85改标（0.1.6）：linux-execve/linux-scope 纯逻辑已移植（src/子进程.light R85-B 段，test_R85_B_exec.light rc=0）；process-inspector→src/异步子进程.light；shell-activity/terminal/windows-job 纯逻辑→src/异步PTY.light；真实 execve/systemd-run/Job API/PTY fd 判定仍宿主面（F 批2 Linux 实测范围）；第7轮B线(#291)：接桩子进程+经桩运行进程 出口已接 宿主桩.受控子进程桩（按预设退出码/输出模拟，不触真实OS），状态=宿主桩已接(可测)/维持宿主登记",
       "宿主面": true,
       "证据": [
         "src/子进程.light",
         "examples/test_子进程.light",
         "examples/test_子进程码.light",
-        "examples/test_子进程流式.light"
+        "examples/test_子进程流式.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done：运行进程/运行并取输出/进程成功/运行后台/等待后台 全通；退出码精确化（exit(3)→3、exit(0)→0），经 stdlib`外部命令.py` 安全字段 `退出码值`(property→返回码) 绕 L-010/L-004；v2 新增运行并流式输出(命令, 行处理器, 超时)：逐行回调标准输出，返回退出码；当前用运行进程获取全部输出后按换行拆分逐行回调，接口一致后续可替换为真正流式；注意「回调」是保留关键字，参数名用行处理器",
       "反跑判据": "test_子进程码.light：把 码==3 改成 码==0 即红；v2：test_子进程流式.light 把处理器调用次数断言改反即红",
@@ -292,12 +296,14 @@
       "功能": "沙箱边界（sandbox）",
       "原版包": "sandbox",
       "光明模块": "src/沙箱.light",
-      "状态": "v2；0.1.5登记：sandbox OS 层 2 文件变更未移植(profiles/index)；0.1.5第5轮确认：sandbox OS 层维持登记不移植",
+      "状态": "v2；0.1.5登记：sandbox OS 层 2 文件变更未移植(profiles/index)；0.1.5第5轮确认：sandbox OS 层维持登记不移植；第7轮B线(#291)：接桩沙箱+经桩运行受限 出口已接 宿主桩.受控沙箱桩（沙箱信封含资源限制标记），状态=宿主桩已接(可测)/维持宿主登记",
       "宿主面": true,
       "证据": [
         "src/沙箱.light",
         "examples/test_沙箱.light",
-        "examples/test_沙箱资源.light"
+        "examples/test_沙箱资源.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done(v1)：路径护栏(允许读/写/禁止表,归一化,禁止优先)+进程隔离(白名单环境+工作目录限定+超时)；不做landlock/seccomp；退出码精确化（经 stdlib`退出码值` 绕 L-010）；v2 新增资源限制配置：构造函数支持选项[\"秒数上限\"][\"兆数上限\"]（0=不限制），新增资源限制描述()方法返回配置文本，运行受限返回结果包含资源限制字段；实际执行限制留待 stdlib 增强（Windows无原生ulimit）；注意属性名用纯中文避免中英文混合标识符拆分",
       "反跑判据": "test_沙箱.light：把 读禁止路径 断言改为 真 即红；v2：test_沙箱资源.light 把资源限制描述断言改反即红",
@@ -365,12 +371,14 @@
       "功能": "用户审批/交互（interaction）",
       "原版包": "packages/interaction",
       "光明模块": "src/审批.light",
-      "状态": "v2；0.1.5登记：interaction 命令附件广义化(宿主层，随 #48 附件)；0.1.5第5轮已核对：interaction 命令附件广义化属宿主命令注册层(attachments 描述符+错误文案)，光明纯逻辑无对应点；附件能力本体由任务2 完成(附件准入.light 通用文件)",
+      "状态": "v2；0.1.5登记：interaction 命令附件广义化(宿主层，随 #48 附件)；0.1.5第5轮已核对：interaction 命令附件广义化属宿主命令注册层(attachments 描述符+错误文案)，光明纯逻辑无对应点；附件能力本体由任务2 完成(附件准入.light 通用文件)；第7轮B线(#291)：接桩交互+经桩记录审批 出口已接 宿主桩.审批结果桩（内存审批表可断言裁定），状态=宿主桩已接(可测)/维持宿主登记",
       "证据": [
         "src/审批.light",
         "examples/test_审批.light",
         "src/代理.light(执行组审批检查接入)",
-        "examples/test_审批深化.light"
+        "examples/test_审批深化.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done：审批管理器类（approve/deny/ask 三策略 + 按工具名配置 + 审批记录 + 统计）；代理循环 选项[审批管理器] 接入，执行组在工具执行前检查，deny 则记录 tool/error 事件并跳过；ask 模式 v1 简化为拒绝并记录待审批；v2：查询记录(工具名/状态/时间范围筛选，参数为空不过滤) + 统计v2(总数/批准数/拒绝数/待审批数) + 批量设置策略(字典批量配置) + 设置配置/取配置(默认审批人/超时时间等)，请求审批记录新增状态和时间字段",
       "反跑判据": "test_审批.light：把 批准数 2 改 3 即红；或把 tool/error 事件断言改反即红；v2：test_审批深化.light 把 查询记录工具名过滤期望2改3即红、统计v2待审批数改反即红、批量策略工具A批准改假即红",
@@ -401,13 +409,15 @@
       "功能": "遥测/指标收集（telemetry）",
       "原版包": "packages/telemetry",
       "光明模块": "src/遥测.light",
-      "状态": "v2；0.1.5登记：telemetry 无对应模块；session-stats 投影改读内嵌流(宿主遥测)",
+      "状态": "v2；0.1.5登记：telemetry 无对应模块；session-stats 投影改读内嵌流(宿主遥测)；第7轮B线(#291)：接桩遥测+经桩记录遥测 出口已接 宿主桩.遥测桩（内存指标表可断言指标名/值/维度，非宿主遥测），状态=宿主桩已接(可测)/维持宿主登记",
       "证据": [
         "src/遥测.light",
         "examples/test_遥测.light",
         "src/代理.light(遥测接入)",
         "examples/test_遥测深化.light",
-        "src/遥测导出器.light"
+        "src/遥测导出器.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done：遥测收集器类（轮次/步骤/工具调用/错误记录，token用量+延迟统计，汇总+输出）；代理循环 选项[遥测] 接入（轮次开始/结束、步骤延迟+用量、工具调用）；适配光明用量字段 输入/输出；v2：导出指标(json格式含指标名/值/时间戳/维度标签) + 聚合统计(按轮次/步骤维度，总调用数/总耗时/平均耗时/错误数) + 错误分类统计(按错误类型分类) + 持久化接口(写入JSON文件)；v3(A1 OTel对齐)：OTel GenAI语义span结构(trace_id/span_id/parent_span_id/kind/attributes/status) + 调用树(会话→轮次→步骤→LLM/工具) + span栈上下文管理 + 按模型/工具维度聚合统计(调用数/总耗时/平均耗时/成功率) + JSONL/OTLP/控制台三输出器 + capture_content默认不采集正文(隐私保护) + 输出器管理器(广播输出) + 向后兼容(旧方法全部保留)",
       "反跑判据": "test_遥测.light：总步骤或总工具调用断言改反即红；v2：test_遥测深化.light 把 导出指标JSON含时间戳改假即红、聚合统计按轮次总调用数改反即红、错误分类timeout计数改反即红、持久化文件不含汇总即红",
@@ -420,12 +430,14 @@
       "功能": "代码执行运行时（code-runtime）",
       "原版包": "packages/ptc-runtime（0.1.6-alpha.1 起由 packages/code-runtime 改名；0.1.5 时为 packages/code-runtime）",
       "光明模块": "src/代码运行时.light",
-      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持",
+      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩代码运行时+经桩执行 出口已接 宿主桩.受控子进程桩（按 code: 前缀预设键查退出码/输出），状态=宿主桩已接(可测)/维持宿主登记",
       "宿主面": true,
       "证据": [
         "src/代码运行时.light",
         "examples/test_代码运行时.light",
-        "examples/test_代码运行时深化.light"
+        "examples/test_代码运行时深化.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done：代码运行时类（subprocess 执行 Python 代码，捕获 stdout/stderr/返回码，超时控制，执行取文本）；造代码执行工具 顶层函数（包装为工具定义可注册到注册表）；v2：超时可配置(构造函数选项) + 输出大小限制(最大输出字节数，超限截断并标记已截断) + 执行统计(执行次数/总耗时/成功次数/失败次数/成功率/平均耗时)",
       "反跑判据": "test_代码运行时.light：输出断言或返回码断言改反即红；v2：test_代码运行时深化.light 把 输出超限已截断改假即红、执行统计成功率改反即红、自定义超时10秒改30即红",
@@ -436,12 +448,14 @@
       "功能": "e2b 云沙箱客户端（e2b）",
       "原版包": "packages/e2b",
       "光明模块": "src/e2b客户端.light",
-      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持",
+      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩e2b+经桩执行代码 出口已接 宿主桩.受控沙箱桩（按 e2b: 前缀预设键查沙箱信封），状态=宿主桩已接(可测)/维持宿主登记",
       "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b客户端.light",
         "examples/test_e2b.light",
-        "examples/test_e2b深化.light"
+        "examples/test_e2b深化.light",
+        "src/宿主桩.light",
+        "examples/test_宿主桩_接线.light"
       ],
       "本轮目标": "done(接口层+本地模拟)：E2BClient 类（有 API key→远程模式接口定义，无 API key→本地模拟 subprocess 执行）；启动/执行代码/关闭/状态；造e2b工具 顶层函数；远程模式实际 SDK 调用留待后续（需安装 e2b 包）；v2：会话管理(创建会话/列出会话/关闭会话) + 执行超时配置 + 连接状态查询(未连接/已连接/远程模式/本地模拟 + 最后心跳 + 活跃会话数)",
       "反跑判据": "test_e2b.light：输出断言或返回码断言改反即红；v2：test_e2b深化.light 把 创建会话后列表长度改反即红、关闭会话后状态非closed即红、连接状态本地模拟改远程模式即红",
@@ -3953,6 +3967,34 @@
       "本轮目标": "接 代理团队.light 注册",
       "证据": "examples/test_团队工具_接线.light 退出码 0（注册 9 工具→list_agents/team_task_list/team_task_get 真读事件流）+ 既有 test_团队工具/test_代理团队 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
       "反跑判据": "① 能力列任务代理团队 恒空表 → 接线用例红；② 折叠团队状态 丢任务折叠 → test_代理团队 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 291,
+      "功能": "宿主桩套件（host-integration-bus）：内存文件IO桩 + hooks事件总线桩(PreToolUse/PostToolUse/Stop) + 受控子进程桩 + 受控沙箱桩 + 遥测桩 + 审批桩",
+      "原版包": "host-integration-bus",
+      "光明模块": "src/宿主桩.light",
+      "状态": "done(宿主桩已接可测)",
+      "宿主面": true,
+      "证据": [
+        "src/宿主桩.light",
+        "examples/test_宿主桩_冒烟.light",
+        "examples/test_宿主桩_接线.light",
+        "src/宿主IO.light(造宿主桩/宿主转交路由骨架)"
+      ],
+      "本轮目标": "让 #10/#12/#13/#17/#19/#20/#21 从「登记不移植」翻成「宿主桩已接(可测)」：宿主桩.light 提供七类内存能力（读/写/宿主钩子/子进程执行/沙箱执行/遥测记录/审批结果），经 宿主IO.宿主转交 路由；各调用方加接桩出口段（接桩X+经桩X），未接桩时返回 UNSUPPORTED_OPERATION fail-closed",
+      "反跑判据": "① 能力子进程执行 退出码硬改99 -> test_宿主桩_接线 #12 断言立红；② 宿主桩 去掉 宿主钩子 能力 -> #10 经宿主触发钩子 返回 UNSUPPORTED_OPERATION 立红（已验证断桩立红+还原绿）",
+      "语言缺陷": "无新增（复用 宿主IO 路由骨架，无闭包用模块级槽）"
+    },
+    {
+      "编号": 274,
+      "功能": "事件循环×套接字集成回归：R66/R67/R69 建的 I/O 底座（事件驱动/异步运行时/选择器/伪终端/进程树/并发/流式七件套 + HTTP服务端）收敛为统一跨平台 I/O 地基——取消语义统一（stdlib/中止.light 唯一中止令牌，贯穿 选择器/流式/并发/伪终端/进程树，各层先清理 pending 再抛 已取消异常 冒泡）+ 跨平台门（socketpair 唤醒通道、AF_UNIX 仅 POSIX/Windows 置空）+ 套接字集成回归（非阻塞 TCP/UDP echo、HTTP 服务端）+ 各模块顶部跨平台支持矩阵注释",
+      "原版包": "core/event-loop + net/socket",
+      "光明模块": "stdlib/中止.light(新增,统一中止令牌) + stdlib/lightpub/事件驱动.py + stdlib/lightpub/异步运行时.py + stdlib/选择器.light + stdlib/伪终端.light + stdlib/进程树.light + stdlib/并发.light + stdlib/流式.light + stdlib/HTTP服务端.light",
+      "状态": "done",
+      "本轮目标": "跨平台 I/O 底座收敛+回归（第7轮 A线：取消语义统一 + 跨平台门 + 套接字集成回归 + 支持矩阵注释）",
+      "证据": "tests/test_第7轮_io矩阵.py 本机 14 passed/1 skipped（默认 xdist 与 -p no:xdist 双口径）+ 0.82 FreeBSD（/usr/local/bin/python3.12，/tmp/r44-20260930-171400）同 14 passed/1 skipped；0.82 全量 8174 用例 8075 passed/0 failed，对拍基线 2026-09-29-112417 新增红 0；tests/unit/test_ci_gates_round9.py 本机与 0.82 各 41 passed/1 skipped（模块表咬合含新模块 中止）；tools/ci/native_product.py 门禁 rc=0（中止.light 真编译探针实测：不可编译，因=导入 asyncio，基线 native_product_baseline.json 合并点重建 115→116）；反跑 3 组「改->红->还原」全闭环（见反跑判据）",
+      "反跑判据": "① 事件循环去掉 socketpair 唤醒投递 → test_socketpair唤醒跨线程投递 红；② 选择器.等待 超时改抛异常替代返回 [] → test_等待超时返回空列表不抛异常 红；③ 进程树.等待 去掉超时杀树 → test_超时杀树 红",
       "语言缺陷": "无新增"
     }
   ]
