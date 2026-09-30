@@ -599,6 +599,13 @@
         设 结论标志 为 值["concludesTurn"]
         如果 值.包含("content"):
           设 内容块 为 值["content"]
+      # 归一化（第八轮实测根因②）：content 契约是块表。处理函数返回裸 dict / 标量时
+      # （如 bash 的 {"输出","错误","退出码"}），映射网络消息.块文本拼接 只拼 type=="text"
+      # 的块，非块表内容会被拼成空串——模型收到空工具结果。此处包成单 text 块。
+      如果 type(内容块) != list:
+        设 序文 为 序列化JSON(内容块)
+        设 包装块表 为 [["type": "text", "text": 序文]]
+        设 内容块 为 包装块表
       设 结果 为 ["content": 内容块, "isError": 假, "concludesTurn": 结论标志, "additionalContexts": [], "error": 空]
     捕获 错误:
       设 结果 为 ["content": [["type": "text", "text": "工具执行失败: " 加上 转字符串(错误)]], "isError": 真, "concludesTurn": 假, "additionalContexts": [], "error": ["消息": 转字符串(错误), "代码": "TOOL_EXECUTION_FAILED"]]

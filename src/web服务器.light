@@ -8,6 +8,7 @@
 # 端点：
 #   GET  /v1/chat/completions 的后端只有三个：
 #   GET  /health                      存活探针 → {"status":"ok"}
+#   GET  /api/settings                设置页结构（四页签 + 各页数据，来自 src/设置页.light）
 #   POST /v1/chat/completions         OpenAI 兼容入参（model/messages/session_id/stream），
 #                                     非流式返回 {"choices":[{...message.content}]}；
 #                                     stream=true 返回 SSE（data: {...} … data: [DONE]）。
@@ -26,6 +27,7 @@
 从 编码解码 导入 URL解码
 从 总入口 导入 跑一轮, 取最终文本, 增量保存, 组装注册表
 从 预设组合 导入 是已知预设
+从 设置页 导入 渲染设置页
 从 会话 导入 新建会话
 从 持久化 导入 读入会话
 从 内置核心判型 导入 是字典, 是字符串, 是列表
@@ -261,9 +263,20 @@
       设 调用id文本 为 ""
       设 是否错误 为 假
       如果 结果消息 != 空:
-        设 内容文本 为 结果消息.获取("content", "")
-        设 调用id文本 为 结果消息.获取("toolCallId", "")
         设 是否错误 为 结果消息.获取("isError", 假)
+        # content 是块表：取 tool-result 块的 toolCallId 与内容；text 块拼接为可读文本，
+        # 非块表内容序列化兜底（原先把块表原样塞进「结果」，UI 渲染不出文本）
+        设 内容块表 为 结果消息.获取("content", [])
+        遍历 块 之 内容块表:
+          如果 type(块) == dict 且 块.包含("type") 且 块["type"] == "tool-result":
+            设 调用id文本 为 块.获取("toolCallId", 调用id文本)
+            设 块内 为 块.获取("content", "")
+            如果 type(块内) == list:
+              遍历 子块 之 块内:
+                如果 type(子块) == dict 且 子块.包含("type") 且 子块["type"] == "text":
+                  设 内容文本 为 内容文本 + 子块.获取("text", "")
+            否则:
+              设 内容文本 为 序列化JSON(块内)
       设 错误文本 为 ""
       如果 是否错误 == 真:
         设 错误文本 为 "执行出错"
@@ -422,6 +435,14 @@
   段落 处理获取配置():
     设 己.请求数 为 己.请求数 + 1
     返回 ["状态": 200, "头": ["Content-Type": "application/json; charset=utf-8"], "体": 序列化JSON(己.配置元数据)]
+
+  # GET /api/settings：返回设置页结构（四页签 + 各页数据，纯逻辑面来自 src/设置页.light）
+  #   含：通用设置（内置插件按四模式计数）、模型（宿主占位）、内置插件（宿主占位 + 按模式概览）、
+  #   Agent预设（四内置预设元数据 + 默认预设）。前端设置页直接消费此结构。
+  段落 处理获取设置页():
+    设 己.请求数 为 己.请求数 + 1
+    设 页结构 为 渲染设置页()
+    返回 ["状态": 200, "头": ["Content-Type": "application/json; charset=utf-8"], "体": 序列化JSON(页结构)]
 
   # POST /api/config：保存大模型配置到 .env，热更新客户端（端口不变）
   段落 处理保存配置(请求):
@@ -850,6 +871,9 @@
     返回 加跨域(响应)
   如果 方法 == "GET" 且 路径 == "/api/config":
     设 响应 为 服务.处理获取配置()
+    返回 加跨域(响应)
+  如果 方法 == "GET" 且 路径 == "/api/settings":
+    设 响应 为 服务.处理获取设置页()
     返回 加跨域(响应)
   如果 方法 == "POST" 且 路径 == "/api/config":
     设 响应 为 服务.处理保存配置(请求)
