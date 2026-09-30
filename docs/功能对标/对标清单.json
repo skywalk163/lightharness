@@ -3401,24 +3401,29 @@
       "功能": "agent-loop inbox 异步化 + projection 统一注册",
       "原版包": "core/agent-loop src/index.ts",
       "光明模块": "src/代理循环.light",
-      "状态": "宿主面登记（光明为纯状态机，无 inbox；异步化待 ReactLoopInbox 宿主面移植）",
+      "状态": "done；第6轮C线（2026-09-30）：inbox 异步化由 #269 实现（代理循环 双端队列承载、跑一轮前排空注入会话），本卡原登记的 inbox 语义已落地",
       "证据": [
-        "无（登记）"
+        "src/代理.light",
+        "src/双端队列.light",
+        "examples/test_编排装配.light"
       ],
-      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
-      "反跑判据": ""
+      "本轮目标": "done：见 #269（代理循环 inbox 异步化）",
+      "反跑判据": "见 #269 反跑判据（移除 inbox 排空→异步消息丢失立红）"
     },
     {
       "编号": 241,
       "功能": "session message projection 事件解释器（workspace/changes、permission/preset 事件词汇 + 投影事件表）",
       "原版包": "core/session src/surface.ts + known-event-types.ts",
       "光明模块": "src/会话格式.light",
-      "状态": "事件词汇已移植登记·投影解释器待 surface fold 域",
+      "状态": "done；第6轮C线（2026-09-30）：session 消息投影解释器由 #270 实现（代理循环每轮后调 会话格式.投影消息产生 刷新 投影消息表），本卡原登记的投影解释器已落地",
       "证据": [
-        "examples/test_R85_C_会话事件词汇.light"
+        "src/代理.light",
+        "src/会话格式.light",
+        "examples/test_编排装配.light",
+        "examples/test_会话格式.light"
       ],
-      "本轮目标": "R85：0.1.6-alpha.2 纯逻辑移植",
-      "反跑判据": ""
+      "本轮目标": "done：见 #270（session 消息投影事件解释器）",
+      "反跑判据": "见 #270 反跑判据（投影改坏返回非列表→消息表形状立红）"
     },
     {
       "编号": 242,
@@ -3589,6 +3594,366 @@
         "examples/test_能力槽登记.light"
       ],
       "反跑判据": "反跑1：登记浏览器 占用判定加「同名放行」短路（改成 槽!=空 且 槽!=提供者名 才抛）→ 用例 3c（browser 同名再登记应抛，变异后实测「应抛错未抛」）立红；反跑2：释放函数改成回写旧句柄立刻置空 → 用例 1d（关闭期间旧句柄仍返回 alpha，变异后实测 None 期望 alpha）立红；反跑3：两能力造槽共用同一模块级字典且登记写穿透 → 用例 2a（computer 初始未占用，变异后实测实际=alpha 期望 None）立红。三组均单点破坏-还原验证，还原后 examples/test_能力槽登记.light 退出码 0（断言数 22）；既有 test_预设挂载过滤.light / test_预设组合.light / test_预设深化.light / test_预设.light 回归退出码 0。"
+    },
+    {
+      "编号": 255,
+      "功能": "apps/cli 复刻为光明 CLI 外壳：让 lightharness 从「库」变成「可从命令行用的产品」。新建 src/cli外壳.light 六段落：① 解析参数(命令行表)->字典，对齐上游 args.ts 旗标 --model/--preset/--prompt(无头)/--resume/--list/--config/--help，未知旗标打印用法并抛错、取值旗标缺值抛错、--help 短路立即返回（帮助=真）；② 斜杠命令表()->字典，/help /clear /model /compact /save /resume /exit 七命令名->处理函数名映射（复用 总入口.调度命令 语义，不重复实现）；③ 运行对话循环(客户端,注册表,根,配置) 包 总入口.交互循环 语义——每轮打印提示符、识别以 / 开头的输入走斜杠命令表派发、其余复用 总入口.跑一轮；不重写 总入口.交互循环（既有 env-var REPL 保持不动）；④ 无头运行(客户端,注册表,根,提示)：--prompt 模式跑一轮(总入口.跑一轮) 后取 总入口.取最终文本 直接输出并返回，不进 REPL；⑤ 列会话并选择(根)：--list 复用 总入口.列出会话（形状一致）；⑥ 解析预设(预设值)：--preset 映射 standard/ptc/minimal/cordis，未知抛错且文案含四键（不静默回落）。另设 外壳装配(配置)（端点/模型/密钥解析链对齐 总入口.执行运行）与 外壳接管(命令行表)：仅当 argv 出现本外壳旗标时接管（--help/--list/--prompt 无头/REPL），否则返回空回落既有 HARNESS_CMD 子命令分发。",
+      "原版包": "apps/cli（src/args.ts 参数 schema + bin.ts 入口装配 + profile-boot.ts 配置加载 + process-shutdown.ts 优雅退出）；上游 docs/subsystems/commands.md 斜杠命令语义表",
+      "光明模块": "src/cli外壳.light（新）；src/总入口.light（主() 外围分叉一行 + 帮助行表追加一行；延迟导入 cli外壳 避免循环导入，不改 交互循环/执行运行/调度命令 既有控制流）",
+      "状态": "done",
+      "本轮目标": "第6轮 任务线A：CLI 参数解析 + 斜杠命令派发 + 无头运行器（apps/cli 复刻）",
+      "证据": [
+        "src/cli外壳.light",
+        "examples/test_cli外壳.light",
+        "src/总入口.light（主() 外壳接管分叉 + 帮助行表）"
+      ],
+      "反跑判据": "反跑1：解析参数 未知参数去掉抛错（else 分支改为仅索引前移）→ 用例 1h（--bogus 应抛「未知命令行参数」）立红，变异后实测「1h 未知参数应报错」断言失败；反跑2：无头运行 改成返回空串（不调用 取最终文本，模拟进 REPL）→ 用例 3a（无头返回最终文本非空）立红，变异后实测「3a 无头返回最终文本非空」断言失败；反跑3：解析预设 未知值由抛错改为返回 standard 回落 → 用例 5e（zzz 应抛错且文案含 standard）立红，变异后实测未抛错、落入捕获后「5e 报错含 standard」断言失败。三组均单点破坏-还原验证，还原后 examples/test_cli外壳.light 退出码 0；既有 examples/test_总入口.light / test_cli深化.light / test_CLI命令面.light 回归退出码 0。注：测试期间 C 线并行编辑 src/代理.light（#270 投影刷新）曾致 跑一轮 瞬态报错，C 线修好后恢复绿，本线未触碰代理.light。"
+    },
+    {
+      "编号": 256,
+      "功能": "远端 API 总线宿主出口接线：白名单内事件经 宿主IO 宿主桩 转发（emit/waterfall 模式透传，白名单外 INVALID_ARGUMENT 不静默）+ 宿主桩包成连接器走 调用远端（经总线调用远端，同 §六 参序）；纯逻辑转发白名单/通知封装保留不动",
+      "原版包": "api/remotes + api/gateway",
+      "光明模块": "src/远端总线.light",
+      "状态": "done",
+      "本轮目标": "经 宿主IO 转发到宿主 HTTP/RPC 总线出口",
+      "证据": "examples/test_远端总线_接线.light 退出码 0 + 既有 test_远端总线/test_远端白名单 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经总线转发通知 改「静默返回空」-> test_远端总线_接线 立 红；② 判定可转发 改恒真 -> test_远端总线 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 257,
+      "功能": "ACP 内容准入/投影宿主出口接线：prompt 抓取（宿主桩能力 acp抓取提示 提供 ContentBlock -> admitAcpPrompt 准入判定原样生效）+ 投影写回（acp投影 能力）；纯逻辑准入判定保留不动",
+      "原版包": "acp/content",
+      "光明模块": "src/acp内容.light",
+      "状态": "done",
+      "本轮目标": "接 宿主IO 提供 prompt 抓取/投影出口",
+      "证据": "examples/test_acp内容_接线.light 退出码 0 + 既有 test_acp内容 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经宿主抓取提示 改「静默返回空」-> test_acp内容_接线 立 红；② admitAcpPrompt 空提示判定去掉抛错 -> test_acp内容 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 258,
+      "功能": "ACP 转码宿主出口接线：harness 轮次终结原因先经 纯逻辑映射（轮次转停止原因/是种子专有原因 保留不动），再经宿主桩能力 终结帧编码 交给宿主线缆层",
+      "原版包": "acp/codec",
+      "光明模块": "src/acp转码.light",
+      "状态": "done",
+      "本轮目标": "接 宿主IO 做 harness 轮次终结帧编解码出口",
+      "证据": "examples/test_acp转码_接线.light 退出码 0 + 既有 test_acp转码 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经宿主编码终结帧 改「静默返回空」-> test_acp转码_接线 立 红；② interrupted 映射改 end_turn -> test_acp转码 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 259,
+      "功能": "hooks 协议 + 触发宿主出口接线：经宿主触发钩子（事件形状与 钩子系统.发布 一致，三域 PreToolUse/PostToolUse/Stop 词表判定，非宿主域 INVALID_ARGUMENT）；钩子协议 纯逻辑映射保留不动",
+      "原版包": "hooks/hook-protocol + core/hooks",
+      "光明模块": "src/钩子协议.light + src/钩子.light",
+      "状态": "done",
+      "本轮目标": "经 宿主IO 真正触发宿主钩子出口（pre-tool/PostTool/Stop 三域）",
+      "证据": "examples/test_钩子_接线.light 退出码 0 + 既有 test_钩子/test_钩子协议/test_钩子深化 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经宿主触发钩子 改「静默返回空」-> test_钩子_接线 立 红；② 钩子.分发 不调处理器 -> test_钩子 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 260,
+      "功能": "本地 HTTP(S) 抓取宿主出口接线：抓取策略.宿主抓取出口（URL 校验 -> 放行判定注入 -> 抓取函数注入 -> 内容类型分类，结果统一 IO形状）+ 真实抓取提供.经宿主抓取（校验/允许抓取保留，实际请求经宿主桩 真实抓取 能力转发）；公网目标 PERMISSION_DENIED 不静默",
+      "原版包": "web/web-fetch-http",
+      "光明模块": "src/抓取策略.light + src/真实抓取提供.light",
+      "状态": "done",
+      "本轮目标": "URL 校验+内容类型分类+实际抓取接桩出口（宿主IO/真实HTTP客户端）",
+      "证据": "examples/test_抓取_接线.light 退出码 0 + 既有 test_抓取策略/test_R42_真实抓取 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经宿主抓取 改「静默返回空」-> test_抓取_接线 立 红；② 协议白名单 改放行全部 -> test_抓取策略 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 261,
+      "功能": "webhook 会话宿主出口接线：会话构造/消息注入/错误链三出口经 宿主IO 宿主桩（已解析请求与造用户消息/造投递来源形状透传，错误链复用既有 错误链() 汇总）；解析请求/快照投递/准入不变式/运行时状态机纯逻辑保留不动",
+      "原版包": "webhook/webhook",
+      "光明模块": "src/webhook会话.light",
+      "状态": "done",
+      "本轮目标": "接 宿主IO 做会话构造/消息注入/错误链出口",
+      "证据": "examples/test_webhook会话_接线.light 退出码 0 + 既有 test_webhook会话 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 经宿主会话构造 改「静默返回空」-> test_webhook会话_接线 立 红；② 解析请求 绝对路径校验去掉 -> test_webhook会话 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 262,
+      "功能": "宿主IO 抽象层从「原型」提升为正式集成层：造宿主桩/宿主转交（能力路由 + IO结果统一形状包装 + 调用日志，未知能力 UNSUPPORTED_OPERATION，能力内抛错 IO_ERROR）+ 取消令牌传播（宿主转交 前置 校验未取消）+ 超时重试（带重试宿主调用 复用 §3 带重试执行，槽传参手法同 webhook会话 装配槽）+ 文件 IO 统一形状（造宿主文件桩 + 槽读/写）；供 B 线各单元与 C/E 线复用",
+      "原版包": "core/host-io（宿主面）",
+      "光明模块": "src/宿主IO.light",
+      "状态": "done",
+      "本轮目标": "从原型提升为正式集成层（宿主转交/取消令牌传播/超时重试/文件 IO 统一形状）",
+      "证据": "examples/test_宿主IO_接线.light 退出码 0 + 既有 test_宿主IO 回归绿；examples/_antirun_r6B_任务B.py 14/14 组立红（改->红->还原）",
+      "反跑判据": "① 宿主转交 未知能力改「静默返回空」-> test_宿主IO_接线 立 红；② 读文件 返回污染内容 -> test_宿主IO 立 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 269,
+      "功能": "agent-loop inbox 异步化（异步消息缓冲→跑一轮前排空注入会话）",
+      "原版包": "core/agent-loop src/index.ts（inbox 异步化语义）",
+      "光明模块": "src/代理.light（双端队列承载，不引线程）",
+      "状态": "done；第6轮C线（2026-09-30）：代理循环新增 收件箱(双端队列)+推入收件/排空收件箱，跑一轮 开头排空 inbox 并逐条注入为 user/message；examples/test_编排装配.light 用例_inbox异步消费 绿，反跑#1（去掉排空→异步消息丢失立红）",
+      "证据": [
+        "src/代理.light",
+        "src/双端队列.light",
+        "examples/test_编排装配.light"
+      ],
+      "本轮目标": "done：用 双端队列.light 承载异步入队消息，不引线程；跑一轮 进入主循环前排空 inbox 并逐条记为 user/message，保证异步消息不丢失；已消费收件 计数供断言",
+      "反跑判据": "test_编排装配.light 用例_inbox异步消费：将 代理.驱动 的 inbox 排空逻辑移除→异步消息未入会话、已消费收件=0 立红；还原后绿",
+      "语言缺陷": [
+        "无新增"
+      ]
+    },
+    {
+      "编号": 270,
+      "功能": "session message projection 事件解释器（事件表→表面消息投影，每轮后刷新）",
+      "原版包": "core/session src/surface.ts（projected message 解释器）",
+      "光明模块": "src/代理.light（投影刷新事件 接 会话格式.投影消息产生）+ src/会话格式.light",
+      "状态": "done；第6轮C线：代理循环每轮后调 投影消息产生(汇集全部事件) 刷新 投影消息表；examples/test_编排装配.light 用例_标准预设投影刷新 绿，反跑#2（投影改坏返回非列表→消息表形状立红）",
+      "证据": [
+        "src/代理.light",
+        "src/会话格式.light",
+        "examples/test_编排装配.light",
+        "examples/test_会话格式.light"
+      ],
+      "本轮目标": "done：复用既有 投影消息产生（surface.ts 对齐），在 代理.驱动 每轮结尾刷新 投影消息表 缓存并累计 上次投影消息数；标准预设跑一轮后投影表含 user/assistant 消息",
+      "反跑判据": "test_编排装配.light 用例_标准预设投影刷新：将 投影刷新事件 的返回改为字典（非列表）→投影消息表形状断言立红；还原后绿",
+      "语言缺陷": [
+        "无新增"
+      ]
+    },
+    {
+      "编号": 271,
+      "功能": "goal-round-driver 接 目标折叠 判定模型可恢复 闸门（目标暂停/恢复统一闸门）",
+      "原版包": "packages/goal/goal-round-driver + packages/goal/goal-fold（resume gate）",
+      "光明模块": "src/目标轮驱动.light（判定模型恢复）+ src/目标折叠.light",
+      "状态": "done；第6轮C线：目标轮驱动 新增 判定模型恢复(目标,引用) 接 目标折叠.判定模型可恢复（R5 已移植），phase==paused 且 id/revision 命中→抛 'the model cannot resume a paused goal'；examples/test_编排装配.light 用例_目标暂停恢复闸门 绿",
+      "证据": [
+        "src/目标轮驱动.light",
+        "src/目标折叠.light",
+        "examples/test_编排装配.light"
+      ],
+      "本轮目标": "done：把散落的 goal 暂停/恢复判定收敛到 目标折叠.判定模型可恢复 单一闸门，目标轮驱动 仅做转发；覆盖 命中暂停抛错 / 引用不匹配放行 / 非暂停放行 三分支",
+      "反跑判据": "test_编排装配.light 用例_目标暂停恢复闸门：将 判定模型恢复 的 paused 抛错分支改反（不抛错）→命中暂停用例立红；还原后绿",
+      "语言缺陷": [
+        "无新增"
+      ]
+    },
+    {
+      "编号": 272,
+      "功能": "plan-mode 接 代理循环：计划模式下禁止写操作（沿用 权限.light 分类闸门）",
+      "原版包": "packages/plan/plan-mode + core/permission（写拦截）",
+      "光明模块": "src/代理.light（设计划模式/是计划模式/计划模式拦写 + 执行组 两分支拦截）+ src/权限.light",
+      "状态": "done；第6轮C线：代理循环新增 计划模式 标志 + 权限管理器 实例 + 计划模式拦写(分类!=放行 记 tool/error 并跳过)，执行组 单例/并行 两分支在审批前接入；examples/test_编排装配.light 用例_计划模式写拦截 绿（计划模式写工具未执行且记 tool/error，非计划模式正常执行），反跑#3（去拦截→写拦截用例立红）",
+      "证据": [
+        "src/代理.light",
+        "src/权限.light",
+        "examples/test_编排装配.light"
+      ],
+      "本轮目标": "done：计划模式下非放行工具（写/修改，分类=审批/拒绝）在 执行组 执行前被拦截并记录 tool/error，且不实际执行；非计划模式放行写操作",
+      "反跑判据": "test_编排装配.light 用例_计划模式写拦截：将 执行组 的计划模式拦写分支移除→写文件 被执行（计数=1）立红；还原后绿",
+      "语言缺陷": [
+        "无新增"
+      ]
+    },
+    {
+      "编号": 273,
+      "功能": "总装配链：解析预设→装配挂载集→注入团队/子代理注册表→代理循环按 inbox 驱动→每轮后投影刷新",
+      "原版包": "apps/cli + core/agent-loop + packages/preset/agent-preset-registry（session assembly）",
+      "光明模块": "src/总入口.light（跑一轮 扩展）+ src/代理.light + src/预设切换.light + src/预设挂载过滤.light",
+      "状态": "done；第6轮C线：总入口.跑一轮 扩展为「解析选项.预设→组装注册表(预设标识) 装配挂载集（R103/R104）→可选注入团队注册表→代理循环按 inbox 驱动（代理.驱动 内部排空 inbox+每轮后投影刷新）」；与 A 线分区（A 改 主()、C 改 跑一轮）；examples/test_编排装配.light 用例_总装配链 绿",
+      "证据": [
+        "src/总入口.light",
+        "src/代理.light",
+        "src/预设切换.light",
+        "src/预设挂载过滤.light",
+        "examples/test_编排装配.light"
+      ],
+      "本轮目标": "done：仅扩展 跑一轮 装配次序，不改 交互循环/执行运行 既有路径；支持 选项{\"预设\":id} 与 选项{\"团队注册表\":注册表} 注入；inbox 驱动与投影刷新由 代理.驱动 内部完成",
+      "反跑判据": "test_编排装配.light 用例_总装配链 依赖 组装注册表/代理.驱动 既有逻辑；将 跑一轮 的预设装配分支改反（忽略 选项.预设）→预设挂载集不生效用例立红；还原后绿",
+      "语言缺陷": [
+        "无新增"
+      ]
+    },
+    {
+      "编号": 275,
+      "功能": "apps/web ↔ webui/ 架构对齐 + 缺失客户端模块补完。逐模块比对上游 apps/web 功能点（conversation list / settings / model picker / streaming render / attachment upload / slash command palette / session resume）与 webui/ 现状，覆盖情况写入 docs/功能对标/apps_web对齐.md。本线补完两个缺口：① 附件上传——启用原 disabled 的 #attach-btn，加隐藏 file input（多选）+ FileReader 读 dataURL + 输入框上方可删除 chip，随 body.attachments best-effort 上送；② 斜杠命令面板——新增 webui/slash-palette.js，输入框首位敲 / 弹候选浮层，↑↓/Enter/Tab/Esc 导航，七命令集（/help /clear /model /compact /save /resume /exit）对齐 src/cli外壳.light 斜杠命令表，选中回填输入框、/clear 触发新对话。预设选择器四键（standard/cordis/ptc/minimal）与后端 是已知预设/取预设注册表 对齐，body.preset 随消息上送。",
+      "原版包": "apps/web（React 客户端：conversation list / settings / model picker / streaming render / attachment upload / slash command palette / session resume）",
+      "光明模块": "webui/slash-palette.js（新）；webui/index.html（启用附件按钮 + 引入 slash-palette.js）；webui/app.js（附件采集/chip/随请求上送 + SlashPalette 初始化）；webui/style.css（面板与 chip 样式）；docs/功能对标/apps_web对齐.md（比对表）",
+      "状态": "done/已核对",
+      "本轮目标": "第6轮 任务线D：架构对齐 + 缺失模块补完（附件上传 + 斜杠命令面板）",
+      "证据": [
+        "webui/slash-palette.js",
+        "webui/index.html",
+        "webui/app.js",
+        "webui/style.css",
+        "docs/功能对标/apps_web对齐.md"
+      ],
+      "反跑判据": "静态校验：node --check webui/app.js 与 webui/slash-palette.js 退出码 0；既有 webui/ 行为不破坏（sidebar/messages/tool-card 未改）。浏览器手测清单（四预设切换/会话恢复/附件上传/流式输出/斜杠面板）见 apps_web对齐.md §4，待人工或 Playwright 跑录。"
+    },
+    {
+      "编号": 276,
+      "功能": "typert 类型系统/协议/注册接线：工具参数 schema（{type,properties,required}）→ typert 节点（typert值节点/工具模式转typert节点）→ 可赋值 判定（typert校验工具参数 必填缺失/类型不符报错）；客户端消息块种类推断（词表对齐 客户端.消息块输入）；型协查找项登记进 类型注册.描述符存储（键 typert:<name>）；既有 纯逻辑 保留不动",
+      "原版包": "packages/typert",
+      "光明模块": "src/类型系统.light + src/typert协议.light + src/类型注册.light",
+      "状态": "done",
+      "本轮目标": "接 客户端 类型推断 / 工具参数 schema 校验",
+      "证据": "examples/test_类型系统_接线.light 退出码 0 + 既有 test_类型系统/test_类型注册 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① typert校验工具参数 静默返回通过 → 接线用例红；② 可赋值 恒假 → test_类型系统 红",
+      "语言缺陷": "标识符「…查找定义」撞 定义 关键字词根（词法并入），更名 型协登记查找项 规避"
+    },
+    {
+      "编号": 277,
+      "功能": "会话冷读接线：冷读列出会话（根/<项目键>/编码段/session.jsonl 布局真读，坏会话不中断列举，目录名反投影还原工作目录）+ 接线冷读会话文件（会话存储.取会话文件 JSONL 直接冷读）；布局对齐 总入口.列出会话 枚举面",
+      "原版包": "session-query cold-read",
+      "光明模块": "src/会话冷读.light",
+      "状态": "done",
+      "本轮目标": "接 总入口.列出会话 / 会话存储",
+      "证据": "examples/test_会话冷读_接线.light 退出码 0 + 既有 test_会话冷读 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 冷读列出会话 静默返回空 → 接线用例红；② 拆分行 恒空表 → test_会话冷读 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 278,
+      "功能": "会话日志增量接线：会话.light 事件流（记录事件/记录轮次 → 汇集全部事件）经 接线事件落盘行 批量线化（线头 + 线事件 双语键兜底），供 会话持久化JSONL 落盘（与 #279 读写闭环）；事件 中文键「类型」实测对齐 线事件 兜底词表",
+      "原版包": "session-log-deepseek",
+      "光明模块": "src/会话日志增量.light",
+      "状态": "done",
+      "本轮目标": "接 会话.light 事件落盘",
+      "证据": "examples/test_会话日志增量_接线.light 退出码 0（落盘→扫描日志 读回闭环）+ 既有 test_会话日志增量 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线事件落盘行 静默返回空头/空行 → 接线用例红；② 线头 恒空字典 → test_会话日志增量 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 279,
+      "功能": "会话持久化JSONL接线：接线存储写会话（事件「类型」键自动归一「种类」+ 生成行序列 全量写，行文本自带尾部换行零额外拼接）+ 接线存储读会话（扫描日志 严格=假）+ 接线存储追加事件（增量行序列，序号须大于起始序号）；存储实例由调用方注入（鸭子类型，零环）",
+      "原版包": "session-persistence-jsonl",
+      "光明模块": "src/会话持久化JSONL.light",
+      "状态": "done",
+      "本轮目标": "接 会话存储.light 读写路径",
+      "证据": "examples/test_会话持久化JSONL_接线.light 退出码 0（写→读→追加→再读闭环）+ 既有 test_会话持久化JSONL 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线存储读会话 静默返回空 → 接线用例红；② 扫描日志 头行断言放空 → test_会话持久化JSONL 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 280,
+      "功能": "会话标题族接线：接线标题族回退（选首条消息 → 会话标题.回退会话标题 截词限字节 → 规范化会话标题 → 造标题载荷 用户来源）；标题提供方不可用时的回退流水线一行可用",
+      "原版包": "session-title",
+      "光明模块": "src/会话标题族.light",
+      "状态": "done",
+      "本轮目标": "接 会话标题.light",
+      "证据": "examples/test_会话标题族_接线.light 退出码 0 + 既有 test_会话标题族 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线标题族回退 静默返回空标题 → 接线用例红；② 选首条消息 取末条 → test_会话标题族 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 281,
+      "功能": "会话引用深化接线：接线提及匹配（会话引用标签 label/displayTitle → 造引用候选 → 造提及候选 → 候选匹配查询 单步流水线，供提及解析调用方）",
+      "原版包": "session-reference",
+      "光明模块": "src/会话引用深化.light",
+      "状态": "done",
+      "本轮目标": "接 会话引用.light",
+      "证据": "examples/test_会话引用深化_接线.light 退出码 0 + 既有 test_会话引用深化 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线提及匹配 恒不命中 → 接线用例红；② 造引用候选 恒空标签 → test_会话引用深化 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 282,
+      "功能": "web 三提供商搜索接线：接线搜索工具（依赖包注入执行器，手法对齐 交互工具）：一行注册 search 工具进 工具注册表（统一参数模式），执行链 = 校验参数 → 构造请求 → 执行器（mock/真实 HTTP）→ 按提供商归一响应",
+      "原版包": "web/web-search",
+      "光明模块": "src/搜索提供商.light",
+      "状态": "done",
+      "本轮目标": "接 工具注册表（search 工具）",
+      "证据": "examples/test_搜索提供商_接线.light 退出码 0（注册→执行→归一→坏参数拒）+ 既有 test_搜索提供商 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 执行器 载荷替换为空 → 接线用例红；② 归一参数 恒空 → test_搜索提供商 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 283,
+      "功能": "Office→PDF 队列接线：接线办公转工具（依赖注入转换器）：一行注册 office_to_pdf 工具，执行链 = 办转新建服务 → 办转设宿主钩子（mock/真实 LibreOffice）→ 办转提交转换（去重/队列/投影输出）；版本为字符串契约",
+      "原版包": "office/office-to-pdf",
+      "光明模块": "src/office转PDF.light",
+      "状态": "done",
+      "本轮目标": "接 工具注册表（office 工具）",
+      "证据": "examples/test_office转PDF_接线.light 退出码 0 + 既有 test_R85_D_office转PDF 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 执行不设宿主钩子（不调转换器）→ 接线用例红；② 办转校验输出 跳过校验 → test_R85_D_office转PDF 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 284,
+      "功能": "tool-fs 行级 LCS 块差异接线：写文件差异信封（前/后文本 → 绳计算块差异 行级 LCS 块表 {路径,旧文本,新文本} + 绳格式化写输出 create/update 信封一行产出），grep 确认 绳计算块差异 无重复实现直接复用",
+      "原版包": "tool-fs",
+      "光明模块": "src/工具_写文件.light",
+      "状态": "done",
+      "本轮目标": "补行级 LCS 段接 写文件 工具结果信封",
+      "证据": "examples/test_工具_写文件_接线.light 退出码 0 + 既有 test_R85_E_工具.diff 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 块差异表恒空 → 接线用例红；② 绳计算块差异 恒空表 → test_R85_E_工具.diff 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 285,
+      "功能": "attachment 等比/长边投影接线：投影图片附件块（绳请求长边尺寸 等比收边 → 消息.造图片块 形状附件块，附 width/height 投影键），长边不足原样",
+      "原版包": "attachments",
+      "光明模块": "src/附件准入.light",
+      "状态": "done",
+      "本轮目标": "补投影段接 消息.light 附件块",
+      "证据": "examples/test_附件准入_接线.light 退出码 0 + 既有 test_附件准入/test_附件准入1.5/test_R85_E_附件归一 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 投影块恒原尺寸 → 接线用例红；② 绳请求长边尺寸 恒原样 → test_R85_E_附件归一 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 286,
+      "功能": "sandbox 失败签名分类接线：接线沙箱失败分类（运行受限增强 结果 dict 双语键兜底 → 绳分类运行失败 fatalSignatures 规则签名匹配 → {结果,分类} 信封，退出码 0/空 非失败不静默猜）；B 线未占 沙箱 段落，E 线直接复用既有纯逻辑",
+      "原版包": "sandbox",
+      "光明模块": "src/沙箱.light",
+      "状态": "done",
+      "本轮目标": "补失败分类段（对齐 互斥表：B 占则挂新文件，实际 B 未占）",
+      "证据": "examples/test_沙箱_接线.light 退出码 0 + 既有 test_沙箱/test_沙箱深化/test_R85_E_沙箱升级 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线沙箱失败分类 恒空分类 → 接线用例红；② 绳匹配签名 恒假 → test_R85_E_沙箱升级 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 287,
+      "功能": "feedback 命令/消息反馈接线：接线反馈命令（命令名->处理函数 字典一行注册 feedback 命令，交互循环 命令面形状）+ 反馈命令入口（记录反馈 归一 → 反馈服务.放置，首放 if版本=空）+ 接线反馈CAS（乐观锁：正确版本更新/错误版本 version-conflict）",
+      "原版包": "feedback",
+      "光明模块": "src/反馈.light",
+      "状态": "done",
+      "本轮目标": "接 交互循环 反馈记录",
+      "证据": "examples/test_反馈_接线.light 退出码 0 + 既有 test_反馈 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 命令入口不落服务（放置替换为假成功）→ 接线用例红；② 记录反馈 不归一 → test_反馈 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 288,
+      "功能": "interaction 审批/权限预设接线：接线审批到权限（权限.检查「审批」分类 → 审批管理器.请求审批 生成审批单；放行/拒绝不生成）+ 接线权限预设到闸门（折叠旋钮 → 推导预设 → 权限管理器.设置预设）；管理器实例入参注入（零环）",
+      "原版包": "interaction + permission-presets",
+      "光明模块": "src/审批.light + src/交互命令.light",
+      "状态": "done",
+      "本轮目标": "接 权限.light 闸门",
+      "证据": "examples/test_审批_接线.light 退出码 0 + 既有 test_审批/test_交互命令/test_权限 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 接线审批到权限 不生成审批单 → 接线用例红；② 推导预设 恒自定义 → test_交互命令 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 289,
+      "功能": "deliverables 工作区变更/交付呈现接线：工区交付判定（轮记录「文件」改动表 → 交付.判定需交付/造交付事件）+ 接线交呈工具（present 工具注册进 工具注册表，宿主钩子取文件类型注入，交呈执行/交呈渲染输出 复用）",
+      "原版包": "deliverables",
+      "光明模块": "src/工作区变更.light + src/交付呈现.light",
+      "状态": "done",
+      "本轮目标": "接 交付.light",
+      "证据": "examples/test_工作区变更_接线.light 退出码 0 + 既有 test_R85_D_工作区变更/test_R85_D_交付呈现 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 工区交付判定 判定恒已交付 → 接线用例红；② 工区解析记录 恒空表 → test_R85_D_工作区变更 红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 290,
+      "功能": "experimental 团队/代理团队工具接线：接线团队工具（9 工具声明经 团队工具面 一行注册进 工具注册表）+ 造代理团队能力（读面真实接 代理团队.折叠团队状态/过滤分页：listMembers/listTasks/getTask；写面留宿主注入位；中文键→英文键 归一 id/status/subject）",
+      "原版包": "experimental/teams",
+      "光明模块": "src/团队工具.light + src/代理团队.light",
+      "状态": "done",
+      "本轮目标": "接 代理团队.light 注册",
+      "证据": "examples/test_团队工具_接线.light 退出码 0（注册 9 工具→list_agents/team_task_list/team_task_get 真读事件流）+ 既有 test_团队工具/test_代理团队 回归绿；examples/_antirun_r6E_任务E.py 30/30 组立红（改->红->还原，LF 归一锚点）",
+      "反跑判据": "① 能力列任务代理团队 恒空表 → 接线用例红；② 折叠团队状态 丢任务折叠 → test_代理团队 红",
+      "语言缺陷": "无新增"
     }
   ]
 }

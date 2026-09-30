@@ -54,6 +54,10 @@
   var approvalsStatus = document.getElementById("approvals-status");
   var approvalsCount = document.getElementById("approvals-count");
   var permPreset = document.getElementById("perm-preset");
+  // 第6轮 D：附件上传 + 斜杠命令面板
+  var attachBtn = document.getElementById("attach-btn");
+  var attachInput = document.getElementById("attach-input");
+  var attachChips = document.getElementById("attach-chips");
 
   // ---------- 状态 ----------
   var params = new URLSearchParams(location.search);
@@ -66,6 +70,49 @@
   var currentAssistantIndex = -1; // history 中当前助手条目下标
   var currentBubble = null;       // 当前渲染中的助手消息行 DOM（一轮可能有多个）
   var userBubble = null;          // 本轮用户消息行 DOM
+  var attachments = [];           // 第6轮 D：待发送附件 [{name, type, dataUrl}]
+
+  // ---------- 第6轮 D：附件上传（前端选文件读为 dataURL，随请求 best-effort 上送） ----------
+  function renderChips() {
+    if (!attachChips) return;
+    attachChips.innerHTML = "";
+    attachChips.hidden = attachments.length === 0;
+    for (var i = 0; i < attachments.length; i++) {
+      (function (att, idx) {
+        var chip = document.createElement("span");
+        chip.className = "attach-chip";
+        chip.textContent = "📎 " + att.name;
+        var x = document.createElement("button");
+        x.className = "attach-chip-x";
+        x.textContent = "×";
+        x.title = "移除附件";
+        x.addEventListener("click", function () {
+          attachments.splice(idx, 1);
+          renderChips();
+        });
+        chip.appendChild(x);
+        attachChips.appendChild(chip);
+      })(attachments[i], i);
+    }
+  }
+
+  function onFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    files.forEach(function (f) {
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        attachments.push({ name: f.name, type: f.type || "application/octet-stream", dataUrl: String(ev.target.result) });
+        renderChips();
+      };
+      reader.readAsDataURL(f);
+    });
+  }
+
+  function clearAttachments() {
+    attachments = [];
+    renderChips();
+    if (attachInput) attachInput.value = "";
+  }
 
   // token 不写 localStorage；顺带从地址栏抹掉，避免留在历史记录/分享链接里
   // 注意：本文件有局部变量 var history（会话数组），会遮蔽 window.history，
@@ -617,6 +664,7 @@
     userBubble = Messages.addUser(text);
     currentBubble = null; // 首个文本增量到达时再创建助手行
     inputEl.value = "";
+    clearAttachments();
     autoResize();
     updateCharCount();
     setStreaming(true);
@@ -630,6 +678,7 @@
     var body = { model: "deepseek-flash", messages: msgs, stream: true };
     if (sessionId) body.session_id = sessionId;       // 会话延续
     if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
+    if (attachments.length) body.attachments = attachments.slice(); // 第6轮 D：附件 best-effort
 
     var headers = { "Content-Type": "application/json" };
     var started = false; // 是否已进入流式阶段（区分"连不上"和"中途断开"）
@@ -830,6 +879,21 @@
   });
   sendBtn.addEventListener("click", sendMessage);
   stopBtn.addEventListener("click", stopStreaming);
+
+  // 第6轮 D：附件选择器
+  if (attachBtn && attachInput) {
+    attachBtn.addEventListener("click", function () { attachInput.click(); });
+    attachInput.addEventListener("change", function () { onFiles(attachInput.files); });
+  }
+  // 第6轮 D：斜杠命令面板（命令集对齐 src/cli外壳.light 斜杠命令表）
+  if (window.SlashPalette) {
+    SlashPalette.init({
+      input: inputEl,
+      onPick: function (cmd) {
+        if (cmd === "/clear") { newChatState(); }
+      }
+    });
+  }
   settingsBtn.addEventListener("click", function () {
     if (configPanel.hidden) showConfigPanel();
     else hideConfigPanel(true);
