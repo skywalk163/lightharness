@@ -5,9 +5,15 @@
 # 反跑判据：把任一「断言相等(实际, 期望, 标签)」的 期望 改成反向值，本测试必须立红
 #          （抛出 断言失败），否则该判据无效。每条关键断言下方已注明反向改法。
 
+从 JSON 导入 解析JSON
 从 工具 导入 工具注册表
 从 会话 导入 新建会话
 从 待办 导入 造待办工具, 待办日志校验
+
+段落 取载荷(结果):
+  设 块表 为 结果["content"]
+  设 首块 为 块表[0]
+  返回 解析JSON(首块["text"])
 
 段落 断言相等(实际, 期望, 标签):
   如果 实际 != 期望:
@@ -33,13 +39,13 @@
   # 反跑判据：把 长(清单) 期望 1 改 2，或 清单[0]["content"] 改 "乙" 即红
 
   # ---- 用例2：counts 计数正确 ----
-  设 计数 为 结果乙["content"]["counts"]
+  设 计数 为 取载荷(结果乙)["counts"]
   断言相等(计数["pending"], 0, "用例2 pending=0")
   断言相等(计数["inProgress"], 0, "用例2 inProgress=0")
   断言相等(计数["completed"], 1, "用例2 completed=1")
   # 反跑判据：把 completed 期望 1 改 0 即红
   设 三态 为 注册表.执行("todo_write", 造参数([["content": "p", "status": "pending"], ["content": "q", "status": "in_progress"], ["content": "r", "status": "completed"]]))
-  设 计数三 为 三态["content"]["counts"]
+  设 计数三 为 取载荷(三态)["counts"]
   断言相等(计数三["pending"], 1, "用例2 三态 pending=1")
   断言相等(计数三["inProgress"], 1, "用例2 三态 inProgress=1")
   断言相等(计数三["completed"], 1, "用例2 三态 completed=1")
@@ -71,7 +77,7 @@
   设 管理器2 为 造待办工具(注册表2, 会话2, ["允许多重": 真])
   设 并行写 为 注册表2.执行("todo_write", 造参数([["content": "a", "status": "in_progress"], ["content": "b", "status": "in_progress"]]))
   断言相等(并行写["isError"], 假, "用例6 并行纪律下双 in_progress 应成功")
-  断言相等(并行写["content"]["counts"]["inProgress"], 2, "用例6 并行下 inProgress=2")
+  断言相等(取载荷(并行写)["counts"]["inProgress"], 2, "用例6 并行下 inProgress=2")
   # 反跑判据：把 inProgress 期望 2 改 1 即红
 
   # ---- 用例7：非 agent 调用方（会话=空）拒绝 ----
