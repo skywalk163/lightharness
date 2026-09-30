@@ -1207,6 +1207,25 @@ body {
   color: var(--text-dim);
 }
 .shortcut-hint { user-select: none; }
+
+/* 第5步：chat 框模式选择器（极简/创造/标准/PTC） */
+.mode-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim, #888);
+  font-size: 11px;
+  padding: 2px 18px 2px 8px;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+.mode-select:hover, .mode-select:focus { color: var(--text, #ccc); border-color: var(--text-dim, #888); }
 .input-count { font-family: var(--font-mono); }
 .attach-btn { padding: 9px 10px; }
 
