@@ -6,6 +6,7 @@
 <title>lightharness</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%233fb950'/%3E%3Ctext x='8' y='12' font-size='9' text-anchor='middle' fill='%23fff' font-family='monospace'%3EL%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="settings.css">
 </head>
 <body>
 
@@ -23,7 +24,16 @@
         <button id="new-session-btn" class="btn btn-new-session" title="新建会话">＋ 新会话</button>
       </div>
       <div id="session-list" class="session-list"></div>
-      <div class="sidebar-footer">双击会话可重命名</div>
+      <div class="sidebar-footer">
+        <button id="app-settings-btn" class="settings-entry" title="打开设置（Esc 关闭）">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>设置</span>
+        </button>
+        <div class="sidebar-foot-hint">双击会话可重命名</div>
+      </div>
     </aside>
 
     <!-- 中栏：顶栏 + 消息列表 + 输入区 -->
@@ -143,10 +153,11 @@
     </div>
   </div>
 
-  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 斜杠命令面板 → 主应用 -->
+  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 设置对话框 → 斜杠命令面板 → 主应用 -->
   <script src="tool-card.js"></script>
   <script src="messages.js"></script>
   <script src="sidebar.js"></script>
+  <script src="settings.js"></script>
   <script src="slash-palette.js"></script>
   <script src="app.js"></script>
 </body>
