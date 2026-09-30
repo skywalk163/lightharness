@@ -11,9 +11,10 @@
     "【第13轮 2026-09-13】新增 #86~#91：str-replace-editor / shell-env / goal-round-driver / session-log-deepseek / authorization / webhook-github 六域纯逻辑复刻；语言缺陷账 L-091~L-103；行为差异清单 R13-D 段。",
     "【第18轮 2026-09-13】新增 #116~#121：缺陷修复轮6个工具库（字典增强/数值兼容/错误增强/字符串增强/函数增强/词法安全），修复/绕法32个已登记语言缺陷；语言缺陷账追加修复状态标注；行为差异清单 R18-D 段。",
     "【R66 2026-09-19】新增 #205~#207：原生 socket 封装（套接字.light）+ selectors 事件循环（事件循环.light）+ 二者集成回归；规划文档写 #203~#205 与清单现状（#203/#204 已被 R62/R65 占用）冲突，按顺延取 #205~#207；新文件一律括号式 段落 名(参数)，零新增弃用告警；行为差异清单 R66-D 段记录 Windows 非阻塞 connect/accept 的 errno 方言。",
-    "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）"
+    "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）",
+    "【第8轮 终轮收口 C 线 2026-09-30】跳号补卡扫描结论：#263–#268 确为编号洞（连续范围 263–268 无条目，R6 从未分配），但经对上游锚点 e5b5ccbfcb 的 packages/ 55 个包逐包比对，疑似未覆盖的 28 个包(browser-use/computer-use/credentials/telemetry/storage/settings/plan/goal/guard/host/identity/jobs/lsp/schedule/sdk/skill/spill/ssh/terminal/todo/typert/workspace/preset/ptc-runtime/runtime-diagnostics/bundle/client/shell)均已由现有卡覆盖——browser-use+computer-use→#254、runtime-diagnostics(invariants)→#252、sdk→#74、lsp→#63、jobs→#53/#101、guard→#23/#52/#61/#101/#113、schedule→#29/#52/#53/#101/#206、credentials→#24/#61/#90/#246、telemetry→#19、storage→#14/#59/#99、settings→#25/#115、goal→#35/#88、plan→#39/#272、host→#10–#21、identity→#90/#91、skill→#38/#249、spill→#27/#98、ssh→#190/#253、terminal→#15/#191/#212、todo→#22/#66、typert→#62/#96/#219/#276、workspace→#58/#208/#209、preset→#72/#249/#250、ptc-runtime→#20/#187、bundle→#11/#249、client→#16/#55/#104/#107、shell→#12/#46/#87/#236/#237。纯逻辑面复刻已随 #255–#291 全部收口（done/宿主桩已接(可测)/宿主登记），无真实空缺可填，故 #263–#268 维持为保留跳号、未硬填卡（遵循第8轮任务书 §0 实测更正「不能硬填 #263–#268」）。#198–#200 为空占位条目，标注「非对标条目（轮次报告）」保留。#197 lexer 收尾经 lexer 单元测试（16 passed / 1 skipped 绿）核验后销账 done；全量 0.82 权威门由路M 复核，本线不 commit。"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -225,7 +226,7 @@
       "功能": "hooks 事件机制（三事件域）",
       "原版包": "core/hooks + hook-protocol",
       "光明模块": "src/钩子.light + src/事件.light(总线) + src/会话.light(会话域接线) + src/代理.light(代理/能力域接线)",
-      "状态": "v2；0.1.5已核对：hook-protocol 无 src 变化(hooks-claude-code/codex 提供方层未移植)；0.1.5第5轮确认：hooks 提供方包变更维持登记不移植(宿主层)；第7轮B线(#291)：经宿主触发钩子 出口已接 宿主桩.宿主钩子事件总线桩（PreToolUse/PostToolUse/Stop 三域内存可派发可断言），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5已核对：hook-protocol 无 src 变化(hooks-claude-code/codex 提供方层未移植)；0.1.5第5轮确认：hooks 提供方包变更维持登记不移植(宿主层)；第7轮B线(#291)：经宿主触发钩子 出口已接 宿主桩.宿主钩子事件总线桩（PreToolUse/PostToolUse/Stop 三域内存可派发可断言）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——宿主钩子默认(宿主桩,域,时机,数据,会话) 桩非空走桩、桩为空走本地 钩子系统 三域发布（PreToolUse/PostToolUse→capability、Stop→agent）",
       "宿主面": true,
       "证据": [
         "src/钩子.light",
@@ -274,7 +275,7 @@
       "功能": "子进程执行（subprocess/shell 后端）",
       "原版包": "subprocess + shell",
       "光明模块": "src/子进程.light",
-      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植；R85改标（0.1.6）：linux-execve/linux-scope 纯逻辑已移植（src/子进程.light R85-B 段，test_R85_B_exec.light rc=0）；process-inspector→src/异步子进程.light；shell-activity/terminal/windows-job 纯逻辑→src/异步PTY.light；真实 execve/systemd-run/Job API/PTY fd 判定仍宿主面（F 批2 Linux 实测范围）；第7轮B线(#291)：接桩子进程+经桩运行进程 出口已接 宿主桩.受控子进程桩（按预设退出码/输出模拟，不触真实OS），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：subprocess/shell OS/宿主层 18 文件变更未移植(linux-execve/linux-scope)；0.1.5第5轮确认：subprocess/shell OS/宿主层维持登记不移植；R85改标（0.1.6）：linux-execve/linux-scope 纯逻辑已移植（src/子进程.light R85-B 段，test_R85_B_exec.light rc=0）；process-inspector→src/异步子进程.light；shell-activity/terminal/windows-job 纯逻辑→src/异步PTY.light；真实 execve/systemd-run/Job API/PTY fd 判定仍宿主面（F 批2 Linux 实测范围）；第7轮B线(#291)：接桩子进程+经桩运行进程 出口已接 宿主桩.受控子进程桩（按预设退出码/输出模拟，不触真实OS）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——运行进程默认(命令,超时) 桩优先、未接走 真子进程执行（stdlib 外部命令.执行命令，真实OS执行，退出码精确保留）",
       "宿主面": true,
       "证据": [
         "src/子进程.light",
@@ -296,7 +297,7 @@
       "功能": "沙箱边界（sandbox）",
       "原版包": "sandbox",
       "光明模块": "src/沙箱.light",
-      "状态": "v2；0.1.5登记：sandbox OS 层 2 文件变更未移植(profiles/index)；0.1.5第5轮确认：sandbox OS 层维持登记不移植；第7轮B线(#291)：接桩沙箱+经桩运行受限 出口已接 宿主桩.受控沙箱桩（沙箱信封含资源限制标记），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：sandbox OS 层 2 文件变更未移植(profiles/index)；0.1.5第5轮确认：sandbox OS 层维持登记不移植；第7轮B线(#291)：接桩沙箱+经桩运行受限 出口已接 宿主桩.受控沙箱桩（沙箱信封含资源限制标记）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——运行受限默认(命令,超时,工作目录) 桩优先、未接走 真沙箱执行（进程树.light 引擎真实OS执行，资源限制=process-tree）",
       "宿主面": true,
       "证据": [
         "src/沙箱.light",
@@ -371,7 +372,7 @@
       "功能": "用户审批/交互（interaction）",
       "原版包": "packages/interaction",
       "光明模块": "src/审批.light",
-      "状态": "v2；0.1.5登记：interaction 命令附件广义化(宿主层，随 #48 附件)；0.1.5第5轮已核对：interaction 命令附件广义化属宿主命令注册层(attachments 描述符+错误文案)，光明纯逻辑无对应点；附件能力本体由任务2 完成(附件准入.light 通用文件)；第7轮B线(#291)：接桩交互+经桩记录审批 出口已接 宿主桩.审批结果桩（内存审批表可断言裁定），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：interaction 命令附件广义化(宿主层，随 #48 附件)；0.1.5第5轮已核对：interaction 命令附件广义化属宿主命令注册层(attachments 描述符+错误文案)，光明纯逻辑无对应点；附件能力本体由任务2 完成(附件准入.light 通用文件)；第7轮B线(#291)：接桩交互+经桩记录审批 出口已接 宿主桩.审批结果桩（内存审批表可断言裁定）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——记录审批默认(工具名,裁定,详情) 桩优先、未接走 审批.light 审批管理器（请求审批→处理审批 真链路）",
       "证据": [
         "src/审批.light",
         "examples/test_审批.light",
@@ -409,7 +410,7 @@
       "功能": "遥测/指标收集（telemetry）",
       "原版包": "packages/telemetry",
       "光明模块": "src/遥测.light",
-      "状态": "v2；0.1.5登记：telemetry 无对应模块；session-stats 投影改读内嵌流(宿主遥测)；第7轮B线(#291)：接桩遥测+经桩记录遥测 出口已接 宿主桩.遥测桩（内存指标表可断言指标名/值/维度，非宿主遥测），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：telemetry 无对应模块；session-stats 投影改读内嵌流(宿主遥测)；第7轮B线(#291)：接桩遥测+经桩记录遥测 出口已接 宿主桩.遥测桩（内存指标表可断言指标名/值/维度，非宿主遥测）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——记录遥测默认(指标名,值,维度) 桩优先、未接走 遥测.light 遥测收集器（创建并压栈→结束当前 真 span 链路）",
       "证据": [
         "src/遥测.light",
         "examples/test_遥测.light",
@@ -430,7 +431,7 @@
       "功能": "代码执行运行时（code-runtime）",
       "原版包": "packages/ptc-runtime（0.1.6-alpha.1 起由 packages/code-runtime 改名；0.1.5 时为 packages/code-runtime）",
       "光明模块": "src/代码运行时.light",
-      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩代码运行时+经桩执行 出口已接 宿主桩.受控子进程桩（按 code: 前缀预设键查退出码/输出），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：code-runtime 宿主 1 文件变更未移植；0.1.5第5轮确认：code-runtime 宿主维持登记不移植；0.1.6记账（R51任务4）：上游已将包改名为 packages/ptc-runtime（ptc-runtime/ptc-runtime 纯类型+词表面与 ptc-runtime-node 宿主面），R51任务3 已对齐保留字表+PtcRun 契约纯逻辑面（判据 examples/test_R51_ptc契约.light，新条目归任务6登记），宿主执行面维持登记不移植；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩代码运行时+经桩执行 出口已接 宿主桩.受控子进程桩（按 code: 前缀预设键查退出码/输出）；第8轮A线(#292)记账：上游 0.1.6 已改名 ptc-runtime 且宿主执行面维持登记不移植——本卡不做默认真后端（避免造出宿主外无法运行的假后端），维持 宿主桩已接(可测)/宿主登记，若日后接入只能走宿主注入",
       "宿主面": true,
       "证据": [
         "src/代码运行时.light",
@@ -448,7 +449,7 @@
       "功能": "e2b 云沙箱客户端（e2b）",
       "原版包": "packages/e2b",
       "光明模块": "src/e2b客户端.light",
-      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩e2b+经桩执行代码 出口已接 宿主桩.受控沙箱桩（按 e2b: 前缀预设键查沙箱信封），状态=宿主桩已接(可测)/维持宿主登记",
+      "状态": "v2；0.1.5登记：e2b 云沙箱客户端 5 文件变更未移植；0.1.5第5轮确认：e2b 云沙箱客户端维持登记不移植；0.1.6记账（R51任务4）：上游 0.1.6-alpha.1 已移除 packages/e2b（全树 0 文件），「维持不移植」记账就此作废，改记「上游已移除」；光明 src/e2b客户端.light 为既有本地实现，上游无对应；R85确认（0.1.6-alpha.2 ddefc45fbc）：e2b 包已移除 / code-runtime 已改名 ptc-runtime，宿主登记维持；第7轮B线(#291)：接桩e2b+经桩执行代码 出口已接 宿主桩.受控沙箱桩（按 e2b: 前缀预设键查沙箱信封）；第8轮A线(#292)：真后端已接(默认路径)/桩为测试注入——执行代码默认(代码) 桩优先、未接走 既有 local-sim 本地模拟（E2BClient 真 subprocess 执行）；真实 e2b 云端 SDK 永久宿主绑定不触",
       "销账": "上游已移除(0.1.6-alpha.1)",
       "证据": [
         "src/e2b客户端.light",
@@ -2852,14 +2853,19 @@
       "功能": "R58 词法收尾与环境红清账轮：L-174 设甲为三 + 切词/保护表 16 条词法红 + 18 条环境红处置 + 65 条语义债归因画像（代码生成21+类成员14+其余30）",
       "原模块": "light-merge 词法层（lexer.py 嵌入块/保护表）+ 0.82 依赖环境 + 65 条存量红归因底表",
       "光明模块": "light-merge/src/lexer.py（任务1 保护表/切词分支）+ lightharness（任务2 依赖装填 + 任务3/4 归因画像 + 任务5 docs）",
-      "状态": "进行中",
+      "状态": "done（R8/C 终轮收口核验：lexer 单元测试 tests/test_lexer.py + tests/test_level6_lexer.py = 16 passed / 1 skipped 绿；L-174 设甲为三 + 切词/保护表 16 条词法红 + 18 条环境红处置 + 65 条语义债归因画像 经 R58 收口后随全量固化；全量 0.82 权威门 scripts/082全量回归.py 由路M 复核，本线不 commit）",
       "完成轮次": "第58轮",
       "备注": "R58 词法收尾与环境红清账轮（任务1-5+路M 交付）。①任务1（P0）词法收尾：**L-174 已修**（无空格赋值尾「为」丢失，设甲为三 → 设/甲/为/三 正确切分；examples/modules/main.light 实跑 rc=1→打印5）；16 条词法红全部转绿（本机 170 passed/253 subtests；0.82 定向 196 passed/4 failed 全为基线内红）；互举反跑 677 零新增；全语料 token A/B 38084 文件仅 1 文件变化（main.light，改善非回归）。单字保护关键发现：R28 已把 CS 表清零并加断言强锁（直接加单字会 lexer 导入失败），改由只读并集 _P0A_SINGLE_CHAR_PROTECTED（57 字，=正面类别并集）承担，9 个测试断言迁移；test_basic_keywords 钉现状同步更新为语义正确切分；test_variable_with_expression 由红转绿。②任务2（P1）环境红：18 条缺依赖红（lunardate 8 + requests 6 + cryptography 4）0.82 装依赖（lunardate 0.3.0/requests 2.34.2/cryptography 50.0.1 用户级 site-packages，cryptography FreeBSD 源码编译 wheel）**全部实测转绿，0 豁免 0 悬置**；定向 147 passed/0 failed 无新增红暴露；light-merge 零 diff。③任务3（P1，只读）35 条归因：21 条测试期望过时（L-096 _light_attr_get/_set helper 形态，1 条为 '==' 预置误伤）+ 14 条粘连己X 读取位不展开 codegen 缺陷（NameError: name '己XX'，src+unified 两后端 _resolve_* 同加类属性白名单分支一条修复可全清）；与 L-175 无关（100010 junitxml 交叉核对）。④任务4（P1，只读）30 条归因：解析层7（5条L-174同源已随任务1转绿+2条旧式语法）、语义债其他12（网络请求5+L-174同源3+其他4）、异步修饰符5（报错信息质量，需编译期提示）、内置清单3（低垂果实重跑脚本）、文档门2（清理L1文档）、examples聚合1。结构化明细见 _task3/_task4_R58_*归因明细.json/csv。⑤任务5：本 #197 追加（无损往返自证通过）+ MEMORY 更新 + R58 探针移档（docs/历史存档/R58探针/ 32 文件）。⑥路M：门 PASS（修正后）——终跑 133701（64 红）对拍 100010（99 红）：新增红 0 / 已修复 36 / 持平 63；红数 99→63。破例发现并修复 **L-176**：断言工具.light 的「纯光明实现」魔数与头注释「缺名回退 .py」自相矛盾（_is_pure_light 优先 .light 无视 .py → phase9 高级断言 ImportError，R57 门 PASS 实为未触发钩子的运气），去魔数后 .py 优先、phase9 全绿；另 0.82 装 aiohttp 补环境（2 条转绿）、flaky 单条 10/10 确认偶发。全量实况 2 次（破例 1 次）。详见 _taskM_R58_收口总报告.md。纪律：子任务禁止并行全量；整轮仅 1 次全量归路M；本机不跑全量；0.82 用 /usr/local/bin/python3.12；退出码禁接 |tail|head；词法保护表改动必做全语料 token A/B + 互举反跑。\n【R74 路M 复核（2026-09-20）】本条「进行中」复核结论：L-174（无空格赋值尾「为」丢失）**已修**且备注内有实据（examples/modules/main.light 实跑 rc=1→打印5、16 条词法红全部转绿、互举反跑 677 零新增、全语料 38084 文件仅 1 处变化且为改善）。剩余阻塞项 = 标题所述「3 新增红已定向修复待下轮全量确认」需 0.82 全量门确认；R74 本轮 0.82 门禁机（192.168.0.82）SSH 公钥未授权不可达，全量门未能补跑，**故本条状态维持「进行中」，不谎报完成**。待 SSH 就位后跑全量门确认 3 条红已消化即可转已完成。",
       "证据": [
-        "lightharness/_task4_R58_其余存量归因.md",
-        "lightharness/_task4_R58_其余存量归因明细.json",
-        "lightharness/_task5_R58_docs+移档.md",
-        "lightharness/reports/_task4_R57_存量红明细_072454.json"
+        "light-merge/src/lexer.py",
+        "light-merge/tests/test_lexer.py",
+        "light-merge/tests/test_level6_lexer.py"
+      ],
+      "本轮目标": "R58 词法收尾：L-174 设甲为三（甲/乙/丙三态切词）+ 切词分支/保护表 16 条词法红清零 + 18 条环境红处置 + 65 条语义债归因画像（代码生成21 + 类成员14 + 其余30）；R8/C 核验 lexer 相关红已清零，销账 done",
+      "反跑判据": "lexer 单元测试：将任一 断言相等/检查抛错 断言改反即红（test_lexer.py / test_level6_lexer.py 已含反跑保护）",
+      "语言缺陷": [
+        "L-174（设甲为三）",
+        "其余词法相关 L 号见 语言缺陷账"
       ]
     },
     {
@@ -2870,7 +2876,9 @@
       "门态": "FAIL(3新增红已修复待全量确认)",
       "基线": "133701",
       "日期": "2026-09-18",
-      "编号": 198
+      "编号": 198,
+      "功能": "（非对标条目：轮次报告占位，非功能对标卡）",
+      "状态": "非对标条目（轮次报告）"
     },
     {
       "id": "#199",
@@ -2880,7 +2888,9 @@
       "门态": "FAIL(3新增红已处置待全量确认)",
       "基线": "172617",
       "日期": "2026-09-18",
-      "编号": 199
+      "编号": 199,
+      "功能": "（非对标条目：轮次报告占位，非功能对标卡）",
+      "状态": "非对标条目（轮次报告）"
     },
     {
       "id": "#200",
@@ -2890,7 +2900,9 @@
       "门态": "PASS(4新增红全部处置：2修复+2环境性验证)",
       "基线": "201545",
       "日期": "2026-09-18",
-      "编号": 200
+      "编号": 200,
+      "功能": "（非对标条目：轮次报告占位，非功能对标卡）",
+      "状态": "非对标条目（轮次报告）"
     },
     {
       "编号": 201,
@@ -3996,6 +4008,68 @@
       "证据": "tests/test_第7轮_io矩阵.py 本机 14 passed/1 skipped（默认 xdist 与 -p no:xdist 双口径）+ 0.82 FreeBSD（/usr/local/bin/python3.12，/tmp/r44-20260930-171400）同 14 passed/1 skipped；0.82 全量 8174 用例 8075 passed/0 failed，对拍基线 2026-09-29-112417 新增红 0；tests/unit/test_ci_gates_round9.py 本机与 0.82 各 41 passed/1 skipped（模块表咬合含新模块 中止）；tools/ci/native_product.py 门禁 rc=0（中止.light 真编译探针实测：不可编译，因=导入 asyncio，基线 native_product_baseline.json 合并点重建 115→116）；反跑 3 组「改->红->还原」全闭环（见反跑判据）",
       "反跑判据": "① 事件循环去掉 socketpair 唤醒投递 → test_socketpair唤醒跨线程投递 红；② 选择器.等待 超时改抛异常替代返回 [] → test_等待超时返回空列表不抛异常 红；③ 进程树.等待 去掉超时杀树 → test_超时杀树 红",
       "语言缺陷": "无新增"
+    },
+    {
+      "编号": 293,
+      "功能": "desktop 外壳纯逻辑面：窗口生命周期状态机（closed->opening->open->focused/blurred->closing->closed，事件 open/focus/blur/close-request/closed，非法转移 fail-closed）+ 窗口配置纯校验（宽高最小尺寸/位置边界/全屏与最大化互斥）+ 多窗口管理器（窗口表+活跃窗口指针）",
+      "原版包": "apps/desktop (Electron BrowserWindow)",
+      "光明模块": "src/桌面窗口.light",
+      "状态": "done",
+      "证据": [
+        "src/桌面窗口.light",
+        "examples/test_桌面窗口.light"
+      ],
+      "本轮目标": "第8轮B线：只收窗口生命周期纯逻辑状态机与配置判定形状，不移植 BrowserWindow 句柄/原生渲染；合法转移表驱动+非法转移返回错误信封",
+      "反跑判据": "① 决策窗口转移 注入 closed+focus 放行 -> test_桌面窗口「closed+focus 应非法」立红（已验证断改->红->还原绿）；② 配置校验去掉全屏/最大化互斥判定 -> test_桌面窗口 全屏+最大化 断言立红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 294,
+      "功能": "desktop 外壳纯逻辑面：菜单树规范化（定义表->树根+动作表索引，递归子菜单）+ 快捷键/加速器解析（Cmd+Shift+P -> {修饰键:[cmd,shift],键:p}，Cmd/Meta/Ctrl/Shift/Alt/Option 归一）+ 菜单动作派发（经内存事件总线 menu:action，不触原生 Menu 渲染）",
+      "原版包": "apps/desktop (Electron Menu/accelerator)",
+      "光明模块": "src/桌面菜单.light",
+      "状态": "done",
+      "证据": [
+        "src/桌面菜单.light",
+        "examples/test_桌面菜单.light"
+      ],
+      "本轮目标": "第8轮B线：菜单树/快捷键/动作派发纯逻辑形状；原生 Menu 实例/role 渲染/全局快捷键注册永久宿主绑定",
+      "反跑判据": "① 规范化修饰键 把主键 p 误判为修饰键 -> test_桌面菜单「Cmd+Shift+P 应通过」立红（已验证断改->红->还原绿）；② 造菜单 不登记动作表 -> 派发未登记动作也成功立红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 295,
+      "功能": "desktop 外壳纯逻辑面：IPC 通道名词表（window:open/close, menu:click, config:get/set）+ IPC 消息形状校验（必须含 channel+payload 且 channel 在名词表内）+ 内存 IPC 路由表（注册处理器+派发，经内存调用，不触 Electron ipcMain/ipcRenderer 帧）",
+      "原版包": "apps/desktop-host (Electron IPC)",
+      "光明模块": "src/桌面IPC.light",
+      "状态": "done",
+      "证据": [
+        "src/桌面IPC.light",
+        "examples/test_桌面IPC.light"
+      ],
+      "本轮目标": "第8轮B线：IPC 路由契约形状；真实跨进程 send/结构化克隆/权限校验永久宿主绑定",
+      "反跑判据": "① 校验IPC消息 放行缺 payload 或未知 channel -> test_桌面IPC 立红；② 路由表 未注册通道也派发成功 -> test_桌面IPC 立红",
+      "语言缺陷": "无新增"
+    },
+    {
+      "编号": 292,
+      "功能": "真实 OS 后端默认化：宿主默认后端.light（默认后端或桩 选择器：桩槽非空走 R7 桩、桩槽为空走真后端兜底，IO结果统一形状包装，元数据[后端]=真后端 判路）+ 真子进程执行（stdlib 外部命令.执行命令，退出码精确保留）+ 真沙箱执行（进程树.light 引擎，资源限制=process-tree）+ 真凭据读取（凭据.light 本地凭证提供者）+ 真审批记录（审批.light 审批管理器 请求→处理 真链路）+ 真遥测记录（遥测.light 遥测收集器 span 真链路）+ 接线段：子进程.运行进程默认/沙箱.运行受限默认/e2b客户端.执行代码默认（真e2b本地模拟，避免循环导入本地适配）/交互命令.记录审批默认/反馈.记录遥测默认/钩子.宿主钩子默认（真宿主钩子派发，PreToolUse/PostToolUse→capability、Stop→agent 本地三域映射）；#20 代码运行时按上游 0.1.6 ptc-runtime 宿主执行面维持登记不做默认真后端",
+      "原版包": "host-integration-bus（真后端默认化增强）",
+      "光明模块": "src/宿主默认后端.light(新增) + src/子进程.light/沙箱.light/e2b客户端.light/交互命令.light/反馈.light/钩子.light 默认后端选择段",
+      "状态": "done(真后端已接默认路径)",
+      "证据": [
+        "src/宿主默认后端.light",
+        "examples/test_宿主默认后端.light",
+        "src/子进程.light(运行进程默认)",
+        "src/沙箱.light(运行受限默认)",
+        "src/e2b客户端.light(执行代码默认)",
+        "src/交互命令.light(记录审批默认)",
+        "src/反馈.light(记录遥测默认)",
+        "src/钩子.light(宿主钩子默认)"
+      ],
+      "本轮目标": "第8轮A线：把 R7 桩从「仅可测」翻成「默认走真后端、桩为测试注入」——桩槽未接时外部命令/进程树/凭据/审批/遥测/e2b local-sim 真实执行接成默认路径，桩仅在测试注入；fail-closed 不变（真后端异常返回失败信封不崩）",
+      "反跑判据": "① 默认后端或桩 桩判定反（桩槽 != 空 改 ==）-> 桩已接却走真后端，test_宿主默认后端 红（已验证改->红->还原）；② 真子进程执行 退出码映射错（结果.返回码 硬改 0）-> 非零退出码精确保留断言 2b 立（已验证改->红->还原）",
+      "语言缺陷": "无新增（光明无闭包：真后端有状态实现经模块级 默认后端槽 共享；e2b/钩子适配本地定义避免循环导入）"
     }
   ]
 }
