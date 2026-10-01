@@ -3,6 +3,9 @@
  * ---------------------------------------------------------------------
  * 职责：按实拍截图复刻 dsh 设置对话框，四页签（通用设置 / 模型 / 内置插件 /
  *      Agent 预设），通用设置 9 行由服务端「行集」驱动渲染。
+ *      R107-D：模型 / 内置插件 / Agent 预设 三页已改为「真实渲染」（消费 A/B/C 线
+ *      契约形状），可列出清单、可点开详情、模型页可编辑、密钥永不回显；并按
+ *      status ∈ ok|loading|unavailable 区分加载中 / 不可用态。
  * 数据契约（src/web服务器.light 提供）：
  *   GET  /api/settings          → {页签,页签标识,页签说明,通用设置,模型,内置插件,Agent预设}
  *   GET  /api/settings/document → {路径,可用}
@@ -259,46 +262,166 @@
     return renderRowsHtml(rows);
   }
 
-  function renderModelHtml(model) {
-    if (model == null) return '<div class="settings-note">暂无模型数据</div>';
-    if (typeof model === "string") return '<div class="settings-note">' + esc(model) + "</div>";
-    var txt = model["说明"] != null ? model["说明"] : "";
-    if (!txt) txt = "模型清单由宿主设置服务提供";
-    var h = '<div class="settings-note">' + esc(txt) + "</div>";
-    if (model["来源"]) h += '<div class="settings-row-desc">来源：' + esc(model["来源"]) + "</div>";
-    if (Array.isArray(model["列表"]) && model["列表"].length) {
-      for (var i = 0; i < model["列表"].length; i++) {
-        var m = model["列表"][i] || {};
-        h += '<div class="settings-row"><div class="settings-row-main">' +
-             '<div class="settings-row-title">' + esc(m["名称"] != null ? m["名称"] : m["id"]) + "</div>" +
-             (m["描述"] ? '<div class="settings-row-desc">' + esc(m["描述"]) + "</div>" : "") +
-             '</div><div class="settings-row-ctrl"><span class="settings-row-desc">' +
-             esc(m["值"] != null ? m["值"] : "") + "</span></div></div>";
+  // §2.1 模型页（真实数据 + 可编辑；密钥永不回显，T-7）
+  function 字段(label, control) {
+    return '<div class="settings-model-field">' +
+      '<label class="settings-model-field-label">' + esc(label) + "</label>" + control + "</div>";
+  }
+
+  // 提供商编辑卡（默认折叠；点「编辑」展开——原生 <details> 不依赖 JS）
+  // ⛔ 密钥 input 恒 value=""；任何环节都不把明文写进 DOM/state。
+  function 渲染提供商编辑卡(p, model) {
+    var cred = p["凭据"] || {};
+    var configured = (cred["configured"] === true || cred["configured"] === "真");
+    var keyPlaceholder = configured ? "已配置——输入新值可替换" : "输入 API 密钥";
+    var protos = Array.isArray(model["协议选项"]) ? model["协议选项"] : [];
+    var sel = '<select class="settings-select" data-field="api"><option value="">未选择</option>';
+    for (var i = 0; i < protos.length; i++) {
+      var o = protos[i] || {};
+      sel += '<option value="' + esc(o["值"]) + '">' + esc(o["标签"] != null ? o["标签"] : o["值"]) + "</option>";
+    }
+    sel += "</select>";
+
+    var h = '<details class="settings-model-edit" data-edit-provider="' + esc(p["provider"] || "") + '">' +
+      '<summary class="settings-model-edit-summary">编辑</summary>' +
+      '<div class="settings-model-edit-body">';
+    // API 密钥（password，永不回显，value 恒空）
+    h += 字段("API 密钥",
+      '<input type="password" class="settings-input settings-model-key" data-field="api_key" ' +
+      'placeholder="' + esc(keyPlaceholder) + '" value="" autocomplete="off">');
+    // API 地址（存储键 baseURL）
+    h += 字段("API 地址",
+      '<input type="text" class="settings-input" data-field="base_url" value="">');
+    // API 协议（存储键 api；选项标签逐字）
+    h += 字段("API 协议", sel);
+    // 显示名称
+    h += 字段("显示名称",
+      '<input type="text" class="settings-input" data-field="display_name" value="' + esc(p["显示名"] || "") + '">');
+    // 自定义设置（折叠；其余字段在 cordis.patch.yml 的提示）
+    h += foldHtml("自定义设置", "其余字段在 cordis.patch.yml 中，请直接编辑对应段。");
+    // 模型目录区
+    h += '<div class="settings-model-catalog"><div class="settings-model-catalog-title">模型目录</div>';
+    var rows = Array.isArray(model["模型行"]) ? model["模型行"] : [];
+    if (model["模型目录继承"] === true) {
+      h += '<div class="settings-note">正在使用适配器默认模型</div>';
+    } else if (!rows.length) {
+      h += '<div class="settings-note">模型选择器中将不显示任何模型；目录外 ID 仍可直接发送。</div>';
+    } else {
+      h += '<div class="settings-model-catalog-list">';
+      for (var j = 0; j < rows.length; j++) {
+        var m = rows[j] || {};
+        var advBody = "上下文窗口：" + esc(m["上下文窗口"] != null ? m["上下文窗口"] : "") +
+          "<br>最大输出：" + esc(m["最大输出"] != null ? m["最大输出"] : "使用提供商默认值") +
+          "<br>输入类型：" + esc(Array.isArray(m["输入类型"]) ? m["输入类型"].join("、") : "");
+        h += '<div class="settings-model-row-item" data-model-id="' + esc(m["id"] || "") + '">' +
+          '<span class="settings-model-row-name">' + esc(m["name"] != null ? m["name"] : m["id"]) + "</span>" +
+          '<span class="settings-model-row-id">' + esc(m["id"] || "") + "</span>" +
+          '<button type="button" class="settings-sc-btn settings-model-row-del" data-model-act="del" ' +
+          'data-model-id="' + esc(m["id"] || "") + '">删除模型</button>' +
+          '<details class="settings-model-row-adv"><summary>模型选项</summary>' +
+          '<div class="settings-model-row-adv-body">' + advBody + "</div></details></div>";
       }
+      h += "</div>";
+    }
+    h += '<div class="settings-model-catalog-actions">' +
+      '<button type="button" class="settings-sc-btn" data-model-act="reset" ' +
+      'data-provider="' + esc(p["provider"] || "") + '">恢复默认模型</button>' +
+      '<button type="button" class="settings-sc-btn" data-model-act="add">添加模型</button>' +
+      "</div>";
+    // 底部 取消 / 保存 + 错误回显位
+    h += '<div class="settings-model-edit-error" hidden></div>' +
+      '<div class="settings-model-edit-actions">' +
+      '<button type="button" class="settings-confirm-cancel settings-model-cancel">取消</button>' +
+      '<button type="button" class="settings-confirm-go settings-model-save" ' +
+      'data-provider="' + esc(p["provider"] || "") + '">保存</button>' +
+      "</div></div></details>";
+    return h;
+  }
+
+  function renderModelHtml(model, status) {
+    if (status === "loading") return '<div class="settings-loading">正在加载设置…</div>';
+    if (status === "unavailable" || model == null)
+      return '<div class="settings-error-box">模型服务不可用，暂时无法编辑。请检查后端连接后重试。</div>';
+    var txt = (model["说明"] != null) ? model["说明"] : "填入各提供商的 API 密钥即可使用其模型。";
+    var h = '<div class="settings-note">' + esc(txt) + "</div>";
+    if (model["只读"] === true || model["只读"] === "真")
+      h += '<div class="settings-note">当前部署的设置文档为只读。</div>';
+    var provs = Array.isArray(model["提供商行"]) ? model["提供商行"] : [];
+    for (var i = 0; i < provs.length; i++) {
+      var p = provs[i] || {};
+      var cred = p["凭据"] || {};
+      var configured = (cred["configured"] === true || cred["configured"] === "真");
+      var dotClass = configured ? "is-ok" : "is-missing";
+      var dotAria = configured ? "API 密钥已配置" : "API 密钥缺失";
+      var canDel = (p["可删除"] === true || p["可删除"] === "真");
+      h += '<div class="settings-model-provider" data-provider="' + esc(p["provider"] || "") + '">' +
+        '<span class="settings-cred-dot ' + dotClass + '" aria-label="' + esc(dotAria) + '"></span>' +
+        '<span class="settings-model-provider-name">' + esc(p["显示名"] != null ? p["显示名"] : p["provider"]) + "</span>" +
+        '<span class="settings-model-provider-id">' + esc(p["provider"] || "") + "</span>" +
+        '<span class="settings-model-provider-actions">' +
+        '<button type="button" class="settings-line-btn settings-model-edit-btn">编辑</button>' +
+        (canDel ? '<button type="button" class="settings-sc-btn settings-model-del-btn">删除</button>' : "") +
+        "</span></div>";
+      h += 渲染提供商编辑卡(p, model);
     }
     return h;
   }
 
-  function renderPluginsHtml(plugins) {
-    if (plugins == null) return '<div class="settings-note">暂无内置插件数据</div>';
-    var list = Array.isArray(plugins["按模式概览"]) ? plugins["按模式概览"] : [];
+  // §2.2 插件页：事实表单元
+  function 事实项(label, value) {
+    return "<dt>" + esc(label) + "</dt><dd>" + esc(value == null ? "" : value) + "</dd>";
+  }
+
+  // 单个成员行（会话/全局通用）：点击就地展开事实表（原生 <details>）
+  function 渲染插件成员(m) {
+    var enabled = m["启用"];
+    var tagClass = (enabled === "disabled") ? "disabled" : (enabled === "conditional") ? "conditional" : "enabled";
+    var tagText = (enabled === "disabled") ? "已停用"
+                : (enabled === "conditional") ? "条件启用" : "已启用";
+    var headTitle = (m["标题"] != null && m["标题"] !== "") ? m["标题"] : (m["moduleName"] || m["entryId"] || "");
+    var h = '<details class="settings-plugin-member" data-entry-id="' + esc(m["entryId"] || "") + '">' +
+      '<summary class="settings-plugin-member-summary">' +
+        '<span class="settings-plugin-member-title">' + esc(headTitle) + "</span>" +
+        '<span class="settings-plugin-member-tag settings-tag-' + tagClass + '">' + tagText + "</span>" +
+      "</summary>" +
+      '<div class="settings-plugin-member-body"><dl class="settings-fact">' +
+        事实项("完整名称", m["moduleName"]) +
+        事实项("来自", m["来自预设"]) +
+        事实项("配置状态", m["配置状态"]) +
+        事实项("运行状态", (m["运行状态"] != null && m["运行状态"] !== "") ? m["运行状态"] : "未运行") +
+        (m["禁用条件"] != null && m["禁用条件"] !== "" ? 事实项("禁用条件", m["禁用条件"]) : "") +
+        ((m["由预设提供"] === true || m["由预设提供"] === "真")
+          ? 事实项("启用于", Array.isArray(m["启用于"]) ? m["启用于"].join(" · ") : "") : "") +
+      "</dl></div></details>";
+    return h;
+  }
+
+  function renderPluginsHtml(plugins, status) {
+    if (status === "loading") return '<div class="settings-loading">正在加载设置…</div>';
+    if (status === "unavailable" || plugins == null)
+      return '<div class="settings-error-box">插件服务不可用，暂时无法列出插件。请检查后端连接后重试。</div>';
     var h = "";
     if (plugins["说明"]) h += '<div class="settings-note">' + esc(plugins["说明"]) + "</div>";
-    if (!list.length) {
-      return h + '<div class="settings-note">宿主插件注册表未提供「按模式概览」</div>';
-    }
-    for (var i = 0; i < list.length; i++) {
-      var p = list[i] || {};
-      var count = p["展平后"] != null ? p["展平后"]
-                : (p["展平后计数"] != null ? p["展平后计数"]
-                : (Array.isArray(p["插件行"]) ? p["插件行"].length : 0));
-      h += '<div class="settings-plugin-row">' +
-        '<div class="settings-plugin-head">' +
-          '<span class="settings-plugin-name">' + esc(p["名称"] != null ? p["名称"] : p["id"]) + "</span>" +
-          '<span class="settings-plugin-count" title="展平后计数">' + esc(count) + " 项</span>" +
-        "</div>" +
-        (p["描述"] ? '<div class="settings-plugin-desc">' + esc(p["描述"]) + "</div>" : "") +
+    var groups = Array.isArray(plugins["分组"]) ? plugins["分组"] : [];
+    if (!groups.length)
+      return h + '<div class="settings-note">暂无插件分组数据。</div>';
+    for (var i = 0; i < groups.length; i++) {
+      var g = groups[i] || {};
+      var openAttr = (g["默认展开"] === true || g["默认展开"] === "真") ? " open" : "";
+      h += '<div class="settings-plugin-group"' + openAttr + '>' +
+        '<div class="settings-plugin-group-head">' +
+          '<span class="settings-plugin-group-name">' + esc(g["分组"] || "") + "</span>" +
+          (g["副标题"] ? '<span class="settings-plugin-group-sub">' + esc(g["副标题"]) + "</span>" : "") +
+          '<span class="settings-plugin-count">' + esc(g["计数"] != null ? g["计数"] : 0) + " 个</span>" +
+          (g["当前预设"] != null ? '<span class="settings-plugin-group-preset">当前预设：' + esc(g["当前预设"]) + "</span>" : "") +
         "</div>";
+      var items = Array.isArray(g["项"]) ? g["项"] : [];
+      if (!items.length) {
+        h += '<div class="settings-note">暂无插件。</div>';
+      } else {
+        for (var j = 0; j < items.length; j++) h += 渲染插件成员(items[j]);
+      }
+      h += "</div>";
     }
     return h;
   }
@@ -309,25 +432,72 @@
            '<div class="settings-fold-body">' + esc(body) + "</div></details>";
   }
 
-  function renderAgentsHtml(agents) {
-    if (agents == null) return '<div class="settings-note">暂无 Agent 预设数据</div>';
-    var list = Array.isArray(agents["预设列表"]) ? agents["预设列表"] : [];
-    if (!list.length) return '<div class="settings-note">宿主未提供 Agent 预设列表</div>';
+  // §2.3 预设页：单卡渲染（含「查看配置」详情展开 + 设为新任务默认）
+  function 渲染预设卡(card, agents) {
+    var isDefault = (card["是否默认"] === true || card["是否默认"] === "真");
+    var devTools = (agents["开发者工具"] === true || agents["开发者工具"] === "真");
+    var h = '<div class="settings-preset-card" data-preset-id="' + esc(card["id"] || "") + '">' +
+      '<div class="settings-preset-head">' +
+        '<span class="settings-preset-name">' + esc(card["名称"] != null ? card["名称"] : card["id"]) + "</span>" +
+        (card["是否内置"] === true || card["是否内置"] === "真" ? '<span class="settings-badge">内置</span>' : "") +
+        (isDefault ? '<span class="settings-badge is-default">新任务默认</span>' : "") +
+        (card["失败原因"] != null && card["失败原因"] !== "" ? '<span class="settings-badge is-broken">加载失败</span>' : "") +
+      "</div>" +
+      (card["描述"] ? '<div class="settings-preset-desc">' + esc(card["描述"]) + "</div>" : "");
+    var help = (card["帮助"] && typeof card["帮助"] === "object") ? card["帮助"] : {};
+    h += foldHtml("模式说明", help["模式说明"]);
+    h += foldHtml("如何使用", help["如何使用"]);
+    // 「查看配置」详情（成员 / 计数 / 禁用 / 默认）
+    var cfg = card["配置"] || {};
+    var rows = Array.isArray(cfg["行"]) ? cfg["行"] : [];
+    h += '<details class="settings-preset-config" data-config-preset="' + esc(card["id"] || "") + '">' +
+      '<summary class="settings-preset-config-summary">查看配置</summary>' +
+      '<div class="settings-preset-config-body">' +
+        '<div class="settings-preset-config-meta">成员数：' + esc(cfg["成员数"] != null ? cfg["成员数"] : rows.length) +
+          "　" + (isDefault ? "新任务默认" : "非默认") + "</div>" +
+        '<pre class="settings-preset-config-pre">' + esc(cfg["文本"] || "") + "</pre>" +
+        '<dl class="settings-fact">';
+    for (var k = 0; k < rows.length; k++) {
+      var r = rows[k] || {};
+      h += '<div class="settings-preset-config-row">' +
+        "<dt>" + esc(r["entryId"] || "") + "</dt>" +
+        "<dd>" + esc(r["moduleName"] || "") + "　启用：" + esc(String(r["启用"])) +
+        (r["禁用条件"] ? "　禁用条件：" + esc(r["禁用条件"]) : "") + "</dd></div>";
+    }
+    h += "</dl></div></details>";
+    // 动作
+    h += '<div class="settings-preset-actions">';
+    if (isDefault) {
+      h += '<button type="button" class="settings-line-btn" disabled>新任务默认</button>';
+    } else {
+      h += '<button type="button" class="settings-sc-btn settings-preset-setdefault" data-preset-id="' +
+        esc(card["id"] || "") + '"' +
+        (devTools ? "" : ' disabled title="请先在通用设置中开启代码工作工具，再设置默认值"') +
+        ">设为新任务默认</button>";
+    }
+    h += "</div></div>";
+    return h;
+  }
+
+  function renderAgentsHtml(agents, status) {
+    if (status === "loading") return '<div class="settings-loading">正在加载设置…</div>';
+    if (status === "unavailable" || agents == null)
+      return '<div class="settings-error-box">Agent 预设服务不可用，暂时无法查看。请检查后端连接后重试。</div>';
     var h = "";
-    for (var i = 0; i < list.length; i++) {
-      var a = list[i] || {};
-      var block = (a["区块"] && typeof a["区块"] === "object") ? a["区块"] : a;
-      h += '<div class="settings-preset-card">' +
-        '<div class="settings-preset-head">' +
-          '<span class="settings-preset-name">' + esc(a["名称"] != null ? a["名称"] : a["id"]) + "</span>" +
-          (a["是否内置"] === true || a["是否内置"] === "真" ? '<span class="settings-badge">内置</span>' : "") +
-          (a["是否默认"] === true || a["是否默认"] === "真"
-            ? '<span class="settings-badge is-default">新任务默认</span>' : "") +
-        "</div>" +
-        (a["描述"] ? '<div class="settings-preset-desc">' + esc(a["描述"]) + "</div>" : "") +
-        foldHtml("模式说明", block["模式说明"]) +
-        foldHtml("如何使用", block["如何使用"]) +
-        "</div>";
+    if (agents["说明"]) h += '<div class="settings-note">' + esc(agents["说明"]) + "</div>";
+    var groups = Array.isArray(agents["分组"]) ? agents["分组"] : [];
+    if (!groups.length) return h + '<div class="settings-note">暂无 Agent 预设分组。</div>';
+    for (var i = 0; i < groups.length; i++) {
+      var g = groups[i] || {};
+      var cards = Array.isArray(g["预设"]) ? g["预设"] : [];
+      h += '<div class="settings-preset-group">' +
+        '<div class="settings-preset-group-title">' + esc(g["分组"] || "") + "</div>";
+      if (!cards.length) {
+        h += '<div class="settings-note">暂无自定义预设。</div>';
+      } else {
+        for (var j = 0; j < cards.length; j++) h += 渲染预设卡(cards[j], agents);
+      }
+      h += "</div>";
     }
     return h;
   }
@@ -340,6 +510,18 @@
     return "";
   }
 
+  // 三页的「加载中 / 不可用」状态：loading 由 ST.loading 决定；
+  // 数据缺失且曾发生加载错误（端点 404/503/网络）→ 不可用态（不静默、不白屏）。
+  function 页状态(tab) {
+    if (ST.loading) return "loading";
+    var key = (tab === "models") ? "模型"
+            : (tab === "builtin-plugins") ? "内置插件"
+            : (tab === "agent-presets") ? "Agent预设" : null;
+    var dat = key ? (ST.data || {})[key] : null;
+    if (dat == null && ST.loadError) return "unavailable";
+    return "ok";
+  }
+
   function renderContentHtml() {
     if (ST.loadError) {
       return '<div class="settings-error-box">' + esc(ST.loadError) +
@@ -349,9 +531,9 @@
     var d = ST.data || {};
     var body = "";
     if (ST.tab === "general") body = renderGeneralHtml(d["通用设置"]);
-    else if (ST.tab === "models") body = renderModelHtml(d["模型"]);
-    else if (ST.tab === "builtin-plugins") body = renderPluginsHtml(d["内置插件"]);
-    else if (ST.tab === "agent-presets") body = renderAgentsHtml(d["Agent预设"]);
+    else if (ST.tab === "models") body = renderModelHtml(d["模型"], 页状态("models"));
+    else if (ST.tab === "builtin-plugins") body = renderPluginsHtml(d["内置插件"], 页状态("builtin-plugins"));
+    else if (ST.tab === "agent-presets") body = renderAgentsHtml(d["Agent预设"], 页状态("agent-presets"));
     else body = '<div class="settings-note">该页签暂无内容</div>';
     return tabDescHtml(d, ST.tab) + body;
   }
@@ -560,6 +742,81 @@
     }
   }
 
+  // ---------- R107-D：模型页编辑交互（密钥永不回显；错误文案回显服务端） ----------
+  function 当前模型() {
+    return (ST.data && ST.data["模型"]) ? ST.data["模型"] : null;
+  }
+
+  // 保存：把可编辑字段 + 当前模型目录 POST 给 E 线端点；响应绝不含密钥明文
+  function onModelSave(btn) {
+    var details = btn && btn.closest ? btn.closest(".settings-model-edit") : null;
+    if (!details) return;
+    var get = function (sel) { var elv = details.querySelector(sel); return elv ? elv.value : ""; };
+    var model = 当前模型();
+    var firstId = (model && Array.isArray(model["模型行"]) && model["模型行"][0]) ? model["模型行"][0]["id"] : "";
+    var payload = {
+      行: "model",
+      api_key: get('[data-field="api_key"]'),
+      base_url: get('[data-field="base_url"]'),
+      api: get('[data-field="api"]'),
+      display_name: get('[data-field="display_name"]'),
+      model: firstId,
+      models: model ? model["模型行"] : []
+    };
+    var errBox = details.querySelector(".settings-model-edit-error");
+    if (errBox) { errBox.hidden = true; errBox.textContent = ""; }
+    api("POST", "/api/settings/model", payload)
+      .then(function (res) {
+        if (res && res["凭据"] && model && Array.isArray(model["提供商行"]) && model["提供商行"][0]) {
+          model["提供商行"][0]["凭据"] = res["凭据"]; // 只更新 {configured,source,writable}
+        }
+        renderContent();
+      })
+      .then(null, function (e) {
+        var msg = (e && e.message) ? e.message : "保存失败";
+        if (errBox) { errBox.textContent = msg; errBox.hidden = false; }
+        else if (typeof console !== "undefined" && console.warn) console.warn("[settings] 模型保存失败：" + msg);
+      });
+  }
+
+  // 模型目录客户端增删（运行时直接改 ST.data，保存时一并 POST）
+  function onModelAdd(details) {
+    var model = 当前模型();
+    if (!model) return;
+    model["模型目录继承"] = false;
+    if (!Array.isArray(model["模型行"])) model["模型行"] = [];
+    model["模型行"].push({ id: "", name: "", 上下文窗口: "", 最大输出: "", 输入类型: ["text"] });
+    renderContent();
+  }
+  function onModelDel(details, id) {
+    var model = 当前模型();
+    if (!model || !Array.isArray(model["模型行"])) return;
+    model["模型行"] = model["模型行"].filter(function (r) { return r["id"] !== id; });
+    model["模型目录继承"] = false;
+    renderContent();
+  }
+  function onModelReset(details) {
+    var model = 当前模型();
+    if (!model) return;
+    model["模型目录继承"] = true;
+    renderContent();
+  }
+
+  // 设为新任务默认（C 线校验在服务端完成；非法 → 服务端回 400 {错误}）
+  function onPresetSetDefault(btn) {
+    var id = btn && btn.getAttribute ? btn.getAttribute("data-preset-id") || "" : "";
+    if (!id) return;
+    api("POST", "/api/settings", { 行: "agentPresetDefault", 值: id })
+      .then(function (res) {
+        if (res && res["错误"]) throw new Error(res["错误"]);
+        return load(); // 刷新整页，默认标记随之更新
+      })
+      .then(null, function (e) {
+        var msg = (e && e.message) ? e.message : "设置失败";
+        if (typeof console !== "undefined" && console.warn) console.warn("[settings] 设为默认失败：" + msg);
+      });
+  }
+
   function onContentClick(e) {
     // R106-B：快捷键面板打开时，点击全走面板处理器
     if (ST.scOpen) { handleScClick(e); return; }
@@ -606,6 +863,27 @@
         setTimeout(function () { hint.hidden = true; }, 2000);
       }
     }
+
+    // R107-D：模型页编辑卡内的动作（保存 / 取消 / 模型目录增删复位）
+    if (t.closest(".settings-model-save")) { onModelSave(t.closest(".settings-model-save")); return; }
+    if (t.closest(".settings-model-cancel")) {
+      var det = t.closest(".settings-model-edit");
+      if (det) det.open = false;
+      return;
+    }
+    var mAct = t.closest("[data-model-act]");
+    if (mAct) {
+      var act = mAct.getAttribute("data-model-act");
+      var mDet = t.closest(".settings-model-edit");
+      if (act === "add") onModelAdd(mDet);
+      else if (act === "reset") onModelReset(mDet);
+      else if (act === "del") onModelDel(mDet, mAct.getAttribute("data-model-id"));
+      return;
+    }
+
+    // R107-D：预设卡「设为新任务默认」
+    var sd = t.closest(".settings-preset-setdefault");
+    if (sd) { onPresetSetDefault(sd); return; }
   }
 
   // 值变更入口：fullAccess 需先过确认层；否则直接提交
@@ -1114,6 +1392,7 @@
   G.LightSettings = exported;
 
   // R106-B：纯换算函数导出点（.scratch/r106b_assert.mjs 驱动用）
+  // R107-D：三页纯渲染函数导出点（.scratch/r106b_assert.mjs R107 段驱动用）
   G.SettingsApply = {
     组装生效查询: 组装生效查询,
     主题属性: 主题属性,
@@ -1121,7 +1400,11 @@
     链接目标属性: 链接目标属性,
     降级提示: 降级提示,
     组装键串: 组装键串,
-    渲染快捷键目录: 渲染快捷键目录
+    渲染快捷键目录: 渲染快捷键目录,
+    // 三页渲染（消费 A/B/C 线契约形状；status ∈ ok|loading|unavailable）
+    渲染模型页: renderModelHtml,
+    渲染插件页: renderPluginsHtml,
+    渲染预设页: renderAgentsHtml
   };
 
   // ---------- 入口按钮自绑定 ----------

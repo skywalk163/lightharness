@@ -724,3 +724,108 @@ html[data-theme="light"] {
   font-size: 11px;
   color: var(--st-text-dim, #8c959f);
 }
+
+/* =====================================================================
+ * R107-D：三页真实渲染（模型 / 内置插件 / Agent 预设）
+ * 复用 .settings- 前缀与作用域变量，不污染全局。
+ * ===================================================================== */
+
+/* ---------- 模型页 ---------- */
+.settings-model-provider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--st-border, #d0d7de);
+}
+.settings-model-provider:last-child { border-bottom: 0; }
+.settings-cred-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  flex: 0 0 auto; display: inline-block;
+}
+.settings-cred-dot.is-ok { background: var(--st-green, #1a7f37); }
+.settings-cred-dot.is-missing { background: var(--st-danger, #cf222e); }
+.settings-model-provider-name { font-weight: 600; font-size: 14px; }
+.settings-model-provider-id {
+  font-family: var(--st-font-mono, monospace);
+  font-size: 12px; color: var(--st-text-dim, #8c959f);
+}
+.settings-model-provider-actions { margin-left: auto; display: flex; gap: 6px; }
+
+.settings-model-edit { margin: 6px 0 14px; border: 1px solid var(--st-border, #d0d7de); border-radius: var(--st-radius-sm, 8px); }
+.settings-model-edit-summary {
+  cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 13px;
+  color: var(--st-accent, #0969da); background: var(--st-bg-sub, #f6f8fa);
+  border-radius: var(--st-radius-sm, 8px);
+}
+.settings-model-edit[open] > .settings-model-edit-summary { border-bottom: 1px solid var(--st-border, #d0d7de); }
+.settings-model-edit-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.settings-model-field { display: flex; flex-direction: column; gap: 4px; }
+.settings-model-field-label { font-size: 12px; color: var(--st-text-muted, #656d76); }
+.settings-input {
+  padding: 6px 8px; border: 1px solid var(--st-border, #d0d7de);
+  border-radius: var(--st-radius-sm, 8px); background: var(--st-bg, #fff);
+  color: var(--st-text, #1f2328); font-size: 13px; width: 100%; box-sizing: border-box;
+}
+.settings-model-edit-error { color: var(--st-danger, #cf222e); font-size: 12px; }
+.settings-model-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.settings-model-catalog { margin-top: 4px; }
+.settings-model-catalog-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.settings-model-catalog-list { display: flex; flex-direction: column; gap: 6px; }
+.settings-model-row-item {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 10px; border: 1px solid var(--st-border, #d0d7de); border-radius: var(--st-radius-sm, 8px);
+}
+.settings-model-row-name { font-weight: 600; font-size: 13px; }
+.settings-model-row-id { font-family: var(--st-font-mono, monospace); font-size: 12px; color: var(--st-text-dim, #8c959f); }
+.settings-model-row-adv { flex-basis: 100%; }
+.settings-model-row-adv-body { padding: 6px 10px; font-size: 12px; color: var(--st-text-muted, #656d76); }
+.settings-model-catalog-actions { margin-top: 8px; display: flex; gap: 8px; }
+
+/* ---------- 内置插件页 ---------- */
+.settings-plugin-group { margin: 12px 0; }
+.settings-plugin-group-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+.settings-plugin-group-name { font-weight: 600; font-size: 14px; }
+.settings-plugin-group-sub { font-size: 12px; color: var(--st-text-muted, #656d76); }
+.settings-plugin-group-preset { font-size: 12px; color: var(--st-accent, #0969da); }
+.settings-plugin-member {
+  margin: 6px 0; border: 1px solid var(--st-border, #d0d7de); border-radius: var(--st-radius-sm, 8px);
+}
+.settings-plugin-member-summary {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer;
+}
+.settings-plugin-member-title { font-weight: 600; font-size: 13px; flex: 1; }
+.settings-plugin-member-tag {
+  font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--st-border, #d0d7de);
+  color: var(--st-text-muted, #656d76);
+}
+.settings-tag-enabled { background: var(--st-green-soft, #dafbe1); color: var(--st-green, #1a7f37); border-color: rgba(26,127,55,.4); }
+.settings-tag-disabled { background: var(--st-bg-sub, #f6f8fa); color: var(--st-text-dim, #8c959f); }
+.settings-tag-conditional { background: var(--st-accent-soft, #ddf4ff); color: var(--st-accent, #0969da); border-color: rgba(9,105,218,.4); }
+.settings-plugin-member-body { padding: 4px 12px 12px; }
+.settings-fact { display: grid; grid-template-columns: 92px 1fr; gap: 4px 12px; margin: 0; font-size: 12px; }
+.settings-fact dt { color: var(--st-text-muted, #656d76); }
+.settings-fact dd { margin: 0; color: var(--st-text, #1f2328); }
+
+/* ---------- Agent 预设页 ---------- */
+.settings-preset-group { margin: 12px 0; }
+.settings-preset-group-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.settings-badge.is-broken { border-color: rgba(207,34,46,.4); background: var(--st-danger-soft, #ffebe9); color: var(--st-danger, #cf222e); }
+.settings-preset-config {
+  margin-top: 8px; border: 1px solid var(--st-border, #d0d7de); border-radius: var(--st-radius-sm, 8px);
+}
+.settings-preset-config-summary {
+  cursor: pointer; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--st-accent, #0969da);
+}
+.settings-preset-config-body { padding: 0 12px 12px; }
+.settings-preset-config-meta { font-size: 12px; color: var(--st-text-muted, #656d76); margin-bottom: 6px; }
+.settings-preset-config-pre {
+  background: var(--st-bg-sub, #f6f8fa); border: 1px solid var(--st-border, #d0d7de); border-radius: var(--st-radius-sm, 8px);
+  padding: 8px 10px; font-family: var(--st-font-mono, monospace); font-size: 11px; white-space: pre-wrap;
+  max-height: 200px; overflow: auto; color: var(--st-text, #1f2328); margin: 0 0 8px;
+}
+.settings-preset-config-row { display: flex; gap: 12px; font-size: 12px; padding: 2px 0; }
+.settings-preset-config-row dt { color: var(--st-text-muted, #656d76); min-width: 140px; }
+.settings-preset-config-row dd { margin: 0; color: var(--st-text, #1f2328); }
+.settings-preset-actions { margin-top: 8px; display: flex; gap: 8px; }
+
