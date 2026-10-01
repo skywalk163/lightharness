@@ -24,8 +24,23 @@
 - `stdlib/_light_import_hook.py:220-237` → `find_spec` 剥 `_light_` 前缀回落到 `re.light`
 - `stdlib/re.light` 首行「纯光明实现」，且**无** `stdlib/re.py` 兄弟 → 钩子必然命中
 
-→ **`_light_re` 判为已闭环。** A 线在宿主语境加的别名兜底因**无真实红语境证据**已回退
-（备份：`_day1_hook_backup.py`，monorepo 根）。
+→ **`_light_re` 判为已闭环。**
+
+**⚠️ 与 A 线的分歧（如实记载，未强行统一）**：A 线在 `docs/国庆7天/Day1_light_re修复.md` 里
+给出了一个**真实复现**：把探针放在 `lightharness/.scratch/lr_probe.light` 跑
+（`light.py run lightharness/.scratch/lr_probe.light`）时 **EXIT=1 / `No module named '_light_re'`**，
+因为那时生效的是**宿主仓自己的钩子副本** `lightharness/stdlib/_light_import_hook.py`
+（该文件确实存在），它的 `search_paths` 只有 `lightharness/src`、`lightharness/stdlib`、`lightharness`，
+而纯光明 `re.light` 只在 `light-merge/stdlib/` 里。
+
+我的判定与处置：
+- 权威尺子不支持「这是红源」：lightharness 全量实测 **1171 passed / 1 skipped**，
+  其中**没有一条** `_light_re` 相关失败；0.82 权威门也是 failed 0。
+  即「宿主语境必然红」这一前提在真实测试语境下不成立，该复现依赖**特定调用方式**（产物落在 lightharness 目录）。
+- 故回退 A 线的 `_alias_fallback_dirs()`（+54 行），不为单一调用姿势加机制。
+  两个备份都在 monorepo 根：`_day1_hook_backup.py`（light-merge 侧）、`_day1_hook_A线版.py`（lightharness 侧）。
+- **待办**：若后续确需支持「把产物放在宿主目录跑」，应显式传 `--stdlib-dir`（CLI 已支持）
+  或让宿主钩子把 `LIGHT_MERGE` 指向的 stdlib 纳入 `search_paths`，而不是在钩子里猜目录。
 
 ### 1.2 真正的红源 = **模块名 `正则` 不存在**（且表现为 skip 不是 fail）
 
@@ -180,8 +195,10 @@ python 运行.py examples/test_预设挂载对话内切换.light
 
 ## 五、遗留 / 偏离声明
 
-1. **`_light_re` 销账**，A 线的宿主语境别名兜底已回退（无证据）。若后续发现真实红语境，
-   备份在 monorepo 根 `_day1_hook_backup.py`，可直接找回。
+1. **`_light_re` 销账**（详见 §1.1 的分歧段落）。A 线的宿主语境别名兜底已回退。
+   A 线复现成立但依赖特定调用姿势，权威尺子（lightharness 全量 1171 passed、0.82 门 failed 0）不支持「这是红源」。
+   备份：monorepo 根 `_day1_hook_backup.py`（light-merge 侧）、`_day1_hook_A线版.py`（lightharness 侧）。
+   A 线完整报告保留在 `docs/国庆7天/Day1_light_re修复.md`，未删，供后续裁决。
 2. **A 线越界做了 Day2 的 ANTLR `tryStmt`（多 `K_CATCH` + `K_FINALLY` + `catchSpec: ID ID?`）**，
    已全部回退（2600 行 churn、未经复核、不在 Day1 范围）。改动要点已留档，**Day2 从这条线重新起**。
 3. **github 远端未复核**（token 401 + 代理拦截）。R109 报告声称已推，本会话既未证实也未证伪 → 未决。
