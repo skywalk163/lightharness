@@ -4223,13 +4223,94 @@
       "编号": 307,
       "功能": "自举地板清单断言门禁（R107 G线，本轮登记未落地）：给 light-merge/任务书/自举地板清单.json 的 分类统计 加断言守护（逐条重算 函数[].分类 与 分类统计 一致，合计 158），防将来漂移",
       "原版包": "（light-merge 自研清单，无上游对标）",
-      "光明模块": "（顺延，未落地代码）",
-      "状态": "todo",
+      "光明模块": "light-merge/tools/ci/assert_floor_manifest.py（新增，185 行）+ light-merge/tests/unit/test_floor_manifest_gate.py（新增，175 行，12 passed）",
+      "状态": "done",
       "证据": [
-        "light-merge/任务书/自举地板清单.json"
+        "light-merge/任务书/自举地板清单.json",
+        "light-merge/tools/ci/assert_floor_manifest.py",
+        "light-merge/tests/unit/test_floor_manifest_gate.py",
+        "light-merge/tools/ci/floor_bootstrap_baseline.json"
       ],
-      "本轮目标": "R107 G线：澄清 R106 §九「分类统计漂移」不成立（实测 62/68/15/13 一致、合计158），真实缺口是无断言守护，故登记本卡",
-      "反跑判据": "（未落地，无判据；落地后：把某条 native_required 改成 movable -> 断言立红）"
+      "本轮目标": "R107 G线登记 + R108 I线落地：给 light-merge/任务书/自举地板清单.json 的 分类统计 加断言守护——逐类计数咬合/三方总量一致/分类值域合法/与 CI 基线交叉校验，防将来漂移",
+      "反跑判据": "已实证：把 分类统计.native_required 62→61 -> 门禁 rc=1 且打印 4 处差异明细(逐类/求和/总数/基线)；还原复绿"
+    },
+    {
+      "编号": 308,
+      "功能": "测试债务·两例断言再基线（R108 A线）：test_cli深化.light 描述表期望改为 ASCII 线名(read_file/write_file/search_files，模型可见面)，注释写明「描述表=模型可见线名/名单=中文注册名」；test_预设切换.light 把 148/3/7 硬编码改为自洽断言(条目表长度==长度(注册表.名单())、挂载+跳过==条目表长度、跳过表首项 tool-bash 原因为组合外)并保留前四 bash/读文件/写文件/搜索文件；pytest.ini 加 disable_test_id_escaping_and_forfeit_all_rights_to_community_support=true 使 -k 中文可用",
+      "原版包": "（测试再基线，无上游对标）",
+      "光明模块": "examples/test_cli深化.light、examples/test_预设切换.light、pytest.ini",
+      "状态": "done",
+      "证据": [
+        "lightharness/examples/test_cli深化.light",
+        "lightharness/examples/test_预设切换.light",
+        "lightharness/pytest.ini"
+      ],
+      "本轮目标": "R108 A线：清零两例断言过时债务（R107 §五 三条红例中的两条），门禁回到 failed=0",
+      "反跑判据": "把 test_cli深化 的 read_file 改回 读文件 -> 该例立红(rc=1)；还原复绿"
+    },
+    {
+      "编号": 309,
+      "功能": "测试债务·运行Web服务器 cwd 解析失败修复（R108 B线）：stdlib/_light_import_hook.py 修掉「cwd≠仓库根时纯光明实现门面退化为空命名空间包」的静默让路通道；使 examples/运行Web服务器.light 在门禁 _run() 的 tempfile.mkdtemp() cwd 下 rc=0（正常起服）",
+      "原版包": "（light-merge 语言基建，无上游对标）",
+      "光明模块": "stdlib/_light_import_hook.py",
+      "状态": "done",
+      "证据": [
+        "lightharness/stdlib/_light_import_hook.py"
+      ],
+      "本轮目标": "R108 B线：清零 R107 §五 第三条红例（cannot import name '绝对路径' from '文件系统' unknown location）",
+      "反跑判据": "用门禁 _run()(cwd=临时目录) 跑 运行Web服务器.light；改动回退 -> rc=1(ImportError)"
+    },
+    {
+      "编号": 310,
+      "功能": "首次引导 onboarding 纯逻辑落地（R108 C线）：渲染引导(已完成集,会话为空白,凭据就绪,显式请求)+当前步骤(按 order 升序取首个未完成)+完成步骤(welcome-notice 写引导_welcomeNoticeVersion=2026-09-28.1 扁平键承载；deepseek-official 不写键，完成性从凭据就绪派生)+引导版本()；两步 welcome-notice(order -100 仅非Desktop)/deepseek-official(order 0)，文案 10 条逐字",
+      "原版包": "packages/client/ui-settings-models/src/client/DeepSeekOnboardingDialog.tsx + locales.ts",
+      "光明模块": "src/设置引导.light（新增，174 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/设置引导.light",
+        "lightharness/examples/test_设置引导.light"
+      ],
+      "本轮目标": "R108 C线：落地 R107 §九 顺延项「settings.onboarding 首次引导」",
+      "反跑判据": "改 welcomeNoticeVersion 常量 -> test_设置引导 对应断言红；还原绿"
+    },
+    {
+      "编号": 311,
+      "功能": "多 provider 目录合并 + 模型发现 discoverModels 纯逻辑（R108 D线）：合并提供商目录(joinProviderDirectory 先铺可配置目录再追加已注册未声明 route，排序稳定 account→0/official→1)+可删除判定四条件+删除序列先凭据后配置+派生凭据引用 deriveKeyRef+校验收据路由；发现面 构造发现请求/发现地址(OpenAI {base}/models、Anthropic {root}/v1/models?limit=1000)/发现请求头(分叉 x-api-key+anthropic-version vs Bearer)/解析发现响应(data数组优先/models对象兜底+容量字段别名表+规范化)+协议白名单三条+默认协议 openai-completions；⛔ 本模块纯换算不写任何配置，apiKey 仅本次询问",
+      "原版包": "packages/client/ui-settings-models/src/client/store.ts + llm-pi-ai/src/discovery.ts + llm/src/types.ts + ModelsSection.tsx + CustomProviderCard.tsx",
+      "光明模块": "src/模型目录.light（新增，493 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/模型目录.light",
+        "lightharness/examples/test_模型目录扩展.light"
+      ],
+      "本轮目标": "R108 D线：落地 R107 §九 顺延项「多 provider 目录合并 + llm/discoverModels 获取可用模型」；偏离声明：本仓客户端无浏览器侧硬编码模型目录，上游权威是 llm/listModels + resolveModelInfo",
+      "反跑判据": "改 route 校验正则 -> test_模型目录扩展 立红；还原绿"
+    },
+    {
+      "编号": 312,
+      "功能": "独立凭据链语义投影（R108 E线）：解析凭据视图(进程环境/凭据文件/项目环境/用户环境 四源优先级 env>file>project-env>user-env)+可否写入(被遮蔽拒写/空值不可存)+撤下凭据+遮蔽文案+空值文案；source 恰四值 env|file|project-env|user-env；单向性——⛔ 无任何返回凭据明文的函数，返回值只含 {configured,source,writable} 三键；文案 credentialConfigured/Missing = API 密钥已配置/缺失；两处偏离声明：0600/0700 文件权限不落实(宿主面)、遮蔽/空值文案本仓自拟(上游无中文对应)",
+      "原版包": "packages/llm/llm-credentials/src/index.ts（CredentialInfo configured/source/writable + 优先级 + 单向性）",
+      "光明模块": "src/凭据链.light（新增，138 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/凭据链.light",
+        "lightharness/examples/test_凭据链.light"
+      ],
+      "本轮目标": "R108 E线：落地 R107 §九 顺延项「独立凭据链 $DSH_HOME/.credentials.yaml 语义」；本仓做纯逻辑投影，文件权限与真实 .yaml 属宿主面",
+      "反跑判据": "把 file 提到 env 前 -> test_凭据链 3f(env+file 同有应命中 env) 立红；还原绿"
+    },
+    {
+      "编号": 313,
+      "功能": "侧栏插件面板只读面（R108 F线）：渲染插件面板(可用/不可用文案/分组[官方在前=可选且未安装, 已安装=已安装或非可选]/刷新中/错误)+造卡片(名称/标题/版本/描述/已安装/可选/已启用/标签[实验性|异常]/只读原因/错误/组件)+造行(rowId/moduleName/已启用/相位/只读原因)+组件计数拼接(共{n}个恒在，其后仅>0 追加 {n}运行中/{n}已停用/{n}异常，'·'连接)+相位文案(等待依赖/加载中/运行中/异常/卸载中/未运行)+只读原因文案+不可用态逐字「本部署没有可管理的 profile，无法安装或启停插件。」；⛔ 不做任何写操作(启用/停用/安装/卸载/安装源)，本仓恒 可用=假",
+      "原版包": "packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx + locales.ts",
+      "光明模块": "src/插件面板.light（新增，292 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/插件面板.light",
+        "lightharness/examples/test_插件面板.light"
+      ],
+      "本轮目标": "R108 F线：落地 R107 §九 顺延项「ui-plugin-manager 侧栏插件主面板」只读面；写路径依赖真实 pnpm+文件锁，本仓无等价实现，如实声明不做",
+      "反跑判据": "把 分桶 官方谓词改为「已安装且非可选」-> test_插件面板 1b(可选未装进官方) 立红；还原绿"
     }
   ]
 }

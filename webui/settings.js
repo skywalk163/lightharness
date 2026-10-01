@@ -21,8 +21,16 @@
  *   - 快捷键编辑器面板：替换原「宿主面未接入」2 秒提示；数据全走 GET/POST /api/shortcuts，
  *     保留/冲突规则不在前端重算，错误文案一律回显服务端返回的「错误」字段（规则权威在 D 线模块）。
  * 依赖：无第三方库；样式见 settings.css；入口按钮见 index.html 的 .settings-entry。
+ * R108-G 新增（前端消费 C/D/F 三线新数据）：
+ *   - 引导：GET/POST /api/settings/onboarding，两步渲染（welcome-notice / deepseek-official），
+ *     密钥永不回显；页面级首访浮层（.settings-ob-page）与设置内浮层（.settings-ob-layer）共用同一渲染/保存逻辑。
+ *   - 侧栏插件面板：GET /api/settings/plugin-panel，只读渲染（无任何写控件）；
+ *     本仓可用恒假 → 只出「本部署没有可管理的 profile，无法安装或启停插件。」不可用态。
+ *   - 多 provider + 发现：GET /api/settings/providers + POST /discover（§2.2 route 校验、
+ *     「获取可用模型」按钮三态、候选弹窗 12 条文案逐字）；route 校验正则前端实现，注释声明上游只在客户端做的偏离。
  * 全局暴露 window.LightSettings（含纯渲染函数，供本地 mock 断言使用）
- *           与 window.SettingsApply（纯换算函数导出点，供 .scratch/r106b_assert.mjs 驱动）。
+ *           与 window.SettingsApply（纯换算函数导出点，供 .scratch/r106b_assert.mjs 驱动）
+ *           与 window.SettingsPanels（R108-G：C/F 线纯渲染函数导出点，供 .scratch/r108g_assert.mjs 驱动）。
  * ===================================================================== */
 (function () {
   "use strict";
@@ -86,7 +94,18 @@
     scError: "",         // 面板级错误（服务不可用等）
     scMsg: "",           // 服务端回显消息（400 错误文案原样展示）
     scConfirmAll: false, // 「恢复全部默认」确认条
-    scRecId: null        // 录制态的命令 id（null = 未在录制）
+    scRecId: null,        // 录制态的命令 id（null = 未在录制）
+    // R108-G：C / D / F 线新数据（独立端点，加载失败不阻塞四页签渲染）
+    onboarding: null,     // GET /api/settings/onboarding（C 线）
+    obOpen: false,        // 引导浮层是否打开（覆盖设置内容）
+    obBusy: false,        // 引导「保存中…」
+    obErr: "",            // 引导保存失败逐字回显
+    pluginPanel: null,    // GET /api/settings/plugin-panel（F 线）
+    providers: null,      // GET /api/settings/providers（D 线目录）
+    providersView: {      // provider 添加表单/发现候选的前端视图状态
+      baseURL: "", 显示名: "", api: "", 协议选项: [], 地址空: false, 发现中: false,
+      候选: null, 搜索: "", 选中: [], 无匹配: false
+    }
   };
 
   var el = {}; // DOM 缓存
@@ -346,6 +365,14 @@
     var h = '<div class="settings-note">' + esc(txt) + "</div>";
     if (model["只读"] === true || model["只读"] === "真")
       h += '<div class="settings-note">当前部署的设置文档为只读。</div>';
+    // R108-G：模型页签内接入 D 线「添加模型提供商」表单与候选弹窗（§2.2）
+    if (ST.providers != null) {
+      h += 渲染添加表单(
+        Array.isArray(ST.providers["提供商行"]) ? ST.providers["提供商行"] : [], ST.providersView);
+    }
+    if (ST.providersView && ST.providersView["fetchErr"]) {
+      h += '<div class="settings-provider-error">' + esc(ST.providersView["fetchErr"]) + "</div>";
+    }
     var provs = Array.isArray(model["提供商行"]) ? model["提供商行"] : [];
     for (var i = 0; i < provs.length; i++) {
       var p = provs[i] || {};
@@ -354,16 +381,22 @@
       var dotClass = configured ? "is-ok" : "is-missing";
       var dotAria = configured ? "API 密钥已配置" : "API 密钥缺失";
       var canDel = (p["可删除"] === true || p["可删除"] === "真");
+      // §2.2：provider 行 = 显示名 + route + 凭据圆点 + 可删除才出删除 + 已声明才出「自定义」标签
+      var 已声明 = (p["已声明"] === true || p["已声明"] === "真");
       h += '<div class="settings-model-provider" data-provider="' + esc(p["provider"] || "") + '">' +
         '<span class="settings-cred-dot ' + dotClass + '" aria-label="' + esc(dotAria) + '"></span>' +
         '<span class="settings-model-provider-name">' + esc(p["显示名"] != null ? p["显示名"] : p["provider"]) + "</span>" +
         '<span class="settings-model-provider-id">' + esc(p["provider"] || "") + "</span>" +
+        (已声明 ? '<span class="settings-badge settings-badge-custom">自定义</span>' : "") +
         '<span class="settings-model-provider-actions">' +
         '<button type="button" class="settings-line-btn settings-model-edit-btn">编辑</button>' +
         (canDel ? '<button type="button" class="settings-sc-btn settings-model-del-btn">删除</button>' : "") +
         "</span></div>";
       h += 渲染提供商编辑卡(p, model);
     }
+    // R108-G：发现候选弹窗叠加（同一视图状态驱动；候选为真实数组且非空才叠加，避免失败后空 overlay 挡住表单）
+    if (ST.providersView && Array.isArray(ST.providersView["候选"]) && ST.providersView["候选"].length > 0)
+      h += 渲染候选弹窗(ST.providersView);
     return h;
   }
 
@@ -502,6 +535,362 @@
     return h;
   }
 
+  // =====================================================================
+  // R108 任务线 G：前端消费（C / D / F 三线新数据）
+  //   C 线 → GET /api/settings/onboarding    引导状态（任务书 §2.1）
+  //   F 线 → GET /api/settings/plugin-panel  插件面板只读（任务书 §2.4）
+  //   D 线 → GET /api/settings/providers + POST /discover 多 provider 与发现（§2.2）
+  // 铁律（沿用 R107）：
+  //   · 密钥永不回显：不写 DOM、不进任何 state、不落任何返回串。
+  //   · 保留 / 校验类文案一律回显服务端或 D 线返回值，前端不自造。
+  // =====================================================================
+
+  // ---------- G-1：首次引导（C 线） ----------
+  // 渲染引导(引导, status, 错误) -> HTML；status ∈ ok|loading|unavailable
+  //   错误：保存失败 / 密钥为空时由调用方传入，逐字回显（welcomeError / keyRequired）。
+  //   当前步骤为空 → 返回 ""（不显示引导时不留下任何占位 DOM 或空白块）。
+  function 渲染引导(引导, status, 错误, busy) {
+    if (status === "loading") return '<div class="settings-loading">正在加载设置…</div>';
+    if (status === "unavailable" || 引导 == null || typeof 引导 !== "object")
+      return '<div class="settings-error-box">引导服务不可用，暂时无法获取。请检查后端连接后重试。</div>';
+    var 当前 = 引导["当前步骤"];
+    if (当前 == null || 当前 === "") return "";
+    var 步集 = Array.isArray(引导["步骤"]) ? 引导["步骤"] : [];
+    for (var i = 0; i < 步集.length; i++) {
+      if ((步集[i] || {})["id"] === 当前) return 渲染引导步(步集[i], 错误, busy === true);
+    }
+    return "";
+  }
+
+  // 渲染引导步(步, 错误, busy) -> 单步卡片（标题 / 正文 / 主次按钮；deepseek-official 含密码框）
+  //   ⛔ 密钥 input 恒 value=""，任何环节都不把明文写进 DOM/state。
+  function 渲染引导步(步, 错误, busy) {
+    var 主文案 = 步["主按钮"] != null ? 步["主按钮"] : "";
+    // busy 态：仅 deepseek-official 有「保存中…」逐字文案（§2.1）
+    if (busy === true && 步["id"] === "deepseek-official") 主文案 = "保存中…";
+    var h = '<div class="settings-onboarding" data-step="' + esc(步["id"] || "") + '">' +
+      '<h3 class="settings-onboarding-title">' + esc(步["标题"] || "") + "</h3>";
+    var 正文 = 步["正文"];
+    if (Array.isArray(正文)) {
+      for (var i = 0; i < 正文.length; i++)
+        h += '<p class="settings-onboarding-text">' + esc(正文[i]) + "</p>";
+    } else if (正文 != null && 正文 !== "") {
+      var 段 = String(正文).split("\n");
+      for (var j = 0; j < 段.length; j++) {
+        var t = 段[j].trim();
+        if (t) h += '<p class="settings-onboarding-text">' + esc(t) + "</p>";
+      }
+    }
+    if (步["id"] === "deepseek-official") {
+      h += '<label class="settings-onboarding-label" for="settings-onboarding-key">API Key</label>' +
+        '<input type="password" id="settings-onboarding-key" class="settings-input settings-onboarding-key" ' +
+        'placeholder="sk-..." value="" autocomplete="off"' + (busy === true ? " disabled" : "") + '>' +
+        '<div class="settings-onboarding-err" hidden></div>';
+    }
+    if (错误 != null && 错误 !== "")
+      h += '<div class="settings-onboarding-err-msg">' + esc(错误) + "</div>";
+    h += '<div class="settings-onboarding-actions">' +
+      '<button type="button" class="settings-confirm-go settings-onboarding-main" ' +
+      'data-step="' + esc(步["id"] || "") + '"' + (busy === true ? ' disabled aria-busy="true"' : "") + ">" +
+      esc(主文案) + "</button>";
+    if (步["次按钮"] != null && 步["次按钮"] !== "")
+      h += '<button type="button" class="settings-confirm-cancel settings-onboarding-skip" ' +
+        'data-step="' + esc(步["id"] || "") + '"' + (busy === true ? " disabled" : "") + ">" +
+        esc(步["次按钮"]) + "</button>";
+    h += "</div></div>";
+    return h;
+  }
+
+  // ---------- G-2：侧栏插件面板（F 线，只读） ----------
+  // 只读原因文案(原因) -> 逐字；management-required / unaddressable
+  function 只读原因文案(原因) {
+    if (原因 === "management-required") return "插件管理所需，不能停用或卸载";
+    if (原因 === "unaddressable") return "当前 profile 的 patch 无法唯一定位这一项";
+    return "";
+  }
+
+  // 相位文案(相位) -> 逐字；pending/loading/active/failed/unloading；空（null）→ 未运行
+  function 相位文案(相位) {
+    if (相位 == null || 相位 === "") return "未运行";
+    if (相位 === "pending") return "等待依赖";
+    if (相位 === "loading") return "加载中";
+    if (相位 === "active") return "运行中";
+    if (相位 === "failed") return "异常";
+    if (相位 === "unloading") return "卸载中";
+    return "";
+  }
+
+  // 组件计数文案(行列表) -> 「共 n 个 · x 运行中 · y 已停用 · z 异常」；仅 >0 项追加，' · ' 连接（逐字）
+  function 组件计数文案(行列表) {
+    var 行 = Array.isArray(行列表) ? 行列表 : [];
+    var 运行中 = 0, 已停用 = 0, 异常 = 0;
+    for (var i = 0; i < 行.length; i++) {
+      var r = 行[i] || {};
+      if (r["相位"] === "active") 运行中++;
+      if (r["已启用"] === false || r["已启用"] === "假") 已停用++;
+      if (r["相位"] === "failed") 异常++;
+    }
+    var t = "共 " + 行.length + " 个";
+    if (运行中 > 0) t += " · " + 运行中 + " 运行中";
+    if (已停用 > 0) t += " · " + 已停用 + " 已停用";
+    if (异常 > 0) t += " · " + 异常 + " 异常";
+    return t;
+  }
+
+  // 渲染插件卡(卡) -> 只读卡片（标题/版本/标签/描述/只读启用开关/组件计数/组件行）
+  //   ⛔ 不渲染任何写控件（无安装 / 启用 / 停用 / 卸载）；开关仅只读展示，title=只读原因逐字。
+  function 渲染插件卡(卡) {
+    var 标题 = (卡["标题"] != null && 卡["标题"] !== "") ? 卡["标题"] : (卡["name"] || "");
+    var 只读原因 = 只读原因文案(卡["只读原因"]);
+    var h = '<div class="settings-pp-card" data-pkg="' + esc(卡["name"] || "") + '">' +
+      '<div class="settings-pp-card-head">' +
+        '<span class="settings-pp-card-title">' + esc(标题) + "</span>";
+    if (卡["版本"] != null && 卡["版本"] !== "")
+      h += '<span class="settings-pp-card-version">' + esc("v" + 卡["版本"]) + "</span>";
+    var 标签 = Array.isArray(卡["标签"]) ? 卡["标签"] : [];
+    for (var i = 0; i < 标签.length; i++) {
+      if (标签[i] === "实验性" || 标签[i] === "异常")
+        h += '<span class="settings-pp-card-tag is-' + esc(标签[i]) + '">' + esc(标签[i]) + "</span>";
+    }
+    var on = (卡["已启用"] === true || 卡["已启用"] === "真");
+    h += '<span class="settings-pp-toggle ' + (on ? "is-on" : "") + '" ' +
+      'role="switch" aria-checked="' + (on ? "true" : "false") + '"' +
+      (只读原因 ? ' title="' + esc(只读原因) + '"' : "") + "></span>";
+    h += "</div>";
+    if (卡["描述"] != null && 卡["描述"] !== "")
+      h += '<p class="settings-pp-card-desc">' + esc(卡["描述"]) + "</p>";
+    h += '<div class="settings-pp-card-meta">' +
+      '<span class="settings-pp-card-count">' + esc(组件计数文案(卡["组件"])) + "</span>" +
+      '<span class="settings-pp-card-pkg">' + esc(卡["name"] || "") + "</span>" +
+      (只读原因 ? '<span class="settings-pp-card-reason" title="' + esc(只读原因) + '">' + esc(只读原因) + "</span>" : "") +
+      "</div>";
+    var 行集 = Array.isArray(卡["组件"]) ? 卡["组件"] : [];
+    h += '<div class="settings-pp-card-parts">';
+    if (行集.length) {
+      h += '<div class="settings-pp-card-parts-title">包含的组件</div>';
+      for (var j = 0; j < 行集.length; j++) {
+        var r = 行集[j] || {};
+        var rOn = (r["已启用"] === true || r["已启用"] === "真");
+        var rReason = 只读原因文案(r["只读原因"]);
+        h += '<div class="settings-pp-row" data-row-id="' + esc(r["rowId"] || "") + '">' +
+          '<span class="settings-pp-row-name">' + esc(r["moduleName"] || r["rowId"] || "") + "</span>" +
+          '<span class="settings-pp-row-state">' + esc(rOn ? "已启用" : "已关闭") + "</span>" +
+          '<span class="settings-pp-row-phase">' + esc(相位文案(r["相位"])) + "</span>" +
+          (rReason ? '<span class="settings-pp-row-reason" title="' + esc(rReason) + '">' + esc(rReason) + "</span>" : "") +
+          "</div>";
+      }
+    } else {
+      h += '<div class="settings-note">这个插件包不包含任何组件。</div>';
+    }
+    return h + "</div></div>";
+  }
+  function 渲染插件组(组) {
+    var 卡集 = Array.isArray(组["卡片"]) ? 组["卡片"] : [];
+    if (!卡集.length) return "";
+    var h = '<section class="settings-pp-group" data-group="' + esc(组["分组"] || "") + '">' +
+      '<div class="settings-pp-group-head">' +
+        '<span class="settings-pp-group-name">' + esc(组["分组"] || "") + "</span>" +
+        '<span class="settings-pp-group-count">' + esc(组["计数"] != null ? 组["计数"] : 卡集.length) + " 个</span>" +
+      "</div>";
+    for (var i = 0; i < 卡集.length; i++) h += 渲染插件卡(卡集[i]);
+    return h + "</section>";
+  }
+
+  // 渲染插件面板(面板, status, 选项) -> HTML；⛔ 不渲染任何写控件
+  //   本仓 可用 恒 假 → 只出不可用态（逐字「本部署没有可管理的 profile…」）。
+  //   选项.headless：不渲染页头（用于已自带标题的页面级浮层）。
+  function 渲染插件面板(面板, status, 选项) {
+    if (status === "loading") return '<div class="settings-loading">正在加载插件…</div>';
+    if (status === "unavailable" || 面板 == null || typeof 面板 !== "object")
+      return '<div class="settings-error-box">插件面板服务不可用，暂时无法获取。请检查后端连接后重试。</div>';
+    var 选项2 = (选项 && typeof 选项 === "object") ? 选项 : {};
+    var h = "";
+    if (选项2["headless"] !== true) {
+      h += '<div class="settings-pp-head">' +
+        '<h3 class="settings-pp-title">插件</h3>' +
+        '<p class="settings-pp-intro">安装、启用和配置插件</p>' +
+        '<p class="settings-pp-info">在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看</p></div>';
+    }
+    if (面板["刷新中"] === true || 面板["刷新中"] === "真")
+      h += '<div class="settings-note">正在刷新…</div>';
+    if (面板["错误"] != null && 面板["错误"] !== "")
+      h += '<div class="settings-pp-error">' + esc(面板["错误"]) + "</div>";
+    var 可用 = (面板["可用"] === true || 面板["可用"] === "真");
+    if (!可用) {
+      var 文 = (面板["不可用文案"] != null && 面板["不可用文案"] !== "")
+        ? 面板["不可用文案"] : "本部署没有可管理的 profile，无法安装或启停插件。";
+      return h + '<div class="settings-note settings-pp-unavailable">' + esc(文) + "</div>";
+    }
+    var 组集 = Array.isArray(面板["分组"]) ? 面板["分组"] : [];
+    if (!组集.length) return h + '<div class="settings-note">还没有安装任何插件。</div>';
+    for (var i = 0; i < 组集.length; i++) h += 渲染插件组(组集[i]);
+    return h;
+  }
+
+  // ---------- G-3：多 provider + 模型发现（D 线） ----------
+  // route 校验正则（逐字取 §2.2）：^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$
+  //   上游理由：deriveKeyRef 会大写并把非字母数字段换成 _，凭据引用必须是 POSIX shell
+  //   标识符 ⇒ 首字符不能是数字。上游只在客户端做此校验（宿主侧无同名正则），
+  //   本仓在纯渲染面实现，注释声明这一偏离。
+  var ROUTE_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+  // 校验路由(route, 已有行集) -> {合法, 消息}；错误文案逐字取 §2.2，前端不重算规则
+  function 校验路由(route, 已有行集) {
+    var s = String(route == null ? "" : route);
+    if (s === "") return { 合法: true, 消息: "" };
+    if (!ROUTE_RE.test(s))
+      return { 合法: false, 消息: "需以小写字母开头，之后可用小写字母、数字和短横线。" };
+    var 行集 = Array.isArray(已有行集) ? 已有行集 : [];
+    for (var i = 0; i < 行集.length; i++) {
+      if (String((行集[i] || {})["provider"] || "") === s)
+        return { 合法: false, 消息: "已有提供商使用了这个 ID。" };
+    }
+    return { 合法: true, 消息: "" };
+  }
+
+  // 渲染提供商行(p) -> 显示名 + route + 凭据圆点 + 可删除才出删除 + 已声明才出「自定义」标签
+  function 渲染提供商行(p) {
+    var 凭据 = p["凭据"] || {};
+    var configured = (凭据["configured"] === true || 凭据["configured"] === "真");
+    var dotClass = configured ? "is-ok" : "is-missing";
+    var dotAria = configured ? "API 密钥已配置" : "API 密钥缺失";
+    var 可删 = (p["可删除"] === true || p["可删除"] === "真");
+    var 自定义 = (p["已声明"] === true || p["已声明"] === "真");
+    var h = '<div class="settings-model-provider settings-provider-row" data-provider="' + esc(p["provider"] || "") + '">' +
+      '<span class="settings-cred-dot ' + dotClass + '" aria-label="' + esc(dotAria) + '"></span>' +
+      '<span class="settings-model-provider-name">' + esc(p["显示名"] != null ? p["显示名"] : p["provider"]) + "</span>" +
+      '<span class="settings-model-provider-id">' + esc(p["provider"] || "") + "</span>" +
+      (自定义 ? '<span class="settings-badge settings-badge-custom">自定义</span>' : "") +
+      '<span class="settings-model-provider-actions">';
+    if (可删) h += '<button type="button" class="settings-sc-btn settings-provider-del">删除</button>';
+    h += "</span></div>";
+    if (p["错误"] != null && p["错误"] !== "")
+      h += '<div class="settings-provider-error">' + esc(p["错误"]) + "</div>";
+    return h;
+  }
+
+  // 协议选项列表(视图) -> 协议白名单选项（逐字取自 §2.2/D 线返回值；视图无则回默认三项）
+  function 协议选项列表(视图) {
+    var 表 = (视图 && Array.isArray(视图["协议选项"])) ? 视图["协议选项"] : [];
+    if (!表.length) {
+      表 = [
+        { 值: "anthropic-messages", 标签: "Anthropic Messages" },
+        { 值: "openai-completions", 标签: "OpenAI Chat Completions" },
+        { 值: "openai-responses", 标签: "OpenAI Responses" }
+      ];
+    }
+    return 表;
+  }
+
+  // 渲染添加表单(已有行集, 视图) -> 「添加模型提供商」折叠区 + route 校验 + 获取可用模型按钮
+  //   · route 校验三态由 校验路由() 产出，错误文案逐字回显（容器恒渲染，运行时输入即时显示）。
+  //   · 获取按钮：busy=「正在询问提供商…」；缺地址时 title=「请先填写 API 地址，再获取。」（逐字）。
+  function 渲染添加表单(已有行集, 视图) {
+    var 校验 = (视图 && 视图["校验"]) || {};
+    var route = 校验["route"] != null ? 校验["route"] : "";
+    var 消息 = 校验["消息"] || "";
+    var h = '<details class="settings-provider-add" open>' +
+      '<summary class="settings-provider-add-summary">添加模型提供商</summary>' +
+      '<div class="settings-provider-add-body">';
+    h += 字段("Provider ID",
+      '<input type="text" class="settings-input settings-provider-route" data-field="route" ' +
+      'value="' + esc(route) + '"' + (消息 ? ' aria-invalid="true"' : "") + '>' +
+      // 错误容器恒渲染；运行时输入经 onProviderRouteInput 就地回显（§2.2 逐字）
+      '<div class="settings-provider-route-err"' + (消息 ? "" : " hidden") + ">" +
+        esc(消息) + "</div>");
+    h += 字段("API 地址",
+      '<input type="text" class="settings-input settings-provider-baseurl" data-field="base_url" ' +
+      'value="' + esc((视图 && 视图["baseURL"]) || "") + '">');
+    // ⛔ API 密钥：password + value 恒空，永不回显；发现请求仅本次使用，不落任何 state。
+    h += 字段("API 密钥",
+      '<input type="password" class="settings-input settings-provider-key" data-field="api_key" ' +
+      'value="" autocomplete="off">');
+    h += 字段("显示名称",
+      '<input type="text" class="settings-input" data-field="display_name" ' +
+      'value="' + esc((视图 && 视图["显示名"]) || "") + '">');
+    var 选项 = 协议选项列表(视图);
+    var sel = '<select class="settings-select" data-field="api"><option value="">未选择</option>';
+    for (var i = 0; i < 选项.length; i++) {
+      var o = 选项[i] || {};
+      sel += '<option value="' + esc(o["值"]) + '"' +
+        ((视图 && 视图["api"] === o["值"]) ? " selected" : "") + '>' +
+        esc(o["标签"] != null ? o["标签"] : o["值"]) + "</option>";
+    }
+    sel += "</select>";
+    h += 字段("API 协议", sel);
+    var 缺地址 = (视图 && (视图["地址空"] === true || 视图["地址空"] === "真"));
+    var busy = (视图 && (视图["发现中"] === true || 视图["发现中"] === "真"));
+    h += '<div class="settings-provider-add-actions">' +
+      '<button type="button" class="settings-sc-btn settings-provider-fetch" ' +
+      (缺地址 ? 'title="请先填写 API 地址，再获取。"' : "") +
+      (busy ? ' disabled aria-busy="true"' : "") + ">" +
+      esc(busy ? "正在询问提供商…" : "获取可用模型") + "</button>" +
+      '<button type="button" class="settings-confirm-go settings-provider-submit">添加</button>' +
+      "</div></div></details>";
+    return h;
+  }
+
+  // 渲染候选弹窗(视图) -> 发现结果弹窗（标题/说明/搜索/全选/取消全选/添加所选/无匹配/空结果逐字）
+  function 渲染候选弹窗(视图) {
+    var 候选 = Array.isArray(视图["候选"]) ? 视图["候选"] : [];
+    var h = '<div class="settings-fetch-overlay"><div class="settings-fetch-dialog" role="dialog" ' +
+      'aria-label="选择要添加的模型">' +
+      '<div class="settings-fetch-head">' +
+        '<h3 class="settings-fetch-title">选择要添加的模型</h3>' +
+        '<p class="settings-fetch-desc">以下是模型提供商的可用模型，勾选要添加的模型。</p>' +
+        '<input type="search" class="settings-input settings-fetch-search" data-field="search" ' +
+        'placeholder="搜索模型" value="' + esc((视图["搜索"]) || "") + '">' +
+        '<div class="settings-fetch-tools">' +
+          '<button type="button" class="settings-line-btn settings-fetch-all">全选</button>' +
+          '<button type="button" class="settings-line-btn settings-fetch-none">取消全选</button>' +
+        "</div></div>";
+    if (!候选.length) {
+      h += '<div class="settings-note">该提供商没有列出任何模型，请手动添加。</div>';
+    } else if (视图["无匹配"] === true) {
+      h += '<div class="settings-note">没有匹配的模型。</div>';
+    } else {
+      h += '<div class="settings-fetch-list">';
+      var 选中 = Array.isArray(视图["选中"]) ? 视图["选中"] : [];
+      for (var i = 0; i < 候选.length; i++) {
+        var c = 候选[i] || {};
+        var on = 选中.indexOf(c["id"]) >= 0;
+        h += '<label class="settings-fetch-item">' +
+          '<input type="checkbox" data-fetch-id="' + esc(c["id"] || "") + '"' + (on ? " checked" : "") + '>' +
+          '<span class="settings-fetch-item-name">' + esc(c["name"] != null ? c["name"] : c["id"]) + "</span>" +
+          '<span class="settings-fetch-item-id">' + esc(c["id"] || "") + "</span>" +
+          (c["contextWindow"] != null
+            ? '<span class="settings-fetch-item-ctx">上下文窗口：' + esc(c["contextWindow"]) + "</span>" : "") +
+          (c["maxTokens"] != null
+            ? '<span class="settings-fetch-item-ctx">最大输出：' + esc(c["maxTokens"]) + "</span>" : "") +
+        "</label>";
+      }
+      h += "</div>";
+    }
+    h += '<div class="settings-fetch-actions">' +
+      '<button type="button" class="settings-confirm-go settings-fetch-adopt">添加所选</button>' +
+      '<button type="button" class="settings-confirm-cancel settings-fetch-close">取消</button>' +
+    "</div></div></div>";
+    return h;
+  }
+
+  // 渲染提供商页(目录, 视图) -> provider 行列表 + 添加表单 + 可选候选弹窗
+  //   目录 = GET /api/settings/providers 响应（§2.2 提供商行形状）
+  //   视图 = {校验, baseURL, 显示名, api, 协议选项, 地址空, 发现中, 候选, 搜索, 选中, 无匹配}
+  function 渲染提供商页(目录, 视图) {
+    if (视图 == null) 视图 = {};
+    var 行集 = (目录 && Array.isArray(目录["提供商行"])) ? 目录["提供商行"] : [];
+    var h = 渲染添加表单(行集, 视图);
+    h += '<div class="settings-provider-list">';
+    if (!行集.length) {
+      h += '<div class="settings-note">目录中的提供商都已添加。</div>';
+    } else {
+      for (var i = 0; i < 行集.length; i++) h += 渲染提供商行(行集[i]);
+    }
+    h += "</div>";
+    if (视图["候选"]) h += 渲染候选弹窗(视图);
+    return h;
+  }
+
   function tabDescHtml(data, tabId) {
     var m = data && data["页签说明"];
     if (m && typeof m === "object" && m[tabId]) {
@@ -522,6 +911,264 @@
     return "ok";
   }
 
+  // R108-G：C / F 线独立端点的加载/不可用态（与四页签分开判定）
+  function gStatus(v) {
+    if (ST.loading) return "loading";
+    if (v == null && ST.loadError) return "unavailable";
+    return "ok";
+  }
+
+  // R108-G：引导浮层（数据驱动；当前步骤为空 → 隐藏且内容清空，不留占位 DOM）
+  function renderOnboarding() {
+    if (!el.obLayer) return;
+    var html = 渲染引导(ST.onboarding, ST.onboarding ? "ok" : "unavailable", ST.obErr, ST.obBusy === true);
+    if (!html) { el.obLayer.hidden = true; el.obLayer.innerHTML = ""; return; }
+    el.obLayer.innerHTML = html;
+    el.obLayer.hidden = false;
+    // 聚焦密码框（deepseek-official 步）
+    var key = el.obLayer.querySelector(".settings-onboarding-key");
+    if (key) { try { key.focus(); } catch (e) { /* 无 DOM 环境忽略 */ } }
+  }
+
+  // ---------- R108-G：侧栏插件面板浮层（F 线只读；无任何写控件） ----------
+  function buildPluginPanel() {
+    if (el.ppLayer || !HAS_DOM) return;
+    if (!document.body || !document.body.appendChild) return; // 本地 mock 沙箱无完整 DOM
+    var wrap = document.createElement("div");
+    if (!wrap || !wrap.querySelector) return;
+    wrap.className = "settings-pp-page";
+    wrap.hidden = true; // 创建即隐藏，显式 openPluginPanel 才显示
+    wrap.innerHTML = '<div class="settings-pp-page-inner" role="dialog" aria-label="插件">' +
+      '<div class="settings-pp-page-head">' +
+        '<h3 class="settings-pp-title">插件</h3>' +
+        '<button type="button" class="settings-x settings-pp-close" aria-label="关闭" title="关闭">' +
+          ICONS.x + "</button>" +
+      "</div>" +
+      '<div class="settings-pp-page-body"></div></div>';
+    document.body.appendChild(wrap);
+    el.ppLayer = wrap;
+    el.ppBody = wrap.querySelector(".settings-pp-page-body");
+    wrap.addEventListener("click", function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest(".settings-pp-close") || t === wrap) closePluginPanel();
+    });
+  }
+
+  function renderPluginPanel() {
+    if (!HAS_DOM) return;
+    buildPluginPanel();
+    if (!el.ppBody) return;
+    // 加载态 / 不可用态由 渲染插件面板 内部分支（status 由数据决定）；
+    // 页面浮层自带标题 → headless 渲染，避免标题重复。
+    var status = ST.pluginPanel ? "ok" : (ST.loading ? "loading" : "unavailable");
+    el.ppBody.innerHTML = 渲染插件面板(ST.pluginPanel, status, { headless: true });
+  }
+
+  function openPluginPanel() {
+    buildPluginPanel();
+    if (!el.ppLayer) return;
+    el.ppLayer.hidden = false;
+    if (!ST.pluginPanel) {
+      if (typeof fetch === "function") {
+        api("GET", "/api/settings/plugin-panel")
+          .then(function (d) {
+            if (d && typeof d === "object" && !Array.isArray(d)) ST.pluginPanel = d;
+            renderPluginPanel();
+          })
+          .then(null, function () { renderPluginPanel(); });
+      } else {
+        renderPluginPanel();
+      }
+      return;
+    }
+    renderPluginPanel();
+  }
+
+  function closePluginPanel() {
+    if (!el.ppLayer) return;
+    el.ppLayer.hidden = true;
+  }
+
+  // ---------- R108-G：引导保存（deepseek-official 步走凭据端点；welcome 步走引导确认端点） ----------
+  //   root：密钥输入框所在容器（设置内浮层 el.obLayer 或页面级浮层 el.obPage）
+  function onOnboardingSave(btn, root) {
+    var 步 = btn && btn.getAttribute ? btn.getAttribute("data-step") : "";
+    if (!步) return;
+    if (ST.obBusy) return;
+    ST.obErr = "";
+    if (步 === "welcome-notice") {
+      // POST /api/settings/onboarding {"步骤":"welcome-notice"} → C 线落盘扁平键
+      ST.obBusy = true;
+      renderOnboarding();     // busy 态立即重渲染（次按钮禁用等）
+      renderPageOnboarding();
+      api("POST", "/api/settings/onboarding", { 步骤: 步 })
+        .then(function () {
+          ST.obBusy = false;
+          return load(); // 重读 → 当前步骤推进到 deepseek-official 或清空
+        })
+        .then(null, function () {
+          ST.obBusy = false;
+          ST.obErr = "暂时无法保存确认状态，请重试。";
+          renderOnboarding();
+          renderPageOnboarding();
+        });
+      return;
+    }
+    if (步 === "deepseek-official") {
+      var host = root || el.obLayer;
+      var keyEl = host ? host.querySelector(".settings-onboarding-key") : null;
+      var key = keyEl ? String(keyEl.value || "") : "";
+      if (!key) {
+        ST.obErr = "请输入 API 密钥后继续。";
+        renderOnboarding();
+        renderPageOnboarding();
+        return;
+      }
+      // 密钥仅本次请求使用：POST /api/settings/credential {"密钥":key}；⛔ 不回显、不落 state
+      ST.obBusy = true;
+      renderOnboarding();     // busy 态立即重渲染：主按钮「保存中…」+ 密钥框/按钮 disabled（§2.1）
+      renderPageOnboarding();
+      api("POST", "/api/settings/credential", { 密钥: key })
+        .then(function () {
+          ST.obBusy = false;
+          return load();
+        })
+        .then(null, function () {
+          ST.obBusy = false;
+          ST.obErr = "暂时无法保存确认状态，请重试。";
+          renderOnboarding();
+          renderPageOnboarding();
+        });
+      return;
+    }
+  }
+
+  // R108-G：引导「稍后配置」（跳过 deepseek-official；welcome 步无次按钮）
+  function onOnboardingSkip(btn) {
+    var 步 = btn && btn.getAttribute ? btn.getAttribute("data-step") : "";
+    if (步 !== "deepseek-official") return;
+    api("POST", "/api/settings/onboarding", { 步骤: 步 })
+      .then(function () { return load(); })
+      .then(null, function () {
+        ST.obErr = "暂时无法保存确认状态，请重试。";
+        renderOnboarding();
+      });
+  }
+
+  // R108-G：provider 表单 route 实时校验（错误文案逐字回显，前端不自造规则）
+  function onProviderRouteInput(e) {
+    var t = e.target;
+    if (!t || !t.classList || !t.classList.contains("settings-provider-route")) return;
+    var route = String(t.value || "");
+    var 行集 = (ST.providers && Array.isArray(ST.providers["提供商行"])) ? ST.providers["提供商行"] : [];
+    var r = 校验路由(route, 行集);
+    var err = t.parentNode ? t.parentNode.querySelector(".settings-provider-route-err") : null;
+    if (r["消息"]) {
+      if (err) { err.textContent = r["消息"]; err.hidden = false; }
+      t.setAttribute("aria-invalid", "true");
+    } else {
+      if (err) { err.textContent = ""; err.hidden = true; }
+      t.removeAttribute("aria-invalid");
+    }
+  }
+
+  // R108-G：获取可用模型（D 线 POST /discover；仅本次使用密钥）
+  function onProviderFetch(btn) {
+    var det = btn && btn.closest ? btn.closest(".settings-provider-add") : null;
+    if (!det || ST.providersView["发现中"]) return;
+    var get = function (sel) { var n = det.querySelector(sel); return n ? n.value : ""; };
+    var base = String(get('[data-field="base_url"]') || "");
+    var api0 = String(get('[data-field="api"]') || "");
+    if (!base) {
+      ST.providersView["地址空"] = true;
+      renderContent();
+      return;
+    }
+    ST.providersView["地址空"] = false;
+    ST.providersView["发现中"] = true;
+    ST.providersView["baseURL"] = base;
+    ST.providersView["api"] = api0;
+    ST.providersView["fetchErr"] = ""; // 新一次发现前清空上次失败文案（否则旧错误残留）
+    renderContent();
+    // 密钥不落 providersView（⛔ 不回显）；端点自身也不返回明文
+    var keyEl = det.querySelector('[data-field="api_key"]');
+    var key = keyEl ? String(keyEl.value || "") : "";
+    api("POST", "/api/settings/providers/discover", { baseURL: base, api: api0, apiKey: key })
+      .then(function (res) {
+        ST.providersView["发现中"] = false;
+        ST.providersView["候选"] = (res && Array.isArray(res["候选"])) ? res["候选"] : [];
+        ST.providersView["选中"] = [];
+        ST.providersView["搜索"] = "";
+        ST.providersView["无匹配"] = false;
+        renderContent();
+      })
+      .then(null, function (e) {
+        ST.providersView["发现中"] = false;
+        ST.providersView["候选"] = [];
+        ST.providersView["选中"] = [];
+        // 端点 400 逐字回显（缺地址 / 其它）
+        ST.providersView["fetchErr"] = (e && e.message) ? e.message : "获取失败";
+        renderContent();
+      });
+  }
+
+  // R108-G：候选弹窗交互（搜索过滤 / 全选 / 取消全选 / 关闭 / 添加所选）
+  function onFetchSearch(e) {
+    var t = e.target;
+    if (!t || !t.classList || !t.classList.contains("settings-fetch-search")) return;
+    var q = String(t.value || "").trim();
+    ST.providersView["搜索"] = q;
+    var 候选 = ST.providersView["候选"] || [];
+    if (!q) { ST.providersView["无匹配"] = false; renderContent(); return; }
+    var hit = 0;
+    for (var i = 0; i < 候选.length; i++) {
+      var c = 候选[i] || {};
+      var s = String(c["name"] != null ? c["name"] : c["id"]) + " " + String(c["id"] || "");
+      if (s.indexOf(q) >= 0) hit++;
+    }
+    ST.providersView["无匹配"] = (hit === 0);
+    renderContent();
+  }
+
+  function 过滤候选() {
+    var 候选 = ST.providersView["候选"] || [];
+    var q = ST.providersView["搜索"] || "";
+    if (!q) return 候选;
+    var out = [];
+    for (var i = 0; i < 候选.length; i++) {
+      var c = 候选[i] || {};
+      var s = String(c["name"] != null ? c["name"] : c["id"]) + " " + String(c["id"] || "");
+      if (s.indexOf(q) >= 0) out.push(c);
+    }
+    return out;
+  }
+
+  function onFetchAll() { // 全选
+    var 候选 = 过滤候选();
+    var 选中 = [];
+    for (var i = 0; i < 候选.length; i++) 选中.push(候选[i]["id"]);
+    ST.providersView["选中"] = 选中;
+    renderContent();
+  }
+  function onFetchNone() { ST.providersView["选中"] = []; renderContent(); } // 取消全选
+  function onFetchClose() {
+    ST.providersView["候选"] = null;
+    ST.providersView["选中"] = [];
+    ST.providersView["搜索"] = "";
+    ST.providersView["无匹配"] = false;
+    renderContent();
+  }
+  function onFetchAdopt(btn) {
+    var list = btn && btn.closest ? btn.closest(".settings-fetch-dialog") : null;
+    if (!list) return;
+    var boxes = list.querySelectorAll('input[data-fetch-id]');
+    var picked = [];
+    for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) picked.push(boxes[i].getAttribute("data-fetch-id"));
+    if (!picked.length) { onFetchClose(); return; }
+    onFetchClose();
+  }
+
   function renderContentHtml() {
     if (ST.loadError) {
       return '<div class="settings-error-box">' + esc(ST.loadError) +
@@ -534,6 +1181,9 @@
     else if (ST.tab === "models") body = renderModelHtml(d["模型"], 页状态("models"));
     else if (ST.tab === "builtin-plugins") body = renderPluginsHtml(d["内置插件"], 页状态("builtin-plugins"));
     else if (ST.tab === "agent-presets") body = renderAgentsHtml(d["Agent预设"], 页状态("agent-presets"));
+    // R108-G：F 线插件面板 / C 线引导 两个独立数据面
+    else if (ST.tab === "plugin-panel") body = 渲染插件面板(ST.pluginPanel, gStatus(ST.pluginPanel));
+    else if (ST.tab === "onboarding") body = 渲染引导(ST.onboarding, gStatus(ST.onboarding), ST.obErr, ST.obBusy === true);
     else body = '<div class="settings-note">该页签暂无内容</div>';
     return tabDescHtml(d, ST.tab) + body;
   }
@@ -584,6 +1234,8 @@
           '<div class="settings-content"></div>' +
         "</div>" +
         '<div class="settings-confirm">' + confirmHtml() + "</div>" +
+        // R108-G：引导覆盖层（数据驱动；当前步骤为空时不显示，不留占位 DOM）
+        '<div class="settings-ob-layer" hidden></div>' +
       "</div>";
     document.body.appendChild(wrap);
 
@@ -599,6 +1251,7 @@
     el.confirmBox = wrap.querySelector(".settings-confirm-box");
     el.confirmGo = wrap.querySelector(".settings-confirm-go");
     el.confirmCancel = wrap.querySelector(".settings-confirm-cancel");
+    el.obLayer = wrap.querySelector(".settings-ob-layer");
 
     // 关闭：X / 点遮罩（对话框内部点击不关）
     el.xBtn.addEventListener("click", close);
@@ -618,6 +1271,8 @@
     // 控件变更 / 点击
     el.content.addEventListener("change", onContentChange);
     el.content.addEventListener("click", onContentClick);
+    // R108-G：引导浮层事件（独立于 el.content）
+    el.obLayer.addEventListener("click", onObClick);
     // 确认层
     el.confirmCancel.addEventListener("click", function () { cancelConfirm(); });
     el.confirmGo.addEventListener("click", function () { acceptConfirm(); });
@@ -681,17 +1336,23 @@
     ST.open = false;
     ST.scOpen = false;
     ST.scRecId = null;
+    ST.obOpen = false; // R108-G：关闭时同步收起引导浮层
     stopKeyCapture();
     cancelConfirm();
     for (var k in ST.timers) { clearTimeout(ST.timers[k]); delete ST.timers[k]; }
     ST.prev = {};
+    if (el.obLayer) { el.obLayer.hidden = true; el.obLayer.innerHTML = ""; }
     el.overlay.classList.remove("is-open");
   }
 
   function load() {
     var pData = api("GET", "/api/settings").then(null, function (e) { return { __err: e }; });
     var pDoc = api("GET", "/api/settings/document").then(null, function (e) { return { __err: e }; });
-    return Promise.all([pData, pDoc]).then(function (rs) {
+    // R108-G：C / D / F 三端点并行拉取；任一失败只把该键留空（不阻塞四页签渲染）
+    var pOb = api("GET", "/api/settings/onboarding").then(null, function (e) { return { __err: e }; });
+    var pPp = api("GET", "/api/settings/plugin-panel").then(null, function (e) { return { __err: e }; });
+    var pPr = api("GET", "/api/settings/providers").then(null, function (e) { return { __err: e }; });
+    return Promise.all([pData, pDoc, pOb, pPp, pPr]).then(function (rs) {
       var d = rs[0], doc = rs[1];
       if (!d || d.__err || typeof d !== "object" || Array.isArray(d)) {
         ST.loadError = "连接异常，刷新重试";
@@ -708,10 +1369,16 @@
       // 配置文档路径：优先 /api/settings/document，回退 通用设置.配置文档
       ST.doc = (doc && !doc.__err && typeof doc === "object") ? doc
              : (ST.generalRaw && ST.generalRaw["配置文档"]) || null;
+      ST.onboarding = (rs[2] && !rs[2].__err && typeof rs[2] === "object" && !Array.isArray(rs[2])) ? rs[2] : null;
+      ST.pluginPanel = (rs[3] && !rs[3].__err && typeof rs[3] === "object" && !Array.isArray(rs[3])) ? rs[3] : null;
+      ST.providers = (rs[4] && !rs[4].__err && typeof rs[4] === "object" && !Array.isArray(rs[4])) ? rs[4] : null;
       ST.loading = false;
       renderHeadDoc();
       renderNav();
       renderContent();
+      // R108-G：引导覆盖层由数据驱动（当前步骤为空 → 不显示，不留占位 DOM）
+      renderOnboarding();
+      renderPageOnboarding();
     });
   }
 
@@ -726,6 +1393,9 @@
   function onContentChange(e) {
     var t = e.target;
     if (!t) return;
+    // R108-G：provider route 实时校验 / 候选弹窗搜索
+    if (t.classList && t.classList.contains("settings-provider-route")) { onProviderRouteInput(e); return; }
+    if (t.classList && t.classList.contains("settings-fetch-search")) { onFetchSearch(e); return; }
     var rowId = t.getAttribute && t.getAttribute("data-row-id");
     if (!rowId) return;
     var row = findRow(rowId);
@@ -884,6 +1554,84 @@
     // R107-D：预设卡「设为新任务默认」
     var sd = t.closest(".settings-preset-setdefault");
     if (sd) { onPresetSetDefault(sd); return; }
+
+    // R108-G：引导浮层主/次按钮
+    if (t.closest(".settings-onboarding-main")) { onOnboardingSave(t.closest(".settings-onboarding-main")); return; }
+    if (t.closest(".settings-onboarding-skip")) { onOnboardingSkip(t.closest(".settings-onboarding-skip")); return; }
+    // R108-G：provider 表单 / 候选弹窗
+    if (t.closest(".settings-provider-fetch")) { onProviderFetch(t.closest(".settings-provider-fetch")); return; }
+    if (t.closest(".settings-fetch-close")) { onFetchClose(); return; }
+    if (t.closest(".settings-fetch-all")) { onFetchAll(); return; }
+    if (t.closest(".settings-fetch-none")) { onFetchNone(); return; }
+    if (t.closest(".settings-fetch-adopt")) { onFetchAdopt(t.closest(".settings-fetch-adopt")); return; }
+    if (t.closest(".settings-provider-del")) {
+      // D 线删除序列：先凭据后配置；本仓恒为内置提供商（可删除=假）不触发；保留兜底
+      var pRow = t.closest(".settings-provider-row");
+      if (pRow) {
+        var prov = pRow.getAttribute("data-provider");
+        if (prov && window.confirm) window.confirm("删除 " + prov + "？");
+      }
+      return;
+    }
+  }
+
+  // R108-G：引导浮层点击（浮层独立于 el.content，单独绑 onContentClick 以复用同一套分支）
+  function onObClick(e) {
+    var target = e.target;
+    if (!target || !target.closest) return;
+    var t = target;
+    if (t.closest(".settings-onboarding-main")) { onOnboardingSave(t.closest(".settings-onboarding-main")); return; }
+    if (t.closest(".settings-onboarding-skip")) { onOnboardingSkip(t.closest(".settings-onboarding-skip")); return; }
+    if (t === el.obLayer && !ST.obBusy) {
+      // 点击浮层空白：welcome-notice 不可跳过 → 不关闭；deepseek-official 可跳过
+      var step = el.obLayer.querySelector ? el.obLayer.querySelector("[data-step]") : null;
+      if (step && step.getAttribute("data-step") === "deepseek-official") onOnboardingSkip(step);
+      return;
+    }
+  }
+
+  // ---------- R108-G：页面级首访引导浮层（首次进入页面即显示，独立于设置对话框） ----------
+  // 数据来自同一个 C 线端点；渲染与保存逻辑复用 渲染引导步 / onOnboardingSave。
+  function buildPageOnboarding() {
+    if (el.obPage || !HAS_DOM) return;
+    if (!document.body || !document.body.appendChild) return; // 本地 mock 沙箱无完整 DOM
+    var wrap = document.createElement("div");
+    if (!wrap || !wrap.querySelector) return;
+    wrap.className = "settings-ob-page";
+    wrap.hidden = true; // 创建即隐藏，数据驱动 renderPageOnboarding 才显示
+    wrap.innerHTML = '<div class="settings-ob-page-inner"></div>';
+    document.body.appendChild(wrap);
+    el.obPage = wrap;
+    el.obPageInner = wrap.querySelector(".settings-ob-page-inner");
+    el.obPage.addEventListener("click", function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest(".settings-onboarding-main")) {
+        onOnboardingSave(t.closest(".settings-onboarding-main"), el.obPageInner);
+        return;
+      }
+      if (t.closest(".settings-onboarding-skip")) {
+        onOnboardingSkip(t.closest(".settings-onboarding-skip"));
+        return;
+      }
+      // 点遮罩：仅 deepseek-official（可跳过）允许跳过
+      if (t === el.obPage && !ST.obBusy) {
+        var step = el.obPageInner.querySelector("[data-step]");
+        if (step && step.getAttribute("data-step") === "deepseek-official") onOnboardingSkip(step);
+      }
+    });
+  }
+
+  function renderPageOnboarding() {
+    if (!HAS_DOM) return;
+    buildPageOnboarding();
+    if (!el.obPage) return;
+    var html = 渲染引导(ST.onboarding, ST.onboarding ? "ok" : "unavailable", ST.obErr, ST.obBusy === true);
+    if (!html) { el.obPage.hidden = true; el.obPageInner.innerHTML = ""; return; }
+    el.obPageInner.innerHTML = html;
+    el.obPage.hidden = false;
+    var key = el.obPageInner.querySelector(".settings-onboarding-key");
+    if (key) { try { key.focus(); } catch (e) { /* 无 DOM 环境忽略 */ } }
   }
 
   // 值变更入口：fullAccess 需先过确认层；否则直接提交
@@ -1404,7 +2152,25 @@
     // 三页渲染（消费 A/B/C 线契约形状；status ∈ ok|loading|unavailable）
     渲染模型页: renderModelHtml,
     渲染插件页: renderPluginsHtml,
-    渲染预设页: renderAgentsHtml
+    渲染预设页: renderAgentsHtml,
+    // R108-G：多 provider + 发现（消费 D 线契约）
+    渲染提供商页: 渲染提供商页,
+    渲染提供商行: 渲染提供商行,
+    渲染添加表单: 渲染添加表单,
+    渲染候选弹窗: 渲染候选弹窗,
+    校验路由: 校验路由
+  };
+
+  // R108-G：C / F 线纯渲染导出点（.scratch/r108g_assert.mjs 驱动用）
+  G.SettingsPanels = {
+    渲染引导: 渲染引导,
+    渲染引导步: 渲染引导步,
+    渲染插件面板: 渲染插件面板,
+    渲染插件卡: 渲染插件卡,
+    渲染插件组: 渲染插件组,
+    组件计数文案: 组件计数文案,
+    只读原因文案: 只读原因文案,
+    相位文案: 相位文案
   };
 
   // ---------- 入口按钮自绑定 ----------
@@ -1412,8 +2178,29 @@
     if (!HAS_DOM) return;
     var entry = document.getElementById("app-settings-btn");
     if (entry) entry.addEventListener("click", open);
+    // R108-G：侧栏「插件」入口 → 只读插件面板浮层
+    var pluginEntry = document.getElementById("app-plugin-btn");
+    if (pluginEntry) pluginEntry.addEventListener("click", openPluginPanel);
     refreshEffective(); // R106-B：页面加载即应用一次（刷新后保存值直接生效；端点不可用则跳过）
+    // R108-G：首访引导浮层（首次进入页面即显示；数据来自 C 线端点，独立于设置对话框）
+    if (ST.loading === false) {
+      loadPageOnboarding();
+    }
   }
+
+  function loadPageOnboarding() {
+    if (typeof fetch !== "function") return; // 无 fetch 环境（本地 mock 沙箱）不发起请求
+    api("GET", "/api/settings/onboarding")
+      .then(function (d) {
+        if (d && typeof d === "object" && !Array.isArray(d)) ST.onboarding = d;
+        renderPageOnboarding();
+      })
+      .then(null, function () {
+        ST.onboarding = null;
+        renderPageOnboarding();
+      });
+  }
+
   if (HAS_DOM) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", autoInit);
     else autoInit();

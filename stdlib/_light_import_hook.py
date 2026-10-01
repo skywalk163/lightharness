@@ -72,7 +72,20 @@ def _ensure_compiler_importable(stdlib_dir: str) -> None:
 
 
 def _compile_light(light_path: str, stdlib_dir: str) -> str:
-    """把 .light 文件编译成 Python 源码（带缓存）。"""
+    """把 .light 文件编译成 Python 源码（带缓存）。
+
+    R108-B 修复：把 stdlib_dir 透传给 PythonCodeGenerator。
+    ⚠ 旧实现 `PythonCodeGenerator()` 不传 stdlib_dir，导致生成代码引导里
+    `_light_stdlib = None`（code_generator.py:1191-1194 只在传了才注入真实值）。
+    `_light_stdlib = None` 时引导会按 `<脚本目录>/stdlib` → `<脚本目录>/../stdlib`
+    → `cwd/stdlib` → `<脚本目录>/../../stdlib` 探测；lightplugin 等仓外模块编译时
+    这四条全落空，于是 code_generator.py:1398-1405 的兜底段
+    `sys.modules.setdefault('文件系统', 空模块)` 被触发——把 `文件系统` 抢先注册成
+    **空命名空间模块**。后续宿主内任何 `从 文件系统 import 绝对路径` 命中这个空模块，
+    报 `cannot import name '绝对路径' from '文件系统' (unknown location)`。
+    cwd=仓库根时 `cwd/stdlib` 恰好命中 lightharness/stdlib，故只在门禁 cwd=临时目录下复现。
+    传入 stdlib_dir 后 `_light_stdlib` 直接取真实地板，兜底段不再触发，cwd 无关。
+    """
     global _COMPILE_DEPTH
     key = os.path.abspath(light_path)
     cached = _CODE_CACHE.get(key)
@@ -89,7 +102,7 @@ def _compile_light(light_path: str, stdlib_dir: str) -> str:
             source = fh.read()
 
         module_ast = LightParser().parse(source)
-        generated = PythonCodeGenerator().generate(module_ast)
+        generated = PythonCodeGenerator(stdlib_dir=stdlib_dir).generate(module_ast)
         _CODE_CACHE[key] = generated
         return generated
     finally:
@@ -175,6 +188,22 @@ class LightFinder(importlib.abc.MetaPathFinder):
     def _stdlib_dir(self) -> str:
         return self.search_paths[0] if self.search_paths else os.getcwd()
 
+    @property
+    def _stdlib_floor(self) -> str:
+        """真实 stdlib 地板：search_paths 里第一个含 builtins.py 的目录。
+
+        R108-B：传给 codegen 的 stdlib_dir 必须是 builtins.py 所在的地板。
+        `_stdlib_dir`（search_paths[0]）通常是宿主 src/（不含 builtins.py）；
+        若把 src/ 当 stdlib_dir 传给 PythonCodeGenerator，生成代码
+        `_light_builtin_path = <src>/builtins.py` 不存在，`_light_builtin` 会
+        回退到 code_generator.py:1265 的中文兜底 lambda
+        （'真'/'假'/'空'），偏离 R98/D 定下的英文 str() 地板口径。
+        """
+        for p in self.search_paths:
+            if os.path.isfile(os.path.join(p, 'builtins.py')):
+                return p
+        return self._stdlib_dir
+
     def find_spec(self, fullname, path=None, target=None):  # noqa: D102
         # 子模块（带点）交给标准机制
         if '.' in fullname:
@@ -211,7 +240,7 @@ class LightFinder(importlib.abc.MetaPathFinder):
                 if _exists_exact(base, realname + '.py'):
                     if not _is_pure_light(light_file):
                         return None
-                loader = LightLoader(fullname, light_file, self._stdlib_dir)
+                loader = LightLoader(fullname, light_file, self._stdlib_floor)
                 return importlib.util.spec_from_loader(fullname, loader)
         except Exception:
             # 钩子出问题绝不能影响正常 import
