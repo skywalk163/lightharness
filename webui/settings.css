@@ -570,3 +570,157 @@
 }
 
 .settings-entry:hover { background: var(--bg-hover, #30363d); }
+
+/* =====================================================================
+ * R106-B：设置生效 —— 亮色主题全局变量覆盖（html[data-theme="light"]）
+ * 仅覆盖 style.css :root 的核心调色板变量；dark 为默认主题无需覆盖。
+ * 覆盖写在 settings.css（任务书 B 线约定），避免散落到全局样式文件。
+ * ===================================================================== */
+html[data-theme="light"] {
+  --bg: #ffffff;          /* 页面背景 */
+  --bg-panel: #f6f8fa;    /* 顶栏/输入区背景 */
+  --bg-bubble: #f6f8fa;   /* 助手气泡背景 */
+  --bg-hover: #eff2f5;    /* 悬停底色 */
+  --border: #d0d7de;      /* 边框 */
+  --text: #1f2328;        /* 主文字 */
+  --text-muted: #57606a;  /* 次要文字 */
+  --text-dim: #6e7681;    /* 弱化文字 */
+  --green: #1a7f37;       /* 已连接 / 主行动色 */
+  --green-strong: #2da44e;
+  --blue: #0969da;        /* 用户气泡 */
+  --yellow: #9a6700;      /* 未认证 */
+  --red: #cf222e;         /* 服务不可达 / 错误 */
+}
+
+/* ---------- 降级提示条（设置对话框头部；降级项不静默） ---------- */
+.settings-degrade {
+  padding: 6px 16px;
+  background: var(--st-accent-soft, #ddf4ff);
+  color: var(--st-accent, #0969da);
+  font-size: 12px;
+  border-bottom: 1px solid var(--st-border, #d0d7de);
+}
+
+/* =====================================================================
+ * R106-B：快捷键编辑器面板（.settings-sc-* 前缀，挂在设置对话框内）
+ * 结构：.settings-sc-head（返回 / 标题 / 恢复全部默认）
+ *       > 可选 .settings-sc-confirm（恢复全部默认确认条，上游文案）
+ *       > 可选 .settings-sc-msg（服务端错误文案回显）/ .settings-sc-recording（录制态）
+ *       > .settings-sc-count + 按 .settings-sc-group 分节的 .settings-sc-row
+ * ===================================================================== */
+.settings-sc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--st-border, #d0d7de);
+}
+
+.settings-sc-title {
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+}
+
+.settings-sc-back {
+  border: none;
+  background: transparent;
+  color: var(--st-accent, #0969da);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.settings-sc-back:hover { text-decoration: underline; }
+
+.settings-sc-btn {
+  border: 1px solid var(--st-border, #d0d7de);
+  border-radius: var(--st-radius-sm, 8px);
+  background: var(--st-bg, #ffffff);
+  color: var(--st-text, #1f2328);
+  font-size: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.settings-sc-btn:hover { background: var(--st-bg-hover, #f3f4f6); }
+
+.settings-sc-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--st-border-strong, #8c959f);
+  border-radius: var(--st-radius-sm, 8px);
+  background: var(--st-bg-sub, #f6f8fa);
+  font-size: 13px;
+}
+
+.settings-sc-msg {
+  margin: 8px 2px;
+  padding: 6px 10px;
+  border-radius: var(--st-radius-sm, 8px);
+  background: var(--st-danger-soft, #ffebe9);
+  color: var(--st-danger, #cf222e);
+  font-size: 12px;
+}
+
+.settings-sc-recording {
+  margin: 8px 2px;
+  padding: 6px 10px;
+  border-radius: var(--st-radius-sm, 8px);
+  background: var(--st-accent-soft, #ddf4ff);
+  color: var(--st-accent, #0969da);
+  font-size: 12px;
+}
+
+.settings-sc-count {
+  margin: 10px 2px 4px;
+  font-size: 12px;
+  color: var(--st-text-muted, #656d76);
+}
+
+.settings-sc-group { margin: 6px 0 12px; }
+
+.settings-sc-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--st-text-dim, #8c959f);
+  padding: 4px 2px;
+}
+
+.settings-sc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--st-border, #d0d7de);
+  border-radius: var(--st-radius-sm, 8px);
+  margin: 4px 2px;
+  cursor: pointer;
+}
+
+.settings-sc-row:hover { background: var(--st-bg-hover, #f3f4f6); }
+.settings-sc-row.is-custom { border-color: var(--st-accent, #0969da); }
+
+.settings-sc-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--st-text, #1f2328);
+}
+
+.settings-sc-key {
+  font-family: var(--st-font-mono, monospace);
+  font-size: 12px;
+  color: var(--st-text-muted, #656d76);
+  white-space: nowrap;
+}
+
+.settings-sc-actions { display: flex; gap: 6px; }
+
+.settings-sc-hint {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--st-text-dim, #8c959f);
+}

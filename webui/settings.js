@@ -10,8 +10,16 @@
  *                               非法 → 400 {"错误":<消息>}
  * 兼容性：通用设置 若没有「行集」（旧形状 {"内置插件":{"按模式":{...}}}）不崩，
  *        渲染一行提示「通用设置行集尚未接入」，其余三个页签照常渲染。
+ * R106-B 新增：
+ *   - 设置生效：GET /api/settings/effective?系统偏好=dark|light（matchMedia 上报，服务端权威解析 system）
+ *     → data-theme / --msg-font-size / data-link-target / data-lang 应用到页面；降级项显式提示，不静默。
+ *   - 入口统一：顶栏齿轮（app.js 改绑 LightSettings.open）；模型页签「配置大模型」按钮经
+ *     window.showConfigPanel 调起旧面板（app.js 暴露），旧面板不删除。
+ *   - 快捷键编辑器面板：替换原「宿主面未接入」2 秒提示；数据全走 GET/POST /api/shortcuts，
+ *     保留/冲突规则不在前端重算，错误文案一律回显服务端返回的「错误」字段（规则权威在 D 线模块）。
  * 依赖：无第三方库；样式见 settings.css；入口按钮见 index.html 的 .settings-entry。
- * 全局暴露 window.LightSettings（含纯渲染函数，供本地 mock 断言使用）。
+ * 全局暴露 window.LightSettings（含纯渲染函数，供本地 mock 断言使用）
+ *           与 window.SettingsApply（纯换算函数导出点，供 .scratch/r106b_assert.mjs 驱动）。
  * ===================================================================== */
 (function () {
   "use strict";
@@ -68,7 +76,14 @@
     loading: false,
     timers: {},          // 行 id → 防抖定时器
     prev: {},            // 行 id → 变更前的值（失败回滚用）
-    pendingConfirm: null // {rowId, value}
+    pendingConfirm: null, // {rowId, value}
+    // R106-B：快捷键面板状态
+    scOpen: false,       // 面板是否打开（替代通用设置行渲染）
+    scData: null,        // GET /api/shortcuts 响应 {"文档","自定义计数","目录"}
+    scError: "",         // 面板级错误（服务不可用等）
+    scMsg: "",           // 服务端回显消息（400 错误文案原样展示）
+    scConfirmAll: false, // 「恢复全部默认」确认条
+    scRecId: null        // 录制态的命令 id（null = 未在录制）
   };
 
   var el = {}; // DOM 缓存
@@ -381,6 +396,7 @@
               ICONS.x + "</button>" +
           "</div>" +
         "</div>" +
+        '<div class="settings-degrade" hidden></div>' +
         '<div class="settings-body">' +
           '<nav class="settings-nav"></nav>' +
           '<div class="settings-content"></div>' +
@@ -391,6 +407,7 @@
 
     el.overlay = wrap;
     el.dialog = wrap.querySelector(".settings-dialog");
+    el.degrade = wrap.querySelector(".settings-degrade");
     el.docPath = wrap.querySelector(".settings-docpath");
     el.openFile = wrap.querySelector(".settings-open-file");
     el.xBtn = wrap.querySelector(".settings-x");
@@ -410,6 +427,8 @@
     el.nav.addEventListener("click", function (e) {
       var btn = closest(e.target, ".settings-nav-item");
       if (!btn || btn.classList.contains("is-disabled")) return;
+      // R106-B：从快捷键面板切页签 → 先退回普通渲染
+      if (ST.scOpen) { ST.scOpen = false; ST.scRecId = null; }
       ST.tab = btn.getAttribute("data-tab-id") || "general";
       renderNav();
       renderContent();
@@ -472,11 +491,15 @@
     renderNav();
     renderContent();
     load();
+    refreshEffective(); // R106-B：打开对话框即应用一次（否则刷新后设置不生效）
   }
 
   function close() {
     if (!el.overlay) return;
     ST.open = false;
+    ST.scOpen = false;
+    ST.scRecId = null;
+    stopKeyCapture();
     cancelConfirm();
     for (var k in ST.timers) { clearTimeout(ST.timers[k]); delete ST.timers[k]; }
     ST.prev = {};
@@ -538,6 +561,8 @@
   }
 
   function onContentClick(e) {
+    // R106-B：快捷键面板打开时，点击全走面板处理器
+    if (ST.scOpen) { handleScClick(e); return; }
     var target = e.target;
     if (!target || !target.closest) return;
     var t = target;
@@ -566,9 +591,13 @@
       return;
     }
 
-    // 快捷键：按钮置灰 + 提示「宿主面未接入」
+    // 快捷键：R106-B —— 替换「宿主面未接入」2 秒提示，改为打开真实编辑器面板
     var lineBtn = t.closest(".settings-line-btn");
     if (lineBtn) {
+      if (lineBtn.getAttribute("data-row-id") === "shortcuts") {
+        openShortcuts();
+        return;
+      }
       var rowEl = lineBtn.closest(".settings-row");
       var hint = rowEl ? rowEl.querySelector(".settings-row-hint") : null;
       if (hint) {
@@ -615,11 +644,13 @@
           if (ST.generalRaw) ST.generalRaw["行集"] = res["行集"];
           ST.prev[rowId] = undefined;
           renderContent();
+          refreshEffective(); // R106-B：保存成功后按返回重新应用
           return;
         }
         if (res && (res["状态"] === "ok" || res["状态"] === "OK")) {
           ST.prev[rowId] = undefined;
           clearRowError(rowId);
+          refreshEffective(); // R106-B：保存成功后重新应用
           return;
         }
         failRow(rowId, res && res["错误"] ? String(res["错误"]) : "服务端未返回合法行集");
@@ -715,13 +746,344 @@
     done();
   }
 
-  // ---------- 全局键盘：Esc 关闭（确认层优先） ----------
+  // ---------- 全局键盘：Esc 关闭（快捷键面板/确认层优先） ----------
   if (HAS_DOM) {
     document.addEventListener("keydown", function (e) {
       if (!ST.open || e.key !== "Escape") return;
+      if (ST.scOpen) { closeShortcuts(); return; }
       if (isConfirmOpen()) cancelConfirm();
       else close();
     });
+  }
+
+  // =====================================================================
+  // R106-B：设置生效（纯换算函数，挂 window.SettingsApply）
+  // 单一真值源原则（修订 A2）：前端只上报系统偏好（matchMedia），服务端把 system
+  // 解析成 light/dark 终值；前端不得自行判定 system，否则两套真值源必然打架。
+  // =====================================================================
+  function 组装生效查询(系统偏好值) {
+    var v = (系统偏好值 === "dark") ? "dark" : "light"; // 缺省/非法一律 light（与 C 线解析一致）
+    return "?系统偏好=" + v;
+  }
+
+  function 主题属性(生效参数) {
+    var v = 生效参数 && 生效参数["主题"];
+    return { 属性: "data-theme", 值: (v === "dark") ? "dark" : "light" };
+  }
+
+  function 字号变量(生效参数) {
+    if (!生效参数) return null;
+    var n = Number(生效参数["字号"]);
+    if (isNaN(n) || n < 12 || n > 17 || Math.floor(n) !== n) return null; // 越界/类型错 → 不应用
+    return { 变量: "--msg-font-size", 值: n + "px" };
+  }
+
+  function 链接目标属性(生效参数) {
+    if (!生效参数) return null;
+    var v = 生效参数["链接目标"];
+    if (v === "_self" || v === "sidebar") return { 属性: "data-link-target", 值: "_self" };
+    if (v === "_blank" || v === "newTab") return { 属性: "data-link-target", 值: "_blank" };
+    return null;
+  }
+
+  function 降级提示(生效参数) {
+    var items = (生效参数 && Array.isArray(生效参数["降级项"])) ? 生效参数["降级项"] : [];
+    var parts = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = String(items[i]);
+      if (it === "语言") parts.push("英文文案未接入（降级项）");
+      else if (it === "权限") parts.push("权限预设为自定义档，按默认档位回落（降级项）");
+      else parts.push(it + " 暂未落地（降级项）");
+    }
+    return parts.join("；");
+  }
+
+  // 应用函数：消费纯换算结果落到 DOM（纯函数不读 DOM，本函数不做换算）
+  function applyEffective(eff) {
+    if (!eff || typeof eff !== "object") return;
+    var root = document.documentElement;
+    var th = 主题属性(eff);
+    root.setAttribute(th.属性, th.值);
+    var fz = 字号变量(eff);
+    if (fz && root.style && root.style.setProperty) root.style.setProperty(fz.变量, fz.值);
+    var lt = 链接目标属性(eff);
+    if (lt) root.setAttribute(lt.属性, lt.值);
+    var lang = eff["语言"];
+    if (lang === "zh" || lang === "en") root.setAttribute("data-lang", lang);
+    if (el.degrade) {
+      var tip = 降级提示(eff);
+      if (tip) { el.degrade.textContent = tip; el.degrade.hidden = false; }
+      else { el.degrade.hidden = true; el.degrade.textContent = ""; }
+    }
+  }
+
+  function 系统偏好() {
+    try {
+      if (typeof window.matchMedia === "function") {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    } catch (e) { /* 旧浏览器无 matchMedia → light */ }
+    return "light";
+  }
+
+  function refreshEffective() {
+    if (typeof fetch !== "function") return;
+    var url = "/api/settings/effective" + 组装生效查询(系统偏好());
+    return api("GET", url)
+      .then(function (eff) { applyEffective(eff); })
+      .then(null, function (e) {
+        // /api/settings/effective 不可用 → 不报错、不白屏，跳过应用
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("[settings] 生效参数获取失败，跳过应用：" + ((e && e.message) || e));
+        }
+      });
+  }
+
+  // =====================================================================
+  // R106-B：快捷键编辑器面板（R105 遗留 #3 收口，替换「宿主面未接入」提示）
+  // 数据全走 C 线 GET/POST /api/shortcuts；保留/冲突规则权威在 D 线模块（src/快捷键.light），
+  // 前端不重算——错误文案一律回显服务端返回的「错误」字段。
+  // =====================================================================
+  function countCustom(目录列表) {
+    var n = 0;
+    for (var i = 0; i < 目录列表.length; i++) {
+      var r = 目录列表[i] || {};
+      if (r["是否自定义"] === true || r["是否自定义"] === "真") n++;
+    }
+    return n;
+  }
+
+  function findScEntry(id) {
+    var d = ST.scData;
+    var list = d && Array.isArray(d["目录"]) ? d["目录"] : [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i] && list[i]["id"]) === String(id)) return list[i];
+    }
+    return null;
+  }
+
+  function scPlatform() {
+    try {
+      if (typeof navigator !== "undefined" && navigator.platform &&
+          String(navigator.platform).indexOf("Mac") >= 0) return "macos";
+    } catch (e) { /* 平台探测失败 → 非 mac */ }
+    return "other";
+  }
+
+  function openShortcuts() {
+    ST.scOpen = true;
+    ST.scData = null;
+    ST.scError = "";
+    ST.scMsg = "";
+    ST.scConfirmAll = false;
+    ST.scRecId = null;
+    renderShortcuts();
+    loadShortcuts();
+  }
+
+  function closeShortcuts() {
+    ST.scOpen = false;
+    ST.scConfirmAll = false;
+    ST.scRecId = null;
+    stopKeyCapture();
+    renderContent();
+  }
+
+  function loadShortcuts() {
+    return api("GET", "/api/shortcuts")
+      .then(function (d) {
+        ST.scData = d;
+        ST.scMsg = "";
+        renderShortcuts();
+      })
+      .then(null, function (e) {
+        // /api/shortcuts 不可用（404/503）→ 面板内明显提示并禁用录入，不静默、不白屏
+        ST.scData = null;
+        ST.scError = "快捷键服务不可用（" + ((e && e.status) || (e && e.message) || "网络错误") + "），面板只读";
+        renderShortcuts();
+      });
+  }
+
+  function postShortcuts(载荷) {
+    return api("POST", "/api/shortcuts", 载荷)
+      .then(function (res) {
+        if (res && Array.isArray(res["目录"])) {
+          if (ST.scData) ST.scData["目录"] = res["目录"];
+          else ST.scData = { "目录": res["目录"], "文档": null };
+          ST.scData["自定义计数"] = countCustom(ST.scData["目录"]);
+        }
+        ST.scMsg = (res && (res["状态"] === "ok")) ? "已保存" : "";
+        ST.scConfirmAll = false;
+        stopKeyCapture();
+        ST.scRecId = null;
+        renderShortcuts();
+      })
+      .then(null, function (e) {
+        // 错误文案一律回显服务端返回的「错误」字段（400），前端不重算保留/冲突规则
+        ST.scMsg = (e && e.message) ? e.message : "保存失败";
+        ST.scConfirmAll = false;
+        stopKeyCapture();
+        ST.scRecId = null;
+        renderShortcuts();
+      });
+  }
+
+  // 录入：捕获期 keydown → 组装键串 → POST（Esc 取消录制，对齐上游 record-help）
+  function startKeyCapture(命令id) {
+    if (!ST.scData) return;
+    ST.scRecId = 命令id;
+    ST.scMsg = "";
+    renderShortcuts();
+    if (!HAS_DOM) return;
+    stopKeyCapture();
+    ST.scKeyHandler = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        stopKeyCapture();
+        ST.scRecId = null;
+        renderShortcuts();
+        return;
+      }
+      var ks = 组装键串(e, scPlatform());
+      if (!ks) return; // 仅修饰键按下 → 继续等待
+      postShortcuts({ 命令: ST.scRecId, 键: ks });
+    };
+    document.addEventListener("keydown", ST.scKeyHandler, true);
+  }
+
+  function stopKeyCapture() {
+    if (ST.scKeyHandler && HAS_DOM) {
+      document.removeEventListener("keydown", ST.scKeyHandler, true);
+    }
+    ST.scKeyHandler = null;
+  }
+
+  // 纯函数：keydown 事件 → 键串（Mod/Ctrl/Alt/Shift + 键名），对齐 D 线键串层口径。
+  // 主修饰键（mac=meta、其它=control）回显 Mod；其余修饰键按 control→alt→shift→meta 排列。
+  function 组装键串(事件, 平台 = "other") {
+    if (!事件 || !事件.key) return "";
+    var MODS = { Shift: 1, Control: 1, Alt: 1, Meta: 1 };
+    if (MODS[事件.key]) return ""; // 仅修饰键按下 → 不是有效键位
+    var mac = (平台 === "macos");
+    var phys = { control: !!事件.ctrlKey, alt: !!事件.altKey, shift: !!事件.shiftKey, meta: !!事件.metaKey };
+    var primaryPhys = mac ? "meta" : "control";
+    var disp = { control: "Ctrl", alt: "Alt", shift: "Shift", meta: "Meta" };
+    var order = ["control", "alt", "shift", "meta"];
+    var out = [];
+    if (phys[primaryPhys]) out.push("Mod");
+    for (var i = 0; i < order.length; i++) {
+      var m = order[i];
+      if (phys[m] && m !== primaryPhys) out.push(disp[m]);
+    }
+    var key = String(事件.key);
+    if (key === " ") key = "Space";
+    else if (key.length === 1) key = key.toUpperCase();
+    out.push(key);
+    return out.join("+");
+  }
+
+  // 纯函数：目录对象 → 面板 HTML（顶部自定义计数 + 按分组分节的行集）
+  function 渲染快捷键目录(目录对象) {
+    var list = null, count = null;
+    if (Array.isArray(目录对象)) { list = 目录对象; }
+    else if (目录对象 && typeof 目录对象 === "object") {
+      list = Array.isArray(目录对象["目录"]) ? 目录对象["目录"] : null;
+      count = 目录对象["自定义计数"];
+    }
+    if (!list) return '<div class="settings-note">暂无快捷键目录</div>';
+    if (count === null || count === undefined) count = countCustom(list);
+    var h = "";
+    // 自定义计数文案（{count} 项已自定义；count=0 时不显示）
+    if (count > 0) h += '<div class="settings-sc-count">' + esc(count) + " 项已自定义</div>";
+    // 按分组分节（保持首现顺序：应用操作 / 消息输入 / 菜单与弹层 / 审批区域）
+    var seen = [], groups = {};
+    for (var i2 = 0; i2 < list.length; i2++) {
+      var g = String((list[i2] && list[i2]["分组"]) || "其它");
+      if (!groups[g]) { groups[g] = []; seen.push(g); }
+      groups[g].push(list[i2]);
+    }
+    for (var j = 0; j < seen.length; j++) {
+      h += '<div class="settings-sc-group" data-sc-group="' + esc(seen[j]) + '">' +
+           '<div class="settings-sc-group-title">' + esc(seen[j]) + "</div>";
+      var rows = groups[seen[j]];
+      for (var k = 0; k < rows.length; k++) {
+        var row = rows[k] || {};
+        var custom = row["是否自定义"] === true || row["是否自定义"] === "真";
+        var keyTxt = (row["当前键"] != null && row["当前键"] !== "") ? row["当前键"] : "暂无快捷键";
+        h += '<div class="settings-sc-row' + (custom ? " is-custom" : "") +
+             '" data-sc-id="' + esc(row["id"]) + '">' +
+             '<span class="settings-sc-label">' + esc(row["标签"] != null ? row["标签"] : row["id"]) + "</span>" +
+             '<span class="settings-sc-key">' + esc(keyTxt) + "</span>" +
+             (custom
+               ? '<span class="settings-sc-actions">' +
+                 '<button type="button" class="settings-sc-btn" data-sc-act="remove">移除</button>' +
+                 '<button type="button" class="settings-sc-btn" data-sc-act="reset">恢复默认</button></span>'
+               : "") +
+             "</div>";
+      }
+      h += "</div>";
+    }
+    return h;
+  }
+
+  function renderShortcuts() {
+    if (!el.content) return;
+    var h = '<div class="settings-sc-head">' +
+      '<button type="button" class="settings-sc-back">‹ 返回设置</button>' +
+      '<span class="settings-sc-title">快捷键</span>' +
+      (ST.scData && !ST.scError
+        ? '<button type="button" class="settings-sc-btn settings-sc-resetall">恢复全部默认</button>'
+        : "") +
+      "</div>";
+    if (ST.scConfirmAll) {
+      h += '<div class="settings-sc-confirm">恢复全部默认快捷键？' +
+        '<button type="button" class="settings-sc-btn" data-sc-act="confirm-yes">确认恢复</button>' +
+        '<button type="button" class="settings-sc-btn" data-sc-act="confirm-no">取消</button></div>';
+    }
+    if (ST.scError) {
+      h += '<div class="settings-error-box">' + esc(ST.scError) + "</div>";
+    } else if (!ST.scData) {
+      h += '<div class="settings-loading">正在加载快捷键…</div>';
+    } else {
+      if (ST.scMsg) h += '<div class="settings-sc-msg">' + esc(ST.scMsg) + "</div>";
+      if (ST.scRecId) {
+        h += '<div class="settings-sc-recording">正在录制「' + esc(ST.scRecId) +
+             "」：按下组合键（Esc 取消）</div>";
+      }
+      h += 渲染快捷键目录(ST.scData);
+      h += '<div class="settings-sc-hint">浏览器可用组合：Mod+/、Mod+Shift+,、Mod+Shift+.。' +
+           "Mod 在 Mac 上为 Command，其他系统为 Ctrl。</div>";
+    }
+    el.content.innerHTML = h;
+  }
+
+  function handleScClick(e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest(".settings-sc-back")) { closeShortcuts(); return; }
+    if (t.closest(".settings-sc-resetall")) { ST.scConfirmAll = true; ST.scMsg = ""; renderShortcuts(); return; }
+    var btn = t.closest(".settings-sc-btn");
+    if (btn) {
+      var act = btn.getAttribute("data-sc-act");
+      if (act === "confirm-yes") { postShortcuts({ 重置: true }); return; }
+      if (act === "confirm-no") { ST.scConfirmAll = false; renderShortcuts(); return; }
+      if ((act === "remove" || act === "reset") && ST.scData) {
+        var rowEl2 = btn.closest(".settings-sc-row");
+        var id2 = rowEl2 ? rowEl2.getAttribute("data-sc-id") : "";
+        // wire 契约（§2.3）只有 {"命令","键"} 与 {"重置":真}：单条恢复/移除用默认键串重提；
+        // 命令行默认键为空串时服务端回 400，错误文案原样展示（契约缺口在汇报中登记）。
+        var entry = findScEntry(id2);
+        var 键串 = (entry && entry["默认键"]) ? entry["默认键"] : "";
+        postShortcuts({ 命令: id2, 键: 键串 });
+      }
+      return;
+    }
+    var rowEl = t.closest(".settings-sc-row");
+    if (rowEl && ST.scData) {
+      var id = rowEl.getAttribute("data-sc-id");
+      if (id) startKeyCapture(id);
+    }
   }
 
   // ---------- 导出（含纯渲染函数，供本地 mock 断言） ----------
@@ -751,11 +1113,23 @@
   };
   G.LightSettings = exported;
 
+  // R106-B：纯换算函数导出点（.scratch/r106b_assert.mjs 驱动用）
+  G.SettingsApply = {
+    组装生效查询: 组装生效查询,
+    主题属性: 主题属性,
+    字号变量: 字号变量,
+    链接目标属性: 链接目标属性,
+    降级提示: 降级提示,
+    组装键串: 组装键串,
+    渲染快捷键目录: 渲染快捷键目录
+  };
+
   // ---------- 入口按钮自绑定 ----------
   function autoInit() {
     if (!HAS_DOM) return;
     var entry = document.getElementById("app-settings-btn");
     if (entry) entry.addEventListener("click", open);
+    refreshEffective(); // R106-B：页面加载即应用一次（刷新后保存值直接生效；端点不可用则跳过）
   }
   if (HAS_DOM) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", autoInit);

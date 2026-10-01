@@ -22,6 +22,7 @@
                "Microsoft YaHei", "PingFang SC", sans-serif;
   --font-mono: Consolas, "Cascadia Code", "Fira Code", "JetBrains Mono",
                "Courier New", monospace;
+  --msg-font-size: 15px;  /* R106-B：会话消息区字号，由设置生效链写入（范围 12~17） */
 }
 
 * { box-sizing: border-box; }
@@ -138,6 +139,11 @@ body {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: normal;
+}
+
+/* R106-B：设置生效——消息区字号消费 --msg-font-size（settings.js 写入 documentElement） */
+.msg, .mbubble {
+  font-size: var(--msg-font-size, 15px);
 }
 
 .msg.user {
