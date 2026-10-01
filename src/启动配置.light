@@ -45,6 +45,10 @@
 设 缺省补丁重载 为 "live"
 设 保留profile名 为 "node_modules"      # profile.ts L103：launcher 维护的兄弟目录
 
+# R107 任务线 E：显式导出两常量（web服务器.处理获取设置文档 用 补丁文件名 拼配置文档路径；
+#   资料夹名 同步导出供目录分段拼接。光明顶层段落默认可导入，此处显式化以钉住契约）。
+导出 资料夹名, 补丁文件名
+
 # ---- 已发布 profile 模板（对齐 profile.ts PROFILE_TEMPLATES L110-131）----
 # 仅保留 bundles 顺序与 patchReload；bundle 目录解析由调用方注入。
 设 已发布模板 为 {

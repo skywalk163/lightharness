@@ -4153,6 +4153,83 @@
       ],
       "本轮目标": "R106 D线：快捷键规则权威模型，前端只回显服务端错误文案",
       "反跑判据": "去 主修饰保留码表 KeyC 必红；还原复绿"
+    },
+    {
+      "编号": 302,
+      "功能": "模型页真实化（R107 A线）：按上游 ModelsSection 手写面板重建整页字典——提供商行(provider=deepseek-official/显示名/命名空间/凭据{configured,source,writable}/可删除/错误)+模型行(目录4条 id/name/上下文窗口/最大输出/输入类型)+模型目录继承+可用提供商+协议选项(存储键 api，非 protocol)；凭据视图密钥永不回显仅三键；文案逐字取 locales.ts zh 段",
+      "原版包": "packages/client/ui-settings-models/src/client/ModelsSection.tsx + locales.ts zh 段 + packages/credentials/credentials/src/types.ts(CredentialInfo)",
+      "光明模块": "src/设置模型页.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/设置模型页.light",
+        "examples/test_设置模型页.light"
+      ],
+      "本轮目标": "R107 A线：模型页唯一数据权威，取代 R105 自造的 provider/protocol/apiKeyStatus/modelAdvanced 六行占位结构",
+      "反跑判据": "① 协议选项标签 OpenAI Chat Completions 改字 -> test_设置模型页 4c 逐字断言立红；② 文案表 modelIdDuplicate 改字 -> test_web路由 R107_POST_model_重复id_逐字文案 立红"
+    },
+    {
+      "编号": 303,
+      "功能": "内置插件页真实化（R107 B线）：真实分组数据+事实表——会话插件分组(默认展开/预设切换器/成员行展平叶子)+全局插件分组(默认收起/全局行)+按模式概览带标注+按模式计数+预设切换器；卡片可展开事实表（entryId/moduleName/启用态/条件）；全页只读无启停写调用",
+      "原版包": "packages/client/ui-settings-plugin-inventory/src/client/PluginsSettingsSection.tsx + locales.ts",
+      "光明模块": "src/设置插件页.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/设置插件页.light",
+        "examples/test_设置插件页.light"
+      ],
+      "本轮目标": "R107 B线：内置插件页唯一数据权威，取代 R105 2 条 id/名称全空的占位行清单",
+      "反跑判据": "① 配置状态文案(假) 改字 -> test_设置插件页 T11 立红；② 展平叶子 29 改值 -> T15/T22 立红"
+    },
+    {
+      "编号": 304,
+      "功能": "Agent预设页真实化（R107 C线）：每卡含真实配置详情——分组列表(四预设 id/显示名/描述/是默认/成员数=展平后/文本可JSON还原/行[entryId/moduleName/配置/启用/禁用条件])+默认预设+开发者工具；成员数与叶子数两数并存不互替；设为默认预设 权威规则(含开发者工具否决)",
+      "原版包": "packages/client/ui-agent-preset/src/client/PresetGuideDialog.tsx + pluginInventory AgentPresetPluginGroup/Row",
+      "光明模块": "src/设置预设页.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/设置预设页.light",
+        "examples/test_设置预设页.light"
+      ],
+      "本轮目标": "R107 C线：Agent预设页唯一数据权威，取代 R105 只有元数据+guide 正文、无配置实体的结构",
+      "反跑判据": "① 成员数 展平后 改取 展平叶子 -> test_设置预设页 1n(33) 立红；② 首行 entryId 改 -> 1l 立红"
+    },
+    {
+      "编号": 305,
+      "功能": "服务端接线+配置文档路径修正+快捷键落盘（R107 E线）：/api/settings 三键(模型/内置插件/Agent预设)委托三页权威模块；POST /api/settings/model 复用 A 线凭据视图+校验密钥+模型行集+校验模型行；POST /api/settings 复用 C 线设为默认预设；GET /api/settings/document 文件名修正为 cordis.patch.json；快捷键自定义目录落 keybindings.json（形状 {version,bindings}）重启读回",
+      "原版包": "packages/host/web-server (settings API) + packages/credentials",
+      "光明模块": "src/web服务器.light（处理获取设置 / 处理保存模型设置 / 处理获取设置文档 / 处理保存快捷键）",
+      "状态": "done",
+      "证据": [
+        "src/web服务器.light",
+        "examples/test_web路由.light"
+      ],
+      "本轮目标": "R107 E线：三页服务端接线+document 路径修正+快捷键持久化，规则类表只调 A/C 线模块不复制",
+      "反跑判据": "① 删除 模型 ID 不能重复 判定 -> test_web路由 R107_POST_model_重复id 400 断言立红；② document 路径不含 cordis.patch.json -> 相关断言立红"
+    },
+    {
+      "编号": 306,
+      "功能": "通用设置补齐上游 12 行（R107 F线）：permission/language/appearance/fontSize/transcriptView/performanceUsage/linkOpening/developerTools/shortcuts/composerEnter/sessionLogDeepseek/currentVersion，id 序按上游 order 升序对齐 settings.general.item 槽位账本；permission 需确认层 fullAccess",
+      "原版包": "packages/client/ui-settings-shell/src/client/settings.tsx (general section) + locales.ts zh 段",
+      "光明模块": "src/设置页.light（§3.5 通用设置行集）",
+      "状态": "done",
+      "证据": [
+        "src/设置页.light",
+        "examples/test_设置页.light"
+      ],
+      "本轮目标": "R107 F线：通用设置从九行补到十二行（补 composerEnter/performanceUsage 细分/sessionLogDeepseek/currentVersion）",
+      "反跑判据": "fontSize 默认值 14 改 15 -> test_设置页 6k 立红；还原复绿"
+    },
+    {
+      "编号": 307,
+      "功能": "自举地板清单断言门禁（R107 G线，本轮登记未落地）：给 light-merge/任务书/自举地板清单.json 的 分类统计 加断言守护（逐条重算 函数[].分类 与 分类统计 一致，合计 158），防将来漂移",
+      "原版包": "（light-merge 自研清单，无上游对标）",
+      "光明模块": "（顺延，未落地代码）",
+      "状态": "todo",
+      "证据": [
+        "light-merge/任务书/自举地板清单.json"
+      ],
+      "本轮目标": "R107 G线：澄清 R106 §九「分类统计漂移」不成立（实测 62/68/15/13 一致、合计158），真实缺口是无断言守护，故登记本卡",
+      "反跑判据": "（未落地，无判据；落地后：把某条 native_required 改成 movable -> 断言立红）"
     }
   ]
 }
