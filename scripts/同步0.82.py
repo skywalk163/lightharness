@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import io
 import os
+import subprocess
 import sys
 import tarfile
 import time
@@ -35,7 +36,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]          # G:/dswork/duan-light-merge
 LIGHTHARNESS = ROOT / "lightharness"
-LIGHT_MERGE = ROOT / "light-merge"
+LIGHT_MERGE = ROOT / "light-merge"                  # 默认主树；可被 --light-merge 覆盖（worktree 开发用）
 
 HOST = "192.168.0.82"                                # 0.82（.env 的 SSH_HOST 是门禁机 .88，不可复用）
 PORT = 22
@@ -218,9 +219,38 @@ def ensure_shim(cli) -> None:
 
 
 # ---------------------------------------------------------------- 子命令
+def print_probe_identity() -> None:
+    """打印被测代码的身份，杜绝「门 PASS 但测的是旧代码」。
+
+    R116 硬编码 LIGHT_MERGE=ROOT/light-merge 时，worktree 上的改动根本不会被
+    同步；sync/run 前打印 git HEAD + status，让被测 commit 一目了然。
+    """
+    for label, base in (("lightharness", LIGHTHARNESS), ("light-merge", LIGHT_MERGE)):
+        print(f"[同步0.82] 被测 {label} = {base}")
+        if not base.is_dir():
+            print(f"[同步0.82] 警告：{label} 不存在 {base}")
+            continue
+        try:
+            st = subprocess.run(["git", "-C", str(base), "status", "--short"],
+                                capture_output=True, text=True, timeout=15)
+            if st.returncode == 0:
+                dirty = st.stdout.strip()
+                print(f"[同步0.82]   {label} 工作区：{'脏' if dirty else '干净'}；"
+                      f"{dirty.splitlines()[0] if dirty else '(无未提交改动)'}")
+            else:
+                print(f"[同步0.82]   {label} 非 git 仓（rc={st.returncode}）：{st.stderr.strip()[:80]}")
+            head = subprocess.run(["git", "-C", str(base), "rev-parse", "--short", "HEAD"],
+                                  capture_output=True, text=True, timeout=15)
+            print(f"[同步0.82]   {label} HEAD = {head.stdout.strip() or '(不可用)'}")
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"[同步0.82]   取 {label} git 信息失败：{e}")
+
+
 def cmd_sync(args) -> int:
-    global INCLUDE_GIT
+    global INCLUDE_GIT, LIGHT_MERGE
     INCLUDE_GIT = getattr(args, "with_git", False)
+    LIGHT_MERGE = Path(getattr(args, "light_merge", None) or LIGHT_MERGE).resolve()
+    print_probe_identity()
     ts = time.strftime("%Y%m%d-%H%M%S")
     remote_dir = f"{REMOTE_BASE}/r44-{ts}"
     tar_path = ROOT / "_r44_sync.tar.gz"
@@ -312,6 +342,9 @@ def cmd_verify(args) -> int:
 
 
 def cmd_run(args) -> int:
+    global LIGHT_MERGE
+    LIGHT_MERGE = Path(getattr(args, "light_merge", None) or LIGHT_MERGE).resolve()
+    print_probe_identity()
     cli = connect()
     try:
         rd = load_remote_dir()
@@ -353,6 +386,10 @@ def main() -> int:
 
     sub.add_parser("verify", help="校验远端副本").set_defaults(fn=cmd_verify)
     p_sync = sub.add_parser("sync", help="打包+上传+解压+校验")
+    p_sync.add_argument("--light-merge", type=str, default=None,
+                        help="被测 light-merge 目录（worktree 开发时指向 ROOT/light-merge-day2 等；"
+                             "默认主树 ROOT/light-merge）。⚠ 用 worktree 跑门前须先合并回主树，"
+                             "或显式传此参数，否则同步的是旧主树 → 门 PASS 但测旧代码")
     p_sync.add_argument("--with-git", action="store_true",
                         help="连 .git 一起同步（远端副本成为真正的 git 工作树，"
                              "使依赖 `git archive HEAD` 的用例真正跑起来而不是跳过）")
@@ -360,6 +397,8 @@ def main() -> int:
     p_run = sub.add_parser("run", help="远端执行命令")
     p_run.add_argument("cmd", nargs=argparse.REMAINDER)
     p_run.add_argument("--timeout", type=int, default=3000)
+    p_run.add_argument("--light-merge", type=str, default=None,
+                       help="同 sync 的 --light-merge；仅用于打印被测身份，远端仍用已同步副本")
     p_run.set_defaults(fn=cmd_run)
 
     args = ap.parse_args()
