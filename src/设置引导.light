@@ -1,0 +1,174 @@
+# 设置引导.light —— R108 任务线 C：首次引导（onboarding）纯逻辑
+#
+# 合流点：G 线渲染引导、H 线持久化确认状态。
+# 本模块是引导状态推导的唯一权威；前端与服务端不得自行重算判定规则。
+#
+# 上游考据（锚点 G:\github\deepseek-harness，HEAD=e5b5ccbfcb，0.2.0-rc.1）：
+#   - settings.onboarding 槽位恰好 2 个注册方：
+#     · welcome-notice（order -100，仅非 Desktop）—— ui-settings-models/src/client/index.ts:149-154
+#     · deepseek-official（order 0）—— index.ts:155-161
+#   - 判定逻辑：ui-settings-general/src/client/SettingsRoot.tsx:133-143
+#     会话 phase==='ready' 且（无主视图会话 或 主会话 blank）；按 order 升序一次只挂一个。
+#   - 完成持久化：welcomeNoticeVersion = '2026-09-28.1'（精确相等即已确认；版本号一变全体重现）；
+#     deepseek-official 无持久化键，完成性从凭据就绪派生。
+#   - 显式重入：openOnboarding(id) 使 explicit=true 并忽略 automatic 与 provider-ready。
+#
+# 本仓形状取舍（如实登记）：
+#   - settings.json 是 {行id: 值} 扁平表，故用「引导_welcomeNoticeVersion」这类扁平键承载，
+#     而非上游的 {"ui-settings-general": {"welcomeNoticeVersion": "..."}} 嵌套形状。
+#   - 本仓无 Desktop 宿主，故 welcome-notice 的「仅非 Desktop」条件恒成立，两步全量启用。
+#   - automatic 恒为 真（上游 automatic = credentialOnboarding && 非 Desktop；本仓无 Desktop）。
+#
+# 语言坑规避：L-047（字典/列表字面量先赋变量再作实参）；L-055/L-160（打印只吃字面量串）；
+#   L-151（「设 X 为」的 为 前必须有空格）；L-170（核心动词关键字不可作变量名）；
+#   字面量不内含换行（长正文用 \n 转义，单行书写）。
+
+从 内置核心字典 导入 字典设置, 字典包含键
+从 内置核心列表 导入 列表追加, 列表包含
+从 内置核心判型 导入 是空, 是字符串
+
+# =====================================================================
+# §1 文案表（上游 locales.ts zh 段逐字，一字不差）
+# =====================================================================
+
+设 welcome_title 为 "预览版说明"
+设 welcome_body_1 为 "DeepSeek Harness 目前的 0.2 版本仍处于预览阶段，还有许多地方需要持续改进和打磨，希望听取广大开发者和用户的反馈建议。现在，新的桌面端面向广泛用户，开发者相关的进阶功能可在配置中开启使用。预计 DeepSeek Harness 的产品功能以及插件 API 都会继续快速迭代、持续演化，并逐渐趋于稳定。"
+设 welcome_body_2 为 "我们期待与全球用户和开发者一起，在开源、可复用、可组合的基础设施之上，共同探索智能上限。欢迎大家用 DeepSeek Harness 将想法变成现实，与社区一起丰富插件生态。"
+设 welcome_continue 为 "继续"
+设 welcome_error 为 "暂时无法保存确认状态，请重试。"
+
+设 onboarding_title 为 "添加一个 API Key 开始使用"
+设 onboarding_description 为 "配置 DeepSeek 官方模型，即可开始使用。"
+设 onboarding_later 为 "稍后配置"
+设 onboarding_save 为 "保存并继续"
+设 onboarding_saving 为 "保存中…"
+设 key_required 为 "请输入 API 密钥后继续。"
+
+# =====================================================================
+# §2 版本常量（单列；上游版本号一变全体重现，本仓保持同语义）
+# =====================================================================
+
+段落 引导版本():
+  返回 "2026-09-28.1"
+
+# =====================================================================
+# §3 引导步表（两步，按 order 升序）
+# =====================================================================
+
+段落 引导步表():
+  设 步1 为 {}
+  步1["id"] 为 "welcome-notice"
+  步1["顺序"] 为 -100
+  步1["标题"] 为 welcome_title
+  步1["正文"] 为 welcome_body_1 + "\n\n" + welcome_body_2
+  步1["主按钮"] 为 welcome_continue
+  步1["次按钮"] 为 ""
+  步1["可跳过"] 为 假
+
+  设 步2 为 {}
+  步2["id"] 为 "deepseek-official"
+  步2["顺序"] 为 0
+  步2["标题"] 为 onboarding_title
+  步2["正文"] 为 onboarding_description
+  步2["主按钮"] 为 onboarding_save
+  步2["次按钮"] 为 onboarding_later
+  步2["可跳过"] 为 真
+
+  设 表 为 [步1, 步2]
+  返回 表
+
+# =====================================================================
+# §4 当前步骤判定（核心纯函数）
+#   入参：已完成集（列表，存步 id）、会话为空白（真假）、凭据就绪（真假）、显式请求（空或步 id）
+#   返回：步 id（字符串）或 空
+#
+#   判定顺序（对齐 SettingsRoot.tsx:133-143 + DeepSeekOnboardingDialog.tsx:59-92）：
+#     1. 显式请求非空 -> 该 id（未知 id 抛错）
+#     2. 会话为空白 == 假 -> 空（不显示引导）
+#     3. 否则按 order 升序取首个「未完成」步
+#     4. deepseek-official 在凭据就绪 且 非显式 时视为已完成
+# =====================================================================
+
+段落 当前步骤(已完成集, 会话为空白, 凭据就绪, 显式请求 = ""):
+  # 1. 显式重入：忽略一切其他条件
+  如果 显式请求 != "":
+    设 合法id 为 假
+    遍历 步 之 引导步表():
+      如果 步["id"] == 显式请求:
+        设 合法id 为 真
+    如果 合法id == 假:
+      抛出 新建 错误("未知引导步骤: " + 显式请求)
+    返回 显式请求
+
+  # 2. 会话非空白 -> 不显示引导
+  如果 会话为空白 == 假:
+    返回 空
+
+  # 3. 按 order 升序找首个未完成步
+  遍历 步 之 引导步表():
+    设 步id 为 步["id"]
+    设 已完成 为 列表包含(已完成集, 步id)
+
+    # 4. deepseek-official 在凭据就绪 且 非显式 时视为已完成
+    如果 步id == "deepseek-official" 且 凭据就绪:
+      设 已完成 为 真
+
+    如果 已完成 == 假:
+      返回 步id
+
+  # 全部已完成
+  返回 空
+
+# =====================================================================
+# §5 完成步骤（返回新设置，不修改入参）
+#   welcome-notice -> 置 引导_welcomeNoticeVersion = 版本号
+#   deepseek-official -> 原样返回（无持久化键，完成性从凭据就绪派生）
+# =====================================================================
+
+段落 完成步骤(已存设置, 步id):
+  设 新设置 为 深拷贝(已存设置)
+
+  如果 步id == "welcome-notice":
+    # 本仓扁平键：引导_welcomeNoticeVersion（上游为 ui-settings-general.welcomeNoticeVersion 嵌套）
+    字典设置(新设置, "引导_welcomeNoticeVersion", 引导版本())
+    返回 新设置
+
+  如果 步id == "deepseek-official":
+    # 无持久化键，完成性从凭据就绪派生 -> 原样返回
+    返回 新设置
+
+  抛出 新建 错误("未知引导步骤: " + 步id)
+
+# =====================================================================
+# §6 渲染引导（整页形状，供 G 线前端消费）
+# =====================================================================
+
+段落 渲染引导(已完成集, 会话为空白, 凭据就绪, 显式请求 = ""):
+  设 当前 为 当前步骤(已完成集, 会话为空白, 凭据就绪, 显式请求)
+  设 结果 为 {}
+  结果["步骤"] 为 引导步表()
+  结果["当前步骤"] 为 当前
+  结果["自动"] 为 真
+  返回 结果
+
+# =====================================================================
+# §7 文案导出（供 H 线端点 / G 线前端直接取）
+# =====================================================================
+
+段落 引导文案():
+  设 表 为 {}
+  字典设置(表, "welcomeTitle", welcome_title)
+  字典设置(表, "welcomeBody1", welcome_body_1)
+  字典设置(表, "welcomeBody2", welcome_body_2)
+  字典设置(表, "welcomeContinue", welcome_continue)
+  字典设置(表, "welcomeError", welcome_error)
+  字典设置(表, "onboardingTitle", onboarding_title)
+  字典设置(表, "onboardingDescription", onboarding_description)
+  字典设置(表, "onboardingLater", onboarding_later)
+  字典设置(表, "onboardingSave", onboarding_save)
+  字典设置(表, "onboardingSaving", onboarding_saving)
+  字典设置(表, "keyRequired", key_required)
+  返回 表
+
+
+导出 引导版本, 引导步表, 当前步骤, 完成步骤, 渲染引导, 引导文案

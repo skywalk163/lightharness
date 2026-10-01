@@ -1,0 +1,117 @@
+# test_r108新端点.light —— R108 任务线 H 新端点快速验证
+# 运行：python 运行.py examples/test_r108新端点.light
+
+从 web服务器 导入 Web服务端, 全局服务, 路由处理器
+从 认证 导入 初始化认证
+从 总入口 导入 组装注册表
+从 JSON 导入 解析JSON, 序列化JSON
+从 字符串处理 导入 编码
+
+设 通过盘 为 {"通过": 0}
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  通过盘["通过"] = 通过盘["通过"] + 1
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件为假")
+  通过盘["通过"] = 通过盘["通过"] + 1
+
+段落 断言假(条件, 标签):
+  如果 条件 != 假:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件为真（应为假）")
+  通过盘["通过"] = 通过盘["通过"] + 1
+
+段落 造请求(方法, 路径, 体):
+  设 头 为 {}
+  返回 ["方法": 方法, "路径": 路径, "头": 头, "体": 体]
+
+异步 段落 主测试:
+  初始化认证()
+  全局服务.配置(空, 组装注册表(), "", 5.0)
+
+  # ---- ① GET /api/settings/onboarding ----
+  设 响应1 为 等待 路由处理器(造请求("GET", "/api/settings/onboarding", b''))
+  断言相等(响应1["状态"], 200, "1a GET onboarding 状态码")
+  设 体1 为 解析JSON(响应1["体"])
+  断言真(字典包含键(体1, "步骤"), "1b 步骤键存在")
+  断言相等(长度(体1["步骤"]), 2, "1c 两步引导")
+  断言真(字典包含键(体1, "当前步骤"), "1d 当前步骤键存在")
+  断言真(字典包含键(体1, "自动"), "1e 自动键存在")
+
+  # ---- ② POST onboarding 未知步骤 -> 400 ----
+  设 响应2 为 等待 路由处理器(造请求("POST", "/api/settings/onboarding", b'{"步骤":"unknown"}'))
+  断言相等(响应2["状态"], 400, "2a 未知步骤 400")
+
+  # ---- ③ POST onboarding welcome-notice -> 200 ----
+  设 响应3 为 等待 路由处理器(造请求("POST", "/api/settings/onboarding", b'{"步骤":"welcome-notice"}'))
+  断言相等(响应3["状态"], 200, "3a welcome-notice 200")
+
+  # ---- ④ GET /api/settings/credential ----
+  设 响应4 为 等待 路由处理器(造请求("GET", "/api/settings/credential", b''))
+  断言相等(响应4["状态"], 200, "4a GET credential 状态码")
+  设 体4 为 解析JSON(响应4["体"])
+  断言真(字典包含键(体4, "configured"), "4b configured 键")
+  断言真(字典包含键(体4, "source"), "4c source 键")
+  断言真(字典包含键(体4, "writable"), "4d writable 键")
+  # 响应不含明文（没有 api_key 等键）
+  断言假(字典包含键(体4, "api_key"), "4e 响应不含明文 api_key")
+
+  # ---- ⑤ POST credential 空白密钥 -> 400 ----
+  设 响应5 为 等待 路由处理器(造请求("POST", "/api/settings/credential", b'{"密钥":""}'))
+  断言相等(响应5["状态"], 400, "5a 空白密钥 400")
+
+  # ---- ⑦ GET /api/settings/providers ----
+  设 响应7 为 等待 路由处理器(造请求("GET", "/api/settings/providers", b''))
+  断言相等(响应7["状态"], 200, "7a GET providers 状态码")
+  设 体7 为 解析JSON(响应7["体"])
+  断言真(字典包含键(体7, "提供商行"), "7b 提供商行键")
+
+  # ---- ⑧ POST discover 空 baseURL -> 400 ----
+  设 响应8 为 等待 路由处理器(造请求("POST", "/api/settings/providers/discover", b'{}'))
+  断言相等(响应8["状态"], 400, "8a 空 baseURL 400")
+
+  # ---- ⑩ GET /api/settings/plugin-panel ----
+  设 响应10 为 等待 路由处理器(造请求("GET", "/api/settings/plugin-panel", b''))
+  断言相等(响应10["状态"], 200, "10a GET plugin-panel 状态码")
+  设 体10 为 解析JSON(响应10["体"])
+  断言相等(体10["可用"], 假, "10b 可用=假（本仓无 pnpm 管理器）")
+  断言真(字典包含键(体10, "不可用文案"), "10c 不可用文案键")
+
+  # ---- ⑫ POST discover 注入响应 -> 候选非空（宿主注入 mock；apiKey 不回显） ----
+  设 假响应文本 为 "{\"data\":[{\"id\":\"deepseek-v4-flash\",\"name\":\"DeepSeek-V4-Flash\",\"context_window\":1000000,\"max_tokens\":8192},{\"id\":\"deepseek-reasoner\"}]}"
+  设 注入体 为 "{\"baseURL\":\"https://api.deepseek.com\",\"api\":\"openai-completions\",\"apiKey\":\"sk-test-only-xyz\",\"响应\":" + 序列化JSON(假响应文本) + "}"
+  设 响应12 为 等待 路由处理器(造请求("POST", "/api/settings/providers/discover", 编码(注入体)))
+  断言相等(响应12["状态"], 200, "12a 注入响应 discover 200")
+  设 体12 为 解析JSON(响应12["体"])
+  断言相等(长度(体12["候选"]), 2, "12b 候选两条（含字段别名拾取）")
+  断言相等(体12["候选"][0]["id"], "deepseek-v4-flash", "12c 首候选 id")
+  断言相等(体12["候选"][0]["name"], "DeepSeek-V4-Flash", "12d 首候选 name（别名拾取）")
+  断言相等(体12["候选"][0]["contextWindow"], 1000000, "12e context_window 别名拾取")
+  断言真(响应12["体"].查找("sk-test-only-xyz") == -1, "12f ⛔ 完整响应体不含 apiKey 明文")
+  断言假(字典包含键(体12, "请求"), "12g 响应不含 请求 键（不再回显 apiKey）")
+  断言真(字典包含键(体12, "地址"), "12h 地址键保留")
+
+  # ---- ⑬ POST discover 无注入 -> 只回换算形状（候选键缺省、apiKey 不回显） ----
+  设 响应13 为 等待 路由处理器(造请求("POST", "/api/settings/providers/discover", b'{"baseURL":"https://api.deepseek.com","api":"openai-completions","apiKey":"sk-test-only-abc"}'))
+  断言相等(响应13["状态"], 200, "13a 无注入 discover 200")
+  设 体13 为 解析JSON(响应13["体"])
+  断言真(响应13["体"].查找("sk-test-only-abc") == -1, "13b ⛔ 无注入路径亦不含 apiKey 明文")
+  断言相等(体13["地址"], "https://api.deepseek.com/models", "13c 地址按 openai 协议构造")
+
+  # ---- ⑪ GET /api/settings 旧四页键保留 ----
+  设 响应11 为 等待 路由处理器(造请求("GET", "/api/settings", b''))
+  断言相等(响应11["状态"], 200, "11a GET settings 状态码")
+  设 体11 为 解析JSON(响应11["体"])
+  断言真(字典包含键(体11, "通用设置"), "11b 通用设置键保留")
+  断言真(字典包含键(体11, "模型"), "11c 模型键保留")
+  断言真(字典包含键(体11, "内置插件"), "11d 内置插件键保留")
+  断言真(字典包含键(体11, "Agent预设"), "11e Agent预设键保留")
+
+  打印 "test_r108新端点 通过 断言数=" + 转字符串(通过盘["通过"])
+  打印 "--- R108 新端点验证通过 ---"
+  返回 真
+
+异步 运行 主测试()
