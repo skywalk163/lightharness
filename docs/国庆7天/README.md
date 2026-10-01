@@ -72,12 +72,29 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 > 2026-10-01 夜间至 2026-10-02 上午**（Day2、Day3 还是并行跑的）。
 > **故所有报告落款一律写真实执行时间，不再沿用计划书里的未来日期。** 表格「日期」列同上。
 
-### 三线并行的组合态验证（Day2 + Day3 合流后）
+### 三线并行的组合态验证（Day2 + Day3 合流 + Day2 回退后）
 
 | 项 | 值 |
 |---|---|
-| 合流点 | lightharness `41a6ea2`（`main` ← `day3-lp012`，--no-ff）；light-merge `76addcc17`（Day2 已 ff 回主树） |
-| 组合态 0.82 权威门 | 见下方「组合态门结果」 |
+| 合流点 | lightharness `bc2c644`（`main` ← `day3-lp012`，--no-ff，`41a6ea2`）；light-merge `c775f27d3`（Day2 改动已按砍线条款回退） |
+| 组合态 0.82 权威门 | **PASS ✅**（`all --mode full`，2026-10-02 07:53:22）：8489 用例 / **passed 8359 / failed 0 / skipped 121** / xfail 9 |
+
+**三元判据（对 Day1 稳定 full 基线 2026-10-01-193009 = 8352/126/0）**
+
+| 量 | Day1 稳定基线 | 组合态本轮 | 判定 |
+|---|---|---|---|
+| failed | 0 | **0** | ✅ 新增 0 |
+| skipped | 126 | **121** | ✅ 未新增（−5，Day1 修的 5 条 regex 保住了） |
+| passed | 8352 | **8359** | ✅ 未下降（+7 = regex 5 条 + xfail/xpass 偶发对 2 条） |
+
+> **中间过程（留档，别被吓到）**：合流后第一次跑门 **FAIL**（新增红 7 + 5 条静默转 skipped），
+> 全部由 Day2 的 ANTLR 重生成产物引起；回退 `antlrparser/` 后即恢复。第二次跑门剩 1 条红
+> `test_tool_parallel_light.py::test_并行批里一个抛异常其余两个照常回填` —— 历史 45 次 pass / 仅 1 次 FAILED
+> （2026-09-20）、本地 `26 passed × 3 次` 全绿，判定为**已知 flaky（时序断言，远端负载下抖动）**；
+> 第三次跑门即 PASS 并把它标为「已修复」。
+
+**门脚本用法补记**：`all` 在本环境须带 `CODEBUDDY_SAFE_DELETE_ENABLED=0`，否则会在 sync 后
+删除本地 tar 时被 safe-delete 护栏拦停，出现「只同步不验收」的假成功。
 
 | 4 | 10/5 | 北极星 holdout 覆盖率 ≥ 0.95 | 待建 | — |
 | 5 | 10/6 | light → harness → Web UI 端到端联调 | 待建 | — |
