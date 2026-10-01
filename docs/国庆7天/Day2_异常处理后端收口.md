@@ -123,3 +123,56 @@ LIGHT_MERGE = ROOT / "light-merge"        # 主树，非 worktree
 ### 5.3 基线红账
 
 `antlrparser/test/` 基线即有 61 failed + 16 errors（含 `RangeExpr` 未定义、`TestErrorListener` 无法 collect 等），是**与真实测试入口 `tests/` 不同步**的历史遗留，非 Day2 引入。若 Day3 需把该套件纳入门禁，应另行定靶。
+---
+
+## §六 · 【team lead 追加】本线已按砍线条款**回退**（2026-10-02 08:0x，真实时间）
+
+> ⚠️ **本节由 team lead 在合流验收时追加。§一–§五 的记录保留原貌，但「已交付」结论已被下述实测推翻。**
+
+### 6.1 合流验收实测：本线引入 7 条硬失败 + 5 条静默回退
+
+组合态 0.82 权威门（`all --mode full`，LM `76addcc17` + LH `41a6ea2`）**判 FAIL**：
+
+```
+[082全量] 失败数 0 → 7（8489 → 8489 用例）
+[082全量] 新增红 7
+[082全量] 门：FAIL ❌
+```
+
+| 类型 | 明细 |
+|---|---|
+| **7 条硬失败** | `test_import_math_{abs,round,sqrt,sum}`、`test_import_time_format`、`test_import_with_multiple_symbols`、`test_mixed_stdlib_builtins` —— 全部 `RuntimeError: ANTLR 解析错误: 3/5/7 个` |
+| **5 条静默回退** | Day1 刚修好的 `test_regex_{search,findall,replace,is_match,escape}` 由 **passed → skipped**（解析异常被用例自己的 `except Exception → skipTest` 吞掉），另加 `test_base64_encode_decode`/`test_hex_encode_decode`/`test_md5_hash` 3 条新 skip |
+
+> 后一类是计划书 §三「门判据盲区」的再次实证：**门只比 failed 集合，看不见 passed→skipped**。
+
+### 6.2 根因（team lead 独立复现）
+
+重生成的 `antlrparser/light_parser/LightLangLexer.py` **丢失全部中文字面量词法规则**。同一输入
+`从《数学》导入《平方根》。` 的 token 流对拍：
+
+```
+Day1(589d495d4): K_FROM '从' | BOOK_L '《' | ID '数学' | BOOK_R '》' | K_IMPORT '导入' | PERIOD '。'
+Day2(76addcc17): ID     '从' | UNKNOWN '《' | ID '数学' | UNKNOWN '》' | ID '导入'     | UNKNOWN '。'
+```
+
+ANTLR 报 `line 1:1 no viable alternative at input '从《'` + `mismatched input '。' expecting PERIOD`。
+
+`antlrparser/LightLangLexer.g4` **本线未被修改**，但生成物变了 910 行、`.tokens` 变了 92 行 ——
+形态与「只把 `LightLangParser.g4` 单独喂给 ANTLR、没喂 lexer 语法」一致（parser 用的是 `K_*` 记号，
+单独生成得到的 lexer 不含 `'从'` 这类字面量规则）。
+本机与 0.82 的 `antlr4-python3-runtime` 均为 4.13.2，故本机复现有效；本机 `java` 不可用，无法就地正确重生成。
+
+### 6.3 为什么本线的本地验证没发现
+
+本线自测用的是 `antlrparser/test/`（见 §5.3），该套件自带 61 failed + 16 errors 的历史红账、
+且与真实入口 `tests/` 不同步 —— **在噪声里看不出这 7 条**。教训：ANTLR 后端改动必须跑
+**真实入口**（`tests/test_module_system.py` 或 0.82 权威门），不能只跑 `antlrparser/test/`。
+
+### 6.4 处置
+
+- `antlrparser/` 全目录回退到 Day1 状态（LM commit `c775f27d3`）。
+- LP-D-011「ANTLR 后端 尝试/捕获」**未收口** → 按计划书 Day2 砍线条款退回「登记为后端差异」。
+- 本线完整尝试留档 `_day2_antlr尝试_待重做.patch`（8529 行，monorepo 根），重做时据此起步。
+- **保留**（与本回退无关的正向产出）：`2cffa53` 修 `同步0.82.py` 硬编码主树隐患（新增 `--light-merge` 参数
+  + sync/run 前打印被测身份）——这条是有价值的，D2 报告 §5.1 的定位正确。
