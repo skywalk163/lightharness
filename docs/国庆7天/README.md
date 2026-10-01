@@ -25,6 +25,14 @@ passed  总数            → 不得低于上一轮（扣除新增用例后的�
 > 现行门（`scripts/回归基线.py:187`）只看 failed 集合，对「passed 变 skipped」失明。
 > 故**计划书 §六的三元判据必须人工比对**，不能只看脚本的 `ok` 字段。
 
+## ⚠️ Day1 固化的两条硬经验
+
+1. **两套模块名映射**：`tests/test_module_system.py` 走 ANTLR 后端 + `UnifiedCodeGenerator`，
+   其映射在 `src/code_generator_unified.py:1887` 的 `module_map`；SRC 后端在
+   `src/code_generator.py:236` 的 `module_name_map`。**改模块名解析必须两处都改**，只改一处不生效。
+2. **稳定 full 基线是 8352 / 126**，不是 8354。`test_验证IP地址` / `test_验证JSON` 两条 xfail
+   标记用例会偶发 xpassed，把 passed 顶到 8354 —— 比对时用稳定值，否则误判劣化。
+
 ## 门命令（Git Bash / MSYS 语法；必须显式 `--mode full`）
 
 ```bash
@@ -38,7 +46,7 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 
 | Day | 日期 | 主题 | 报告 | 门 |
 |---|---|---|---|---|
-| 1 | 10/2 | 收口 R109 B 线 + 重打同口径基线 + `_light_re` 红源清零 | `Day1_light_re修复.md` | 待填 |
+| **1** | **10/1（实际执行）** | **`_light_re` 销账 + 真红源（模块名 `正则`）清零 + 同口径 full 基线 + 工作树收口** | **`Day1_主线_红源定靶与门基线.md`** | **PASS（skipped 126→121 / passed +5 / failed 0）** |
 | 2 | 10/3 | 异常处理后端收口（LP-D-011 改靶 ANTLR） | 待建 | — |
 | 3 | 10/4 | 并发原语定靶与调度层迁移（LP-D-012） | 待建 | — |
 | 4 | 10/5 | 北极星 holdout 覆盖率 ≥ 0.95 | 待建 | — |
