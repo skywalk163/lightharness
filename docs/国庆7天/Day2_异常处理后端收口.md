@@ -1,10 +1,10 @@
 # Day2 · 异常处理后端收口（LP-D-011 改靶）· 交付报告（三段式）
 
-> 日期：2026-10-03｜仓库：light-merge（worktree `light-merge-day2`，分支 `day2-lp011`，基线 `589d495d4`）｜
+> 日期：2026-10-02（Day2 实际执行日；计划书原定 10/3）｜仓库：light-merge（worktree `light-merge-day2`，分支 `day2-lp011`，基线 `589d495d4`）｜
 > 反跑判据：LP-D-011「ANTLR 后端 `尝试/捕获/最终` 解析失败（多余的 '结束'）」→ 4 探针两后端全绿 + 门三元数字零回归
 > 门结果：**本地探针 PASS**；**0.82 权威门未跑**——但已修好其前置隐患（见 §5.1），Day2 代码已合并回主树 `light-merge` 并推送至 gitea/gitcode。
 
-> **2026-10-03 后续更新**（本报告最初落盘时点）：
+> **2026-10-02 后续更新**（本报告最初落盘时点）：
 > - Day2 改动已本地提交到分支 `day2-lp011`（`76addcc17`）→ fast-forward 合并回主树 `light-merge`（HEAD `589d495d4`→`76addcc17`）。
 > - `同步0.82.py` 硬编码主树的隐患已修（新增 `--light-merge` 参数 + `print_probe_identity()`），提交 `2cffa53`（lightharness 仓）。
 > - **推送**：light-merge → gitea（192.168.1.5）+ gitcode 已同步（`76addcc17`）；lightharness → myrepo + gitcode 已同步（`beeeebd`）。**github 未推**——lightharness 在 github 存在双推历史分叉（本地 `1065a9b` 与 github `0826b23` 为同一提交不同 hash；github 端另有 6 个本地没有的提交含 R106/R107/R108 设置工作线），经用户确认不推 github、保持主仓+gitcode 已同步。
@@ -109,7 +109,7 @@ LIGHT_MERGE = ROOT / "light-merge"        # 主树，非 worktree
 
 **根因**：`同步0.82.py` 假定「被测代码 = `ROOT/light-merge`」，但 `git worktree` 机制使并发任务的改动落在 `ROOT/light-merge-day2` 等独立工作树。二者路径不同，同步脚本无法感知。
 
-**Day2 的后续动作（2026-10-03）**：本报告落盘时仅做本地探针 + 本地门数字验证、不跑 0.82 门、不自行 push。此后已按用户示意完成：① worktree 改动本地提交到 `day2-lp011`（`76addcc17`）；② fast-forward 合并回主树 `light-merge`（HEAD→`76addcc17`）；③ 修 `同步0.82.py` 硬编码主树隐患（`2cffa53`，见下方建议 1 已落地为 `--light-merge` 参数 + `print_probe_identity()`）；④ 推送到 gitea + gitcode（github 因历史分叉经用户确认不推）。**0.82 权威门仍未实际运行**——代码前置已就绪，可由后续轮次/总调执行。
+**Day2 的后续动作（2026-10-02）**：本报告落盘时仅做本地探针 + 本地门数字验证、不跑 0.82 门、不自行 push。此后已按用户示意完成：① worktree 改动本地提交到 `day2-lp011`（`76addcc17`）；② fast-forward 合并回主树 `light-merge`（HEAD→`76addcc17`）；③ 修 `同步0.82.py` 硬编码主树隐患（`2cffa53`，见下方建议 1 已落地为 `--light-merge` 参数 + `print_probe_identity()`）；④ 推送到 gitea + gitcode（github 因历史分叉经用户确认不推）。**0.82 权威门仍未实际运行**——代码前置已就绪，可由后续轮次/总调执行。
 
 **给 Day3 与总调的硬性建议**（1、2 已在 `2cffa53` 落地，3 待后续轮次执行）：
 1. ~~跑 0.82 权威门的前置动作~~ **已落地**（`2cffa53`）：Day2 改动已合并回主树 `light-merge`（`76addcc17`），并给 `同步0.82.py` 新增 `--light-merge <path>` 参数（默认仍主树，worktree 开发时可显式指定）。
