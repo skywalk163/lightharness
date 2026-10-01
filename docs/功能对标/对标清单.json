@@ -4114,6 +4114,45 @@
       "本轮目标": "R105 D线：把模型/内置插件/Agent预设三个页签从占位串深化为可渲染行结构与预设卡正文，收口时由 设置页.渲染设置页() 三键直接调用；插件清单数据与模型凭据永久宿主绑定",
       "反跑判据": "① 按模式概览 计数重算改一处 -> test_设置页深化「33/34/8/34」与 test_设置页「按模式概览 取自 内置插件概览」双红；② 预设卡 区块.模式说明 置空 -> 正文非空断言立红；③ 渲染深化页 对未知标识不抛错 -> 未知页签用例立红",
       "语言缺陷": "无新增（循环依赖：设置页 与 设置页深化 互导，改用 `导入 <模块>` + 调用点 `模块.段落()` 的点号访问规避半初始化模块 ImportError）"
+    },
+    {
+      "编号": 299,
+      "功能": "设置生效链（R106 A线）：档位↔预设单一权威映射（readOnly→全拒绝 / workspaceWrite→按类别 / fullAccess→全放行）+ 生效参数(已存设置表,系统偏好,运行时预设) 计算主题/字号/语言/链接目标/权限档位/权限预设/降级项；服务端权威解析 system 主题，运行时预设优先于设置表",
+      "原版包": "packages/client/ui-theme (theme-settings.ts) + ui-permission-presets (locales.ts)",
+      "光明模块": "src/设置生效.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/设置生效.light",
+        "examples/test_设置生效.light"
+      ],
+      "本轮目标": "R106 A线：设置值→运行时参数换算，映射表只此一处",
+      "反跑判据": "改 权限档位表 fullAccess→全拒绝 必红；还原复绿"
+    },
+    {
+      "编号": 300,
+      "功能": "服务端接线（R106 C线）：静态白名单补 /slash-palette.js + /index.html（处理静态 分支链 + 路由分派 GET 白名单两处）；GET /api/settings/effective 调 设置生效.生效参数 返回七键；POST /api/settings 行=permission 时同步 权限管理器.设置预设 并回 权限预设；GET /api/settings/document 返回 profile patch 路径（非 .env）；GET/POST /api/shortcuts 接 快捷键 模型",
+      "原版包": "packages/host/web-server (settings + permissions API)",
+      "光明模块": "src/web服务器.light（处理获取生效设置 / 处理获取快捷键 / 处理保存快捷键 + 白名单）",
+      "状态": "done",
+      "证据": [
+        "src/web服务器.light",
+        "examples/test_web路由.light"
+      ],
+      "本轮目标": "R106 C线：生效链与快捷键路由接线，映射表只调 A 线模块",
+      "反跑判据": "白名单 /slash-palette.js 改名必红；还原复绿"
+    },
+    {
+      "编号": 301,
+      "功能": "快捷键编辑器后端模型（R106 D线）：键位规范(Mod/Ctrl/Alt/Shift/Meta→物理规范串, 修饰序 control→alt→shift→meta)/展示键串/默认目录(固定 fixed.* + 本仓命令)/是保留组合(逐条复刻 configuration.ts:96-113)/校验键位/查冲突/应用变更/重置/自定义计数/快捷键文档；错误文案逐字取上游 locales.ts",
+      "原版包": "packages/client/shortcuts (configuration.ts/binding.ts) + ui-shortcuts (locales.ts/fixed.ts)",
+      "光明模块": "src/快捷键.light（新增）",
+      "状态": "done",
+      "证据": [
+        "src/快捷键.light",
+        "examples/test_快捷键.light"
+      ],
+      "本轮目标": "R106 D线：快捷键规则权威模型，前端只回显服务端错误文案",
+      "反跑判据": "去 主修饰保留码表 KeyC 必红；还原复绿"
     }
   ]
 }

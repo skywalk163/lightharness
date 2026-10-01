@@ -235,6 +235,119 @@
   设 行集3 为 页3["通用设置"]["行集"]
   断言相等(取行值(行集3, "developerTools"), 真, "设置_坏JSON_回落默认真")
 
+  # =====================================================================
+  # 阶段5：R106 任务线 C —— 静态补洞 / 生效链 / 权限联动 / 文档语义 / 快捷键
+  #   临时静态文件一律写入本测试自建假界面目录（_w3_webui），不碰真实 webui/。
+  #   认证已在阶段3 启用：GET 默认放行；GET /api/permissions 例外需带 token。
+  # =====================================================================
+  # ① 静态白名单：/slash-palette.js → 200（P0 真 bug）
+  写入文件(路径连接(界面库, "slash-palette.js"), "console.log('R106_PALETTE');")
+  设 响应 为 等待 路由处理器(造请求("GET", "/slash-palette.js", "", b''))
+  断言相等(响应["状态"], 200, "R106_静态_palette_200")
+  断言相等(响应["头"].获取("Content-Type", ""), "application/javascript; charset=utf-8", "R106_静态_palette_类型")
+  断言真(响应["体"].查找("R106_PALETTE") >= 0, "R106_静态_palette_含标记")
+  # ② /index.html → 200 且与 / 同内容
+  设 响应根 为 等待 路由处理器(造请求("GET", "/", "", b''))
+  设 响应idx 为 等待 路由处理器(造请求("GET", "/index.html", "", b''))
+  断言相等(响应idx["状态"], 200, "R106_静态_indexhtml_200")
+  断言相等(响应idx["体"], 响应根["体"], "R106_静态_indexhtml_同根内容")
+  # ③ GET /api/settings/effective → 200 且七键齐全
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/settings/effective", "", b''))
+  断言相等(响应["状态"], 200, "R106_effective_200")
+  设 生效 为 解析JSON(响应["体"])
+  断言真(字典包含键(生效, "主题"), "R106_effective_键主题")
+  断言真(字典包含键(生效, "字号"), "R106_effective_键字号")
+  断言真(字典包含键(生效, "语言"), "R106_effective_键语言")
+  断言真(字典包含键(生效, "链接目标"), "R106_effective_键链接目标")
+  断言真(字典包含键(生效, "权限档位"), "R106_effective_键权限档位")
+  断言真(字典包含键(生效, "权限预设"), "R106_effective_键权限预设")
+  断言真(字典包含键(生效, "降级项"), "R106_effective_键降级项")
+  # ⑧ GET /api/settings/document：两键齐全，profile patch 不存在 → 可用假、路径空
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/settings/document", "", b''))
+  断言相等(响应["状态"], 200, "R106_document_200")
+  设 文档 为 解析JSON(响应["体"])
+  断言真(字典包含键(文档, "路径"), "R106_document_含路径")
+  断言真(字典包含键(文档, "可用"), "R106_document_含可用")
+  断言相等(文档["可用"], 假, "R106_document_profile不存在_可用假")
+  断言相等(文档["路径"], "", "R106_document_profile不存在_路径空")
+  # ⑩ GET /api/shortcuts → 200 三键齐全，目录含 fixed.move/select/dismiss
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/shortcuts", "", b''))
+  断言相等(响应["状态"], 200, "R106_shortcuts_GET_200")
+  设 短 为 解析JSON(响应["体"])
+  断言真(字典包含键(短, "文档"), "R106_shortcuts_键文档")
+  断言真(字典包含键(短, "自定义计数"), "R106_shortcuts_键计数")
+  断言真(字典包含键(短, "目录"), "R106_shortcuts_键目录")
+  设 目录表 为 短["目录"]
+  设 有move 为 假
+  设 有select 为 假
+  设 有dismiss 为 假
+  遍历 项 之 目录表:
+    如果 项["id"] == "fixed.move":
+      设 有move 为 真
+    如果 项["id"] == "fixed.select":
+      设 有select 为 真
+    如果 项["id"] == "fixed.dismiss":
+      设 有dismiss 为 真
+  断言真(有move, "R106_shortcuts_含fixed.move")
+  断言真(有select, "R106_shortcuts_含fixed.select")
+  断言真(有dismiss, "R106_shortcuts_含fixed.dismiss")
+  # ⑪ shortcuts 往返：POST Mod+J → 当前键变、是否自定义；非法 J → 400 modifier-required；重置 → 计数0
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/shortcuts", "", b'{"命令":"fixed.move","键":"Mod+J"}'))
+  断言相等(响应["状态"], 200, "R106_shortcuts_POST改键_200")
+  设 改后 为 解析JSON(响应["体"])
+  设 新目录 为 改后["目录"]
+  设 move改 为 假
+  遍历 项 之 新目录:
+    如果 项["id"] == "fixed.move":
+      断言相等(项["当前键"], "Mod+J", "R106_shortcuts_fixedmove当前键（Mod 形式回显）")
+      断言相等(项["是否自定义"], 真, "R106_shortcuts_fixedmove自定义")
+      设 move改 为 真
+  断言真(move改, "R106_shortcuts_找到fixed.move")
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/shortcuts", "", b'{"命令":"fixed.move","键":"J"}'))
+  断言相等(响应["状态"], 400, "R106_shortcuts_无修饰键_400")
+  设 坏短 为 解析JSON(响应["体"])
+  断言真(坏短["错误"].查找("请同时按下 Command、Ctrl 或 Alt 修饰键。") >= 0, "R106_shortcuts_无修饰键文案")
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/shortcuts", "", b'{"重置":true}'))
+  断言相等(响应["状态"], 200, "R106_shortcuts_重置_200")
+  设 重置后 为 解析JSON(响应["体"])
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/shortcuts", "", b''))
+  设 短2 为 解析JSON(响应["体"])
+  断言相等(短2["自定义计数"], 0, "R106_shortcuts_重置后计数0")
+  # ④ POST appearance=system → effective 带 ?系统偏好=dark 为 dark，不带为 light
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/settings", "", b'{"行":"appearance","值":"system"}'))
+  断言相等(响应["状态"], 200, "R106_POST_appearance_system_200")
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/settings/effective?系统偏好=dark", "", b''))
+  设 效dark 为 解析JSON(响应["体"])
+  断言相等(效dark["主题"], "dark", "R106_effective_system_dark偏好")
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/settings/effective", "", b''))
+  设 效light 为 解析JSON(响应["体"])
+  断言相等(效light["主题"], "light", "R106_effective_system_缺省light")
+  # ⑨ POST appearance=dark → effective 主题 dark
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/settings", "", b'{"行":"appearance","值":"dark"}'))
+  断言相等(响应["状态"], 200, "R106_POST_appearance_dark_200")
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/settings/effective", "", b''))
+  设 效d 为 解析JSON(响应["体"])
+  断言相等(效d["主题"], "dark", "R106_effective_appearance_dark")
+  # ⑤ POST permission=fullAccess → 权限预设全放行 + GET /api/permissions 回读全放行（带 token）
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/settings", "", b'{"行":"permission","值":"fullAccess"}'))
+  断言相等(响应["状态"], 200, "R106_POST_perm_full_200")
+  设 存perm 为 解析JSON(响应["体"])
+  断言相等(存perm["权限预设"], "全放行", "R106_POST_perm_full_预设全放行")
+  设 响应 为 等待 路由处理器(造请求("GET", "/api/permissions", 令牌, b''))
+  断言相等(响应["状态"], 200, "R106_GET_permissions_200")
+  设 回perm 为 解析JSON(响应["体"])
+  断言相等(回perm["预设"], "全放行", "R106_GET_permissions_回读全放行")
+  # ⑥ POST permission=readOnly → 权限预设全拒绝
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/settings", "", b'{"行":"permission","值":"readOnly"}'))
+  断言相等(响应["状态"], 200, "R106_POST_perm_readonly_200")
+  设 存perm2 为 解析JSON(响应["体"])
+  断言相等(存perm2["权限预设"], "全拒绝", "R106_POST_perm_readonly_预设全拒绝")
+  # ⑦ POST 非法档位 bogus → 400 含 错误
+  设 响应 为 等待 路由处理器(造请求("POST", "/api/settings", "", b'{"行":"permission","值":"bogus"}'))
+  断言相等(响应["状态"], 400, "R106_POST_perm_bogus_400")
+  设 坏perm 为 解析JSON(响应["体"])
+  断言真(字典包含键(坏perm, "错误"), "R106_POST_perm_bogus_含错误")
+
   # 清理临时目录（尽力而为，失败不阻断验收：会话根可能含嵌套子目录）
   全局服务.停止()
   尝试:
@@ -247,6 +360,7 @@
     删除文件(路径连接(界面库, "style.css"))
     删除文件(路径连接(界面库, "settings.js"))
     删除文件(路径连接(界面库, "settings.css"))
+    删除文件(路径连接(界面库, "slash-palette.js"))
     删除目录(界面库)
   捕获 异常 e:
     写 "清理界面库跳过: "; 写 转字符串(e)

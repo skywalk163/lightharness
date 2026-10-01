@@ -810,6 +810,10 @@
     cfgSnapshot = null;
   }
 
+  // R106-B：暴露打开函数——设置对话框「模型」页签的「配置大模型」按钮经 window.showConfigPanel 调起；
+  // 旧大模型配置面板保留不删，saveConfig/热更新行为不变。
+  window.showConfigPanel = showConfigPanel;
+
   function checkConfig() {
     fetch("/api/config", { method: "GET", headers: apiHeaders() })
       .then(function (resp) { return resp.json(); })
@@ -894,9 +898,11 @@
       }
     });
   }
+  // R106-B：入口统一——顶栏齿轮改开新设置对话框；旧「大模型配置」面板不删除，
+  // 由设置对话框模型页签的「配置大模型」按钮经 window.showConfigPanel 调起。
   settingsBtn.addEventListener("click", function () {
-    if (configPanel.hidden) showConfigPanel();
-    else hideConfigPanel(true);
+    if (window.LightSettings && LightSettings.open) LightSettings.open();
+    else showConfigPanel(); // settings.js 未加载时兜底
   });
   cfgSaveBtn.addEventListener("click", saveConfig);
 
