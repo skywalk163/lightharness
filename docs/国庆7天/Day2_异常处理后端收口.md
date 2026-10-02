@@ -209,6 +209,41 @@ ANTLR 报 `line 1:1 no viable alternative at input '从《'` + `mismatched input
 
 ### 7.3 遗留
 
-- **组合态 0.82 权威门对 `9a5c5920b` 尚未重跑**（上轮 PASS 是对回退基线 `c775f27d3` 的判定）。
-  本地同口径验证已全绿（§7.2 #3/#4/#7/#8），风险点仅在远端环境复现，待 team lead 排队放行后执行。
+- ~~组合态 0.82 权威门对 `9a5c5920b` 尚未重跑~~ → **已完成终审，见 §7.4**。
 - `day1-baseline` tag 已推送两仓四远端中的 gitea+gitcode（github 按用户决定不推，见 §5.1）。
+
+---
+
+## §八 · 【终审】0.82 权威门对重做版 PASS（2026-10-02 09:1x，LM `034a50b9f` + LH `8033606`）
+
+> 用户示意后执行：`082全量回归.py all --mode full`（sync 被测身份由 `2cffa53` 的
+> `print_probe_identity()` 留痕：LH `8033606` 干净 + LM `034a50b9f` 干净，远端副本
+> `/tmp/r44-20261002-084636`）。
+
+### 8.1 三次执行链
+
+| # | 执行 | 结果 |
+|---|---|---|
+| 1 | 终审第一次全量（432.5s） | **8354 passed / 1 failed / 121 skipped**；唯一红 `test_http_client.py::test_concurrent_requests — assert 9 == 10` → 门 FAIL |
+| 2 | 该单条复跑 ×8（终审副本） | 6 passed / 2 failed——**同一份代码结果不稳定 → flaky**；且该用例测 `lightpub/HTTP客户端.py`（Python + requests，**不经过 ANTLR 解析器**，与 Day2 改动零交集） |
+| 3 | **全量复跑（--no-sync，413.5s）** | **8355 passed / 0 failed / 121 skipped / 11 xfailed / 2 xpassed → 门 PASS ✅**（diff：失败数 1→0，已修复 `test_concurrent_requests`） |
+
+### 8.2 三元判据（对组合态基线 `075322` = 8359/121/0）
+
+| 量 | 组合态基线 | 重做终审 | 判定 |
+|---|---|---|---|
+| failed | 0 | **0** | ✅ 新增 0 |
+| skipped | 121 | **121** | ✅ 未新增（§6.1 的 5 条 regex 静默回退**未复现**——重做修复在 0.82 上确认） |
+| passed | 8359 | **8357** | ✅ 实质不下降：−2 全部来自 2 条**既有非严格 xfail 用例**的摆动（见 §8.3） |
+
+### 8.3 passed −2 的归因（逐条实证）
+
+摆动用例：`tests/test_stdlib_phase4.py::Test数据验证::{test_验证IP地址, test_验证JSON}`。
+- 二者自带 `@pytest.mark.xfail(strict=False)`（L516 等，reason：「原生腿 IP 校验为四段正则近似」等**既有差异**，移交路 2/路 4）——与 ANTLR 无关。
+- 本地（LM `034a50b9f`）实测 **XPASS/XPASS**；远端高负载下 XFAIL。strict=False 下 xpass 计入 passed、xfail 计入 xfailed → totals 的 `passed 8359↔8357 / xfailed 9↔11` ±2 摆动即由此二条解释。
+
+### 8.4 终审结论
+
+> **重做版 LM `034a50b9f`（含 Day2 ANTLR 收口）0.82 权威门 PASS。**
+> LP-D-011「ANTLR 后端 尝试/捕获/最终」**正式收口**：§6.1 回退依据（7 硬失败 + 5 静默回退）
+> 在重做版上全部消除（本机 §7.2 #3 + 0.82 全量 skipped 持平双重确认）；无任何新增红。

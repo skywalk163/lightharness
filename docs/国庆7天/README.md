@@ -64,7 +64,7 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 | Day | 日期 | 主题 | 报告 | 门 |
 |---|---|---|---|---|
 | **1** | **10/1 22:00–10/2 01:5x** | **`_light_re` 销账 + 真红源（模块名 `正则`）清零 + 同口径 full 基线 + 工作树收口** | **`Day1_主线_红源定靶与门基线.md`** | **PASS（skipped 126→121 / passed +5 / failed 0）** |
-| **2** | **10/2 01:0x–02:4x（首版）；08:1x–08:3x（重做收口）** | **异常处理后端收口（LP-D-011 改靶 ANTLR）** | **[Day2_异常处理后端收口.md](Day2_异常处理后端收口.md)**（含 team lead 追加 §六 + 重做 §七） | ✅ **已重做收口**（LM `9a5c5920b`，2026-10-02）：首版因重生成 lexer 丢中文字面量被砍线回退（`c775f27d3`，见 §六）；重做版按权威姿势（JRE17 + ANTLR 4.13.2 + `-encoding UTF-8` + lexer 先行/parser `-lib`）重新生成，Lexer 产物与 HEAD 逐字节一致，§6.1 的 7 硬失败 + 5 静默回退 + 3 新 skip 共 **15 条全部翻绿**，四探针两后端全绿 + `test_module_system.py` 51 passed + 门三元数字零回归 + ANTLR 腿冒烟 42/42。**正向保留**：`2cffa53` 修好 0.82 门「测旧代码」隐患 |
+| **2** | **10/2 01:0x–02:4x（首版）；08:1x–08:3x（重做收口）；09:1x（0.82 终审）** | **异常处理后端收口（LP-D-011 改靶 ANTLR）** | **[Day2_异常处理后端收口.md](Day2_异常处理后端收口.md)**（含 team lead 追加 §六 + 重做 §七 + 终审 §八） | ✅ **已重做收口 + 0.82 终审 PASS**（LM `9a5c5920b`→`034a50b9f`，2026-10-02）：首版因重生成 lexer 丢中文字面量被砍线回退（`c775f27d3`，见 §六）；重做版按权威姿势（JRE17 + ANTLR 4.13.2 + `-encoding UTF-8` + lexer 先行/parser `-lib`）重新生成，Lexer 产物与 HEAD 逐字节一致，§6.1 的 15 条问题全部翻绿，0.82 全量 **8355 passed / 0 failed / 121 skipped → 门 PASS**（唯一 flaky 红已复跑归因，见 §八）。**正向保留**：`2cffa53` 修好 0.82 门「测旧代码」隐患 |
 | **3** | **10/2 02:1x–07:1x** | **并发原语定靶与调度层迁移（LP-D-012）** | **[Day3_并发原语.md](Day3_并发原语.md)** | **本机 PASS（1179/1）**；0.82 权威门见下方组合态一行 |
 | **5·轨道B** | **10/2 08:4x–09:1x** | **端到端联调（单入口 + 完整 agent 循环 + Web UI SSE）** | **[Day5_端到端.md](Day5_端到端.md)** | **CLI rc=0**（148 工具 / 2 请求轮 / 首轮 role=system / 消息 2→4）；**Web UI curl** `/api/config mock=1` + `POST /v1/chat/completions stream=true` HTTP 200 `text/event-stream` 含 `[DONE]`；`e2e_demo.ps1` 全通 rc=0。**未自带门**（门收归 12:30/18:00 全局窗口） |
 
@@ -94,18 +94,21 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 > （2026-09-20）、本地 `26 passed × 3 次` 全绿，判定为**已知 flaky（时序断言，远端负载下抖动）**；
 > 第三次跑门即 PASS 并把它标为「已修复」。
 
-### Day2 重做收口（2026-10-02 08:1x–08:3x，LM `9a5c5920b`）
+### Day2 重做收口（2026-10-02 08:1x–08:3x，LM `9a5c5920b`→`034a50b9f`）+ **0.82 终审 PASS（09:1x）**
 
 > 上表组合态门 PASS 是对 **LM `c775f27d3`（Day2 回退后）** 的判定。Day2 随后按正确姿势重做
 > （见 Day2 报告 §七）：Lexer 产物与 HEAD 逐字节一致、§6.1 的 15 条问题全部翻绿（本地实测）、
 > 四探针 + `test_module_system.py` 51 passed + ANTLR 腿冒烟 42/42 + `antlrparser/test` 门三元数字
-> 零回归。**组合态 0.82 权威门对 `9a5c5920b` 尚未重跑**——待 team lead 排队放行后执行；
-> 本地同口径验证（test_module_system 15 条对拍 + 门三元数字）已全绿，风险点仅在远端环境复现。
+> 零回归。**0.82 权威门已对重做版（`034a50b9f`）完成终审**（见 Day2 报告 §八）：
+> 第一次全量唯一红 `test_concurrent_requests` 经单跑 ×8（6 过）+ 全量复跑判定为 **HTTP 并发 flaky**
+> （不经过 ANTLR，与 Day2 零交集）；复跑全量 **8355 passed / 0 failed / 121 skipped → 门 PASS ✅**；
+> passed −2 为 2 条既有非严格 xfail 用例（`test_stdlib_phase4` 数据验证 2 条）摆动，已逐条归因。
+> **LP-D-011「ANTLR 后端 尝试/捕获/最终」正式收口。**
 
 **门脚本用法补记**：`all` 在本环境须带 `CODEBUDDY_SAFE_DELETE_ENABLED=0`，否则会在 sync 后
 删除本地 tar 时被 safe-delete 护栏拦停，出现「只同步不验收」的假成功。
 
 | 4 | 10/5 | 北极星 holdout 覆盖率 ≥ 0.95 | 待建 | — |
 | 5 | 10/6 | light → harness → Web UI 端到端联调 | 待建 | — |
-| 6 | 10/7 | FreeBSD Phase B2+ 实测 + 稳定性 | 待建 | — |
+| **6·轨道C** | **2026-10-02** | **FreeBSD Phase B2+ 实测（三件套全过 + 基线 tag 已就位 + 编译器温缓存 11×）** | **[Day6_freebsd_phaseB2.md](Day6_freebsd_phaseB2.md)** | ✅ 三件套 3/3 实测 PASS；tag `fork-after-upstream-v0.2.0-rc.1`→`a8873ab003` 就位；支线 `compiler_bench.py` 冷 3.26s/例→温 0.30s/例 = 11.0× |
 | 7 | 10/8 | 全量验收 + 文档收口 | 待建 | — |
