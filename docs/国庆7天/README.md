@@ -108,7 +108,7 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 **门脚本用法补记**：`all` 在本环境须带 `CODEBUDDY_SAFE_DELETE_ENABLED=0`，否则会在 sync 后
 删除本地 tar 时被 safe-delete 护栏拦停，出现「只同步不验收」的假成功。
 
-| 4 | 10/5 | 北极星 holdout 覆盖率 ≥ 0.95 | 待建 | — |
+| 4 | **实际 10/2 上午（轨道 A 收口）** | 北极星 holdout 覆盖率 ≥ 0.95 | ✅ 已建：`覆盖率评测.py` + `覆盖率报告.json`（口径 v2.2：覆盖率 = holdout 被语料 token 覆盖比例，分母 = 去重 token 种数 33285，种子 20261004） | **0.0479 → 0.0638（2125/33285）补丁后，未达标如实记录**；上限分析：freq≥2 全补后 0.2841，0.95 在全量 holdout 口径下数学不可达（见 `Day4_北极星覆盖率.md` §一.4）；语料 193→236 条（补丁 43 条合并）；LP-D-013 探针固化 2 passed + 2 xfailed |
 | 5 | 10/6 | light → harness → Web UI 端到端联调 | 待建 | — |
 | **6·轨道C** | **2026-10-02** | **FreeBSD Phase B2+ 实测（三件套全过 + 基线 tag 已就位 + 编译器温缓存 11×）** | **[Day6_freebsd_phaseB2.md](Day6_freebsd_phaseB2.md)** | ✅ 三件套 3/3 实测 PASS；tag `fork-after-upstream-v0.2.0-rc.1`→`a8873ab003` 就位；支线 `compiler_bench.py` 冷 3.26s/例→温 0.30s/例 = 11.0× |
 | 7 | 10/8 | 全量验收 + 文档收口 | 待建 | — |
