@@ -111,4 +111,4 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 | 4 | **实际 10/2 上午（轨道 A 收口）** | 北极星 holdout 覆盖率 ≥ 0.95 | ✅ 已建：`零token覆盖率评测.py`（**口径切换：team lead 2026-10-02 拍板 Z = 零 LLM token 跑通率**，holdout = src 生产模块 seed=20261004 抽样 64/231；token 种数覆盖率降为附录） | **Z_跑通 0.9844（63/64）达标**；Z_导入下限 1.0000；唯一缺口 `工具_搜索文件` 无挂靠示例（结构性，非语言缺陷）；附录 token 覆盖率 0.0479→0.0638（上限 0.2841，数学不可达 0.95，见 `Day4_北极星覆盖率.md`）；LP-D-013 探针固化 2 passed + 2 xfailed |
 | 5 | 10/6 | light → harness → Web UI 端到端联调 | 待建 | — |
 | **6·轨道C** | **2026-10-02** | **FreeBSD Phase B2+ 实测（三件套全过 + 基线 tag 已就位 + 编译器温缓存 11×）** | **[Day6_freebsd_phaseB2.md](Day6_freebsd_phaseB2.md)** | ✅ 三件套 3/3 实测 PASS；tag `fork-after-upstream-v0.2.0-rc.1`→`a8873ab003` 就位；支线 `compiler_bench.py` 冷 3.26s/例→温 0.30s/例 = 11.0× |
-| 7 | 10/8 | 全量验收 + 文档收口 | 待建 | — |
+| 7·屏障D | **2026-10-02** | **全量验收（四跑 + v0.3.0-rc1）** | **[Day7_全量验收.md](Day7_全量验收.md)** | ✅ **四跑全绿**：① lightharness 全量 2058 passed/0 failed；② 宿主冒烟 154 工具/12 断言 0 失败；②b 75 插件 76/76 全绿；③ 0.82 权威门 8357/0/121 三元持平→PASS；④ 北极星 Z 0.9844（63/64）未回退 |
