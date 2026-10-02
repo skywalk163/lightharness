@@ -181,14 +181,14 @@ junit XML 原文（`reports/_082_lm_results_2026-10-02-171603.xml`）：
 ## 五、遗留 / 偏离声明（如实记录）
 
 1. **`v0.4.0-rc1` 已打本地 tag，未 push**（三仓均按纪律处理）。
-   打标点：
-   - `light-merge` = `3a392f9fd`（含版本号统一，tag 名副其实）
-   - `lightharness` = `951dca8`（含全部 day2 交付报告）
-   - `lightplugin` = `11c7873`
-2. **lightharness 工作区在 ③ 门跑时非全干净**：门身份探针记录
-   `M reports/082_lightmerge基线_latest.json`（+ 跑后新增的 `同步0.82_远程目录.txt`）。
-   二者均为 **③ 门自身写入的产物**（基线指针与远端目录指针），非源码改动。
-   → 若屏障 D 要求「零未提交改动」，需 team lead 决定是否把这两个门产物纳入提交。
+   打标点 = **各仓包含本报告的最终提交**（可复核：`git tag -l v0.4.0-rc1` 指向的 commit）。
+   初版曾打在屏障 D 四跑的冻结点上（LM `3a392f9fd` / LH `951dca8` / LP `11c7873`）；
+   用户示意处理完 §五-2/§五-5 两项后**已重打**，使 tag 覆盖最终交付含的那批改动。
+2. **lightharness 的两个门产物：已按用户示意纳入提交**（原记录：门身份探针报
+   `M reports/082_lightmerge基线_latest.json` + `同步0.82_远程目录.txt`）。
+   二者均为 **③ 门自身写入的产物**（基线指针与远端目录指针），非源码改动；
+   已在本报告提交前入库（`reports/` 虽在 `.gitignore` 内，但此二文件历来已被跟踪，故 `-f` 显式入库）。
+   → **该项已关闭**，lightharness 工作树现为干净。
 3. **两个环境性摆动（均非回归）**：
    - ① 的 `passed +1` = 轨道 B 新增 example 被参数化收集（增量覆盖）；
    - ③ 的 `skipped +1 / passed −1` = `test_获取JSON` 依赖 httpbin.org 外网探测，
@@ -196,15 +196,19 @@ junit XML 原文（`reports/_082_lm_results_2026-10-02-171603.xml`）：
    **两者都不改变 failed=0 的结论**；但按纪律**不静默吞掉**，在此显著标注。
 4. **#75 挂载数为 74（非 75）**：即前置表 #1 的降级项，屏障 D 未强行改；
    若用户要求「75」为硬指标，需先解决 #75 的接口问题（方案见 `Day8` §2.4）。
-5. **`actions/@v7` 残留（新发现，供决策）**：S9 只改了 `release.yml`（13 处 →`@v4`），
-   但 `.github/workflows/` 下**另有 13 处 `@v7` 残留**：
-   `deploy-docs.yml`(2)、`docs.yml`(2)、`quality-gate.yml`(9)。
+5. **`actions/@v7` 残留（原发现项 → 已按用户示意全部修复）**：S9 只改了 `release.yml`（13 处 →`@v4`），
+   但 `.github/workflows/` 下**另有 13 处 `@v7` 残留**：`deploy-docs.yml`(2)、`docs.yml`(2)、`quality-gate.yml`(9)。
    与 K5 同一问题（`@v7` 尚未发布 → 这些 workflow 在 `checkout` 步即失败）。
-   **不在 S10 授权范围，本轮未改**；若这些 workflow 会被触发（docs 部署 / 质量门），
-   建议一并改钉 `@v4`。
+   → **已全部改钉 `@v4`**（同 K5 理由）；改法用**字节级替换**（遵守 §8.1 禁行尾归一），
+   三文件 CRLF 计数与字节数**零漂移**、YAML 解析通过、全仓 `@v7` 残留 **0**。
+   日志/证据：`git log -1 --format=%H`（light-merge 该提交）、`git diff --stat` 13 增 13 删。
+   → **该项已关闭**。
 6. **未开新门以外无其他偏离**；③ 门在过程（`f08086b`）与最终冻结（`951dca8`）两次均 PASS。
 7. **`lightharness` 的 `_push_github_tree_sync.py` 已入库**（S5 决定），
    属发布工具集中放置，与已提交的 `_push_github_delta.py` 同目录。
+8. **§五-2/§五-5 收尾说明**：这两项在用户示意后处理完成，故 `light-merge` / `lightharness`
+   的 `v0.4.0-rc1` tag 已重打到**含该批收尾改动**的最终提交上（原打标点仅覆盖四跑冻结点）。
+   `lightplugin` 无新改动，tag 不变。
 
 ---
 
