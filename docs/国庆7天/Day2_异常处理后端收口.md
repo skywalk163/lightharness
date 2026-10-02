@@ -176,3 +176,39 @@ ANTLR 报 `line 1:1 no viable alternative at input '从《'` + `mismatched input
 - 本线完整尝试留档 `_day2_antlr尝试_待重做.patch`（8529 行，monorepo 根），重做时据此起步。
 - **保留**（与本回退无关的正向产出）：`2cffa53` 修 `同步0.82.py` 硬编码主树隐患（新增 `--light-merge` 参数
   + sync/run 前打印被测身份）——这条是有价值的，D2 报告 §5.1 的定位正确。
+
+---
+
+## §七 · 【重做收口】按权威姿势重做，§6.1 的 15 条问题全部翻绿（2026-10-02 08:1x–08:3x）
+
+> 本节由 Day2 线在用户示意后追加。首版病根（重生成丢中文字面量）已定位为
+> **未指定 `-encoding UTF-8` 且未按「lexer 先行 → parser `-lib`」两步生成**；
+> 本轮改用权威脚本 `scripts/generate_antlr_parser.py`（自带工具链下载 + 正确姿势）重做，
+> 改动内容与首版一致（从 `_day2_antlr尝试_待重做.patch` 恢复）。
+
+### 7.1 重做姿势（LM `9a5c5920b`）
+
+| 项 | 值 |
+|---|---|
+| 工具链 | Temurin **JRE 17.0.20.1** + **antlr-4.13.2-complete.jar**（与 `antlr4-python3-runtime` 4.13.2 同版本），由脚本自动下载缓存至 `%TEMP%/light-antlr-tools/` |
+| 生成姿势 | `[1/2] LightLangLexer.g4`（`-encoding UTF-8`）→ `[2/2] LightLangParser.g4`（`-encoding UTF-8` + `-lib light_parser`）——与首版「一条命令喂两个 g4、无编码参数」的差异即病根 |
+| 生成物 | Lexer 4 文件 + Parser 3 文件 + Visitor，全部落 `antlrparser/light_parser/` |
+
+### 7.2 验证实测（全部真实执行，主树 LM `9a5c5920b`）
+
+| # | 验证 | 结果 |
+|---|---|---|
+| 1 | **对拍产物**：Lexer `LightLangLexer.py/.interp/.tokens` + `LightLangParser.tokens` vs git HEAD（revert 后正确基线） | **逐字节一致** → 编码正确、中文关键字字面量零丢失（§6.2 病根消除的直接证据） |
+| 2 | 对拍产物：`LightLangParser.py/.interp` | 差异仅 tryStmt 规则传导（g4 改动预期范围）；Visitor 仅 +10 行（`visitCatchSpec`/`visitIdentifier_or_type`） |
+| 3 | **§6.1 全部 15 条对拍**（7 硬失败 + 5 regex 静默回退 + 3 新 skip） | **15 passed, rc=0**（`test_import_math_*`、`test_import_time_format`、`test_import_with_multiple_symbols`、`test_mixed_stdlib_builtins`、`test_regex_{search,findall,replace,is_match,escape}`、`test_base64_encode_decode`、`test_hex_encode_decode`、`test_md5_hash`） |
+| 4 | `test_module_system.py` 全量 | **51 passed / 7 skipped, rc=0**；7 skip 均为既有 API 兼容性跳过（时间模块缺失/中文数字标识符/数学库统计函数缺名），与 Day1 基线口径一致，不属本路 |
+| 5 | LP-D-011 四探针（`lp011_{probe,probe2,finally,multi_catch}`） | ANTLR+SRC 全部 rc=0，输出两后端一致 |
+| 6 | 第 5 个端到端 `mod_greet.light` | ANTLR rc=0 / SRC rc=0，输出一致（注：`sample_quicksort.light` SRC 侧解析失败为 src 后端既有 lexer bug，与 ANTLR 无关——src 侧最后改动为 Day1 `589d495d4`） |
+| 7 | `antlrparser/test/` 门三元数字 | failed 61→61 / passed 21→21 / errors 16→16，FAILED 集合逐条 diff 与 Day2 前基线一致 → **零回归** |
+| 8 | `scripts/antlr_leg_smoke.py` ANTLR 腿冒烟 | **42/42 通过**（20.4s），rc=0，矩阵已落盘 `reports/antlr腿_冒烟_2026-10-02-081927.md` |
+
+### 7.3 遗留
+
+- **组合态 0.82 权威门对 `9a5c5920b` 尚未重跑**（上轮 PASS 是对回退基线 `c775f27d3` 的判定）。
+  本地同口径验证已全绿（§7.2 #3/#4/#7/#8），风险点仅在远端环境复现，待 team lead 排队放行后执行。
+- `day1-baseline` tag 已推送两仓四远端中的 gitea+gitcode（github 按用户决定不推，见 §5.1）。
