@@ -21,6 +21,14 @@
   · 判定：立账（ANTLR 后端对关键字/词根词作成员访问基名仍解析失败）。
     SRC 后端已销账；ANTLR 缺口保留为 xfail(strict=True 会因 strict=False 维持
     现状——此策略不变，仅把 reason 从「未实测」刷新为「已实测立账」）。
+    SRC 后端已销账；ANTLR 缺口保留为 xfail(strict=False)。
+
+✅ Day2N T2 修复后（2026-10-02，见 docs/国庆7天/Day2夜_T2_LPD013_ANTLR补缺口.md）：
+  · antlrparser/LightLangParser.g4：primary 与 identifier_like 新增 K_EXPORT/K_CONTINUE 分支，
+    让「出/跳过」经 `设` 声明后可作变量名/参数名/成员访问基名；
+  · visitor_expr.visitPrimary / visitor_decl._get_identifier_like_name 补中文名还原；
+  · interpreter_core 补 LightBoundListMethod，列.追加()/移除/弹出/反转/清空 与 SRC 后端语义对齐；
+  · ANTLR 两例由 xfail(strict=False) 转为普通断言，实测 rc=0（probe1 输出 [1]，probe2 输出 [7]）。
 
 运行方式（Git Bash）：
   cd /g/dswork/duan-light-merge/lightharness && python -m pytest \
@@ -51,13 +59,8 @@ _SUBPROC_ENV = {
 
 _TIMEOUT = 120  # 秒，任务指定
 
-_ANTLR_XFAIL_REASON = (
-    'Day2 主会话实测（light-merge d6b84a716）：ANTLR 后端两例均 rc=1，'
-    'probe1 报「第4行第5列 多余的 .」+「第3行 期望《、ID却遇到为」；'
-    'probe2 报「第4行第6列 多余的 .，应为 <EOF>/K_IF/设」。'
-    'SRC 后端两例 rc=0 已销账；ANTLR 缺口立账，xfail 保留。'
-    '日志：logs/day2/S4_antlr_lp013_probe*_{src,antlr}.log'
-)
+# _ANTLR_XFAIL_REASON 已随 Day2N T2 修复移除（原 62-68 行）。
+# 历史记录：ANTLR 两例曾 xfail，原因见文件头注释；现转为普通断言。
 
 
 def _run_probe(probe: Path, backend: str):
@@ -101,21 +104,18 @@ def test_LP013_probe2_SRC_退出码0_无语法元素报错():
     )
 
 
-# ── ANTLR 后端（--backend antlr）：实测未完成，按保守兜底 xfail(strict=False) ─
-# 待主会话按步骤 1 真实跑过 4 个组合后：
-#   · ANTLR 通过 → 去掉 xfail，改用与 SRC 相同的断言；
-#   · ANTLR 失败 → 把真实失败输出（stdout/stderr 摘要）写进下方注释，替换本说明。
+# ── ANTLR 后端（--backend antlr）── Day2N T2 已修：g4 让 K_EXPORT/K_CONTINUE 可作
+# 标识符（变量名/参数名/成员基名），interpreter_core 补 列.追加()/移除/弹出/反转/清空
+# 绑定方法。两例由 xfail 转为普通断言，实测 rc=0（probe1 输出 [1]，probe2 输出 [7]）。
 
-@pytest.mark.xfail(reason=_ANTLR_XFAIL_REASON, strict=False)
 def test_LP013_probe1_ANTLR_退出码0_输出含1():
     _require_paths()
     rc, out, err = _run_probe(_PROBE1, 'antlr')
-    # 期望（任务规格）：退出码 0，输出含 [1]（实跑后按真实结果收敛本断言）
+    # 期望（任务规格）：退出码 0，输出含 [1]
     assert rc == 0, f'[ANTLR probe1] 退出码 {rc}:\n{err}\n{out}'
     assert '[1]' in out, f'[ANTLR probe1] 输出不含 [1]:\n{out[-500:]}'
 
 
-@pytest.mark.xfail(reason=_ANTLR_XFAIL_REASON, strict=False)
 def test_LP013_probe2_ANTLR_退出码0_无语法元素报错():
     _require_paths()
     rc, out, err = _run_probe(_PROBE2, 'antlr')
