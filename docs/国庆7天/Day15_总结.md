@@ -232,3 +232,47 @@ junit XML 原文（`reports/_082_lm_results_2026-10-02-171603.xml`）：
 | S8 L3 复验 + bench | `Day10_并发性能收口.md` | ✅ 独立复验 + 基准固化 |
 | S9 L4 发布就绪 | `Day11_发布管线.md` | ✅ 清单 + 就绪（发布动作等用户） |
 | S10 屏障 D | **本报告** | ✅ 四跑全绿 + `v0.4.0-rc1` |
+
+---
+
+## 七、【追加】远端推送完成（10/10 落点）+ github 分叉的 force push 处置
+
+> 时间：2026-10-02（晚）｜**用户明确示意推送**（此前全程「等用户示意、不擅自推」，本节为解除该禁令后的执行记录）。
+> 复核方式：**逐 (repo, remote) 枚举 `git ls-remote` 比对 main 与 tag**（遵计划 §8.2 铁律，不看 `git push | tail`）。
+
+### 7.1 推送结果（10/10 落点：main 与 `v0.4.0-rc1` 均逐字匹配）
+
+| 仓 | 落点 | main（本地=远端） | `v0.4.0-rc1` |
+|---|---|---|---|
+| light-merge | gitea | `a495bb44c` | ✅ |
+| light-merge | gitcode | `a495bb44c` | ✅ |
+| light-merge | github | `a495bb44c` | ✅ |
+| light-merge | origin（本地镜像 `g:\github\light`） | `a495bb44c` | ✅ |
+| lightharness | myrepo（192.168.1.5 gitea） | `27ae813` | ✅ |
+| lightharness | origin（**= gitcode**，远端名不统一） | `27ae813` | ✅ |
+| lightharness | github | `27ae813` | ✅ |
+| lightplugin | gitea | `62a5961` | ✅ |
+| lightplugin | gitcode | `62a5961` | ✅ |
+| lightplugin | github | `62a5961` | ✅ |
+
+**各仓「本地领先远端」提交数 = 0**（10 个落点全部就位）。`v0.3.0` 仍为各仓最新正式版。
+
+### 7.2 github 真分叉 → 用户裁决 force push（不可逆操作，如实记录）
+
+**先纠正一个我自己犯的错**：首次推送前我用**过期的本地 `github/main` 引用**判断「可 fast-forward」，推送被拒后 `git fetch` 才发现引用停在旧位置（`59ab8f96d`），远端真实值已前进。
+→ 改用 **`git fetch` 后的引用**重新诊断：3 个 github **均为真分叉**，非 fast-forward。
+
+| 仓 | 覆盖前 github HEAD | github 独有 | 本地独有 | 覆盖后 |
+|---|---|---|---|---|
+| light-merge | `eb1164f4e` | 3 | 10 | `a495bb44c` ✅ |
+| lightharness | `a5c837e` | **36** | 50 | `27ae813` ✅ |
+| lightplugin | `8501ba0` | 1 | 4 | `62a5961` ✅ |
+
+- **分叉成因**（与 Day12 §3.2 一致）：github 侧的提交系**历史 API 推送产生的独立父链**（父链不同 → commit SHA 不同）。
+  抽查 light-merge：github `eb1164f4e` 与本地 `d6b84a716` 的 **tree 逐字节相同**（`6837b0a1f8b38bad`）。
+- **与 Day12 既定裁决的关系（重要）**：Day12 §3.2 原裁决是「**接受差异并文档化**，以 local+gitea+gitcode 为规范源」。
+  本次由**用户重新裁决**改为 **force push 覆盖**（`--force-with-lease`），故 10/10 落点 SHA 现已统一。
+  这是**用户对既有裁决的显式变更**，非忽略。
+- **无损保险**：覆盖前已把 3 个 github 原 HEAD 备份为**本地 tag `backup/github-main-20261002`**
+  （LM `eb1164f4e` / LH `a5c837e` / LP `8501ba0`），使那些提交对象**不会被 gc 回收**，将来仍可追溯。
+- **不可逆声明**：github 上被覆盖的独有提交（合 40 个）在**远端已不可见**；只有上述本地备份 tag 保存了它们的入口。
