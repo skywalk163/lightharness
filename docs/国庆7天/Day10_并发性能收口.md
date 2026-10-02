@@ -3,7 +3,7 @@
 > 三段式：**根因 → 做了什么 → 现在能跑什么**
 > 子任务：**S8**（派单表 §二 相位 P2；契约由 L3 计划 §三 展开）
 > 证据落点：**`logs/day2/`**（工作区根，跨三仓共用，不进任何仓的提交）
-> 被测 SHA：`light-merge` = **`dac6bea1e`**（S1 修复）/ `d6b84a716`（修复前，A/B 对照用）；`lightharness 082255c`+`f21c019`+`bc0c915`；`lightplugin 11c7873`
+> 被测 SHA：`light-merge` —— S1 **修复提交 `dac6bea1e`**；S8 全部实测跑在其后的 HEAD **`1ae22f00c`**（= `dac6bea1e` + 台账提交，对被测代码无差异，故 A/B 的「B 新树」即此 SHA）；A/B 的「A 旧树」= `d6b84a716`（修复前，用 `git worktree` 检出）。`lightharness 082255c`+`f21c019`+`bc0c915`；`lightplugin 11c7873`
 > 边界纪律：S8 **不重复计入 L1 工作量**（计划 §三 L3）——L1 负责修复 + 取证，**L3 只做独立复验**。
 
 ---
@@ -65,12 +65,12 @@
 ### 1.2 面② 真实历史代码 A/B（独立于 S1 的方法）
 
 S1 的反跑用的是 **monkeypatch**（在内存里把夹具类型换掉）；S8 改用一个**更硬**的方法：
-用 `git worktree add <scratch> d6b84a716` 检出**真实的修复前代码树**，与主树（`dac6bea1e`）
+用 `git worktree add <scratch> d6b84a716` 检出**真实的修复前代码树**，与主树（`1ae22f00c`）
 在同一负载下逐轮对照。**两条路互相独立，结论一致才算复验成立。**
 
 **(a) 用例级 A/B（8 进程负载，各 10 轮）** — 脚本 `S8_ab_real.py`｜日志 `S8_ab_real.log`
 
-| 被试用例 | A 旧树 `d6b84a716` | B 新树 `dac6bea1e` |
+| 被试用例 | A 旧树 `d6b84a716` | B 新树 `1ae22f00c` |
 |---|---|---|
 | `test_并行批里一个抛异常其余两个照常回填` | **通过 9 / 失败 1** ← 复现 | **通过 10 / 失败 0** |
 | `test_concurrent_requests` | 通过 10 | 通过 10（8 进程负载下未复现，见 (b)） |
@@ -133,7 +133,7 @@ S1 的反跑用的是 **monkeypatch**（在内存里把夹具类型换掉）；S
 | 轮数 | 5 轮取中位（单轮方差已可见，见 §2.3） |
 | 口径 | 每例启动耗时：**冷** = 每例新进程跑 `light.py run`；**温** = 进程内复用编译器调 `_run_src` |
 | 机器 | 本机 **Windows 10 (10.0.19045) 开发机 / 10 物理核**；解释器 **CPython 3.13.14**（`.venv`） |
-| 被测 SHA | `light-merge dac6bea1e`（本轮在 S1 修复之上的 HEAD） |
+| 被测 SHA | `light-merge **1ae22f00c**`（S8 运行时 HEAD；bench JSON 内记录的即此值） |
 | 落盘 | `logs/day2/S8_bench_baseline.json`（含 5 轮逐次原始输出行 + 汇总 min/中位/max） |
 
 ### 2.2 固化结果（5 轮实跑，`logs/day2/S8_bench_baseline.json`）
@@ -241,12 +241,12 @@ S1 的反跑用的是 **monkeypatch**（在内存里把夹具类型换掉）；S
 | 出口 | 命令 | rc | 日志路径 | 被测 SHA |
 |---|---|---|---|---|
 | 断言审计（面①） | `python logs/day2/S8_assertion_audit.py` | 0 | `logs/day2/S8_assertion_audit.log` | `d6b84a716` vs `dac6bea1e` |
-| 真实代码 A/B·用例级（面②） | `python logs/day2/S8_ab_real.py <A树> <B树> 8` | 0 | `logs/day2/S8_ab_real.log` | A `d6b84a716` / B `dac6bea1e` |
+| 真实代码 A/B·用例级（面②） | `python logs/day2/S8_ab_real.py <A树> <B树> 8` | 0 | `logs/day2/S8_ab_real.log` | A `d6b84a716` / B `1ae22f00c` |
 | 真实代码 A/B·夹具容量（面②，判决性） | `python logs/day2/S8_ab_http_capacity.py <A树> <B树>` | 0 | `logs/day2/S8_ab_http_capacity.log` | 同上 |
 | 受载复跑（面③） | `python logs/day2/S8_ab_http_heavy.py <A树> <B树>` | 0 | `logs/day2/S8_ab_http_heavy.log` | 同上 |
-| bench 基线固化 | `"<LM>/.venv/Scripts/python.exe" scripts/compiler_bench.py 6` ×5 | 0 | `logs/day2/S8_bench_baseline.json` + `S8_bench.log` | `dac6bea1e` |
-| bench 口径对照（3.12） | `python scripts/compiler_bench.py 6` | 0 | `logs/day2/S8_bench_py312.log` | `dac6bea1e` |
-| 反跑·温缓存 | `python logs/day2/S8_antirun_warm3.py 4` | 0 | `logs/day2/S8_antirun_warm.log` | `dac6bea1e` |
+| bench 基线固化 | `"<LM>/.venv/Scripts/python.exe" scripts/compiler_bench.py 6` ×5 | 0 | `logs/day2/S8_bench_baseline.json` + `S8_bench.log` | `1ae22f00c` |
+| bench 口径对照（3.12） | `python scripts/compiler_bench.py 6` | 0 | `logs/day2/S8_bench_py312.log` | `1ae22f00c` |
+| 反跑·温缓存 | `python logs/day2/S8_antirun_warm3.py 4` | 0 | `logs/day2/S8_antirun_warm.log` | `1ae22f00c` |
 
 汇总（基准 JSON `logs/day2/S8_bench_baseline.json`）：
 ```json
