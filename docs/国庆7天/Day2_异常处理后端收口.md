@@ -176,3 +176,74 @@ ANTLR 报 `line 1:1 no viable alternative at input '从《'` + `mismatched input
 - 本线完整尝试留档 `_day2_antlr尝试_待重做.patch`（8529 行，monorepo 根），重做时据此起步。
 - **保留**（与本回退无关的正向产出）：`2cffa53` 修 `同步0.82.py` 硬编码主树隐患（新增 `--light-merge` 参数
   + sync/run 前打印被测身份）——这条是有价值的，D2 报告 §5.1 的定位正确。
+
+---
+
+## §七 · 【重做收口】按权威姿势重做，§6.1 的 15 条问题全部翻绿（2026-10-02 08:1x–08:3x）
+
+> 本节由 Day2 线在用户示意后追加。首版病根（重生成丢中文字面量）已定位为
+> **未指定 `-encoding UTF-8` 且未按「lexer 先行 → parser `-lib`」两步生成**；
+> 本轮改用权威脚本 `scripts/generate_antlr_parser.py`（自带工具链下载 + 正确姿势）重做，
+> 改动内容与首版一致（从 `_day2_antlr尝试_待重做.patch` 恢复）。
+
+### 7.1 重做姿势（LM `9a5c5920b`）
+
+| 项 | 值 |
+|---|---|
+| 工具链 | Temurin **JRE 17.0.20.1** + **antlr-4.13.2-complete.jar**（与 `antlr4-python3-runtime` 4.13.2 同版本），由脚本自动下载缓存至 `%TEMP%/light-antlr-tools/` |
+| 生成姿势 | `[1/2] LightLangLexer.g4`（`-encoding UTF-8`）→ `[2/2] LightLangParser.g4`（`-encoding UTF-8` + `-lib light_parser`）——与首版「一条命令喂两个 g4、无编码参数」的差异即病根 |
+| 生成物 | Lexer 4 文件 + Parser 3 文件 + Visitor，全部落 `antlrparser/light_parser/` |
+
+### 7.2 验证实测（全部真实执行，主树 LM `9a5c5920b`）
+
+| # | 验证 | 结果 |
+|---|---|---|
+| 1 | **对拍产物**：Lexer `LightLangLexer.py/.interp/.tokens` + `LightLangParser.tokens` vs git HEAD（revert 后正确基线） | **逐字节一致** → 编码正确、中文关键字字面量零丢失（§6.2 病根消除的直接证据） |
+| 2 | 对拍产物：`LightLangParser.py/.interp` | 差异仅 tryStmt 规则传导（g4 改动预期范围）；Visitor 仅 +10 行（`visitCatchSpec`/`visitIdentifier_or_type`） |
+| 3 | **§6.1 全部 15 条对拍**（7 硬失败 + 5 regex 静默回退 + 3 新 skip） | **15 passed, rc=0**（`test_import_math_*`、`test_import_time_format`、`test_import_with_multiple_symbols`、`test_mixed_stdlib_builtins`、`test_regex_{search,findall,replace,is_match,escape}`、`test_base64_encode_decode`、`test_hex_encode_decode`、`test_md5_hash`） |
+| 4 | `test_module_system.py` 全量 | **51 passed / 7 skipped, rc=0**；7 skip 均为既有 API 兼容性跳过（时间模块缺失/中文数字标识符/数学库统计函数缺名），与 Day1 基线口径一致，不属本路 |
+| 5 | LP-D-011 四探针（`lp011_{probe,probe2,finally,multi_catch}`） | ANTLR+SRC 全部 rc=0，输出两后端一致 |
+| 6 | 第 5 个端到端 `mod_greet.light` | ANTLR rc=0 / SRC rc=0，输出一致（注：`sample_quicksort.light` SRC 侧解析失败为 src 后端既有 lexer bug，与 ANTLR 无关——src 侧最后改动为 Day1 `589d495d4`） |
+| 7 | `antlrparser/test/` 门三元数字 | failed 61→61 / passed 21→21 / errors 16→16，FAILED 集合逐条 diff 与 Day2 前基线一致 → **零回归** |
+| 8 | `scripts/antlr_leg_smoke.py` ANTLR 腿冒烟 | **42/42 通过**（20.4s），rc=0，矩阵已落盘 `reports/antlr腿_冒烟_2026-10-02-081927.md` |
+
+### 7.3 遗留
+
+- ~~组合态 0.82 权威门对 `9a5c5920b` 尚未重跑~~ → **已完成终审，见 §7.4**。
+- `day1-baseline` tag 已推送两仓四远端中的 gitea+gitcode（github 按用户决定不推，见 §5.1）。
+
+---
+
+## §八 · 【终审】0.82 权威门对重做版 PASS（2026-10-02 09:1x，LM `034a50b9f` + LH `8033606`）
+
+> 用户示意后执行：`082全量回归.py all --mode full`（sync 被测身份由 `2cffa53` 的
+> `print_probe_identity()` 留痕：LH `8033606` 干净 + LM `034a50b9f` 干净，远端副本
+> `/tmp/r44-20261002-084636`）。
+
+### 8.1 三次执行链
+
+| # | 执行 | 结果 |
+|---|---|---|
+| 1 | 终审第一次全量（432.5s） | **8354 passed / 1 failed / 121 skipped**；唯一红 `test_http_client.py::test_concurrent_requests — assert 9 == 10` → 门 FAIL |
+| 2 | 该单条复跑 ×8（终审副本） | 6 passed / 2 failed——**同一份代码结果不稳定 → flaky**；且该用例测 `lightpub/HTTP客户端.py`（Python + requests，**不经过 ANTLR 解析器**，与 Day2 改动零交集） |
+| 3 | **全量复跑（--no-sync，413.5s）** | **8355 passed / 0 failed / 121 skipped / 11 xfailed / 2 xpassed → 门 PASS ✅**（diff：失败数 1→0，已修复 `test_concurrent_requests`） |
+
+### 8.2 三元判据（对组合态基线 `075322` = 8359/121/0）
+
+| 量 | 组合态基线 | 重做终审 | 判定 |
+|---|---|---|---|
+| failed | 0 | **0** | ✅ 新增 0 |
+| skipped | 121 | **121** | ✅ 未新增（§6.1 的 5 条 regex 静默回退**未复现**——重做修复在 0.82 上确认） |
+| passed | 8359 | **8357** | ✅ 实质不下降：−2 全部来自 2 条**既有非严格 xfail 用例**的摆动（见 §8.3） |
+
+### 8.3 passed −2 的归因（逐条实证）
+
+摆动用例：`tests/test_stdlib_phase4.py::Test数据验证::{test_验证IP地址, test_验证JSON}`。
+- 二者自带 `@pytest.mark.xfail(strict=False)`（L516 等，reason：「原生腿 IP 校验为四段正则近似」等**既有差异**，移交路 2/路 4）——与 ANTLR 无关。
+- 本地（LM `034a50b9f`）实测 **XPASS/XPASS**；远端高负载下 XFAIL。strict=False 下 xpass 计入 passed、xfail 计入 xfailed → totals 的 `passed 8359↔8357 / xfailed 9↔11` ±2 摆动即由此二条解释。
+
+### 8.4 终审结论
+
+> **重做版 LM `034a50b9f`（含 Day2 ANTLR 收口）0.82 权威门 PASS。**
+> LP-D-011「ANTLR 后端 尝试/捕获/最终」**正式收口**：§6.1 回退依据（7 硬失败 + 5 静默回退）
+> 在重做版上全部消除（本机 §7.2 #3 + 0.82 全量 skipped 持平双重确认）；无任何新增红。
