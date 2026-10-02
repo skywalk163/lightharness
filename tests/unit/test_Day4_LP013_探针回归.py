@@ -11,16 +11,16 @@
   · lp013_probe2.light：词根「跳过」作成员访问基名，期望退出码 0，且输出
     不得出现「无法识别的语法元素 '.'」。
 
-⚠️ 实测状态说明（诚实记录，勿删）：
-  本文件由子会话生成，该会话的 shell 执行被父级审批全面拦截（连 `pwd` 都不放行），
-  因此 4 个组合（2 探针 × SRC/ANTLR）的**手动运行与 pytest 实跑均未完成**，
-  无真实 stdout/退出码可依据。处理：
-  · SRC 用例按任务指定断言书写（退出码 0 / [1] / 无语法元素报错），这是任务
-    交给本步的规格，不是本次实测结果；
-  · ANTLR 用例按任务给定的保守兜底策略标 xfail(strict=False)：若 ANTLR 实测
-    通过则显示 XPASS（不算失败），若失败则 XFAIL 不阻塞门禁。
-    待在主会话真实跑通步骤 1/4 后，按实测结果改回普通断言（通过）或
-    补充真实失败输出到注释（失败）。
+✅ Day2 主会话实测（2026-10-02，light-merge d6b84a716 / lightharness f21c0191）：
+  · SRC 后端两例 rc=0：probe1 输出 [1]；probe2 无「无法识别的语法元素」。
+  · ANTLR 后端两例 rc=1：
+    - probe1 第4行 第5列「多余的 '.'，此处应为 《、ID 等」+ 第3行「期望《、ID，却遇到了'为'」；
+    - probe2 第4行 第6列「多余的 '.'，此处应为 <EOF>、K_IF、设 等」。
+  · 原始日志：logs/day2/S4_antlr_lp013_probe_{src,antlr}.log{,.err}、
+    logs/day2/S4_antlr_lp013_probe2_{src,antlr}.log{,.err}。
+  · 判定：立账（ANTLR 后端对关键字/词根词作成员访问基名仍解析失败）。
+    SRC 后端已销账；ANTLR 缺口保留为 xfail(strict=True 会因 strict=False 维持
+    现状——此策略不变，仅把 reason 从「未实测」刷新为「已实测立账」）。
 
 运行方式（Git Bash）：
   cd /g/dswork/duan-light-merge/lightharness && python -m pytest \
@@ -52,8 +52,11 @@ _SUBPROC_ENV = {
 _TIMEOUT = 120  # 秒，任务指定
 
 _ANTLR_XFAIL_REASON = (
-    'ANTLR 后端对 LP-D-013 同例的实测未完成（生成用例的子会话 shell 被审批拦截，'
-    '无真实输出可依据），按 Day4 保守兜底策略 xfail；主会话实测后按结果收敛'
+    'Day2 主会话实测（light-merge d6b84a716）：ANTLR 后端两例均 rc=1，'
+    'probe1 报「第4行第5列 多余的 .」+「第3行 期望《、ID却遇到为」；'
+    'probe2 报「第4行第6列 多余的 .，应为 <EOF>/K_IF/设」。'
+    'SRC 后端两例 rc=0 已销账；ANTLR 缺口立账，xfail 保留。'
+    '日志：logs/day2/S4_antlr_lp013_probe*_{src,antlr}.log'
 )
 
 

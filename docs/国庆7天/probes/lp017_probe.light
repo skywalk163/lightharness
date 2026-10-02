@@ -1,0 +1,13 @@
+# LP-D-017 探针：工具 schema 注册期形状校验
+# 历史：properties: []（空列表而非空映射）曾能注册成功，错误延迟到按 schema 造参时
+#       才炸在 stdlib 内部（list 缺少 keys）。R99 路 E 收口后，注册期即应拦下。
+# 预期：reg.注册(坏) 立即抛 INVALID_TOOL_SCHEMA，点名工具名与参数路径。
+# 跑法：cd lightharness && ../light-merge/.venv/Scripts/python.exe -m pytest \
+#         tests/unit/test_工具_schema自检.py -q -o "addopts=" -p no:xdist
+从 工具 导入 工具注册表, 造工具定义
+段落 主:
+  设 reg 为 新建 工具注册表()
+  设 坏 为 造工具定义("probe017", "坏schema探针", ["type": "object", "properties": []], 空)
+  reg.注册(坏)
+  打印("不应到达")
+主()
