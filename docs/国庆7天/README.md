@@ -66,6 +66,7 @@ python scripts/082全量回归.py show --recent   # 核对每轮 total/mode/skip
 | **1** | **10/1 22:00–10/2 01:5x** | **`_light_re` 销账 + 真红源（模块名 `正则`）清零 + 同口径 full 基线 + 工作树收口** | **`Day1_主线_红源定靶与门基线.md`** | **PASS（skipped 126→121 / passed +5 / failed 0）** |
 | **2** | **10/2 01:0x–02:4x（首版）；08:1x–08:3x（重做收口）** | **异常处理后端收口（LP-D-011 改靶 ANTLR）** | **[Day2_异常处理后端收口.md](Day2_异常处理后端收口.md)**（含 team lead 追加 §六 + 重做 §七） | ✅ **已重做收口**（LM `9a5c5920b`，2026-10-02）：首版因重生成 lexer 丢中文字面量被砍线回退（`c775f27d3`，见 §六）；重做版按权威姿势（JRE17 + ANTLR 4.13.2 + `-encoding UTF-8` + lexer 先行/parser `-lib`）重新生成，Lexer 产物与 HEAD 逐字节一致，§6.1 的 7 硬失败 + 5 静默回退 + 3 新 skip 共 **15 条全部翻绿**，四探针两后端全绿 + `test_module_system.py` 51 passed + 门三元数字零回归 + ANTLR 腿冒烟 42/42。**正向保留**：`2cffa53` 修好 0.82 门「测旧代码」隐患 |
 | **3** | **10/2 02:1x–07:1x** | **并发原语定靶与调度层迁移（LP-D-012）** | **[Day3_并发原语.md](Day3_并发原语.md)** | **本机 PASS（1179/1）**；0.82 权威门见下方组合态一行 |
+| **5·轨道B** | **10/2 08:4x–09:1x** | **端到端联调（单入口 + 完整 agent 循环 + Web UI SSE）** | **[Day5_端到端.md](Day5_端到端.md)** | **CLI rc=0**（148 工具 / 2 请求轮 / 首轮 role=system / 消息 2→4）；**Web UI curl** `/api/config mock=1` + `POST /v1/chat/completions stream=true` HTTP 200 `text/event-stream` 含 `[DONE]`；`e2e_demo.ps1` 全通 rc=0。**未自带门**（门收归 12:30/18:00 全局窗口） |
 
 > **日期口径说明（2026-10-02 07:1x 记）**：计划书把 Day1/2/3 排成 10/2 起逐日顺延
 > （Day1=10/2、Day2=10/3、Day3=10/4）。实际执行因 agent 提前完成，**Day1/2/3 三线全部落在
