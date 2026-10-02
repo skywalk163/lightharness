@@ -86,16 +86,40 @@
 
 ---
 
-## 四、push 后的 Actions 实证（回填）
+## 四、push 后的 Actions 实证（已回填）
 
-> 本批合流 commit 推到远端后，GitHub 会按 `on: push` 触发 Quality Gate。
-> 结论回填于此（判据：`全量测试 (3.12)` 的 step「运行单元测试」是否转 success、整条 QG 是否 success）。
+推送 light-merge `e53073d3cb` 后，GitHub 触发 **Quality Gate run `37074880689`**
+（同时触发 CI run `37074880670`）。结论：**`completed success`**（完成于 2026-10-02T23:25:19Z）。
 
-| 项 | 结果 |
+| job | 结论 |
 |---|---|
-| 触发的 Quality Gate run id | 见 §四 回填 |
-| `全量测试 (3.12)` 结论 | 回填 |
-| 若仍红：下一步 | 回填（本批留了迭代时间） |
+| Lint 检查 | **success** |
+| 全量测试 (3.10) | **success** |
+| **全量测试 (3.12)** | **success** ← 上一批两次都死在这 |
+| 全量测试 (3.11) | **success** |
+| **构建验证** | **success** ← 上一批是 `skipped`（被上游失败跳过），本次首次真正跑起来 |
+
+`全量测试 (3.12)` 的逐 step：
+
+```
+step success 设置 Python 3.12
+step success 安装依赖
+step success 运行单元测试      ← 本次修复的目标 step，由 failure 转 success
+step success 运行集成测试      ← 此前从未执行过（被上游 skip）
+step success 运行端到端测试    ← 此前从未执行过
+step success 运行全量 pytest   ← 此前从未执行过
+step success 检查测试覆盖率（不低于 25%）  ← 此前从未执行过
+step success 上传覆盖率报告
+```
+
+**这不是"把红改成绿"，而是整条门禁第一次真正跑完**：
+上一批 unit 一失败，后面 5 个 step（含覆盖率门禁与构建验证）全被 skip，
+QG 实际上**从来没履行过它宣称的职责**。本次它们全部首次执行且全部通过。
+
+**CI 侧同时确认**：run `37074880670` 的 18 个 job **全 success**，
+其中 `test (ubuntu-latest, 3.12)` 等 12 份矩阵跑的就是**无 cov 的 `pytest tests/unit/`** ——
+也就是 `test_lexer_perf` 在迁移后的新家，**默认 10.0s 预算下依然绿**，
+证明「守护交给 ci.yml 的无 cov 会话」这个判断是真成立的，不是自说自话。
 
 ---
 
@@ -105,4 +129,4 @@
 |---|---|
 | workflow diff 仅单测一步 | ✅ §一（+15/-1，只一个文件的一步） |
 | 本机复刻绿 | ✅ §三 |
-| push 后 QG 结论 = success | ⏳ §四 回填 |
+| push 后 QG 结论 = success | ✅ **§四：整条 QG `success`，且 5 个此前被 skip 的 step 首次全部执行通过** |
