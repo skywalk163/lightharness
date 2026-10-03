@@ -512,11 +512,14 @@ def cmd_test_lm(args) -> int:
         baseline = base.make_baseline(
             parsed, name="light-merge", platform=f"0.86 Linux",
             host=args.host, remote_dir=rd, cwd=f"{rd}/light-merge",
-            runner={"mode": args.mode, "parallel": True, "cmd": " ".join(argv),
-                    "pytest_rc": code})
-        path = LIGHTHARNESS / "reports" / f"R85_lm基线_{_stamp()}.json"
+            runner={"mode": args.mode, "parallel": True, "target": "light-merge",
+                    "cmd": " ".join(argv), "pytest_rc": code},
+            round_=args.round)
+        prefix = args.out_prefix or "R85_lm基线_"
+        path = LIGHTHARNESS / "reports" / f"{prefix}{_stamp()}.json"
         base.save_baseline(baseline, path)
         base.save_baseline(baseline, LIGHTHARNESS / "reports" / "R85_lm基线_latest.json")
+        print(f"[同步0.86] LM 基线写入 {path.name}（round={args.round}）")
         t = baseline["totals"]
         print(f"[同步0.86] LM 摘要：共{t['total']} 通过{t['passed']} 失败{t['failed']} "
               f"跳过{t['skipped']} 错误{t['error']}")
@@ -568,11 +571,14 @@ def cmd_test_lh(args) -> int:
         baseline = base.make_baseline(
             parsed, name="lightharness", platform=f"0.86 Linux",
             host=args.host, remote_dir=rd, cwd=f"{rd}/lightharness",
-            runner={"mode": "full", "parallel": True, "cmd": " ".join(argv),
-                    "pytest_rc": code})
-        path = LIGHTHARNESS / "reports" / f"R85_lh基线_{_stamp()}.json"
+            runner={"mode": "full", "parallel": True, "target": "lightharness",
+                    "cmd": " ".join(argv), "pytest_rc": code},
+            round_=args.round)
+        prefix = args.out_prefix or "R85_lh基线_"
+        path = LIGHTHARNESS / "reports" / f"{prefix}{_stamp()}.json"
         base.save_baseline(baseline, path)
         base.save_baseline(baseline, LIGHTHARNESS / "reports" / "R85_lh基线_latest.json")
+        print(f"[同步0.86] LH 基线写入 {path.name}（round={args.round}）")
         t = baseline["totals"]
         print(f"[同步0.86] LH 摘要：共{t['total']} 通过{t['passed']} 失败{t['failed']} "
               f"跳过{t['skipped']} 错误{t['error']}")
@@ -627,11 +633,19 @@ def main() -> int:
     p_lm.add_argument("--mode", choices=["fast", "full"], default="fast")
     p_lm.add_argument("--timeout-sec", type=int, default=2400)
     p_lm.add_argument("--poll", type=int, default=30)
+    p_lm.add_argument("--round", default="R55",
+                      help="写入基线的 round 字段（默认 R55；R111 轮传 R111）")
+    p_lm.add_argument("--out-prefix", default="",
+                      help="基线文件名前缀（默认 R85_lm基线_；R111 轮可传 R111_086_lm_）")
     p_lm.set_defaults(fn=cmd_test_lm)
 
     p_lh = sub.add_parser("test-lh", help="0.86 上跑 lightharness 全量 pytest")
     p_lh.add_argument("--timeout-sec", type=int, default=2400)
     p_lh.add_argument("--poll", type=int, default=30)
+    p_lh.add_argument("--round", default="R55",
+                      help="写入基线的 round 字段（默认 R55；R111 轮传 R111）")
+    p_lh.add_argument("--out-prefix", default="",
+                      help="基线文件名前缀（默认 R85_lh基线_；R111 轮可传 R111_086_lh_）")
     p_lh.set_defaults(fn=cmd_test_lh)
 
     args = ap.parse_args()

@@ -31,6 +31,8 @@ xdist 并行会 INTERNALERROR、串行又要 1 小时以上，所以**统一去 
 用法：
     python scripts/082全量回归.py all
     python scripts/082全量回归.py all --mode full                        # 连 slow 用例一起跑
+    python scripts/082全量回归.py all --target lightharness --mode full --round R111
+                                                                        # 0.82 跑 lightharness 全量
     python scripts/082全量回归.py test --py /usr/local/bin/python3.12    # 默认，带并行
     python scripts/082全量回归.py test --py /usr/local/bin/python3.11    # 置空 addopts
     python scripts/082全量回归.py test --serial                          # 强制串行
@@ -38,6 +40,12 @@ xdist 并行会 INTERNALERROR、串行又要 1 小时以上，所以**统一去 
     python scripts/082全量回归.py diff
     python scripts/082全量回归.py diff --base reports/082_lightmerge基线_2026-09-17-235900.json
     python scripts/082全量回归.py show                      # 打印最近一份基线摘要
+    python scripts/082全量回归.py show --target lightharness
+
+R111 R2 变更：新增 `--target {light-merge,lightharness}` 与 `--round`。
+  * target=light-merge（默认）：行为、文件名、latest 指针与历史完全一致；
+  * target=lightharness：跑远端 lightharness/tests/ 全量，落 `082_lh基线_<ts>.json`
+    + `082_lh基线_latest.json`，远端执行前注入 LIGHT_MERGE 指向同一副本的 light-merge。
 """
 from __future__ import annotations
 
@@ -57,6 +65,30 @@ SYNC_SCRIPT = SCRIPTS / "同步0.82.py"
 # 本机跑的东西（local python 用于拉 flame？不需要；远端命令用 mod.PY）
 BASELINE_PREFIX = "082_lightmerge基线_"
 LATEST = REPORTS / f"{BASELINE_PREFIX}latest.json"
+LH_BASELINE_PREFIX = "082_lh基线_"
+LH_LATEST = REPORTS / f"{LH_BASELINE_PREFIX}latest.json"
+
+# R111 R2：0.82 全量门支持两个 target：
+#   * light-merge（默认，历史口径，前缀/文件名保持不变，勿动—— 多平台矩阵.py 等按此 glob）
+#   * lightharness（本轮补基线新增；前缀沿用历史 082_lh基线_）
+TARGETS = {
+    "light-merge": {
+        "repo": "light-merge", "name": "light-merge",
+        "prefix": BASELINE_PREFIX, "latest": LATEST, "xml_stem": "lm_results",
+    },
+    "lightharness": {
+        "repo": "lightharness", "name": "lightharness",
+        "prefix": LH_BASELINE_PREFIX, "latest": LH_LATEST, "xml_stem": "lh_results",
+    },
+}
+DEFAULT_TARGET = "light-merge"
+DEFAULT_ROUND = "R55"
+
+
+def target_conf(target: str) -> dict:
+    """按 target 取远端仓目录名 / 基线前缀 / latest 指针 / junitxml 名。"""
+    return TARGETS[target]
+
 
 # pytest 公共参数（addopts 是否置空由所选解释器动态决定，见 cmd_test）：
 #   * 3.12（有 xdist）：保留 light-merge 自带 addopts（含 -n auto/--timeout=60）；
@@ -88,18 +120,21 @@ def _stamp() -> str:
     return time.strftime("%Y-%m-%d-%H%M%S")
 
 
-def list_baselines() -> list[Path]:
+def list_baselines(target: str = DEFAULT_TARGET) -> list[Path]:
     """按**文件 mtime** 排序，不能按文件名字符串排。
 
     R56 踩的坑：任务4 产出的对拍基线叫 `082_lightmerge基线_R53回退_<ts>.json`，
     字面序上 'R' > '2'，于是它排在所有 `..._2026-*` 之后，被当成「最新基线」——
     门因此拿同一份 R53 回退基线自比，得出**假 PASS**（实际那轮的新基线被排到它前面忽略了）。
     基线的时间顺序只看 mtime，不看名字。
+
+    R111 R2：按 target 选前缀（light-merge / lightharness 两套基线互不干扰）。
     """
+    conf = target_conf(target)
     if not REPORTS.exists():
         return []
-    return sorted((p for p in REPORTS.glob(f"{BASELINE_PREFIX}*.json")
-                   if p.name != LATEST.name),
+    return sorted((p for p in REPORTS.glob(f"{conf['prefix']}*.json")
+                   if p.name != conf["latest"].name),
                   key=lambda p: p.stat().st_mtime)
 
 
@@ -133,7 +168,9 @@ def cmd_test(args) -> int:
     try:
         mod.ensure_shim(cli)
         rd = mod.load_remote_dir()
-        print(f"[082全量] 远端副本 {rd}")
+        conf = target_conf(args.target)
+        repo = conf["repo"]
+        print(f"[082全量] 远端副本 {rd}；target={args.target}（仓 {repo}）")
 
         # 0) 选解释器：--py 默认 3.12（带 xdist+pytest-timeout）；可选 3.11（仅 pytest）
         py = args.py
@@ -152,20 +189,25 @@ def cmd_test(args) -> int:
               f"timeout(1)={'可用' if has_timeout else '缺失'}，ncpu={nproc}")
 
         # 2) 组装 pytest 命令（是否置空 addopts 跟随所选解释器）
-        xml_remote = f"{rd}/lm_results_{args.mode}.xml"
+        xml_remote = f"{rd}/{conf['xml_stem']}_{args.mode}.xml"
         pytest_argv = list(PYTEST_COMMON) + ["--junitxml", xml_remote]
         if args.mode == "fast":
             pytest_argv += ["-m", "not slow"]
         if has_xdist:
-            # 保留 light-merge 自带 addopts（含 -n auto --dist=loadscope 与 --timeout=60，
-            # 所选解释器装了 xdist 通常也装了 pytest-timeout）；显式补 -n auto 双保险
+            # 保留被测仓自带 addopts（LM：-n auto --dist=loadscope --timeout=60；
+            # LH：--timeout=60 -n 4）；显式补 -n auto --dist loadscope 双保险。
+            # LH 追加显式 --timeout 60 与历史基线口径一致（addopts 被保留时不冲突）。
             pytest_argv += ["-n", "auto", "--dist", "loadscope"]
+            if args.target == "lightharness":
+                pytest_argv += ["--timeout", "60"]
         else:
             # 无 xdist：addopts 的 -n/--timeout 找不到插件会 ARGERROR → 必须置空，
             # 并显式关掉 xdist；硬超时靠 FreeBSD timeout(1)
             pytest_argv += ["-o", "addopts=", "-p", "no:xdist"]
         parallel = has_xdist
-        runner_cmd = f"cd {rd}/light-merge && {py} " + " ".join(
+        # LH 需要 LIGHT_MERGE 指向同一远端副本的 light-merge（其余测试用）
+        env_extra = f"export LIGHT_MERGE={rd}/light-merge && " if repo == "lightharness" else ""
+        runner_cmd = f"cd {rd}/{repo} && {env_extra}{py} " + " ".join(
             _q(a) for a in pytest_argv)
         if has_timeout:
             runner_cmd = f"timeout {args.timeout_sec} sh -c {_q(runner_cmd)}"
@@ -188,7 +230,7 @@ def cmd_test(args) -> int:
                   f"结果不完整，不写入基线")
 
         # 3) 拉回 junitxml
-        local_xml = REPORTS / f"_082_lm_results_{_stamp()}.xml"
+        local_xml = REPORTS / f"_082_{conf['xml_stem']}_{_stamp()}.xml"
         REPORTS.mkdir(parents=True, exist_ok=True)
         sftp = cli.open_sftp()
         try:
@@ -204,18 +246,20 @@ def cmd_test(args) -> int:
 
         parsed = BASE.parse_junit(local_xml)
         baseline = BASE.make_baseline(
-            parsed, name="light-merge", platform="0.82 FreeBSD 15.1",
-            host=mod.HOST, remote_dir=rd, cwd=f"{rd}/light-merge",
+            parsed, name=conf["name"], platform="0.82 FreeBSD 15.1",
+            host=mod.HOST, remote_dir=rd, cwd=f"{rd}/{repo}",
             runner={"mode": args.mode, "parallel": parallel,
-                    "timeout_sec": args.timeout_sec,
+                    "timeout_sec": args.timeout_sec, "target": args.target,
                     "marker": "not slow" if args.mode == "fast" else "",
                     "cmd": full, "elapsed_sec": elapsed,
-                    "pytest_rc": rc, "timed_out": timed_out})
+                    "pytest_rc": rc, "timed_out": timed_out},
+            round_=args.round)
 
-        path = REPORTS / f"{BASELINE_PREFIX}{_stamp()}.json"
+        path = REPORTS / f"{conf['prefix']}{_stamp()}.json"
         BASE.save_baseline(baseline, path)
-        BASE.save_baseline(baseline, LATEST)
-        print(f"[082全量] 基线写入 {path.relative_to(ROOT)}（同步更新 latest）")
+        BASE.save_baseline(baseline, conf["latest"])
+        print(f"[082全量] 基线写入 {path.relative_to(ROOT)}（round={args.round}，"
+              f"同步更新 {conf['latest'].name}）")
 
         t = baseline["totals"]
         print("[082全量] 摘要：共 %d 用例，通过 %d，失败 %d（failure %d / error %d），"
@@ -238,14 +282,15 @@ def _q(s: str) -> str:
 
 # ------------------------------------------------------------------ diff
 def cmd_diff(args) -> int:
-    history = list_baselines()
+    conf = target_conf(args.target)
+    history = list_baselines(args.target)
     if not history:
         print("[082全量] 没有历史基线，先跑 test")
         return 1
 
     if args.base:
         base = BASE.load_baseline(Path(args.base))
-        new_path = Path(args.new) if args.new else LATEST
+        new_path = Path(args.new) if args.new else conf["latest"]
     else:
         if len(history) < 2:
             print(f"[082全量] 只有一份基线（{history[-1].name}），无可比对的历史。"
@@ -271,7 +316,7 @@ def cmd_diff(args) -> int:
 
 # ------------------------------------------------------------------ show
 def cmd_show(args) -> int:
-    history = list_baselines()
+    history = list_baselines(args.target)
     if not history:
         print("[082全量] 尚无基线")
         return 1
@@ -298,7 +343,7 @@ def cmd_all(args) -> int:
     print("=" * 60)
     print("[082全量] 步骤 2/3  test")
     t0 = time.monotonic()
-    before = list_baselines()
+    before = list_baselines(args.target)
     rc = cmd_test(args)
     elapsed = time.monotonic() - t0
     print(f"[082全量] test 总耗时 {elapsed:.0f}s")
@@ -306,7 +351,7 @@ def cmd_all(args) -> int:
         return rc
     print("=" * 60)
     print("[082全量] 步骤 3/3  diff")
-    after = list_baselines()
+    after = list_baselines(args.target)
     d = None
     if before and len(after) > len(before):
         # 用本次跑之前的最后一份做基线
@@ -329,6 +374,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="sub", required=True)
 
     def common(p):
+        p.add_argument("--target", choices=sorted(TARGETS), default=DEFAULT_TARGET,
+                       help="被测仓：light-merge（默认，历史口径）/ lightharness。"
+                            "两套基线前缀与 latest 指针互相独立")
+        p.add_argument("--round", default=DEFAULT_ROUND,
+                       help=f"写入基线的 round 字段（默认 {DEFAULT_ROUND}；R111 轮传 R111）")
         p.add_argument("--mode", choices=["fast", "full"], default="fast",
                        help="fast=-m 'not slow'（默认，跳过慢用例）；full=全量")
         p.add_argument("--py", default="/usr/local/bin/python3.12",
@@ -344,19 +394,24 @@ def build_parser() -> argparse.ArgumentParser:
                        help="远端硬超时秒数（默认 2700 = 45min）")
         return p
 
+    def with_target(p):
+        p.add_argument("--target", choices=sorted(TARGETS), default=DEFAULT_TARGET,
+                       help="被测仓：light-merge（默认）/ lightharness")
+        return p
+
     p = sub.add_parser("sync", help="打包并同步到 0.82")
     p.add_argument("--with-git", action="store_true", help="连 .git 一起同步")
     p.set_defaults(fn=cmd_sync)
 
-    p = common(sub.add_parser("test", help="0.82 上跑 light-merge 全量 pytest"))
+    p = common(sub.add_parser("test", help="0.82 上跑被测仓全量 pytest"))
     p.set_defaults(fn=cmd_test)
 
-    p = sub.add_parser("diff", help="与上一份基线对比")
+    p = with_target(sub.add_parser("diff", help="与上一份基线对比"))
     p.add_argument("--base", help="显式指定基线 JSON")
     p.add_argument("--new", help="本轮基线 JSON（默认 latest）")
     p.set_defaults(fn=cmd_diff)
 
-    p = sub.add_parser("show", help="列出基线摘要")
+    p = with_target(sub.add_parser("show", help="列出基线摘要"))
     p.add_argument("--recent", action="store_true", help="只看最近 3 份")
     p.add_argument("--dump", action="store_true", help="打印最新一份完整 JSON")
     p.set_defaults(fn=cmd_show)
@@ -369,10 +424,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    for k in ("mode", "parallel", "serial", "timeout_sec", "py"):
+    for k in ("mode", "parallel", "serial", "timeout_sec", "py",
+              "target", "round"):
         if not hasattr(args, k):
             setattr(args, k, None)
     args.timeout_sec = args.timeout_sec or 2700
+    args.target = args.target or DEFAULT_TARGET
+    args.round = args.round or DEFAULT_ROUND
     return args.fn(args)
 
 
