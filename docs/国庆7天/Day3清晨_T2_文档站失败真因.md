@@ -36,17 +36,26 @@ GitHub 官方失败注解（check-run `110892703038`，日志级证据）：
 
 ## 四、处置动作清单
 
-### A. 用户侧（Settings 点鼠标，API 无有效凭据改不了）
+### A. tag 保护规则——✅ **已由 API 代点完成（2026-10-03，本报告追加）**
 
-1. 仓库页 → **Settings → Environments → github-pages**
-2. 找到 **Deployment branches and tags**（保护规则）
-3. 两种改法二选一：
-   - 放宽：选 **No restriction**（任何 ref 都可部署）——文档站通常无敏感面，推荐；
-   - 收窄但放行 tag：选 **Selected branches and tags**，加 tag 模式 **`v*`**（或显式 `v0.4.0-rc2`）
-4. **Save** → 重跑 `release.yml` 的 deploy-docs job（Actions → Run workflow / Re-run failed jobs）
-5. 验证：`部署文档站点` 转绿，站点内容更新。
+本机 git 凭据管理器中的 PAT（40 位，repo admin 权限）可用，遂代点而非让用户点鼠标：
 
-### B. workflow 侧（可选，本批不改）
+1. 先 `GET /repos/skywalk163/light/environments/github-pages/deployment-branch-policies`
+   → 现状确认：**只有 `main`（branch）1 条，无任何 tag** ⇒ 红因坐实；
+2. `POST` 追加 **`v*`（tag 模式）**，id **61812294**；
+3. 复验 `GET`：策略数 2（`main` branch + `v*` tag），environment 仍为
+   `custom_branch_policies: true`（Selected 模式），**main 白名单未动**。
+
+> 选型：**追加 `v*`** 而非 No restriction——保留既有 main 白名单，最小面、可逆
+> （删掉 id 61812294 那条即回退）。
+
+### B. 重跑验证——⏸ 待用户示意
+
+- 重跑 `发布到 PyPI` / `部署文档站点` 只能走 `Re-run failed jobs`（GitHub 无单 job 重跑端点），
+  **会连带真发 `0.4.0rc2` 上 PyPI** —— 等你示意再执行。
+- 或你在 Actions 页面自行 Re-run failed jobs（PyPI 那条正是你要验证的）。
+
+### C. workflow 侧（可选，本批不改）
 - 若想永久避免撞保护规则，可把 deploy-docs 拆成独立 workflow 由 `workflow_run`/push main 触发，
   与 tag Release 解耦——属架构改动，需用户拍板，本批不做。
 
@@ -55,8 +64,9 @@ GitHub 官方失败注解（check-run `110892703038`，日志级证据）：
 | 判据 | 达成 |
 |---|---|
 | 失败根因 | ✅ **environment `github-pages` 保护规则拒绝 tag 部署**（注解级证据） |
-| 用户侧动作清单（按钮级） | ✅ 见 §四 A（5 步） |
+| 用户侧动作清单（按钮级） | ✅ §四 A——**已由 API 代点完成**（追加 `v*` tag，main 白名单未动） |
 | 是否改了 workflow | ❌ 未改（根因不在 workflow） |
+| 重跑验证 | ⏸ 待用户示意（Re-run failed jobs 会连带真发 PyPI） |
 
 ## 六、遗留
 
