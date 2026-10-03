@@ -14,9 +14,10 @@
     "【R69 2026-09-19】新增 #211~#214：异步子进程（事件循环驱动回调式异步执行）+ 异步PTY（非阻塞终端交互）+ 沙箱多平台探测链（PLATFORM_CHAINS + fail-closed）+ 沙箱统一入口（约束/运行/升级整合）；仅 freebsd-jail 有完整约束实现，其他后端仅探测未实现（fail-closed）",
     "【第8轮 终轮收口 C 线 2026-09-30】跳号补卡扫描结论：#263–#268 确为编号洞（连续范围 263–268 无条目，R6 从未分配），但经对上游锚点 e5b5ccbfcb 的 packages/ 55 个包逐包比对，疑似未覆盖的 28 个包(browser-use/computer-use/credentials/telemetry/storage/settings/plan/goal/guard/host/identity/jobs/lsp/schedule/sdk/skill/spill/ssh/terminal/todo/typert/workspace/preset/ptc-runtime/runtime-diagnostics/bundle/client/shell)均已由现有卡覆盖——browser-use+computer-use→#254、runtime-diagnostics(invariants)→#252、sdk→#74、lsp→#63、jobs→#53/#101、guard→#23/#52/#61/#101/#113、schedule→#29/#52/#53/#101/#206、credentials→#24/#61/#90/#246、telemetry→#19、storage→#14/#59/#99、settings→#25/#115、goal→#35/#88、plan→#39/#272、host→#10–#21、identity→#90/#91、skill→#38/#249、spill→#27/#98、ssh→#190/#253、terminal→#15/#191/#212、todo→#22/#66、typert→#62/#96/#219/#276、workspace→#58/#208/#209、preset→#72/#249/#250、ptc-runtime→#20/#187、bundle→#11/#249、client→#16/#55/#104/#107、shell→#12/#46/#87/#236/#237。纯逻辑面复刻已随 #255–#291 全部收口（done/宿主桩已接(可测)/宿主登记），无真实空缺可填，故 #263–#268 维持为保留跳号、未硬填卡（遵循第8轮任务书 §0 实测更正「不能硬填 #263–#268」）。#198–#200 为空占位条目，标注「非对标条目（轮次报告）」保留。#197 lexer 收尾经 lexer 单元测试（16 passed / 1 skipped 绿）核验后销账 done；全量 0.82 权威门由路M 复核，本线不 commit。",
     "【R105 2026-10-01 收口】任务书 §3 原定卡号 A=#255 / C=#256 / D=#257 —— 实测三卡均已被第8轮终轮收口占用（#255 CLI 外壳 / #256 远端 API 总线宿主出口 / #257 ACP 内容准入投影），故按「不可硬填已占编号」原则顺延取当前空号 #296/#297/#298，B 线（webui/settings.js + settings.css 设置对话框复刻）按任务书不占卡。",
-    "【R105 2026-10-01 收口】合流点：src/设置页.light.渲染设置页() 的 模型/内置插件/Agent预设 三键已改调 src/设置页深化.light 导出；C 线 合并已存设置 已按 A 线 {配置文档, 行集} 形状复核通过，未启用临时校验器。"
+    "【R105 2026-10-01 收口】合流点：src/设置页.light.渲染设置页() 的 模型/内置插件/Agent预设 三键已改调 src/设置页深化.light 导出；C 线 合并已存设置 已按 A 线 {配置文档, 行集} 形状复核通过，未启用临时校验器。",
+    "【R111 2026-10-03】Day3 并行批 R4（轨道 B 上游纯逻辑面移植）：R110 暂缓 5 组收口——新增 #314~#318：#314 schedule 提醒框架渲染（定时提醒框架.light，framing 固定文本变更+紧凑JSON 逐字节对齐）/ #315 user-questions 折叠状态机（用户问题投影.light）/ #316 tool-ask-user timed 纯逻辑（审批.light 增补）/ #317 shell 提示词文案（工具_bash.light 描述增补）/ #318 llm 兼容门暂缓登记（无对应承载）。四组移植各有探针（test_r111*），对标源锚点 dsh-v0.2.0-rc.2（639ed01539）。"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）；R111（Day3 R4 上游 rc.2 纯逻辑面：#314 schedule framing / #315 user-questions 状态机 / #316 timed 工具 / #317 shell 提示词 / #318 llm 兼容门暂缓）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -4311,6 +4312,70 @@
       ],
       "本轮目标": "R108 F线：落地 R107 §九 顺延项「ui-plugin-manager 侧栏插件主面板」只读面；写路径依赖真实 pnpm+文件锁，本仓无等价实现，如实声明不做",
       "反跑判据": "把 分桶 官方谓词改为「已安装且非可选」-> test_插件面板 1b(可选未装进官方) 立红；还原绿"
+    },
+    {
+      "编号": 314,
+      "功能": "schedule 提醒框架渲染（R111-R4 组1）：定时消息框架文案共享常量（\"This is a scheduled message from the user\" 逐字）+渲染到期提醒（单次 [SCHEDULE REMINDER] 五固定行：schedule_id_json/occurrence_at/reminder_prompt_json，动态载荷 canonical JSON）+渲染重复提醒批次（[SCHEDULE REMINDER BATCH] + reminders_json，载荷键序固定 schedule_id→occurrence_at→reminder_prompt）+紧凑JSON（纯光明递归序列化，分隔符无空格，逐字节对齐上游 JSON.stringify——光明 序列化JSON 默认 ': ' 带空格，模块内置兜住）+记录多余字段过滤（伪造字段注入负例回归护栏）；安全语义差异登记：上游放弃显式 untrusted 声明，防注入责任转移到工具 schema 侧",
+      "原版包": "packages/schedule/schedule/src/domain.ts @ dsh-v0.2.0-rc.2（af39300572，PR #5137，R110 暂缓 4 组之一）",
+      "光明模块": "src/定时提醒框架.light（新增，~100 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/定时提醒框架.light",
+        "lightharness/examples/test_r111定时提醒框架.light"
+      ],
+      "本轮目标": "R111-R4：落地 R110 暂缓组1；上游 framing 渲染语义变化（固定文本由注入抵抗指令改为来源声明 + 共享常量抽提）同步",
+      "反跑判据": "定时消息框架文案改回 untrusted 指令 → test_r111定时提醒框架 用例1/2 立红；渲染函数去掉多余字段过滤 → 用例3 立红；紧凑JSON 分隔符带空格 → 用例4 立红；还原绿"
+    },
+    {
+      "编号": 315,
+      "功能": "user-questions 折叠状态机（R111-R4 组2）：是定时提问模式（properties 缺 timeout 判假）+读问题表（畸形/空参数返回空，multi_select→multiSelect，可选字段缺省不落键）+是挂起结果（text 块 JSON pending==true，非 JSON 判假）+读答案批次（{answers:[…]} 形状，迟到回复与按时工具结果同形状）+结算问题（callId 不在 active 原视图不变）+应用问题事件（request/header 定时标记漂移门 / tool/call open 入集同 callId 去重 / tool/result 挂起与 TOOL_OUTCOME_UNKNOWN 转 continued、答案结算、失败丢弃 / user/message 仅 user-question-reply 结算）+折叠问题集（无关事件折叠不变引用稳定）；ptc-dispatch 宿主面（PTC 运行时）登记不移植，index.ts steering 送达为 Cordis 接线剥离",
+      "原版包": "packages/interaction/user-questions/src/projection.ts + types.ts @ dsh-v0.2.0-rc.2（PR #5178 簇 ~22 commits，R110 暂缓 4 组之二）",
+      "光明模块": "src/用户问题投影.light（新增，~370 行）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/用户问题投影.light",
+        "lightharness/examples/test_r111用户问题投影.light"
+      ],
+      "本轮目标": "R111-R4：落地 R110 暂缓组2；数据形状（active/settled 视图）+状态机投影移植，SessionLogOffset/Zod/ToolCallId 品牌类型以普通 dict 表达",
+      "反跑判据": "破坏 定时标记判定（properties 缺 timeout 也判定时）→ 用例1 立红；破坏 tool/result 分支 → 用例3/4/5/7 立红；破坏 迟到回复结算 → 用例6 立红；破坏 不可读参数忽略 → 用例8 立红；还原绿"
+    },
+    {
+      "编号": 316,
+      "功能": "tool-ask-user timed 工具纯逻辑（R111-R4 组3）：校验等待超时（-1 或整数 1..2147483 秒，非法 fail-loud 抛错）+校验问题id唯一（同一次调用内重复 fail-loud，错误文案带 JSON.stringify(id)）+挂起通知文案（上游 pendingNotice 逐字：No answer batch arrived before the timeout…Do not treat this as permission.）+定时等待参数描述（默认 120 秒模板逐字）；defineTool/Cordis ctx、Date.now/setTimeout/AbortSignal 均投影剥离为注入时钟与取消能力",
+      "原版包": "packages/interaction/tool-ask-user/src/timed.ts @ dsh-v0.2.0-rc.2（fc30c5a7d2/b6401085cb，208 行，R110 暂缓 4 组之三）",
+      "光明模块": "src/审批.light（增补 timed 段：校验等待超时/校验问题id唯一/挂起通知文案/定时等待参数描述）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/审批.light",
+        "lightharness/examples/test_r111定时提问工具.light"
+      ],
+      "本轮目标": "R111-R4：落地 R110 暂缓组3；校验/映射/文案纯函数移植（上游 registerTimedAskUser 的可测核心）",
+      "反跑判据": "破坏 validateTimeout 边界 → 用例1（0/-2/2147484/1.5 抛错）立红；破坏 question id 唯一性 → 用例2b 立红；pendingNotice 文案漂移 → 用例3e/3f 逐字断言立红；还原绿"
+    },
+    {
+      "编号": 317,
+      "功能": "shell 工具提示词文案（R111-R4 组4）：tool-bash 工具描述新增两句（① Before any delete or move, verify that the resolved absolute target path is the intended one; never run it against a computed path you have not checked. ② An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`.）上游逐字跟随（提示词契约文案=逻辑面）；tool-pwsh 同构，src/工具_bash.light 造bash工具定义 即为两侧共用根；pwsh-persistent ASCII 填充状态行解析属终端实现=宿主面登记",
+      "原版包": "packages/shell/tool-bash/src/index.ts + tool-pwsh/src/index.ts @ dsh-v0.2.0-rc.2（1a50c05170，R110 暂缓 4 组之四）",
+      "光明模块": "src/工具_bash.light（造bash工具定义 描述增补）",
+      "状态": "done",
+      "证据": [
+        "lightharness/src/工具_bash.light",
+        "lightharness/examples/test_r111shell提示词.light"
+      ],
+      "本轮目标": "R111-R4：落地 R110 暂缓组4；lightharness 已复刻 bash 工具描述，同步两句文案",
+      "反跑判据": "破坏 工具描述两句新增文案 → test_r111shell提示词 用例1/2 立红（文案断言）；破坏 bash 工具注册链 → 用例3 立红；还原绿"
+    },
+    {
+      "编号": 318,
+      "功能": "llm 兼容门（R111-R4 暂缓登记）：catalog.ts COMPLETIONS/RESPONSES/ANTHROPIC compat gate 增删字段（deferredToolsMode/supportsToolReferences 移除；supportsMidConvoSystemMessages/supportsMidConvoToolAdditions/supportsMidConvoToolChanges/sessionAffinityFormat 新增）+ MISTRAL_COMPAT_GATE；依赖 pi-ai 0.87.1 的类型目录，lightharness 无对应协议兼容面 → 按 R110 原判与 Day3 砍线条款继续暂缓，仅在 lightharness 引入模型兼容开关时按上游门表实施",
+      "原版包": "packages/llm catalog.ts @ dsh-v0.2.0-rc.2（28648ffb6b/c73b80b1ea/6ed596f71b）",
+      "光明模块": "无（暂缓登记，未移植）",
+      "状态": "none",
+      "证据": [
+        "lightharness/docs/功能对标/R110_上游0.2.0-rc.2增量清单.md §4.5"
+      ],
+      "本轮目标": "R111-R4：R110 暂缓组5 如实登记不移植（无对应承载），维持砍线条款结论",
+      "反跑判据": "无（暂缓项，不占验收判据；若后续引入模型兼容开关，须按上游门表补卡并补判据）"
     }
   ]
 }

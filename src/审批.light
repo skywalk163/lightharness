@@ -125,6 +125,46 @@
     列表追加(结果, 项)
   返回 ["answers": 结果]
 
+# =====================================================================
+# R111-R4 组3：tool-ask-user timed 工具纯逻辑
+# （对齐原版 packages/interaction/tool-ask-user/src/timed.ts @ dsh-v0.2.0-rc.2，
+#   上游 fc30c5a7d2 / b6401085cb，208 行；R110 暂缓组 2/4 之二）
+# 宿主面剔除：defineTool/Cordis ctx、Date.now/setTimeout/AbortSignal 均投影剥离
+#   为注入时钟与取消能力；校验 / 文案为纯函数（上游 registerTimedAskUser 的可测核心）。
+# =====================================================================
+
+# 等待超时校验（上游 validateTimeout 逐条对照）：fail-loud。
+#   -1 表示必须等到答复才继续；其余必须为整数且 1..2147483 秒。
+段落 校验等待超时(超时):
+  如果 超时 == -1:
+    返回 超时
+  结束。
+  如果 (是整数(超时) == 假) 或 (超时 < 1) 或 (超时 > 2147483):
+    抛出 新建 错误("timeout must be -1 or a positive integer up to 2147483 seconds")
+  结束。
+  返回 超时
+
+# 问题 id 唯一性校验（上游 validateQuestionIds）：同一次调用内 id 重复 fail-loud。
+段落 校验问题id唯一(问题表):
+  设 已见 为 {}
+  遍历 问题 之 问题表:
+    设 id 为 问题["id"]
+    如果 已见.包含(id) == 真:
+      抛出 新建 错误("question id " + 序列化JSON(id) + " must be unique within this call")
+    结束。
+    已见[id] 为 真
+  结束。
+  返回 真
+
+# 挂起通知文案（上游 pendingNotice 逐字对齐）：作为结果值的 message 字段（而非旁边散文）
+#   携带——记录的结果文本以 JSON 对象读回：userQuestions 投影从它判定调用仍可作答，
+#   Client 问题行从它判定记录结果是超时而非答案批次。
+设 挂起通知文案 为 "No answer batch arrived before the timeout. This is pending, not a skipped answer. Continue useful independent work. The user can still answer; their reply will be a user message identified as answer_to_pending_question with this callId and the original questions. Do not treat this as permission."
+
+# 定时等待参数描述（上游 [TIMED_WAIT_PARAMETER].description 模板，默认 120 秒）
+段落 定时等待参数描述(默认秒):
+  返回 "Wait seconds for the entire batch (default " + 转字符串(默认秒) + "); omit unless the user specifies a duration. Use -1 only when an answer is required before proceeding."
+
 # 生成审批 id：approval_微秒时间戳_6位十六进制随机
 # 使用微秒 + 全局递增计数器，保证同进程内 id 唯一
 段落 生成审批id:
@@ -388,6 +428,10 @@
 导出 从不文案
 导出 询问文案
 导出 提问工具描述
+导出 校验等待超时
+导出 校验问题id唯一
+导出 挂起通知文案
+导出 定时等待参数描述
 
 # =====================================================================
 # 第6轮 任务E #288：审批 接线出口 —— 接 权限.light 闸门

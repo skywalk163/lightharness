@@ -1,0 +1,76 @@
+# test_r111定时提问工具.light —— R111-R4 组3：tool-ask-user timed 纯逻辑探针
+# 对标源：packages/interaction/tool-ask-user/src/timed.ts @ dsh-v0.2.0-rc.2（validateTimeout /
+#   validateQuestionIds / pendingNotice / [TIMED_WAIT_PARAMETER].description）
+# 反跑判据：
+#   破坏 validateTimeout 边界（-1 / 1 / 2147483 / 0 / 2147484 / 1.5）→ 用例1 立红；
+#   破坏 question id 唯一性 → 用例2 立红；pendingNotice 文案漂移 → 用例3 立红。
+
+从 审批 导入 校验等待超时, 校验问题id唯一, 挂起通知文案, 定时等待参数描述
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件=" + 转字符串(条件))
+  返回 真
+
+段落 断言抛错(无参函数, 标签):
+  # 返回 真=抛错；假=未抛。通过返回值供断言（光明无裸 try 表达式，以段落包装）。
+  尝试:
+    无参函数()
+  捕获 异常 为 e:
+    返回 真
+  返回 假
+
+段落 用例1等待超时校验边界:
+  断言相等(校验等待超时(-1), -1, "用例1a: -1 合法（必须等到答复）")
+  断言相等(校验等待超时(1), 1, "用例1b: 下界 1 合法")
+  断言相等(校验等待超时(2147483), 2147483, "用例1c: 上界 2147483 合法")
+  断言相等(校验等待超时(120), 120, "用例1d: 默认 120 合法")
+  断言(断言抛错(返回非法超时0, "用例1e") == 真, "用例1e: 0 抛错")
+  断言(断言抛错(返回非法超时负2, "用例1f") == 真, "用例1f: -2 抛错")
+  断言(断言抛错(返回非法超时超上界, "用例1g") == 真, "用例1g: 2147484 抛错")
+  断言(断言抛错(返回非法超时浮点, "用例1h") == 真, "用例1h: 1.5 抛错")
+  写 "通过: 用例1 等待超时校验边界"
+
+段落 返回非法超时0:
+  校验等待超时(0)
+
+段落 返回非法超时负2:
+  校验等待超时(-2)
+
+段落 返回非法超时超上界:
+  校验等待超时(2147484)
+
+段落 返回非法超时浮点:
+  校验等待超时(1.5)
+
+段落 用例2问题id唯一性:
+  设 问题表 为 [["id": "q1", "question": "第一问"], ["id": "q2", "question": "第二问"]]
+  断言(校验问题id唯一(问题表) == 真, "用例2a: 唯一 id 通过")
+  设 重复表 为 [["id": "q1", "question": "第一问"], ["id": "q1", "question": "重复"]]
+  断言(断言抛错(返回重复id, "用例2b") == 真, "用例2b: 重复 id 抛错")
+  设 空表 为 []
+  断言(校验问题id唯一(空表) == 真, "用例2c: 空表通过")
+  写 "通过: 用例2 问题id唯一性"
+
+段落 返回重复id:
+  设 重复表 为 [["id": "q1", "question": "第一问"], ["id": "q1", "question": "重复"]]
+  校验问题id唯一(重复表)
+
+段落 用例3挂起通知文案:
+  断言(字符串包含(挂起通知文案, "No answer batch arrived before the timeout.") == 真, "用例3a: 超时说明在")
+  断言(字符串包含(挂起通知文案, "This is pending, not a skipped answer.") == 真, "用例3b: 挂起非跳过声明在")
+  断言(字符串包含(挂起通知文案, "answer_to_pending_question") == 真, "用例3c: 迟到回复标识在")
+  断言(字符串包含(挂起通知文案, "Do not treat this as permission.") == 真, "用例3d: 权限声明在")
+  断言相等(挂起通知文案, "No answer batch arrived before the timeout. This is pending, not a skipped answer. Continue useful independent work. The user can still answer; their reply will be a user message identified as answer_to_pending_question with this callId and the original questions. Do not treat this as permission.", "用例3e: 挂起通知逐字")
+  断言相等(定时等待参数描述(120), "Wait seconds for the entire batch (default 120); omit unless the user specifies a duration. Use -1 only when an answer is required before proceeding.", "用例3f: 定时等待参数描述逐字")
+  写 "通过: 用例3 挂起通知文案"
+
+用例1等待超时校验边界
+用例2问题id唯一性
+用例3挂起通知文案
+写 "test_r111定时提问工具：3 用例全绿"

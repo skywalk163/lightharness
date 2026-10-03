@@ -48,8 +48,12 @@
   返回 ["输出": 输出, "错误": 错误, "退出码": 结果.返回码]
 
 # ---- 构造工具定义（供注册表注册）----
+# R111-R4 组4：shell 提示词文案（对齐原版 packages/shell/tool-bash/src/index.ts + tool-pwsh/src/index.ts
+#   @ dsh-v0.2.0-rc.2，上游 1a50c05170；R110 暂缓组 4）：
+#   工具描述新增两句——① 删除/移动前必须核对解析后的绝对路径；② 未设变量展开为空串、用 ${VAR:?} 防护。
+#   上游逐字跟随（提示词契约文案=逻辑面）；tool-pwsh 同构，本定义即为两侧共用根。
 段落 造bash工具定义():
-  返回 造工具定义("bash", "在 shell 中执行命令，返回 stdout、stderr 与退出码（工作目录限于项目根，超时 30 秒）", bash模式(), bash处理)
+  返回 造工具定义("bash", "在 shell 中执行命令，返回 stdout、stderr 与退出码（工作目录限于项目根，超时 30 秒）。Before any delete or move, verify that the resolved absolute target path is the intended one; never run it against a computed path you have not checked. An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`.", bash模式(), bash处理)
 
 # ---- 便捷注册（对齐 工具执行 的 dict 注册表）----
 # L-163：原实现 注册表.注册(...) 对 工具执行.建注册表() 的 dict 会抛

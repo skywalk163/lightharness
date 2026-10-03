@@ -1,0 +1,41 @@
+# test_r111shell提示词.light —— R111-R4 组4：shell 工具提示词契约探针
+# 对标源：packages/shell/tool-bash/src/index.ts + tool-pwsh/src/index.ts @ dsh-v0.2.0-rc.2（上游 1a50c05170）
+# 反跑判据：破坏 工具描述两句新增文案 → 用例1/2 立红（文案断言）；
+#   破坏 bash 工具注册链 → 用例3 立红（造定义仍可用）。
+
+从 工具_bash 导入 造bash工具定义
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言失败[" + 标签 + "]：条件=" + 转字符串(条件))
+  返回 真
+
+段落 用例1绝对路径核对句:
+  设 定义 为 造bash工具定义()
+  设 描述 为 定义["description"]
+  断言(字符串包含(描述, "Before any delete or move, verify that the resolved absolute target path is the intended one;") == 真, "用例1a: 绝对路径核对句在")
+  断言(字符串包含(描述, "never run it against a computed path you have not checked.") == 真, "用例1b: 未核对路径禁令在")
+  写 "通过: 用例1 绝对路径核对句"
+
+段落 用例2变量防护句:
+  设 定义 为 造bash工具定义()
+  设 描述 为 定义["description"]
+  断言(字符串包含(描述, "An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`.") == 真, "用例2a: 变量防护句逐字在")
+  写 "通过: 用例2 变量防护句"
+
+段落 用例3工具定义仍可用:
+  设 定义 为 造bash工具定义()
+  断言相等(定义["name"], "bash", "用例3a: 工具名不变")
+  断言(定义["description"] != 空, "用例3b: 描述非空")
+  断言(字符串包含(定义["description"], "在 shell 中执行命令") == 真, "用例3c: 既有中文描述保留")
+  写 "通过: 用例3 工具定义仍可用"
+
+用例1绝对路径核对句
+用例2变量防护句
+用例3工具定义仍可用
+写 "test_r111shell提示词：3 用例全绿"

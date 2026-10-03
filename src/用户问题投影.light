@@ -1,0 +1,361 @@
+# 用户问题投影.light —— R111-R4 组2：user-questions 状态机（对齐原版 packages/interaction/user-questions/src/projection.ts + types.ts @ dsh-v0.2.0-rc.2）
+#
+# 1:1 复刻上游纯逻辑核心（PR #5178 簇，3a296b16b4 等 ~22 commits）：
+#   - 把 ask_user_question 工具事件折叠为「可继续作答的问题集」：active(open/continued) + settled
+#   - request/header 从记录的工具 schema 判定定时标记：只有声明 定时等待参数名(timeout) 的
+#     ask_user_question schema 算定时；阻塞式旧 schema 的调用从不入折叠
+#   - tool/call：定时且参数可读 → active 以 {callId, questions, state:"open"} 入集（同 callId 先去重）
+#   - tool/result：挂起载荷（JSON pending==true）或 TOOL_OUTCOME_UNKNOWN 修复结果 → state:"continued"；
+#     答案批次（无错误且非 isError 的 JSON {answers:[…]}）→ 结算入 settled；失败 → 丢弃
+#   - user/message：source.kind=="user-question-reply" 且 agent 承认该用户消息 → 结算
+#     （排队收件箱消息在此点前仍可能被丢弃，故未承认不改折叠）
+#   - tool/ptc-dispatch 上游 PTC 子调用分支：宿主面（PTC 运行时），登记不移植
+#
+# 宿主面剔除：SessionLogOffset/Zod schema/ProjectionDefinition（session 投影框架）/
+#   ToolCallId 品牌类型——光明以普通 dict + 事件表表达同一数据形状；
+#   index.ts 的 steering 送达（agent.steer）为 Cordis 接线，剥离后由调用方注入。
+# 类型对齐（上游 types.ts）：late replies（user-question-reply）与 produced answers（工具结果）
+#   共用同一答案批次形状 {id, selected[], custom?}，结算时同形状入 settled。
+#
+# 光明命名规范：模块级函数用提前返回写法。
+
+从 JSON 导入 解析JSON, 验证JSON
+
+# 本投影跟踪的工具名（上游 ASK_USER_QUESTION_TOOL）
+设 问称工具名 为 "ask_user_question"
+
+# 定时等待参数名（上游 TIMED_WAIT_PARAMETER）：只被定时 schema 声明的模型面参数，
+#   其在记录的 request/header 工具 schema 中出现即判定「定时调用」。
+设 定时等待参数名 为 "timeout"
+
+# 会话修复结果错误码（上游 TOOL_OUTCOME_UNKNOWN，packages/core/session/src/repair.ts:18）：
+#   进程未跑完的调用的合成结果，视为「可继续」而非失败。
+设 修复结果错误码 为 "TOOL_OUTCOME_UNKNOWN"
+
+# ---- 判定：工具 schema 是否为定时 ask_user_question（上游 isTimedAskUserQuestionSchema）----
+段落 是定时提问模式(工具):
+  如果 是字典(工具) == 假:
+    返回 假
+  结束。
+  如果 工具.获取("name", "") != 问称工具名:
+    返回 假
+  结束。
+  如果 字典包含键(工具, "parameters") == 假:
+    返回 假
+  结束。
+  设 参数 为 工具["parameters"]
+  如果 是字典(参数) == 假:
+    返回 假
+  结束。
+  如果 字典包含键(参数, "properties") == 假:
+    返回 假
+  结束。
+  设 属性表 为 参数["properties"]
+  如果 是字典(属性表) == 假:
+    返回 假
+  结束。
+  返回 字典包含键(属性表, 定时等待参数名)
+
+# ---- 读问题批次（上游 questionsOf）：记录的 tool/call 参数 JSON → 服务词汇问题表；不可读返回 空 ----
+# 形状校验（上游 toolArgumentsSchema.loose + min(1)）：字典含 questions 列表，
+#   每项 {id, question} 必备字符串 + 可选 header/options/multi_select。
+段落 读问题表(参数文本):
+  如果 验证JSON(参数文本) == 假:
+    返回 空
+  结束。
+  设 已解析 为 解析JSON(参数文本)
+  如果 是字典(已解析) == 假:
+    返回 空
+  结束。
+  如果 字典包含键(已解析, "questions") == 假:
+    返回 空
+  结束。
+  如果 是列表(已解析["questions"]) == 假:
+    返回 空
+  结束。
+  如果 长度(已解析["questions"]) < 1:
+    返回 空
+  结束。
+  设 结果 为 []
+  遍历 问题 之 已解析["questions"]:
+    如果 是字典(问题) == 假:
+      返回 空
+    结束。
+    如果 是字符串(问题.获取("id", "")) == 假:
+      返回 空
+    结束。
+    如果 是字符串(问题.获取("question", "")) == 假:
+      返回 空
+    结束。
+    设 项 为 {}
+    项["id"] 为 问题["id"]
+    项["question"] 为 问题["question"]
+    如果 字典包含键(问题, "header"):
+      项["header"] 为 问题["header"]
+    结束。
+    如果 字典包含键(问题, "options"):
+      项["options"] 为 问题["options"]
+    结束。
+    如果 字典包含键(问题, "multi_select"):
+      项["multiSelect"] 为 问题["multi_select"]
+    结束。
+    列表追加(结果, 项)
+  结束。
+  返回 结果
+
+# ---- 读文本块（content 首个 type=="text" 的 text；无则 空）----
+段落 取文本(内容):
+  如果 是列表(内容) == 假:
+    返回 空
+  结束。
+  遍历 块 之 内容:
+    如果 是字典(块) == 真:
+      如果 块.获取("type", "") == "text":
+        返回 块.获取("text", "")
+      结束。
+    结束。
+  结束。
+  返回 空
+
+# ---- 挂起结果判定（上游 isPendingResult）：文本块 JSON 且 pending==真 ----
+# 非文本 / 非 JSON / JSON 非字典 / pending 非 true 一律判假（失败消息永不当作挂起载荷）。
+段落 是挂起结果(内容):
+  设 文本 为 取文本(内容)
+  如果 文本 == 空:
+    返回 假
+  结束。
+  如果 验证JSON(文本) == 假:
+    返回 假
+  结束。
+  设 已解析 为 解析JSON(文本)
+  如果 是字典(已解析) == 假:
+    返回 假
+  结束。
+  如果 字典包含键(已解析, "pending") == 假:
+    返回 假
+  结束。
+  返回 已解析["pending"] == 真
+
+# ---- 读答案批次（上游 answerBatchOf）：工具结果或迟到的 user/message 文本 → 答案列表；不可读返回 空 ----
+# 答案批次形状（上游 answerBatchSchema.loose）：{answers: [{id, selected[], custom?}]}
+#   迟到的 user-question-reply 与按时工具结果共用同一形状（types.ts 对齐）。
+段落 读答案批次(内容):
+  设 文本 为 取文本(内容)
+  如果 文本 == 空:
+    返回 空
+  结束。
+  如果 验证JSON(文本) == 假:
+    返回 空
+  结束。
+  设 已解析 为 解析JSON(文本)
+  如果 是字典(已解析) == 假:
+    返回 空
+  结束。
+  如果 字典包含键(已解析, "answers") == 假:
+    返回 空
+  结束。
+  如果 是列表(已解析["answers"]) == 假:
+    返回 空
+  结束。
+  返回 已解析["answers"]
+
+# ---- 结算一问（上游 settleQuestion）：callId 不在 active → 原视图不变；否则移出 active、入 settled ----
+段落 结算问题(视图, 调用id, 答案表):
+  设 新活动 为 []
+  设 命中 为 空
+  遍历 项 之 视图["active"]:
+    如果 项["callId"] == 调用id:
+      设 命中 为 项
+    否则:
+      列表追加(新活动, 项)
+    结束。
+  结束。
+  如果 命中 == 空:
+    返回 视图
+  结束。
+  设 已结算 为 视图["settled"]
+  列表追加(已结算, ["callId": 命中["callId"], "answers": 答案表])
+  返回 ["active": 新活动, "settled": 已结算]
+
+# ---- 头部定时标记（上游 request/header 分支）：记录的工具 schema 列表里任一定时即 真 ----
+段落 头定时标记(事件):
+  设 数据 为 事件["数据"]
+  如果 是字典(数据) == 假:
+    返回 假
+  结束。
+  如果 字典包含键(数据, "header") == 假:
+    返回 假
+  结束。
+  设 头 为 数据["header"]
+  如果 是字典(头) == 假:
+    返回 假
+  结束。
+  如果 字典包含键(头, "tools") == 假:
+    返回 假
+  结束。
+  如果 是列表(头["tools"]) == 假:
+    返回 假
+  结束。
+  遍历 工具 之 头["tools"]:
+    如果 是定时提问模式(工具) == 真:
+      返回 真
+    结束。
+  结束。
+  返回 假
+
+# ---- 应用一个会话事件到问题折叠（上游 applyUserQuestionEvent 逐分支对照）----
+# 事件形状（光明 dict，对照上游 SessionEvent）：
+#   ["类型": "request/header", "数据": ["header": ["tools": [ {name, parameters} ]]]]
+#   ["类型": "tool/call",      "数据": ["name", "arguments"(JSON串), "callId"]]
+#   ["类型": "tool/result",    "数据": ["message": {toolCallId, content[], isError?}, "错误": 空|{code}]]
+#   ["类型": "user/message",   "数据": ["source": {kind, callId}, "content": []]]
+# 折叠形状：["timed": 真假, "questions": ["active": [{callId, questions, state}], "settled": [{callId, answers}]]]
+段落 应用问题事件(折叠, 事件):
+  设 类型 为 事件["类型"]
+  # -- request/header：定时标记漂移门（seeded / 无工具头读作旧 schema）--
+  如果 类型 == "request/header":
+    设 定时 为 头定时标记(事件)
+    如果 定时 == 折叠["timed"]:
+      返回 折叠
+    结束。
+    返回 ["timed": 定时, "questions": 折叠["questions"]]
+  结束。
+  # -- tool/call：定时且参数可读 → open 入集（同 callId 重新提问先去重）--
+  如果 类型 == "tool/call":
+    如果 折叠["timed"] == 假:
+      返回 折叠
+    结束。
+    设 数据 为 事件["数据"]
+    如果 数据.获取("name", "") != 问称工具名:
+      返回 折叠
+    结束。
+    设 问题表 为 读问题表(数据.获取("arguments", ""))
+    如果 问题表 == 空:
+      返回 折叠
+    结束。
+    设 调用id 为 数据.获取("callId", "")
+    设 新活动 为 []
+    遍历 项 之 折叠["questions"]["active"]:
+      如果 项["callId"] != 调用id:
+        列表追加(新活动, 项)
+      结束。
+    结束。
+    列表追加(新活动, ["callId": 调用id, "questions": 问题表, "state": "open"])
+    返回 ["timed": 折叠["timed"], "questions": ["active": 新活动, "settled": 折叠["questions"]["settled"]]]
+  结束。
+  # -- tool/result：挂起/修复 → continued；答案批次 → 结算；失败 → 丢弃 --
+  如果 类型 == "tool/result":
+    设 数据 为 事件["数据"]
+    设 消息 为 数据.获取("message", {})
+    设 调用id 为 消息.获取("toolCallId", "")
+    设 命中 为 假
+    遍历 项 之 折叠["questions"]["active"]:
+      如果 项["callId"] == 调用id:
+        设 命中 为 真
+      结束。
+    结束。
+    如果 命中 == 假:
+      返回 折叠
+    结束。
+    # 错误编码判定：数据["错误"] 存在且其 code 为 TOOL_OUTCOME_UNKNOWN
+    设 有修复码 为 假
+    如果 字典包含键(数据, "错误") == 真:
+      如果 数据["错误"] != 空:
+        如果 是字典(数据["错误"]) == 真:
+          如果 数据["错误"].获取("code", "") == 修复结果错误码:
+            设 有修复码 为 真
+          结束。
+        结束。
+      结束。
+    结束。
+    如果 (是挂起结果(消息.获取("content", [])) == 真) 或 (有修复码 == 真):
+      设 新活动 为 []
+      遍历 项 之 折叠["questions"]["active"]:
+        如果 项["callId"] == 调用id:
+          设 改项 为 ["callId": 项["callId"], "questions": 项["questions"], "state": "continued"]
+          列表追加(新活动, 改项)
+        否则:
+          列表追加(新活动, 项)
+        结束。
+      结束。
+      返回 ["timed": 折叠["timed"], "questions": ["active": 新活动, "settled": 折叠["questions"]["settled"]]]
+    结束。
+    # 答案批次仅在 无错误 且 非 isError 时读取（上游 event.data.error === undefined && isError !== true）
+    设 无错误 为 假
+    如果 字典包含键(数据, "错误") == 假:
+      设 无错误 为 真
+    结束。
+    如果 数据.获取("错误", 空) == 空:
+      设 无错误 为 真
+    结束。
+    设 非异常标记 为 真
+    如果 字典包含键(消息, "isError") == 真:
+      如果 消息["isError"] == 真:
+        设 非异常标记 为 假
+      结束。
+    结束。
+    设 答案表 为 空
+    如果 (无错误 == 真) 且 (非异常标记 == 真):
+      设 答案表 为 读答案批次(消息.获取("content", []))
+    结束。
+    如果 答案表 == 空:
+      # 失败/不可读 → 从 active 丢弃（不再是可继续问题）
+      设 新活动 为 []
+      遍历 项 之 折叠["questions"]["active"]:
+        如果 项["callId"] != 调用id:
+          列表追加(新活动, 项)
+        结束。
+      结束。
+      返回 ["timed": 折叠["timed"], "questions": ["active": 新活动, "settled": 折叠["questions"]["settled"]]]
+    结束。
+    设 新视图 为 结算问题(折叠["questions"], 调用id, 答案表)
+    如果 新视图 == 折叠["questions"]:
+      返回 折叠
+    结束。
+    返回 ["timed": 折叠["timed"], "questions": 新视图]
+  结束。
+  # -- user/message：agent 承认的 user-question-reply 迟到回复 → 结算（批次不可读按空结算）--
+  如果 类型 == "user/message":
+    设 数据 为 事件["数据"]
+    设 来源 为 数据.获取("source", {})
+    如果 是字典(来源) == 假:
+      返回 折叠
+    结束。
+    如果 来源.获取("kind", "") != "user-question-reply":
+      返回 折叠
+    结束。
+    设 答案表 为 读答案批次(数据.获取("content", []))
+    如果 答案表 == 空:
+      设 答案表 为 []
+    结束。
+    设 新视图 为 结算问题(折叠["questions"], 来源.获取("callId", ""), 答案表)
+    如果 新视图 == 折叠["questions"]:
+      返回 折叠
+    结束。
+    返回 ["timed": 折叠["timed"], "questions": 新视图]
+  结束。
+  # -- 其他事件：折叠不变（引用稳定）--
+  返回 折叠
+
+# ---- 折叠整个会话事件表（上游 foldUserQuestions）----
+# 返回 open/continued 按提问顺序、settled 按结算顺序的问题视图。
+段落 折叠问题集(事件表):
+  设 折叠 为 ["timed": 假, "questions": ["active": [], "settled": []]]
+  遍历 事件 之 事件表:
+    设 新折叠 为 应用问题事件(折叠, 事件)
+    如果 新折叠 != 折叠:
+      设 折叠 为 新折叠
+    结束。
+  结束。
+  返回 折叠["questions"]
+
+导出 问称工具名
+导出 定时等待参数名
+导出 修复结果错误码
+导出 是定时提问模式
+导出 读问题表
+导出 是挂起结果
+导出 读答案批次
+导出 结算问题
+导出 应用问题事件
+导出 折叠问题集
