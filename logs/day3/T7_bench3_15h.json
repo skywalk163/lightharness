@@ -1,0 +1,48 @@
+{
+ "ts": "2026-10-03T15:03:10+08:00",
+ "pidchain": {
+  "rc": 0,
+  "out": "LISTEN_PID=84072\n--- chain ---\n  PID  PPID  ELAPSED %CPU    RSS COMMAND\n84072 84019 03:29:32  0.0 261020 node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\n  PID  PPID  ELAPSED COMMAND\n84019 84018 03:29:35 node /home/workbuddy/.local/bin/pnpm dsh:freebsd web\n  PID PPID  ELAPSED COMMAND\n84018    1 03:29:35 daemon: /bin/sh[84019] (daemon)\n--- daemon pidfile ---\nNO_PIDFILE",
+  "err": ""
+ },
+ "sockstat": {
+  "rc": 0,
+  "out": "USER     COMMAND    PID   FD  PROTO  LOCAL ADDRESS         FOREIGN ADDRESS      \nworkbuddy node      84072 76  tcp4   127.0.0.1:3080        *:*",
+  "err": ""
+ },
+ "swap": {
+  "rc": 0,
+  "out": "Device              Size     Used    Avail Capacity\n/dev/ada0p2         2.0G     1.9G      53M    97%\n/dev/zvol/zroot/swapvol     8.0G     2.2G     5.8G    28%\nTotal                10G     4.2G     5.8G    42%",
+  "err": ""
+ },
+ "load": {
+  "rc": 0,
+  "out": "3:03PM  up 11 days, 20:50, 1 user, load averages: 0.47, 0.41, 0.32",
+  "err": ""
+ },
+ "oom_recent": {
+  "rc": 0,
+  "out": "",
+  "err": ""
+ },
+ "dsh_log": {
+  "rc": 0,
+  "out": "== /tmp/dsh_web.log\n$ node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\ndsh web: http://127.0.0.1:3080\n$ node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\ndsh web: http://127.0.0.1:3080\n(node:20979) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
+  "err": ""
+ },
+ "loopback_get": {
+  "rc": 0,
+  "out": "loopback_root_notoken=401",
+  "err": ""
+ },
+ "landirect": {
+  "rc": 0,
+  "out": "lan_direct=000\ncurl_rc=7",
+  "err": ""
+ },
+ "bench_3": {
+  "rc": 0,
+  "out": "[compiler_bench] 例子数=3  CLI=/home/workbuddy/dswork/ltbench/cli/light.py\nbench-0\nbench-1\nbench-2\n\n  冷启动（每例新进程） : 总计   3.87s | 每例  1.29s\n  温解释器（进程内复用）: 总计   0.87s | 每例  0.29s\n  提速倍数            :   4.4x\n\n[结论] 每例成本几乎全在『拉起解释器+import 编译器』；把编译器常驻（编译守护进程）\n       后每例 ≈ codegen+exec（~0.5s）。缓存 .py 产物收益很小，真正杠杆是温解释器。",
+  "err": ""
+ }
+}

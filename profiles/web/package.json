@@ -1,0 +1,11 @@
+{
+  "name": "dsh-profile-web",
+  "private": true,
+  "dependencies": {},
+  "dsh": {
+    "profile": {
+      "bundles": [],
+      "patchReload": "live"
+    }
+  }
+}
