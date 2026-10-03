@@ -999,6 +999,23 @@ html[data-theme="light"] {
 .settings-pp-row-phase { color: var(--st-accent, #0969da); }
 .settings-pp-row-reason { color: var(--st-danger, #cf222e); }
 
+/* R110：插件安装输入框与卡片操作按钮 */
+.settings-pp-install { display: flex; gap: 8px; margin: 8px 0 12px; }
+.settings-pp-input {
+  flex: 1; padding: 6px 10px; font-size: 13px;
+  border: 1px solid var(--st-border, #d0d7de); border-radius: 6px;
+  background: var(--st-bg, #fff); color: var(--st-text, #1f2328);
+}
+.settings-pp-btn {
+  padding: 5px 12px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--st-border, #d0d7de); border-radius: 6px;
+  background: var(--st-bg-sub, #f6f8fa); color: var(--st-text, #1f2328);
+}
+.settings-pp-btn:hover { background: var(--st-bg, #fff); }
+.settings-pp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.settings-pp-btn.is-danger { color: var(--st-danger, #cf222e); border-color: var(--st-danger, #cf222e); }
+.settings-pp-card-actions { display: flex; gap: 6px; margin-top: 8px; }
+
 /* ---------- G-3：多 provider + 发现（D 线） ---------- */
 .settings-provider-row { padding: 10px 0; }
 .settings-badge-custom {
