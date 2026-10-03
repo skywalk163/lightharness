@@ -1,0 +1,48 @@
+{
+ "ts": "2026-10-03T06:44:23+08:00",
+ "pidchain": {
+  "rc": 0,
+  "out": "LISTEN_PID=57487\n--- chain ---\n  PID  PPID  ELAPSED %CPU    RSS COMMAND\n57487 57424 11:30:14  0.0 223544 node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\n  PID  PPID  ELAPSED COMMAND\n57424 55645 11:30:18 node /home/workbuddy/.local/bin/pnpm dsh:freebsd web\n  PID PPID  ELAPSED COMMAND\n55645    1 11:34:30 daemon: /bin/sh[57424] (daemon)\n--- daemon pidfile ---\nNO_PIDFILE",
+  "err": ""
+ },
+ "sockstat": {
+  "rc": 0,
+  "out": "USER     COMMAND    PID   FD  PROTO  LOCAL ADDRESS         FOREIGN ADDRESS      \nworkbuddy node      57487 12  tcp4   127.0.0.1:3080        *:*",
+  "err": ""
+ },
+ "swap": {
+  "rc": 0,
+  "out": "Device              Size     Used    Avail Capacity\n/dev/ada0p2         2.0G     1.5G     559M    73%\n/dev/zvol/zroot/swapvol     8.0G     1.5G     6.5G    18%\nTotal                10G     2.9G     7.1G    29%",
+  "err": ""
+ },
+ "load": {
+  "rc": 0,
+  "out": "6:44AM  up 11 days, 12:31, 1 user, load averages: 0.25, 0.25, 0.29",
+  "err": ""
+ },
+ "oom_recent": {
+  "rc": 0,
+  "out": "",
+  "err": ""
+ },
+ "dsh_log": {
+  "rc": 0,
+  "out": "== /tmp/dsh_web.log\n$ node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\ndsh web: http://127.0.0.1:3080\n$ node --expose-internals --import tsx/esm apps/cli/src/bin.ts web\ndsh web: http://127.0.0.1:3080\n(node:20979) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)",
+  "err": ""
+ },
+ "loopback_get": {
+  "rc": 0,
+  "out": "loopback_root_notoken=401",
+  "err": ""
+ },
+ "landirect": {
+  "rc": 0,
+  "out": "lan_direct=000\ncurl_rc=7",
+  "err": ""
+ },
+ "bench_10": {
+  "rc": 0,
+  "out": "[compiler_bench] 例子数=10  CLI=/home/workbuddy/dswork/ltbench/cli/light.py\nbench-0\nbench-1\nbench-2\nbench-3\nbench-4\nbench-5\nbench-6\nbench-7\nbench-8\nbench-9\n\n  冷启动（每例新进程） : 总计  12.94s | 每例  1.29s\n  温解释器（进程内复用）: 总计   1.10s | 每例  0.11s\n  提速倍数            :  11.7x\n\n[结论] 每例成本几乎全在『拉起解释器+import 编译器』；把编译器常驻（编译守护进程）\n       后每例 ≈ codegen+exec（~0.5s）。缓存 .py 产物收益很小，真正杠杆是温解释器。",
+  "err": ""
+ }
+}
