@@ -22,6 +22,7 @@
 > - 🚫 改测试断言来"变绿"
 > - B 线（T3/T4/T5）合并跑**一次** full 门（约 50 分钟独占），不是各跑一次
 > - push 需用户示意（批次末尾统一）
+> - **rc2 发上去已知不含清晨 T3/T4 修复**（tag 指向 `221db4fc6`，不含 `fa233209f`）——这是预期，rc2 是回归版，正式版 v0.4.0 才含修复，不是漏发
 
 ---
 
@@ -57,12 +58,14 @@
 **要做**：
 1. `POST /repos/skywalk163/light/actions/runs/37020855509/rerun-failed-jobs`（需 admin 凭据；
    本机 git 凭据管理器的 PAT 已验证有 admin 权限——`Day3清晨_T2` 报告同款通道）
-2. 盯两条：`发布到 PyPI` → success（PyPI 上 `lightgm 0.4.0rc2` 出现）、`部署文档站点` → success
+2. 盯三条：`发布到 PyPI` → success（PyPI 上 `lightgm 0.4.0rc2` 出现）、`部署文档站点` → success、
+   **`Quality Gate` → success**（rc2 run 里 QG 也是 failure，重跑会一起带；e53073d3 已修 QG 三条红，
+   但 tag 指向旧 commit 221db4fc，若 QG 仍红说明 tag 需前移到新 commit 再重跑）
 3. 若仍红：用 **check-run annotations**（匿名可拉）拿日志级红因，按 v2 报告根因清单处置：
    - PyPI：`invalid-publisher` → 用户核对 5 项（lightgm/skywalk163/light/release.yml/pypi）
    - Pages：`environment protection rules` → 确认 `v*` 策略生效（id 61812294）
 4. VSCE 红了**不处理**（预期）
-5. **出口**：两条转绿与否 + PyPI 项目 URL + 处置清单
+5. **出口**：三条转绿与否 + PyPI 项目 URL + 处置清单
 
 **铁律**：这一条**就是真发**，不要再加"只诊断"步骤；红了的处置也不含"真发第二次"。
 
@@ -121,7 +124,9 @@
 4. **`是数字符("12")` 口径落地**——⚠️ **先给用户三选一**：
    - 方案①（建议默认）：ANTLR 去掉 `len==1` 守卫，对齐 SRC 的 `str.isdigit` 全串语义；
      同时把 `stdlib/内置核心判型.light` 文档注释改准确（「是数字符 判字符串是否全为数字字符」，
-     与 `字符串全数字` 的分工说明同步改）→ 一处改动，两后端一致，文档同步
+     与 `字符串全数字` 的分工说明同步改）→ 一处改动，两后端一致，文档同步。
+     **注意**：清晨场 T4 注册 `是数字符` 时复用了 `_builtin_is_digit`（带 `len(s)==1` 守卫），
+     选方案①需同步去掉该守卫
    - 方案②：SRC `是数字` 段落加单字符守卫对齐文档口径（"判单个字符"）→ 改 stdlib 语义，
      有既有守卫，影响面更大
    - 方案③：维持现状，矩阵行 3 残差标"口径分歧已知"→ 两后端一致破着
@@ -133,14 +138,19 @@
 **要做**：B 线门过后
 1. 语言缺陷账：LP-D-019①③ 状态刷新（已修复 + commit + 证据）；判型族整族/列.获取/行19
    若立过新账一并销账
-2. 对拍矩阵：行 2/3/4/19/20 销账；新差异行照实填（有探针才收信）
+2. 对拍矩阵：**行 1（LP-D-018，清晨已修）确认销账与 fa233209f 一致**；
+   行 2/3/4/19/20 销账；新差异行照实填（有探针才收信）
 3. `docs/国庆7天/Day3总结.md`：清晨＋下午两场合流（修复清单 / 门锚点演进 / 新账）
 4. **出口**：三件套落盘
 
 ### T7 · 1.5 盒子午后观察（D 线）
 
-照 `Day3清晨_T6_1.5盒子晨间观察.md` 同款口径：PID 链 55645/57424/57487、swap 对比基线、
-loopback 栅栏、温缓存 3 样本（只确认未退化）。**出口**：4 项数据落报告。
+照 `Day3清晨_T6_1.5盒子晨间观察.md` 同款口径。
+**⚠️ PID 不硬编码 55645**：FreeBSD `daemon -r` 不写 pidfile，rcd daemon PID 会随拉起变；
+**以 pnpm 57424 / node 57487 存活为准**，rcd daemon PID 现场 `pgrep -f 'sh\[57424\]'` 取。
+
+**要做**：pnpm 57424 / node 57487 存活 + swap 对比基线 + loopback 栅栏 + 温缓存 3 样本（只确认未退化）。
+**出口**：4 项数据落报告。
 
 ---
 
@@ -148,7 +158,7 @@ loopback 栅栏、温缓存 3 样本（只确认未退化）。**出口**：4 �
 
 | # | 通过判据 |
 |---|---|
-| T1 | publish-pypi 与 deploy-docs 双双 success；PyPI 出现 `lightgm 0.4.0rc2`；VSCE 红属预期不处理 |
+| T1 | publish-pypi、deploy-docs、Quality Gate 三条 success；PyPI 出现 `lightgm 0.4.0rc2`；VSCE 红属预期不处理 |
 | T2 | `v0.4.0` tag 打在含 B 线修复的 commit；release 全绿（除 VSCE）；PyPI `0.4.0` + Pages 版本一致 |
 | T3 | 探针两后端一致（rc=0）；g4 diff 最小；重生成产物对拍逐字节一致（除刻意修改的规则） |
 | T4 | 探针两后端输出 `bc` 一致；重生成同上 |
