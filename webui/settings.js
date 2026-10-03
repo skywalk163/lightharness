@@ -680,8 +680,21 @@
           "</div>";
       }
     } else {
-      h += '<div class="settings-note">这个插件包不包含任何组件。</div>';
+      var 工具表 = Array.isArray(卡["工具表"]) ? 卡["工具表"] : [];
+      if (工具表.length) {
+        h += '<div class="settings-pp-card-parts-title">工具清单（' + 工具表.length + "）</div>";
+        for (var k = 0; k < 工具表.length; k++) {
+          h += '<div class="settings-pp-row"><span class="settings-pp-row-name">' + esc(工具表[k]) + '</span></div>';
+        }
+      } else {
+        h += '<div class="settings-note">这个插件包不包含任何组件。</div>';
+      }
     }
+    h += "</div>";
+    // R111：光明插件只支持启停（内置分发，不可卸载/在线安装）
+    h += '<div class="settings-pp-card-actions">' +
+      '<button type="button" class="settings-pp-btn" data-pp-act="toggle" data-pkg="' + esc(卡["name"] || "") + '" data-on="' + (on ? "1" : "0") + '">' + (on ? "停用" : "启用") + "</button>" +
+      "</div>";
     return h + "</div></div>";
   }
   function 渲染插件组(组) {
@@ -708,8 +721,8 @@
     if (选项2["headless"] !== true) {
       h += '<div class="settings-pp-head">' +
         '<h3 class="settings-pp-title">插件</h3>' +
-        '<p class="settings-pp-intro">安装、启用和配置插件</p>' +
-        '<p class="settings-pp-info">在这里配置官方插件，安装和管理其他插件。内置插件列表及运行状态可在「设置 → 内置插件」中查看</p></div>';
+        '<p class="settings-pp-intro">光明插件启停</p>' +
+        '<p class="settings-pp-info">下列为 lightplugin 内置光明插件（以工具形式挂到 agent）。点「停用」即从 agent 工具表摘除，「启用」即恢复。</p></div>';
     }
     if (面板["刷新中"] === true || 面板["刷新中"] === "真")
       h += '<div class="settings-note">正在刷新…</div>';
@@ -722,7 +735,12 @@
       return h + '<div class="settings-note settings-pp-unavailable">' + esc(文) + "</div>";
     }
     var 组集 = Array.isArray(面板["分组"]) ? 面板["分组"] : [];
-    if (!组集.length) return h + '<div class="settings-note">还没有安装任何插件。</div>';
+    // R112：添加插件输入框（接受 GitHub URL 或 owner/repo）
+    h += '<div class="settings-pp-install">' +
+      '<input type="text" class="settings-pp-input" data-pp-install-input placeholder="GitHub 地址或 owner/repo，回车添加插件" />' +
+      '<button type="button" class="settings-pp-btn" data-pp-act="install">添加</button>' +
+      "</div>";
+    if (!组集.length) return h + '<div class="settings-note">暂无光明插件。</div>';
     for (var i = 0; i < 组集.length; i++) h += 渲染插件组(组集[i]);
     return h;
   }
@@ -951,8 +969,59 @@
     wrap.addEventListener("click", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
-      if (t.closest(".settings-pp-close") || t === wrap) closePluginPanel();
+      if (t.closest(".settings-pp-close") || t === wrap) { closePluginPanel(); return; }
+      // R110：插件安装/启停/卸载分发
+      var actBtn = t.closest("[data-pp-act]");
+      if (actBtn) {
+        var act = actBtn.getAttribute("data-pp-act");
+        if (act === "install") { doPpInstall(actBtn); return; }
+        if (act === "toggle") { doPpToggle(actBtn); return; }
+        if (act === "uninstall") { doPpUninstall(actBtn); return; }
+      }
     });
+  }
+
+  // R110：安装/启停/卸载插件（POST 后端，完成后重拉面板）
+  function ppBusy(on) {
+    if (!el.ppBody) return;
+    var btns = el.ppBody.querySelectorAll("[data-pp-act]");
+    for (var i = 0; i < btns.length; i++) btns[i].disabled = !!on;
+  }
+  function ppReload() {
+    ST.pluginPanel = null;
+    if (typeof fetch !== "function") { renderPluginPanel(); return; }
+    api("GET", "/api/settings/plugin-panel")
+      .then(function (d) { if (d && typeof d === "object" && !Array.isArray(d)) ST.pluginPanel = d; })
+      .then(null, function () { ST.pluginPanel = null; })
+      .then(renderPluginPanel);
+  }
+  function doPpInstall(btn) {
+    var input = el.ppBody && el.ppBody.querySelector("[data-pp-install-input]");
+    var spec = input ? input.value.trim() : "";
+    if (!spec) return;
+    ppBusy(true);
+    btn.textContent = "安装中…";
+    api("POST", "/api/settings/plugin-panel/install", { spec: spec })
+      .then(ppReload, function (err) { alert("安装失败：" + (err && err.message ? err.message : err)); ppReload(); })
+      .then(function () { ppBusy(false); });
+  }
+  function doPpToggle(btn) {
+    var pkg = btn.getAttribute("data-pkg") || "";
+    var nowOn = btn.getAttribute("data-on") === "1";
+    ppBusy(true);
+    api("POST", "/api/settings/plugin-panel/set-enabled", { id: pkg, enabled: !nowOn })
+      .then(ppReload, function (err) { alert("操作失败：" + (err && err.message ? err.message : err)); ppReload(); })
+      .then(function () { ppBusy(false); });
+  }
+  function doPpUninstall(btn) {
+    var pkg = btn.getAttribute("data-pkg") || "";
+    if (!pkg) return;
+    if (!confirm("确认卸载插件 " + pkg + "？")) return;
+    ppBusy(true);
+    btn.textContent = "卸载中…";
+    api("POST", "/api/settings/plugin-panel/uninstall", { name: pkg })
+      .then(ppReload, function (err) { alert("卸载失败：" + (err && err.message ? err.message : err)); ppReload(); })
+      .then(function () { ppBusy(false); });
   }
 
   function renderPluginPanel() {

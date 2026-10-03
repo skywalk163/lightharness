@@ -1,0 +1,25 @@
+# test_r112安装.light —— 插件安装 URL 解析冒烟
+从 插件安装 导入 解析Git规格
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "FAIL[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望)
+
+设 r1 为 解析Git规格("owner/repo")
+断言相等(r1["repo"], "repo", "owner/repo repo名")
+断言相等(r1["clone_url"], "https://github.com/owner/repo", "owner/repo url")
+
+设 r2 为 解析Git规格("https://github.com/owner/repo")
+断言相等(r2["repo"], "repo", "https repo名")
+
+设 r3 为 解析Git规格("https://github.com/owner/repo.git")
+断言相等(r3["repo"], "repo", ".git 去后缀")
+
+设 r4 为 解析Git规格("git@github.com:owner/repo.git")
+断言相等(r4["repo"], "repo", "scp 格式 repo名")
+
+设 r5 为 解析Git规格("badformat")
+如果 r5["错误"] == "":
+  抛出 "FAIL: badformat 应报错"
+
+打印 "test_r112安装 PASS"

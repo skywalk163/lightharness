@@ -73,12 +73,12 @@
   设 响应8 为 等待 路由处理器(造请求("POST", "/api/settings/providers/discover", b'{}'))
   断言相等(响应8["状态"], 400, "8a 空 baseURL 400")
 
-  # ---- ⑩ GET /api/settings/plugin-panel ----
+  # ---- ⑩ GET /api/settings/plugin-panel（R111：列光明插件，可用恒真） ----
   设 响应10 为 等待 路由处理器(造请求("GET", "/api/settings/plugin-panel", b''))
   断言相等(响应10["状态"], 200, "10a GET plugin-panel 状态码")
   设 体10 为 解析JSON(响应10["体"])
-  断言相等(体10["可用"], 假, "10b 可用=假（本仓无 pnpm 管理器）")
-  断言真(字典包含键(体10, "不可用文案"), "10c 不可用文案键")
+  断言相等(体10["可用"], 真, "10b 可用=真（光明插件管理面就绪）")
+  断言真(字典包含键(体10, "分组"), "10c 分组键存在")
 
   # ---- ⑫ POST discover 注入响应 -> 候选非空（宿主注入 mock；apiKey 不回显） ----
   设 假响应文本 为 "{\"data\":[{\"id\":\"deepseek-v4-flash\",\"name\":\"DeepSeek-V4-Flash\",\"context_window\":1000000,\"max_tokens\":8192},{\"id\":\"deepseek-reasoner\"}]}"
