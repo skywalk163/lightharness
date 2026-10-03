@@ -6,7 +6,24 @@
 
 ## [未发布]
 
-暂无。新的变更在下一次收口时补入。
+> **R110 收口（2026-10-03，维持 `v0.4.0-rc2`）**：A/C/D 文档交付、B 核实 0 移植、E Windows 本机双全量 0 新增红。零可执行代码改动 → 不 bump 版本号、不新建 tag。lightharness 三远端已推；light-merge 无 R110 改动未推。
+
+### 新增
+
+- 对齐 deepseek-harness 上游 `dsh-v0.2.0-rc.2`（`639ed01539`）相对 rc.1 的增量（**187 commits / 1022 真增量文件 / +33253 / -6141**，三点基准 `rc.1...rc.2`，merge-base `4878cdabd8`）。
+- B 路经核实为 **0 移植**（lightharness 无对应纯逻辑层承载 A 清单 §4 的 4 组候选：schedule framing / user-questions 状态机 / tool-ask-user timed / shell 提示词文案）；`对标清单.json` 末位仍 #313，无 R110 新增。
+
+### 修复
+
+- 宿主面增量 15 条 append 进 `docs/宿主面登记清单.md` §7（44→59）：Windows ACL 修复链 / web-desktop UI / whale perf / Cordis inspect / desktop installer / llm pi-ai 升级 / CI 等。
+- fork FreeBSD 脚本对账：上游 rc.2 无 freebsd/ 目录，fork 侧 `e5b5ccbfcb..8bf6c9250f` 零改动 → 零同步（`R110_D路_FreeBSD脚本对账.md`）。
+
+### 验证
+
+- LH 本机 Windows 全量 **2074 用例 / 0 failed / 0 new_red**（`reports/R110_lh_windows_latest.json`）。
+- LM 本机 Windows 全量 **8489 用例 / 0 new_red**（1 为已知 flaky `test_进程类` 单跑复绿；R55 时代 5 红全清）。
+- 锚点修正：分发书 `e5b5ccbfcb..rc.2` 两点口径有误（`e5b5ccbfcb` 是 fork 合流提交，会冒 freebsd 假删除）；真基准三点 `rc.1...rc.2`（merge-base `4878cdabd8`）。
+- 遗留：0.86 Linux / 0.82 FreeBSD 基线 JSON 未生成（B=0 代码改动 ⇒ 逻辑上无 R110 新红风险，待补）。
 
 ---
 
