@@ -27,11 +27,16 @@
 # 启停状态文件名（落在数据根下，与 profiles/ 同级）
 设 启停文件名 为 "plugins.json"
 
-# 缺省插件映射路径：相对 lightharness 运行目录的 ../lightplugin/集成/工具总表.json
+# 缺省插件映射路径：优先 LIGHTPLUGIN_TOOL_MAP / LIGHTPLUGIN 环境变量（绝对路径），
+# 仅当 LIGHTPLUGIN 未设（裸跑 .light、不经 运行.py）时退回 cwd 相对的 ../lightplugin
 段落 缺省映射路径():
   设 覆盖 为 环境变量("LIGHTPLUGIN_TOOL_MAP", "")
   如果 覆盖 != "":
     返回 覆盖
+  设 根 为 环境变量("LIGHTPLUGIN", "")
+  如果 根 != "":
+    返回 路径连接(根, "集成", "工具总表.json")
+  # 兜底：cwd 相对（原行为）
   设 兄弟 为 路径连接("..", "lightplugin")
   设 集成 为 路径连接(兄弟, "集成")
   返回 路径连接(集成, "工具总表.json")

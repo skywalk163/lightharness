@@ -43,6 +43,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]            # G:/dswork/duan-light-merge
 LIGHTHARNESS = ROOT / "lightharness"
 LIGHT_MERGE = ROOT / "light-merge"
+# R112-R1：lightplugin 是第 4 个独立仓，lightharness 的 `总入口.light` 经
+# `运行.py:_lightplugin_paths()` 导入 `生产挂载`（实位于 lightplugin/集成/）。
+# 该钩子在目录缺失时**静默返回空表**，不报错 ⇒ 0.86 上表现为
+# `No module named '生产挂载'` 并连片红 34 条。故同步包必须带上第 4 仓。
+# 远端落点 `{rd}/lightplugin` 正是 `运行.py` 的默认解析点（ROOT/../lightplugin），无需额外环境变量。
+LIGHTPLUGIN = ROOT / "lightplugin"
 
 DEFAULT_HOST = "192.168.0.86"
 PORT = 22
@@ -220,13 +226,19 @@ def _should_skip(rel: Path) -> bool:
 def build_tarball(out_path: Path) -> int:
     n = 0
     with tarfile.open(out_path, "w:gz", compresslevel=1) as tf:
-        for base in (LIGHTHARNESS, LIGHT_MERGE):
+        # R112-R1：三仓同步（lightharness + light-merge + lightplugin）
+        for base in (LIGHTHARNESS, LIGHT_MERGE, LIGHTPLUGIN):
             if not base.exists():
                 print(f"[同步0.86] 警告：缺失 {base}，跳过")
                 continue
             arc_root = base.name
             # tracked 文件（干净，不含 .venv / 未跟踪 scratch）
-            res = subprocess.run(["git", "-C", str(base), "ls-files"],
+            # R112-R1：⚠️ 必须 `-c core.quotePath=false`。lightplugin 未设该配置（默认 true），
+            # git 会把中文路径转义成八进制（"集成/生产挂载.light" → "集\346\210\220/..."），
+            # 导致下方 `p.exists()` 恒 False → 中文名文件被静默跳过（275 行里 269 行中招）。
+            # lightharness / light-merge 已各自设了 quotePath=false 才没暴露此问题。
+            res = subprocess.run(["git", "-c", "core.quotePath=false", "-C", str(base),
+                                  "ls-files"],
                                   capture_output=True, text=True, encoding="utf-8")
             tracked = [l for l in res.stdout.splitlines() if l]
             for rel in tracked:
@@ -401,13 +413,13 @@ def cmd_sync(args) -> int:
         print("[同步0.86] 远端解压…")
         rc, out = run_remote(cli,
                              f"cd {remote_dir} && tar -xzf sync.tar.gz && rm -f sync.tar.gz && "
-                             f"ls -d {remote_dir}/lightharness {remote_dir}/light-merge")
+                             f"ls -d {remote_dir}/lightharness {remote_dir}/light-merge {remote_dir}/lightplugin")
         if rc != 0:
             raise SystemExit(f"[同步0.86] 解压失败 rc={rc}")
         print(out.strip())
 
         if INCLUDE_GIT:
-            for sub in ("lightharness", "light-merge"):
+            for sub in ("lightharness", "light-merge", "lightplugin"):
                 run_remote(cli, f"git config --global --add safe.directory {remote_dir}/{sub}",
                            quiet=True)
                 rc, out = run_remote(cli, f"git -C {remote_dir}/{sub} rev-parse --short HEAD",
@@ -435,7 +447,8 @@ def cmd_verify(args) -> int:
     try:
         rd = load_remote_dir()
         rc, out = run_remote(cli,
-                             f"ls -d {rd}/lightharness {rd}/light-merge && "
+                             f"ls -d {rd}/lightharness {rd}/light-merge {rd}/lightplugin && "
+                             f"ls {rd}/lightplugin/集成/生产挂载.light && "
                              f"ls {rd}/lightharness/examples/*.light | wc -l", quiet=True)
         print(out.strip())
         return 0 if rc == 0 else 1

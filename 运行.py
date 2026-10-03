@@ -25,6 +25,10 @@ SRC = os.path.join(ROOT, 'src')
 
 # 第2步：lightplugin 生产接线根路径（默认取兄弟目录，可用 LIGHTPLUGIN 覆盖）
 LIGHTPLUGIN = os.environ.get('LIGHTPLUGIN', os.path.normpath(os.path.join(ROOT, '..', 'lightplugin')))
+# R113-R1：把绝对路径导出给子进程环境。此前 LIGHTPLUGIN 只在本进程内使用，
+# .light 侧（插件启停.缺省映射路径）读不到它，只能退回 cwd 相对的 ../lightplugin，
+# pytest 临时 cwd 下解析不到 ⇒ 加载插件映射 返回空 ⇒ 依赖插件映射的用例全红。
+os.environ['LIGHTPLUGIN'] = LIGHTPLUGIN
 
 
 def _lightplugin_paths():

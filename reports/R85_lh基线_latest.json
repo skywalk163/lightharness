@@ -1,117 +1,33 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-10-03T23:30:28+08:00",
+  "generated_at": "2026-10-04T00:27:51+08:00",
   "target": {
     "name": "lightharness",
     "platform": "0.86 Linux",
     "host": "192.168.0.86",
-    "remote_dir": "/tmp/r85-20261003-231017",
-    "cwd": "/tmp/r85-20261003-231017/lightharness"
+    "remote_dir": "/tmp/r85-20261004-001450",
+    "cwd": "/tmp/r85-20261004-001450/lightharness"
   },
   "runner": {
     "mode": "full",
     "parallel": true,
     "target": "lightharness",
-    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261003-231017/lh_results.xml -n auto --dist loadscope --timeout 60",
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261004-001450/lh_results.xml -n auto --dist loadscope --timeout 60",
     "pytest_rc": "1"
   },
   "totals": {
     "total": 2084,
-    "failure": 34,
+    "failure": 5,
     "error": 0,
     "skipped": 19,
     "xfailed": 0,
     "xpassed": 0,
-    "passed": 2031,
-    "failed": 34,
-    "duration_sec": 514.295
+    "passed": 2060,
+    "failed": 5,
+    "duration_sec": 672.351
   },
   "failed": [
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[_smoke_第4步.light]",
-      "cid": "tests.test_回归::test_example_exit_code[_smoke_第4步.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: _smoke_第4步.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[_smoke_第4步全量.light]",
-      "cid": "tests.test_回归::test_example_exit_code[_smoke_第4步全量.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: _smoke_第4步全量.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[probe_r3_挂载对账.light]",
-      "cid": "tests.test_回归::test_example_exit_code[probe_r3_挂载对账.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: probe_r3_挂载对账.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_CLI命令面.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_CLI命令面.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_CLI命令面.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R41_真实IO端到端.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R41_真实IO端到端.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R41_真实IO端到端.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R41_真实网络IO.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R41_真实网络IO.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R41_真实网络IO.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_真实webhook.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_真实webhook.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实webhook.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_真实工具链.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_真实工具链.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实工具链.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_R42_真实抓取.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_R42_真实抓取.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_R42_真实抓取.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_cli外壳.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_cli外壳.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_cli外壳.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_cli深化.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_cli深化.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_cli深化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_r108新端点.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_r108新端点.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_r108新端点.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
     {
       "id": "tests/test_回归.py::test_example_exit_code[test_r110_e2e.light]",
       "cid": "tests.test_回归::test_example_exit_code[test_r110_e2e.light]",
@@ -134,20 +50,6 @@
       "message": "AssertionError: test_r111插件启停.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
-      "id": "tests/test_回归.py::test_example_exit_code[test_web服务器E5.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_web服务器E5.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_web服务器E5.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_web路由.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_web路由.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_web路由.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
       "id": "tests/test_回归.py::test_example_exit_code[test_会话冷读_接线.light]",
       "cid": "tests.test_回归::test_example_exit_code[test_会话冷读_接线.light]",
       "status": "failure",
@@ -155,116 +57,11 @@
       "message": "AssertionError: test_会话冷读_接线.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
-      "id": "tests/test_回归.py::test_example_exit_code[test_入口默认模型.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_入口默认模型.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_入口默认模型.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_审批API.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_审批API.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_审批API.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_快捷键.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_快捷键.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_快捷键.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_总入口.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_总入口.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_总入口.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_编排装配.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_编排装配.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_编排装配.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_联调CLI.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_联调CLI.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_联调CLI.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_设置插件页.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_设置插件页.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_设置插件页.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_设置页.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_设置页.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_设置页.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_设置页深化.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_设置页深化.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_设置页深化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_设置预设页.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_设置预设页.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_设置预设页.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
       "id": "tests/test_回归.py::test_example_exit_code[test_预设切换.light]",
       "cid": "tests.test_回归::test_example_exit_code[test_预设切换.light]",
       "status": "failure",
       "file": "tests/test_回归.py",
       "message": "AssertionError: test_预设切换.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[test_预设挂载对话内切换.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_预设挂载对话内切换.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: test_预设挂载对话内切换.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[端到端demo.light]",
-      "cid": "tests.test_回归::test_example_exit_code[端到端demo.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: 端到端demo.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[端到端demo_多轮.light]",
-      "cid": "tests.test_回归::test_example_exit_code[端到端demo_多轮.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: 端到端demo_多轮.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[运行CLI.light]",
-      "cid": "tests.test_回归::test_example_exit_code[运行CLI.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: 运行CLI.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
-    },
-    {
-      "id": "tests/test_回归.py::test_example_exit_code[运行Web服务器.light]",
-      "cid": "tests.test_回归::test_example_exit_code[运行Web服务器.light]",
-      "status": "failure",
-      "file": "tests/test_回归.py",
-      "message": "AssertionError: 运行Web服务器.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     }
   ],
   "skipped": [
@@ -277,15 +74,15 @@
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_ANTLR同语义",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_两后端输出一致",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_语义正确",
-    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
-    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
-    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",
-    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_ANTLR_退出码0_无语法元素报错",
     "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
     "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
     "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_ANTLR_退出码0_无语法元素报错",
     "tests/test_回归.py::test_env_red_baseline_report"
   ]
 }
