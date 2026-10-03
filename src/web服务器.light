@@ -1264,11 +1264,25 @@
       设 状态码 为 500
     返回 ["状态": 状态码, "头": ["Content-Type": "application/json; charset=utf-8"], "体": 序列化JSON(结果)]
 
-  # POST /api/settings/plugin-panel/uninstall —— R111：内置插件不支持卸载（随仓库分发）
+  # POST /api/settings/plugin-panel/uninstall —— R3：外部插件（git clone）真卸载；内置插件返回可停用提示
   段落 处理卸载插件(请求):
     设 己.请求数 为 己.请求数 + 1
-    返回 ["状态": 200, "头": ["Content-Type": "application/json; charset=utf-8"],
-      "体": 序列化JSON({"ok": 假, "错误": "光明插件随 lightplugin 内置分发，不支持卸载；可停用。", "输出": ""})]
+    设 载荷 为 空
+    尝试:
+      设 载荷 为 解析JSON(字符串(请求["体"], "utf-8"))
+    捕获 异常 e:
+      返回 错误响应(400, "请求体不是合法 JSON")
+    设 id 为 ""
+    如果 是字典(载荷) == 真:
+      设 id 为 载荷.获取("id", "")
+    设 结果 为 插件安装.卸载外部插件(己.根, id)
+    # 卸载成功清注册表缓存，下次请求按新清单重建
+    如果 结果["ok"] == 真:
+      设 己.预设注册表缓存 为 {}
+    设 状态码 为 200
+    如果 结果["ok"] == 假:
+      设 状态码 为 400
+    返回 ["状态": 状态码, "头": ["Content-Type": "application/json; charset=utf-8"], "体": 序列化JSON(结果)]
 
   # POST /api/settings/plugin-panel/set-enabled  body={"id":"<插件名>", "enabled":true/false}
   段落 处理设置插件启用(请求):
