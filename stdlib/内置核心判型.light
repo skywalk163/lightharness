@@ -4,9 +4,8 @@
 # 与 stdlib/builtins.py:746-788 的 9 个 Python 版逐字等价。每个段落上方注明对齐行号。
 # 差分测试见 tests/unit/test_地板搬迁_判型_S2.py（光明版 vs Python 原版逐条对跑）。
 #
-# 是负零（任务5 T2-D4 方案A）也遵守「零 Python 模块导入」：不引 math.copysign，
+# 是负零（任务5 T2-D4）也遵守「零 Python 模块导入」：不引 math.copysign，
 # 用 str.startswith 形态（-0.0 的文本是 "-0.0"，唯一以 '-' 开头的零值）。
-# 自包含同步：本文件是 lightharness 自包含 stdlib 拷贝，与 light-merge 版逐字对齐。
 #
 # 三条写法约束（已实测，勿"优化"）：
 #   1. 是整数 必须两段式（先短路 bool，再 isinstance）。原因有两条：
@@ -14,12 +13,12 @@
 #      b) 不许改写成 `类型(值) == 类型(1)` —— 那会把 int 的子类实例判假，
 #         而 Python 版用的是 isinstance（子类为真）。差分测试有专条抓这个错译。
 #   2. 是空 必须写 `类型(值) == 类型(空)`。`值 is None` 生成非法 Python；
-#      而 `值 == 空` 会被自定义 __eq__ 恒真的对象骗过，那是放宽口径。
+#      而 `值 == 空` 会被自定义 `__eq__` 恒真的对象骗过（放宽口径）。
 #   3. 是字母/是数字/是空白 必须用 `str.isalpha(字符)` 这种类方法形态。
 #      写成 `字符.isalpha()` 时，入参不是 str 就抛 AttributeError，
 #      而 Python 版抛的是 TypeError —— 那是改写错误口径。
 
-导出 是整数 是浮点 是字符串 是列表 是字典 是字节 是空 是字母 是数字 是空白 是负零。
+导出 是字节 字符串全数字
 
 # 对齐 stdlib/builtins.py:746 —— isinstance(值, int) and not isinstance(值, bool)
 段落 是整数(值):
@@ -43,7 +42,7 @@
 段落 是字典(值):
   返回 isinstance(值, dict)
 
-# R72-E · L-159 —— isinstance(值, bytes)。字节串字面量 b'...' 的判型配套。
+# R72-E · L-159：isinstance(值, bytes)。字节串字面量 b'...' 的判型配套。
 # 与 是字符串（str）对称：Python 侧 bytes 与 str 互不 isinstance，光明层也严格分离。
 段落 是字节(值):
   返回 isinstance(值, bytes)
@@ -56,13 +55,33 @@
 段落 是字母(字符):
   返回 str.isalpha(字符)
 
-# 对齐 stdlib/builtins.py:781 —— str.isdigit(char)
+# 对齐 stdlib/builtins.py:918 —— str.isdigit(char)
+# LP-D-016 名实对齐：本段落实现「字符是否为数字字符」（str.isdigit）。
+# 它对用户侧暴露的关键字是 是数字符（code_generator builtin_map：是数字符 -> Python 是数字）。
+# 注意：用户侧关键字 是数字 不等于这里——是数字 映射到下方 是数值（int/float 类型判定）。
+# 写守卫时：判「值是否为数值类型」用 是数字；判「字符串是否全是数字字符」用 是数字符。
 段落 是数字(字符):
   返回 str.isdigit(字符)
 
 # 对齐 stdlib/builtins.py:786 —— str.isspace(char)
 段落 是空白(字符):
   返回 str.isspace(字符)
+
+# 对齐 stdlib/builtins.py:是布尔 —— isinstance(值, bool)
+段落 是布尔(值):
+  返回 isinstance(值, bool)
+
+# 对齐 stdlib/builtins.py:是函数 —— callable(值)
+段落 是函数(值):
+  返回 callable(值)
+
+# 对齐 stdlib/builtins.py:942 —— isinstance(值, (int, float)) and not isinstance(值, bool)
+# LP-D-016：用户侧关键字 是数字 映射到本段（是数值）—— 即 是数字(7)->真、是数字("7")->假。
+# 字符级 str.isdigit 判定在上方 是数字 段落，对应用户关键字 是数字符，二者勿混。
+段落 是数值(值):
+  如果 isinstance(值, bool):
+    返回 假
+  返回 isinstance(值, int) 或 isinstance(值, float)
 
 # 对齐 stdlib/builtins.py:是负零 —— IEEE 754 负零（-0.0）判定（任务5 T2-D4 方案A）
 # 仅对浮点 -0.0 返回 真；正零 0.0 / 整数 0 / 任何非零数均返回 假。
@@ -73,3 +92,15 @@
   如果 (值 != 0.0):
     返回 假
   返回 str.startswith(转字符串(值), "-")
+
+# R99-C · LP-D-016 补全：字符串全数字
+# 判定整个字符串是否全部由数字字符组成（str.isdigit 全串版）
+# 与 是数字符 的区别：是数字符 判单个字符；字符串全数字 判整个字符串
+# 与 是数值 的区别：是数值 判值类型是否为 int/float；字符串全数字 判字符串内容
+# 示例：字符串全数字("123") → 真；字符串全数字("12a3") → 假；字符串全数字("") → 假
+段落 字符串全数字(串):
+  如果 isinstance(串, str) == 假:
+    返回 假
+  如果 长(串) == 0:
+    返回 假
+  返回 str.isdigit(串)

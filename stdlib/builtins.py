@@ -227,84 +227,6 @@ def 文件大小(path: str) -> int:
         raise RuntimeError(f"获取文件大小失败 '{path}': {e}")
 
 
-def 复制文件(src: str, dst: str) -> None:
-    """复制文件（保留元数据）"""
-    import shutil
-    try:
-        shutil.copy2(src, dst)
-    except Exception as e:
-        raise RuntimeError(f"复制文件失败 '{src}' -> '{dst}': {e}")
-
-
-def 重命名(src: str, dst: str) -> None:
-    """重命名文件或目录"""
-    try:
-        os.rename(src, dst)
-    except Exception as e:
-        raise RuntimeError(f"重命名失败 '{src}' -> '{dst}': {e}")
-
-
-def 复制目录(src: str, dst: str) -> None:
-    """复制目录树"""
-    import shutil
-    try:
-        shutil.copytree(src, dst)
-    except Exception as e:
-        raise RuntimeError(f"复制目录失败 '{src}' -> '{dst}': {e}")
-
-
-def 删目录树(path: str) -> None:
-    """递归删除目录树（shutil.rmtree）"""
-    import shutil
-    try:
-        shutil.rmtree(path)
-    except Exception as e:
-        raise RuntimeError(f"删除目录树失败 '{path}': {e}")
-
-
-def 创建临时目录(prefix: str = "light_") -> str:
-    """创建临时目录，返回路径"""
-    import tempfile
-    try:
-        return tempfile.mkdtemp(prefix=prefix)
-    except Exception as e:
-        raise RuntimeError(f"创建临时目录失败: {e}")
-
-
-def 查找目录列表(path: str, pattern: str, recursive: bool = False) -> List[str]:
-    """按通配符筛选目录中的文件（fnmatch）"""
-    import fnmatch
-    result = []
-    if recursive:
-        for root, dirs, files in os.walk(path):
-            for f in files:
-                if fnmatch.fnmatch(f, pattern):
-                    result.append(os.path.join(root, f))
-    else:
-        for f in os.listdir(path):
-            if fnmatch.fnmatch(f, pattern):
-                result.append(os.path.join(path, f))
-    return result
-
-
-def 读二进制文件(path: str) -> bytes:
-    """读取二进制文件"""
-    try:
-        with open(path, 'rb') as f:
-            return f.read()
-    except Exception as e:
-        raise RuntimeError(f"读取二进制文件失败 '{path}': {e}")
-
-
-def 写入二进制文件(path: str, data: bytes) -> None:
-    """写入二进制文件"""
-    try:
-        with open(path, 'wb') as f:
-            f.write(data)
-    except Exception as e:
-        raise RuntimeError(f"写入二进制文件失败 '{path}': {e}")
-
-
 # =============================================================================
 # 路径操作函数
 # =============================================================================
@@ -540,6 +462,8 @@ def 整数(值) -> int:
     """强转整数（与「是整数」判型对称；L-028；真身 stdlib/内置核心转换.light:34）"""
     import 内置核心转换
     return 内置核心转换.整数(值)
+
+
 def 切片下标检查(v):
     """L-080：切片下标必须是整数；非 int 给出明确中文错误（替代 Python 原生 slice indices 报错误导）"""
     if isinstance(v, bool) or isinstance(v, int):
@@ -840,12 +764,6 @@ def 列表反转(列表) -> None:
     return 内置核心列表.列表反转(列表)
 
 
-def 排序列表(列表, 反向: bool = False):
-    """返回排序后的新列表，不改动入参（L-026；真身 stdlib/内置核心列表.light:54）"""
-    import 内置核心列表
-    return 内置核心列表.排序列表(列表, 反向)
-
-
 def 列表包含(列表, 元素) -> bool:
     """检查列表是否包含元素（地板已搬迁：真身 stdlib/内置核心列表.light:54）"""
     import 内置核心列表
@@ -853,44 +771,32 @@ def 列表包含(列表, 元素) -> bool:
 
 
 # =============================================================================
-# 拷贝原语（任务2 / L-082 + L-083）：副本=浅拷贝，浅拷贝=浅拷贝，深拷贝=递归深拷贝，冻结=深拷贝脱钩
-# 自包含实现（直接基于 CPython 内建，不委派 内置核心列表，避免跨文件耦合）；
-# 与 light-merge/stdlib/builtins.py 行为对齐。L-082 修复：副本 此前在 lightharness 地板缺失（AttributeError）。
+# 字典工具函数
 # =============================================================================
-import copy as _拷贝模块
 
 
 def 副本(原):
-    """浅拷贝：字典浅拷贝键值对、列表浅拷贝元素、其他类型原样返回。"""
-    if isinstance(原, dict):
-        return dict(原)
-    if isinstance(原, list):
-        return list(原)
-    return 原
+    """浅拷贝：字典浅拷贝键值对、列表浅拷贝元素、其他类型原样返回（真身 stdlib/内置核心列表.light）"""
+    import 内置核心列表
+    return 内置核心列表.副本(原)
 
 
 def 浅拷贝(原):
-    """浅拷贝（同 副本 语义）。"""
-    if isinstance(原, dict):
-        return dict(原)
-    if isinstance(原, list):
-        return list(原)
-    return 原
+    """浅拷贝（同 副本 语义，真身 stdlib/内置核心列表.light）"""
+    import 内置核心列表
+    return 内置核心列表.浅拷贝(原)
 
 
 def 深拷贝(原):
     """深拷贝：递归复制所有嵌套字典/列表，结果与原对象完全脱钩（不共享子对象引用）。"""
+    import copy as _拷贝模块
     return _拷贝模块.deepcopy(原)
 
 
 def 冻结(原):
     """冻结（脱钩）：返回深拷贝，使调用方后续改动不影响已构造对象（深 freeze 语义）。"""
+    import copy as _拷贝模块
     return _拷贝模块.deepcopy(原)
-
-
-# =============================================================================
-# 字典工具函数
-# =============================================================================
 
 def 字典创建() -> dict:
     """创建空字典（地板已搬迁：真身 stdlib/内置核心字典.light:13）"""
@@ -943,17 +849,6 @@ def 字典获取(字典, 键, 默认值=None):
     return 内置核心字典.字典获取(字典, 键, 默认值)
 
 
-def 取可选(字典, 键, 缺省=None):
-    """安全访问可选字段：键存在返回值，缺失返回缺省（默认 空）。（L-036；真身 stdlib/内置核心字典.light:47）
-
-    `缺省=None` 留在本签名里，光明段落收满 3 个参并由这里显式传下去。
-    这是「访问可选字段前须守卫」的官方推荐入口；不改变 `字典[缺失键]` 抛 键错误 的语义
-    （维持明确失败行为，那是语言层决策，超出标准库边界）。
-    """
-    import 内置核心字典
-    return 内置核心字典.取可选(字典, 键, 缺省)
-
-
 # =============================================================================
 # 类型检查函数
 # =============================================================================
@@ -983,14 +878,14 @@ def 是列表(值) -> bool:
 
 
 def 是字典(值) -> bool:
-    """检查是否为字典（地板已搬迁：真身 stdlib/内置核心判型.light:39）"""
+    """检查是否为字典（地板已搬迁：真身 stdlib/内置核心判型.light:42）"""
     import 内置核心判型
     return 内置核心判型.是字典(值)
 
 
 def 是字节(值) -> bool:
     """检查是否为字节串（bytes）。R72-E · L-159。
-    真身 stdlib/内置核心判型.light，与 是字符串（str）严格对称。"""
+    真身 stdlib/内置核心判型.light:92，与 是字符串（str）严格对称。"""
     import 内置核心判型
     return 内置核心判型.是字节(值)
 
@@ -1027,8 +922,44 @@ def 是空白(char: str) -> bool:
     return 内置核心判型.是空白(char)
 
 
+def 是布尔(值) -> bool:
+    """检查是否为布尔值（真身 stdlib/内置核心判型.light:59）"""
+    import 内置核心判型
+    return 内置核心判型.是布尔(值)
+
+
+def 是函数(值) -> bool:
+    """检查是否为可调用对象（函数/方法/lambda）（真身 stdlib/内置核心判型.light:63）"""
+    import 内置核心判型
+    return 内置核心判型.是函数(值)
+
+
+def 是数值(值) -> bool:
+    """检查是否为数字类型（int/float，排除 bool）（真身 stdlib/内置核心判型.light:67）
+
+    注意：此函数与 ``是数字`` 不同——``是数字`` 检查单个字符是否为数字字符
+    (str.isdigit)，而 ``是数值`` 检查值是否为 int/float 数值类型。
+    光明关键字 ``是数字`` 映射到本函数（是数值），``是数字符`` 映射到 ``是数字``。
+    """
+    import 内置核心判型
+    return 内置核心判型.是数值(值)
+
+
+def 字符串全数字(串) -> bool:
+    """检查整个字符串是否全由数字字符组成（真身 stdlib/内置核心判型.light:100）
+
+    【R99 合路修复】路 C（LP-D-016）把本函数加进了 ``__all__`` 与
+    内置核心判型.light，但漏了 builtins.py 的委托真身——``from .builtins
+    import *`` 按名取属性直接 ImportError，连累 stdlib.builtins 整个不可导入
+    （test_lightpub_doc_importability / test_lsp 连环红）。此处按 ``是数值``
+    同款委托模式补齐。
+    """
+    import 内置核心判型
+    return 内置核心判型.字符串全数字(串)
+
+
 def 是负零(值) -> bool:
-    """检查是否为 IEEE 754 负零（-0.0）（真身 stdlib/内置核心判型.light:62，任务5 T2-D4 方案A）
+    """检查是否为 IEEE 754 负零（-0.0）（真身 stdlib/内置核心判型.light:79，任务5 T2-D4）
 
     仅对浮点 -0.0 返回 True；正零 0.0 / 整数 0 / 任何非零数均返回 False。
     用于恢复边界等场景显式拒绝负零序号（对齐上游 Object.is(value, -0) 语义）。
@@ -1269,13 +1200,19 @@ def 求和(数据: list) -> float:
     （gh-100425）起 sum() 对浮点走 Neumaier 补偿，3.11 及更早是朴素累加。本侧按
     `sys.version_info >= (3, 12)` 算出来显式传，所以本函数在 3.11 宿主（CI runner
     就是 3.11）和 3.14 宿主上都与该宿主的 sum() 逐位等价。
+
+    第四参 `整数进补偿` 是 3.12 与 3.14 之间的第二层差异：3.12/3.13 的补偿路径里
+    int/bool 走朴素 `f_result += (double)value`，3.14 起才进 `cs_add`。本侧按
+    `sys.version_info >= (3, 14)` 算出来显式传，否则 3.12/3.13 宿主上会分叉
+    （实测 [1e16, True, 1.0, -1e16]：3.12/3.13 给 1.0，3.14 给 2.0）。
     """
     import struct
     import sys
     import 列表工具
     return 列表工具.求和(数据,
                        (1 << (8 * struct.calcsize("l") - 1)) - 1,
-                       sys.version_info >= (3, 12))
+                       sys.version_info >= (3, 12),
+                       sys.version_info >= (3, 14))
 
 
 
@@ -1502,12 +1439,13 @@ __all__ = [
     # 字典工具
     '字典创建', '字典设置', '字典删除',
     '字典键列表', '字典值列表', '字典项列表',
-    '字典包含键', '字典获取', '取可选',
+    '字典包含键', '字典获取',
     
     # 类型检查
     '是整数', '是浮点', '是字符串',
     '是列表', '是字典', '是空',
     '是字母', '是数字', '是空白',
+    '是布尔', '是函数', '是数值', '字符串全数字',
     
     # 数学/统计/随机
     '随机整数', '随机浮点', '随机选择',
@@ -1525,6 +1463,94 @@ __all__ = [
     '只读', '只写', '新建', '截断', '追加', '独占',
     '二进制', '不跟随符号链接',
 ]
+
+
+# =============================================================================
+# A9 空壳补真身（builtin_map → _light_builtin.* 必须有实体，否则调用即 AttributeError）
+# 由 tests/test_codegen.py::test_内置映射不许有空壳 护栏同盯。
+# 惰性 import 遵守地板转发规矩（见文件头）：import 写在函数体内。
+# =============================================================================
+
+def container_get(d, key, default=None):
+    """字典安全取值（惰性辅助，避免与内置 get 语义冲突）。"""
+    try:
+        return d.get(key, default)
+    except Exception:
+        return default
+
+
+def 写入二进制文件(路径: str, 数据) -> None:
+    """写入二进制文件：数据应为 bytes。"""
+    import os
+    d = os.path.dirname(路径)
+    if d and not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
+    with open(路径, 'wb') as _f:
+        _f.write(数据 if isinstance(数据, (bytes, bytearray)) else str(数据).encode('utf-8'))
+
+
+def 读二进制文件(路径: str) -> bytes:
+    """读取二进制文件，返回 bytes。"""
+    with open(路径, 'rb') as _f:
+        return _f.read()
+
+
+def 创建临时目录() -> str:
+    """创建并返回一个新的临时目录路径。"""
+    import tempfile
+    return tempfile.mkdtemp()
+
+
+def 删目录树(路径: str) -> None:
+    """递归删除目录树（含子目录与文件）。"""
+    import shutil
+    shutil.rmtree(路径, ignore_errors=False)
+
+
+def 复制文件(源: str, 目标: str) -> None:
+    """复制文件（保留元数据）。"""
+    import shutil
+    shutil.copy2(源, 目标)
+
+
+def 复制目录(源: str, 目标: str) -> None:
+    """递归复制目录。"""
+    import shutil
+    shutil.copytree(源, 目标)
+
+
+def 重命名(源: str, 目标: str) -> None:
+    """重命名/移动文件或目录。"""
+    import os
+    os.rename(源, 目标)
+
+
+def 排序列表(序列, 反向: bool = False):
+    """返回排序后的新列表（不原地修改）。"""
+    return sorted(序列, reverse=bool(反向))
+
+
+# 英文别名：code_generator 的 method_name_map 将光明方法名「排序」映射为 `sort`
+# （`_light_builtin.排序(数据)` → `_light_builtin.sort(数据)`），且 stdlib/统计.light
+# 百分位数/中位数依赖「排序后返回新列表」语义，故此处补 `sort` 指向 排序列表。
+sort = 排序列表
+
+
+def 查找目录列表(路径: str = '.') -> list:
+    """列出目录下的条目名（等价 列出目录）。"""
+    import os
+    return os.listdir(路径)
+
+
+def 取可选(容器, 键, 默认=None):
+    """安全取字段：字典用 get，对象用 getattr，异常回落默认（空）。"""
+    try:
+        if isinstance(容器, dict):
+            return container_get(容器, 键, 默认)
+        return getattr(容器, 键, 默认)
+    except Exception:
+        return 默认
+
 
 
 def 主目录() -> str:
