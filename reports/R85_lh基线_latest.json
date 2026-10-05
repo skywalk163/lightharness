@@ -1,33 +1,75 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-10-04T00:27:51+08:00",
+  "generated_at": "2026-10-05T08:20:35+08:00",
   "target": {
     "name": "lightharness",
     "platform": "0.86 Linux",
     "host": "192.168.0.86",
-    "remote_dir": "/tmp/r85-20261004-001450",
-    "cwd": "/tmp/r85-20261004-001450/lightharness"
+    "remote_dir": "/tmp/r85-20261005-080734",
+    "cwd": "/tmp/r85-20261005-080734/lightharness"
   },
   "runner": {
     "mode": "full",
     "parallel": true,
     "target": "lightharness",
-    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261004-001450/lh_results.xml -n auto --dist loadscope --timeout 60",
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261005-080734/lh_results.xml -n auto --dist loadscope --timeout 60",
     "pytest_rc": "1"
   },
   "totals": {
     "total": 2084,
-    "failure": 5,
+    "failure": 21,
     "error": 0,
     "skipped": 19,
     "xfailed": 0,
     "xpassed": 0,
-    "passed": 2060,
-    "failed": 5,
-    "duration_sec": 672.351
+    "passed": 2044,
+    "failed": 21,
+    "duration_sec": 737.816
   },
   "failed": [
+    {
+      "id": "tests/unit/test_会话格式.py::test_事件带来源_附加来源表",
+      "cid": "tests.unit.test_会话格式::test_事件带来源_附加来源表",
+      "status": "failure",
+      "file": "tests/unit/test_会话格式.py",
+      "message": "AssertionError: 期望 rc=0，实际 rc=1"
+    },
+    {
+      "id": "tests/unit/test_宿主上下文.py::test_快照与恢复",
+      "cid": "tests.unit.test_宿主上下文::test_快照与恢复",
+      "status": "failure",
+      "file": "tests/unit/test_宿主上下文.py",
+      "message": "AssertionError: 期望 rc=0，实际 rc=1"
+    },
+    {
+      "id": "tests/unit/test_会话冷读.py::test_冷读_平衡日志读回",
+      "cid": "tests.unit.test_会话冷读::test_冷读_平衡日志读回",
+      "status": "failure",
+      "file": "tests/unit/test_会话冷读.py",
+      "message": "AssertionError: 期望 rc=0，实际 rc=1"
+    },
+    {
+      "id": "tests/unit/test_会话冷读.py::test_冷读_继承事件数缺省零",
+      "cid": "tests.unit.test_会话冷读::test_冷读_继承事件数缺省零",
+      "status": "failure",
+      "file": "tests/unit/test_会话冷读.py",
+      "message": "AssertionError: 期望 rc=0，实际 rc=1"
+    },
+    {
+      "id": "tests/unit/test_会话冷读.py::test_冷读_未闭合轮合成关闭事件",
+      "cid": "tests.unit.test_会话冷读::test_冷读_未闭合轮合成关闭事件",
+      "status": "failure",
+      "file": "tests/unit/test_会话冷读.py",
+      "message": "AssertionError: 期望 rc=0，实际 rc=1"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R51_image卸载.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R51_image卸载.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R51_image卸载.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
     {
       "id": "tests/test_回归.py::test_example_exit_code[test_r110_e2e.light]",
       "cid": "tests.test_回归::test_example_exit_code[test_r110_e2e.light]",
@@ -36,18 +78,18 @@
       "message": "AssertionError: test_r110_e2e.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
-      "id": "tests/test_回归.py::test_example_exit_code[test_r111_e2e.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_r111_e2e.light]",
+      "id": "tests/test_回归.py::test_example_exit_code[test_代理团队.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_代理团队.light]",
       "status": "failure",
       "file": "tests/test_回归.py",
-      "message": "AssertionError: test_r111_e2e.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+      "message": "AssertionError: test_代理团队.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
-      "id": "tests/test_回归.py::test_example_exit_code[test_r111插件启停.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_r111插件启停.light]",
+      "id": "tests/test_回归.py::test_example_exit_code[test_会话冷读.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_会话冷读.light]",
       "status": "failure",
       "file": "tests/test_回归.py",
-      "message": "AssertionError: test_r111插件启停.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+      "message": "AssertionError: test_会话冷读.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
       "id": "tests/test_回归.py::test_example_exit_code[test_会话冷读_接线.light]",
@@ -57,11 +99,81 @@
       "message": "AssertionError: test_会话冷读_接线.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     },
     {
-      "id": "tests/test_回归.py::test_example_exit_code[test_预设切换.light]",
-      "cid": "tests.test_回归::test_example_exit_code[test_预设切换.light]",
+      "id": "tests/test_回归.py::test_example_exit_code[test_会话引用深化.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_会话引用深化.light]",
       "status": "failure",
       "file": "tests/test_回归.py",
-      "message": "AssertionError: test_预设切换.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+      "message": "AssertionError: test_会话引用深化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_会话引用深化_接线.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_会话引用深化_接线.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_会话引用深化_接线.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_修复_会话.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_修复_会话.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_修复_会话.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_修复_拷贝.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_修复_拷贝.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_修复_拷贝.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_函数增强.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_函数增强.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_函数增强.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_宿主上下文.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_宿主上下文.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_宿主上下文.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_宿主事件.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_宿主事件.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_宿主事件.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_快捷键.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_快捷键.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_快捷键.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_文件深.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_文件深.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_文件深.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_查询工具.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_查询工具.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_查询工具.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_行为对照_会话持久化.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_行为对照_会话持久化.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_行为对照_会话持久化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
     }
   ],
   "skipped": [
@@ -74,11 +186,11 @@
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_ANTLR同语义",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_两后端输出一致",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_语义正确",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
     "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
-    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
-    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",
