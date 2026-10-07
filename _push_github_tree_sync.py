@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """经 GitHub Git Data API 把本地 <release_sha> 的【完整树】同步到 github main。
 
+⚠️ 当前状态（R121 实测）：**本脚本在本机网络下不可用**——它第一步就要
+`POST /repos/{repo}/git/blobs` 上传 blob，而该端点在本机代理下**稳定返回 HTTP 500**
+（连 5 字节最小 blob 也 500，与编码无关），会卡死在第一步。
+另：github 的 git 智能 HTTP 经代理偶发 502，直推也不可靠。
+⇒ **请改用 `scripts/push_github_inline.py`**（用 `POST /git/trees` 的 inline content
+直接内联改动内容建树 + `base_tree` 合并，绕开坏掉的 blobs 端点，且请求体极小避开 502）。
+若将来 blobs 端点恢复（或换网络环境），本脚本仍是「分叉兜底全量同步」的主路径，故保留。
+
 适用场景：github 与本地历史分叉（github 的 commit/tree SHA 在本地对象库里不存在），
 无法用 rev-list base..HEAD 增量重放。本脚本直接：
   1) 以 github 当前 HEAD 的 tree 为基座；
