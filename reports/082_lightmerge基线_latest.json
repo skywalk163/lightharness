@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "round": "R122",
-  "generated_at": "2026-10-08T08:30:52+08:00",
+  "round": "R123",
+  "generated_at": "2026-10-08T12:42:23+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.82 FreeBSD 15.1",
     "host": "192.168.0.82",
-    "remote_dir": "/tmp/r44-20261008-082140",
-    "cwd": "/tmp/r44-20261008-082140/light-merge"
+    "remote_dir": "/tmp/r44-20261008-123005",
+    "cwd": "/tmp/r44-20261008-123005/light-merge"
   },
   "runner": {
     "mode": "fast",
@@ -15,34 +15,34 @@
     "timeout_sec": 2700,
     "target": "light-merge",
     "marker": "not slow",
-    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20261008-082140/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20261008-082140/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
-    "elapsed_sec": 466.1,
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20261008-123005/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20261008-123005/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
+    "elapsed_sec": 593.2,
     "pytest_rc": 0,
     "timed_out": false
   },
   "totals": {
-    "total": 8317,
+    "total": 8367,
     "failure": 0,
     "error": 0,
     "skipped": 81,
     "xfailed": 11,
     "xpassed": 0,
-    "passed": 8225,
+    "passed": 8275,
     "failed": 0,
-    "duration_sec": 464.209
+    "duration_sec": 591.024
   },
   "failed": [],
   "skipped": [
     "tests/test_pure_light_hook.py::test_magic_number_in_first_two_lines",
     "tests/test_module_system.py::test_stat_mean",
+    "tests/test_stdlib_phase4.py::test_验证IP地址",
+    "tests/test_stdlib_phase4.py::test_验证JSON",
     "tests/test_module_system.py::test_stat_median",
     "tests/test_module_system.py::test_stat_stdev",
     "tests/test_module_system.py::test_time_day_name",
     "tests/test_module_system.py::test_time_days_after",
     "tests/test_module_system.py::test_time_is_weekday",
     "tests/test_module_system.py::test_time_weekday",
-    "tests/test_stdlib_phase4.py::test_验证IP地址",
-    "tests/test_stdlib_phase4.py::test_验证JSON",
     "tests/test_stdlib_phase4.py::test_Base64",
     "tests/test_stdlib_phase4.py::test_二进制十六进制转换",
     "tests/test_stdlib_phase4.py::test_字符集转换",
@@ -61,6 +61,7 @@
     "tests/test_v4_1_integration.py::test_compile_to_pyodide_error",
     "tests/test_v4_1_integration.py::test_compile_to_python_error",
     "tests/test_windows_path.py::test_文件存在_隐藏文件",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
     "tests/test_level6_lexer.py::test_backtick_escape",
     "tests/integration/test_playground_api.py::test_execute_conditional",
     "tests/integration/test_playground_api.py::test_execute_empty_code",
@@ -71,7 +72,6 @@
     "tests/test_agent_tools_light.py::test_junction指向外部被拒",
     "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
     "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
-    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_重复字符串",
     "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
     "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
     "tests/test_pty_light.py::test_设窗口大小不炸",
@@ -87,6 +87,7 @@
     "tests/integration/test_playground_api.py::test_tokenize_simple",
     "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
     "tests/test_内置与直调S2_BI2.py::test_真实路径解析junction",
+    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/integration/test_playground_api.py::test_get_examples",
     "tests/integration/test_playground_api.py::test_get_grammar",
     "tests/integration/test_playground_api.py::test_get_stdlib",
@@ -106,12 +107,13 @@
     "tests/test_semantic.py::test_undefined_variable",
     "tests/integration/test_missing_stdlib.py::test_files_exercise_runs_without_stdlib",
     "tests/integration/test_missing_stdlib.py::test_lists_exercise_runs_without_stdlib",
-    "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
     "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
     "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
     "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
     "tests/test_path_guard_light.py::test_junction指向外部被拒",
+    "tests/test_semantic.py::test_complete_program",
+    "tests/test_semantic.py::test_recursive_function",
     "tests/test_semantic.py::test_type_mismatch",
     "tests/test_semantic.py::test_duplicate_definition",
     "tests/test_第7轮_io矩阵.py::test_Windows置空断言",
@@ -122,8 +124,6 @@
     "tests/test_lsp_protocol_full.py::test",
     "tests/test_进程树_创建时间闸门.py::test_真后代被补杀_老pid复用不误杀_取不到创建时间也跳过",
     "tests/unit/test_light_examples_run.py::test_dict_placeholder",
-    "tests/unit/test_light_examples_run.py::test_placeholder",
-    "tests/test_semantic.py::test_complete_program",
-    "tests/test_semantic.py::test_recursive_function"
+    "tests/unit/test_light_examples_run.py::test_placeholder"
   ]
 }
