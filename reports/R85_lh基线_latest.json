@@ -1,31 +1,31 @@
 {
   "schema": 1,
-  "round": "R55",
-  "generated_at": "2026-10-05T08:20:35+08:00",
+  "round": "R127",
+  "generated_at": "2026-10-08T23:26:02+08:00",
   "target": {
     "name": "lightharness",
     "platform": "0.86 Linux",
     "host": "192.168.0.86",
-    "remote_dir": "/tmp/r85-20261005-080734",
-    "cwd": "/tmp/r85-20261005-080734/lightharness"
+    "remote_dir": "/tmp/r85-20261008-230224",
+    "cwd": "/tmp/r85-20261008-230224/lightharness"
   },
   "runner": {
     "mode": "full",
     "parallel": true,
     "target": "lightharness",
-    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261005-080734/lh_results.xml -n auto --dist loadscope --timeout 60",
+    "cmd": "-m pytest tests/ -q --tb=no -rfE -p no:cacheprovider --junitxml /tmp/r85-20261008-230224/lh_results.xml -n auto --dist loadscope --timeout 60",
     "pytest_rc": "1"
   },
   "totals": {
-    "total": 2084,
+    "total": 2087,
     "failure": 21,
     "error": 0,
     "skipped": 19,
     "xfailed": 0,
     "xpassed": 0,
-    "passed": 2044,
+    "passed": 2047,
     "failed": 21,
-    "duration_sec": 737.816
+    "duration_sec": 686.384
   },
   "failed": [
     {
@@ -186,11 +186,11 @@
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_ANTLR同语义",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_两后端输出一致",
     "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_语义正确",
-    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
-    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
     "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
     "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",

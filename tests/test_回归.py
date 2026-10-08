@@ -130,8 +130,12 @@ EXPECT_GREEN_EXCEPT = set(EXPECT_RED)
 # 台账内条目不计入回归红。详见 tests/ci_environment_reds.txt 与
 # _task3_R82_LH环境红判据脚本化.md。
 def _load_env_red_ledger():
-    """解析 tests/ci_environment_reds.txt，返回文件名集合。"""
-    names = set()
+    """解析 tests/ci_environment_reds.txt，返回 {文件名: E编号} 映射。
+
+    R127-B：返回值从 set 改为 dict（文件名 → E编号），供 xfail/skip 的
+    reason 携带台账编号（junitxml 里可直接辨认命中哪条环境账）。
+    """
+    ledger = {}
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ci_environment_reds.txt')
     if os.path.isfile(path):
         with open(path, encoding='utf-8') as fh:
@@ -141,12 +145,13 @@ def _load_env_red_ledger():
                     continue
                 parts = raw.split('\t')
                 if len(parts) >= 2 and parts[1].strip():
-                    names.add(parts[1].strip())
-    return names
+                    ledger[parts[1].strip()] = parts[0].strip()
+    return ledger
 
 
 # 环境红台账文件名集合（跨平台加载；仅 FreeBSD 上真正容忍）
-ENV_RED_LEDGER = _load_env_red_ledger()
+_ENV_RED_LEDGER_MAP = _load_env_red_ledger()
+ENV_RED_LEDGER = set(_ENV_RED_LEDGER_MAP)
 
 # 本轮失败且命中 flaky 登记的条目（供报告汇总）
 _FLAKY_FAILED = set()
@@ -249,12 +254,21 @@ def test_example_exit_code(name, fpath):
         assert rc != 0, f'{name} 应为红（{EXPECT_RED[name]}），实际 rc=0'
     elif name in ENV_RED_LEDGER and sys.platform.startswith('freebsd'):
         # FreeBSD 0.82 环境红台账条目：容忍（无论本轮绿/红都不算回归）。
+        # R127-B：从「不断言 → junitxml 记 passed（静默）」改为显式 xfail/skip：
+        #   · 本轮红  → pytest.xfail()：junitxml 记 <skipped type="pytest.xfail">，
+        #     与真 passed 可辨（R87-M 曾因静默 passed 导致一次证据无效的销账）。
+        #   · 本轮绿 → pytest.skip()：显式标记「台账条目变绿，请复核销账」，
+        #     同样可辨；不静默吞掉状态变化。
         # 记录实际失败情况，供 test_env_red_baseline_report 汇总报告。
-        # 仅 FreeBSD 启用：Linux/Windows 上这 8 条本就绿（走下方 else 硬判绿）。
+        # 仅 FreeBSD 启用：Linux/Windows 上这 3 条本就绿（走下方 else 硬判绿）。
+        eid = _ENV_RED_LEDGER_MAP.get(name, '?')
         if rc != 0:
             _ALL_FAILED.add(name)
             _ENV_RED_FAILED.add(name)
-        # 不断言：台账内条目不计入回归红。
+            pytest.xfail(f'环境红台账 {eid} FreeBSD 确定性环境红（豁免），rc={rc}')
+        else:
+            pytest.skip(f'环境红台账 {eid} 本轮 rc=0（变绿，请复核销账）')
+        # 台账内条目不计入回归红（上方 xfail/skip 均已结束用例）。
     else:
         # 其它全部预期绿。若失败且不在台账内，即为新增回归红 —— 断言失败并明示。
         if rc != 0:
@@ -275,11 +289,12 @@ def test_example_exit_code(name, fpath):
 def test_env_red_baseline_report():
     """FreeBSD 门禁环境红报告：环境账 N 条 / 命中 M 条 / 回归红 K 条。
 
-    判据：回归红（失败但不属于环境红台账）必须 = 0。台账内条目即使失败也容忍。
-    Windows/Linux 上不启用台账（8 条本就绿），跳过本用例。
+    判据：回归红（失败但不属于环境红台账）必须 = 0。台账内条目即使失败也容忍
+    （在 test_example_exit_code 中已显式 xfail，junitxml 可辨）。
+    Windows/Linux 上不启用台账（3 条本就绿），跳过本用例。
     """
     if not sys.platform.startswith('freebsd'):
-        pytest.skip('环境红台账仅 FreeBSD runner 适用（Windows/Linux 上 8 条本就绿）')
+        pytest.skip('环境红台账仅 FreeBSD runner 适用（Windows/Linux 上 3 条本就绿）')
     # 回归红 = 本轮失败集合 − 环境红台账 − flaky 登记豁免（R87-E，平台匹配）
     flaky_exempt = {n for n in _ALL_FAILED if _flaky_platform_hit(n)}
     new_reds = _ALL_FAILED - ENV_RED_LEDGER - flaky_exempt

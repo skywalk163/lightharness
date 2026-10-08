@@ -250,6 +250,21 @@ def build_tarball(out_path: Path) -> int:
                     continue
                 tf.add(p, arcname=f"{arc_root}/{rel}".replace("\\", "/"))
                 n += 1
+            # R127-B：git ls-files 口径 vs 0.82 os.walk 口径的差异提示——
+            #   · 已跟踪文件的未提交修改：进包（tarfile.add 读工作树内容）✓
+            #   · 已跟踪但工作树已删除：p.exists() 跳过 ✓
+            #   · 未跟踪新文件：git ls-files 不列出 → 不进包（os.walk 口径会进）。
+            #     此处显式提示，避免依赖未跟踪文件的测试在远端静默缺文件；
+            #     如属测试依赖请先 git add + commit 再 sync。
+            res2 = subprocess.run(["git", "-c", "core.quotePath=false", "-C", str(base),
+                                   "status", "--porcelain"],
+                                  capture_output=True, text=True, encoding="utf-8")
+            untracked = [l[3:] for l in (res2.stdout or "").splitlines()
+                         if l.startswith("??")]
+            if untracked:
+                preview = ", ".join(untracked[:5]) + ("…" if len(untracked) > 5 else "")
+                print(f"[同步0.86] ⚠️ {base.name} 有 {len(untracked)} 个未跟踪文件不入包"
+                      f"（如属测试依赖请先 commit）：{preview}")
             # --with-git：把 .git 一并带上（远端成为真正 git 工作树）
             if INCLUDE_GIT:
                 git_dir = base / ".git"
