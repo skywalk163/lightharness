@@ -572,3 +572,46 @@
     如果 项 == 值:
       返回 真
   返回 假
+
+# =====================================================================
+# §5 定时提醒拒绝链（R126 §4-2；上游 96c421d985 / 500295b2bd / 1b1b09e1fb）
+#
+# 规则本体纯：delegation 深度由调用方以入参投影（不 import 子代理/宿主模块）。
+# 两层规则：
+#   服务层 reminderTargetRefusal（96c421d985）：agent 缺失或 delegationDepthOf(agent)===0 → 放行；
+#     否则 {code:'subagent_session', ...}。create 在 serialize 队列内 throw（无 result 通道）；
+#     update 改走非变更 result（500295b2bd：Remote 网关把 throw 变 failed result，
+#     Web 编辑器只映射 result.code，故 refusal 必须走 result 路径）。
+#   工具层 subagentCallerRefusal（1b1b09e1fb）：四工具 execute 前统一拒绝委托子代理调用方，
+#     使 list/delete/仅改内容的 update 也被覆盖；与 preset toolFilter.deny 互为两层
+#     （prompt 层 + 执行层）。
+# 异常文本约定：create 抛出的错误以 "subagent_session: " 为前缀——光明错误对象只有
+#   message，按前缀 duck-typing（对标清单 §7-3 建议的跨边界按 name 比较）。
+# =====================================================================
+
+# 服务层拒绝规则：深度投影入参（空 = 无活动 Agent → 放行）
+段落 定时目标拒绝(深度):
+  如果 深度 == 空:
+    返回 空
+  如果 深度 <= 0:
+    返回 空
+  返回 {"code": "subagent_session", "message": "This Session belongs to subagent routing, which never receives reminder delivery."}
+
+# create 执行通道：refusal 必须抛出（96c421d985 语义，500295b2bd 后 create 仍 throw）
+段落 定时创建执行(深度, 拟建记录):
+  设 拒绝 为 定时目标拒绝(深度)
+  如果 拒绝 != 空:
+    抛出 新建 错误(拒绝["code"] + ": " + 拒绝["message"])
+  返回 拟建记录
+
+# update 执行通道：refusal 作为非变更 result 返回而非抛出（500295b2bd 语义）
+段落 定时更新执行(深度):
+  返回 定时目标拒绝(深度)
+
+# 工具层调用方拒绝规则：四工具 execute 前统一闸门（1b1b09e1fb 语义）
+段落 定时工具拒绝(调用方深度):
+  如果 调用方深度 == 空:
+    返回 空
+  如果 调用方深度 <= 0:
+    返回 空
+  返回 {"code": "subagent_session", "message": "A delegated subagent cannot use reminders."}

@@ -4376,6 +4376,152 @@
       ],
       "本轮目标": "R111-R4：R110 暂缓组5 如实登记不移植（无对应承载），维持砍线条款结论",
       "反跑判据": "无（暂缓项，不占验收判据；若后续引入模型兼容开关，须按上游门表补卡并补判据）"
+    },
+    {
+      "编号": 319,
+      "功能": "schedule 四工具 schema/校验/错误映射（tool-schedule 迁出为 preset 声明挂载包）",
+      "原版包": "packages/schedule/tool-schedule/src/index.ts",
+      "光明模块": "src/定时工具.light",
+      "状态": "done（R126-B1，锚点 dsh-v0.2.1-alpha.1=5badb15009）：§1 常量与稳定错误码表 9 码（含 subagent_session，终锚点 domain.ts 实值）；§2 六种 timing 视图 oneOf（视图侧驼峰 timeZone/入参侧蛇形 time_zone 如实区分）；§3 四工具 schema 描述/参数表/定义表/渲染值（紧凑无空格对齐 JSON.stringify）；§4 校验创建参数（恰一 selector：未知键/两/零→invalid_selector；prompt/title 修剪；after_seconds 正安全整数）/更新（至多一 selector、零变更拒绝）/删除；§5 错误映射 operationError（ScheduleInputError→稳定 code 透传，其余→internal_error）+ 是安全整数(±2^53-1) + 间隔非法（safe integer→invalid_rule；<60→frequency_too_high）。宿主面（ctx.tools.register/ctx.schedule/exec.signal/Date.now）按规格剔除。",
+      "证据": [
+        "packages/schedule/tool-schedule/src/index.ts（上游 6c1a590a4c）",
+        "src/定时工具.light",
+        "examples/test_R126定时工具.light",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-1"
+      ],
+      "本轮目标": "四工具 schema+输出视图+校验纯函数+错误映射全落地；测试 C1-C13/D1-D8/A1-A19/B1-B16/E1-E4/F1-F16 全绿；宿主投影剔除",
+      "反跑判据": "examples/test_R126定时工具.light：把 D2（间隔 60 放行）期望改为 frequency_too_high 即红；C3（恰一 selector）改放行即红",
+      "语言缺陷": [
+        "L-181"
+      ]
+    },
+    {
+      "编号": 320,
+      "功能": "schedule subagent 拒绝链（服务层 reminderTargetRefusal + 工具层 subagentCallerRefusal + 结果通道选择）",
+      "原版包": "packages/schedule/schedule/src/index.ts + tool-schedule",
+      "光明模块": "src/调度深化.light §5",
+      "状态": "done（R126-B1）：定时目标拒绝(深度)——delegationDepth>0→subagent_session、空/0 放行（深度为入参投影，不 import 宿主）；结果通道如实区分：创建走抛（96c421d985 语义，create 无 result 通道）、更新走返回 refusal 不抛（500295b2bd 语义）；定时工具拒绝(调用方深度)——四工具统一闸门（1b1b09e1fb），list/delete/仅改内容 update 均覆盖；create 抛错带 'subagent_session: ' 前缀 duck-typing（对齐架构建议 §7-3 按 name 比较）。",
+      "证据": [
+        "packages/schedule/schedule/src/index.ts（上游 96c421d985/699f1a8dc1/500295b2bd/1b1b09e1fb）",
+        "src/调度深化.light",
+        "examples/test_R126定时工具.light §G",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §5"
+      ],
+      "本轮目标": "G1 深度>0 create 抛 subagent_session；G2 update 返回 refusal 不抛（消息逐字 never receives reminder delivery）；G3 四工具工具层拒绝（A delegated subagent cannot use reminders.）；G4-G9 深度=0/空双放行",
+      "反跑判据": "test_R126定时工具.light：G2 期望改 internal_error 即红（B1 反跑实证：破坏 rc=1 → 还原 rc=0）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 321,
+      "功能": "包清单 icon 判定规则（manifest icon 优先/相对路径/越界/白名单/256KiB）",
+      "原版包": "packages/boot/app-boot/src/package-meta.ts",
+      "光明模块": "src/包清单.light",
+      "状态": "done（R126-B3，69→194 行）：判定清单图标/判定导出图标/判定插件图标/校验图标文件等 9 段落。manifest icon 优先、非空串校验（textOf 契约）、相对路径拒绝（posix 绝对/win32 盘符/UNC/scheme 正则）、realpath 投影越界拒绝（分量级前缀）、后缀白名单 svg/png/jpg/jpeg/webp（小写归一）、256KiB 上限、省略 icon 才读 ./icon 导出资源（包归属投影）。realpath/stat/fs/base64 全部宿主投影入参。",
+      "证据": [
+        "packages/boot/app-boot/src/package-meta.ts（上游 d12257c959/8339f16c1d/f8a274b76e）",
+        "src/包清单.light",
+        "examples/test_R126_小项复刻.light §A（13 组）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-3"
+      ],
+      "本轮目标": "icon 优先/盘符/scheme/UNC/越界/白名单/大小写/256KiB/目录/导出资源/归属/双缺/空串 13 组判据全绿",
+      "反跑判据": "test_R126_小项复刻.light：A1 dataURI 期望 QUJD 改 XXX 即红（B3 反跑实证 rc=1→还原 rc=0）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 322,
+      "功能": "插件安装 spec 解析（parseInstallSpec 四形态 + dependencySpec 纯字符串规则）",
+      "原版包": "packages/boot/plugin-manager/src/install-spec.ts",
+      "光明模块": "src/插件安装.light",
+      "状态": "done（R126-B3，151→345 行）：解析安装规格/依赖规格等 12 段落。parseInstallSpec 四形态（registry/path/tarball/git）+ gitHost 三路推导（shorthand 映射/scp/URL authority）+ scoped 名 @ 从 1 号位起找；dependencySpec：http(s) user-info 剥离（剥到最后一个 @，query 保留）、file:/link: ~ 展开+绝对化（词法规整 . / .. 分量）、npm/jsr 别名跟名、影子依赖包名异名才前缀 名@。语义细节实测修正：HOSTED_REPOSITORY_URL 只匹配三段形（四段深路径落 tarball 分支错误文案）；依赖名=包名时原样返回不加前缀。上游抛 InvalidInstallSpecError，本模块按惯例返回字典形式错误原因（差异已登记）。",
+      "证据": [
+        "packages/boot/plugin-manager/src/install-spec.ts（上游 6d1e12b237/9b79f97010）",
+        "src/插件安装.light",
+        "examples/test_R126_小项复刻.light §B（24 断言）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-4"
+      ],
+      "本轮目标": "B1-B24 全绿（含 B12b 深路径非 hosted、B15/B16 凭证剥到最后 @、B17 ../消解、B18 ~ 展开、B21 影子前缀）；定向回归 test_r112安装 rc=0",
+      "反跑判据": "test_R126_小项复刻.light：B15 期望（剥 @ 后）改回带凭证即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 323,
+      "功能": "目标轮取消撤回（goal-round-driver cancellation withdrawal）",
+      "原版包": "packages/goal/goal-round-driver/src/index.ts",
+      "光明模块": "src/目标轮驱动.light §7",
+      "状态": "done（R126-B3，275→304 行）：§7 取消轮结算。queued 一律撤回（不依赖目标存在）；pause 围栏保持上游原条件（相位 queued/claimed/cancelled 且目标 active+armed 且 goalId/revision 全匹配）；返回宿主动作决策（先清 attempt→撤回 inbox.remove→goals.pause）。",
+      "证据": [
+        "packages/goal/goal-round-driver/src/index.ts（上游 9a8d21dfe7）",
+        "src/目标轮驱动.light",
+        "examples/test_R126_小项复刻.light §C（8 组）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-5"
+      ],
+      "本轮目标": "queued/claimed/cancelled/admitted×围栏匹配与否/空预约/空目标 8 组判据全绿；定向回归 test_目标轮驱动 rc=0",
+      "反跑判据": "test_R126_小项复刻.light：C 组 queued 撤回期望改保留即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 324,
+      "功能": "frontmatter 首行检测（splitFrontmatter）",
+      "原版包": "packages/client/ui-sidebar-documentpreview/src/client/markdown/frontmatter.ts",
+      "光明模块": "src/前置元数据.light",
+      "状态": "done（R126-B3，新建 31 行）：上游 FRONTMATTER 正则逐字承载（光明 re 投影，跨行惰性+可选组）。首行（允许 BOM）--- 开、---/... 闭、空块次行闭、未闭合不算 frontmatter。落点新建理由：流.light 是 LLM 流式词汇表不同域。",
+      "证据": [
+        "packages/client/ui-sidebar-documentpreview/src/client/markdown/frontmatter.ts（上游 2ca5f648c3/0cad3a0137）",
+        "src/前置元数据.light",
+        "examples/test_R126_小项复刻.light §D（11 组）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-6"
+      ],
+      "本轮目标": "BOM/...闭界/空块/未闭合/非首行/----/后续正文/尾随空白/CRLF/空行块/普通文本 11 组全绿",
+      "反跑判据": "test_R126_小项复刻.light：D 组未闭合判据期望反转即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 325,
+      "功能": "PTC 参数序文案契约（description before code/file_path/content）",
+      "原版包": "packages/core/tools/src/{ptc,py-types,ts-types}.ts + fs/tool-fs + shell/tool-{bash,pwsh}",
+      "光明模块": "src/工具_写文件.light",
+      "状态": "partial（R126-B3，部分移植+如实拒绝）：移植部分——工具_写文件.light 路径参数 description 追加上游逐字句 Provide file_path before content in the arguments（沿 R111-R4 英文契约文案先例）。拒绝部分（无落点，不为移植硬造模块）：① tool-bash/tool-pwsh 引导句——光明 bash 工具参数只有 命令，无 description 参数，引导句无意义；② tool-fs edit 工具——光明侧无编辑文件工具模块（全仓 grep 无 工具_编辑/edit_file）；③ ptc/py-types/ts-types run_code 参数序——光明侧无 run_code 工具定义（仅 工具.light/提示模板.light 注释提及运输概念，无 description/code 双参 schema 可改序）。",
+      "证据": [
+        "packages/core/tools/src/ptc.ts 等（上游 a63d8979fa/4166dbd140/17ac34c1c7）",
+        "src/工具_写文件.light（仅第 15 行 description）",
+        "examples/test_R126_小项复刻.light §F",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-7"
+      ],
+      "本轮目标": "写文件工具文案契约同步 + 定向回归 test_工具_写文件_接线 rc=0 + pytest tests/unit/test_工具_写文件.py 13 passed；其余三子项如实拒绝登记",
+      "反跑判据": "test_R126_小项复刻.light §F：文案期望反转即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 326,
+      "功能": "流式残缺 JSON 懒扫描视图（PartialArguments/partial-json.ts 新 666 行）",
+      "原版包": "packages/util/values/src/partial-json.ts（上游 2ba4144a7e/a33bd1a80b/91818992b0/b7f06692b6）",
+      "光明模块": "src/流式参数.light",
+      "状态": "done（R126-B2，新建约 420 行，语义降级 4 条已登记于模块头注）：Mode 机逐分支移植（root/key-or-end/key-only/key/colon/value/string/scalar/nested/comma-or-end/closed/invalid → 根/键或终/键只/键/冒号/值/串/标量/嵌套/逗或终/已闭/错）；stringBoundary 反斜杠跳双等价（转义引号不截断）；SIMPLE_ESCAPES+\\uXXXX 手工解码（hex 不足 4 流式等待、非法转义保留有效前缀）；JSON 键白名单空白。API：残缺参数视图/参数键表/参数字符串前缀/参数字符串长度/参数字段完整/参数值。语义降级：①append/settle 增量接口+扫描记忆→每次全量重扫（任务书允许）；②reads 记忆层不复刻；③参数字段完整 只判边界（纯函数版无跨调用记忆）；④needsDecoding fast-path 统一手工解码。",
+      "证据": [
+        "packages/util/values/src/partial-json.ts（git show 5badb15009 提取）",
+        "src/流式参数.light",
+        "examples/test_R126_流式参数.light（18 判据）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-8"
+      ],
+      "本轮目标": "18 判据全绿（完整对象/残缺串值/残缺嵌套/转义引号/尾随逗号/空白/普通完整 JSON 等价）；反跑破坏判据 3 长度 5→4 立红→还原复绿",
+      "反跑判据": "test_R126_流式参数.light：判据 3 长度期望改 4 即红（B2 反跑实证 rc=1→还原 rc=0）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 327,
+      "功能": "parsePublicUrl 公共地址校验（39 行纯函数）",
+      "原版包": "packages/bundle/web-app/src/public-url.ts",
+      "光明模块": "src/公共地址.light",
+      "状态": "done（R126-B3，新建 60 行）：控制字符/ASCII 空白（ord 逐字符）、非 http(s)、query/fragment、userinfo、空 authority（https:///ui 形）、尾斜杠归一，拒绝文案逐字对齐上游（含 label 插值）。落点新建理由：web服务器.light 是重型路由壳（1677 行模块级单例），不宜作纯逻辑导入目标。差异已登记：上游返回 URL 对象+WHATWG parse 末步复验，此处返回归一化串，exotic 非法字面留宿主接线复验。",
+      "证据": [
+        "packages/bundle/web-app/src/public-url.ts（上游 a7c3ad99bc）",
+        "src/公共地址.light",
+        "examples/test_R126_小项复刻.light §E（10 组）",
+        "docs/功能对标/R126_上游v0.2.1-alpha.1增量清单.md §4-9"
+      ],
+      "本轮目标": "10 组判据全绿（含各拒绝形态+尾斜杠归一）",
+      "反跑判据": "test_R126_小项复刻.light §E：任一拒绝判据期望反转即红",
+      "语言缺陷": []
     }
   ]
 }
