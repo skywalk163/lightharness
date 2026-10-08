@@ -1,0 +1,580 @@
+........................................................................ [  3%]
+........................................................................ [  6%]
+........................................................................ [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 20%]
+........................................................................ [ 24%]
+...........s............................................................ [ 27%]
+....................................................s................... [ 31%]
+..................s..................................................... [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 41%]
+........................................................................ [ 44%]
+........................................................................ [ 48%]
+..............................................................F......... [ 51%]
+........................................................................ [ 55%]
+.............................................................F.......... [ 58%]
+....FF..FF...................F..F...F................................... [ 62%]
+........................FF...........................F.................. [ 65%]
+F.........F.............................................F............... [ 68%]
+...................................s.................................... [ 72%]
+............FFF......................................................... [ 75%]
+............F........................................................... [ 79%]
+........................................................................ [ 82%]
+..........................................F............................. [ 86%]
+........................................................................ [ 89%]
+........................................................................ [ 93%]
+........................................................................ [ 96%]
+........................................................................ [100%]
+================================== FAILURES ===================================
+_______________ test_example_exit_code[test_R51_image卸载.light] ________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_R51_image卸载.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（test_R51_image卸载:127）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E      125   # 快照（副本=浅拷贝）：汇集全部事件 返回类内列表本身，后续记录会改到同一列表；
+E      126   #   本用例需要一份「未含任何 image/offload 的 0.1.5 形状日志」作对照。
+E      127   设 表 为 副本(会话对象.汇集全部事件())
+E      │
+E      │                         ^
+E      │
+E      128   断言相等(长度(表), 2, "2a_事件数=2")
+E      129   断言相等(取事件序号(表, 事件1["序号"])["类型"], "user/message", "2b_按序号取到事件")
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_代理团队.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_代理团队.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: Exception
+E       断言含失败: claim 被占应抛（文案） 文本=module '内置核心列表' has no attribute '副本'
+E       25 段落 断言含(文本, 子串, 标签):
+E       26   如果 查找子串(文本, 子串) < 0:
+E       27     抛出 新建 错误("断言含失败: " + 标签 + " 文本=" + 转字符串(文本))
+E       │
+E       │                                                ^
+E       │
+E       28 
+E       29 段落 检查抛错含(标签, 子串, 运算):
+E       参考示例：
+E       请根据具体的错误信息进行修复
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_会话冷读.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_会话冷读.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       97   设 合成表 为 中断轮闭合器(事件表)
+E       98   # 合并表 = 原事件表副本 + 合成关闭事件；不写回存储
+E       99   设 合并表 为 副本(事件表)
+E       │
+E       │                 ^
+E       │
+E      100   遍历 项 之 合成表:
+E      101     列表追加(合并表, 项)
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+_________________ test_example_exit_code[test_会话冷读_接线.light] __________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_会话冷读_接线.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: Exception
+E       断言失败：1c 冷读事件数 | 实际=-1 期望=1
+E      18 段落 断言相等(实际, 期望, 信息):
+E      19   如果 实际 != 期望:
+E      20     抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+E      │
+E      │                                                                    ^
+E      │
+E      21   返回 真
+E      22 
+E       参考示例：
+E       请根据具体的错误信息进行修复
+E     
+E     
+E   assert 1 == 0
+__________________ test_example_exit_code[test_会话引用深化.light] __________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_会话引用深化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话引用深化.light:151）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话引用深化.light:151）
+E      149   设 安全标签 为 转义标签(标签)
+E      150   设 提及 为 "@[" + 安全标签 + "](" + 地址 + ")"
+E      151   设 提及候选 为 副本(候选)
+E      │
+E      │                 ^
+E      │
+E      152   提及候选["mention"] 为 提及
+E      153   返回 提及候选
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+________________ test_example_exit_code[test_会话引用深化_接线.light] _________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_会话引用深化_接线.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话引用深化.light:151）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话引用深化.light:151）
+E      149   设 安全标签 为 转义标签(标签)
+E      150   设 提及 为 "@[" + 安全标签 + "](" + 地址 + ")"
+E      151   设 提及候选 为 副本(候选)
+E      │
+E      │                 ^
+E      │
+E      152   提及候选["mention"] 为 提及
+E      153   返回 提及候选
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+__________________ test_example_exit_code[test_修复_会话.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_修复_会话.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     ===== 第 9 轮任务 1：会话域修复回归 =====
+E     ✓ 1a 模块级 append 连接 (T2-D5 修复后连接生效)
+E     ✓ 1b 类方法一致 (模块级与类方法语义一致)
+E     ✓ 1c 三段连接 (多次 append 累积)
+E     ✓ 2a 起点不存在抛错 (上游同文案)
+E     ✓ 2b 终点不存在抛错 (上游同文案)
+E     ✓ 2c 起点大于终点抛错 (上游同文案)
+E     ✓ 2d 合法区间仍可用 (原区间遮蔽 + 新事件入位)
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       206   如果 (来源表 != 空):
+E       207     # L-082 已修复：副本 一等浅拷贝原语可用，直接快照脱钩（对齐上游 sourceEventSeqs snapshot，调用方后续改动不透传）。
+E       208     事件项["来源事件序号"] 为 副本(来源表)
+E       │
+E       │                           ^
+E       │
+E       209   返回 事件项
+E       210 
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+__________________ test_example_exit_code[test_修复_拷贝.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_修复_拷贝.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（test_修复_拷贝:20）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E      18   # ---- L-082 副本：字典/列表浅拷贝，其他类型原样返回 ----
+E      19   设 原字典 为 {"a": 1, "b": 2}
+E      20   设 副字典 为 副本(原字典)
+E      │
+E      │                 ^
+E      │
+E      21   断言相等(副字典, 原字典, "副本字典值相等")
+E      22   副字典["a"] 为 99
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_函数增强.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_函数增强.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\函数增强.light:34）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\函数增强.light:34）
+E       32   段落 收集步(已收集表):
+E       33     段落 收下一个(值):
+E       34       设 新表 为 副本(已收集表)
+E       │
+E       │                     ^
+E       │
+E       35       列表追加(新表, 值)
+E       36       如果 列表长度(新表) == 参数个数:
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+__________________ test_example_exit_code[test_宿主上下文.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_宿主上下文.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\宿主上下文.light:102）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\宿主上下文.light:102）
+E      100   设 合并为 {}
+E      101   遍历 键 之 字典键列表(上下文["属性"]):
+E      102     设 合并[键] 为 副本(上下文["属性"][键])
+E      │
+E      │                              ^
+E      │
+E      103   返回 合并
+E      104 
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_宿主事件.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_宿主事件.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\宿主事件.light:214）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\宿主事件.light:214）
+E      212       抛出 新建 错误("事件参数缺少必填键 " + 必填键 + ": " + 事件名)
+E      213   # 注入作用域与时间（参数副本，不改调用方字典）
+E      214   设 派发参数 为 副本(参数)
+E      │
+E      │                 ^
+E      │
+E      215   派发参数["事件作用域"] 为 事件作用域
+E      216   派发参数["事件时间"] 为 时间
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_快捷键.light] ____________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_快捷键.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 类型错误
+E       类型错误：创建临时目录() takes 0 positional arguments but 1 was given（test_快捷键:232）
+E       （Python 原始错误：创建临时目录() takes 0 positional arguments but 1 was given）
+E      230   断言相等(文档1["路径"], 路径连接(根, "keybindings.json"), "8a 路径拼接")
+E      231   断言假(文档1["可用"], "8a2 仓根无 keybindings.json → 可用=假")
+E      232   设 临时根 为 创建临时目录("lh_sc_test")
+E      │
+E      │                              ^
+E      │
+E      233   设 临时路径 为 路径连接(临时根, "keybindings.json")
+E      234   写入文件(临时路径, "{}")
+E       建议: 请检查操作数类型是否匹配，光明中文本和数字不能直接进行运算。可使用「整数()」「文本()」等函数进行类型转换。
+E       参考示例：
+E       设 数字 为 整数("123")  # 将文本转换为整数
+E       设 文本 为 文本(123)     # 将整数转换为文本
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_文件深.light] ____________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_文件深.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     临时目录: C:\Users\skywalk\AppData\Local\Temp\tmp97_jhfl_
+E     错误: 类型错误
+E       类型错误：查找目录列表() takes from 0 to 1 positional arguments but 3 were given（G:\dswork\duan-light-merge\lightharness\src\文件.light:83）
+E       （Python 原始错误：查找目录列表() takes from 0 to 1 positional arguments but 3 were given）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\文件.light:83）
+E       81   如果 目录存在(目录) == 假:
+E       82     返回 []
+E       83   返回 查找目录列表(目录, 样式, 递归)
+E       │
+E       │                       ^
+E       │
+E       84 
+E       85 # 创建临时目录，返回路径
+E       建议: 请检查操作数类型是否匹配，光明中文本和数字不能直接进行运算。可使用「整数()」「文本()」等函数进行类型转换。
+E       参考示例：
+E       设 数字 为 整数("123")  # 将文本转换为整数
+E       设 文本 为 文本(123)     # 将整数转换为文本
+E     
+E     
+E   assert 1 == 0
+___________________ test_example_exit_code[test_查询工具.light] ___________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_查询工具.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\查询工具.light:309）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\查询工具.light:309）
+E      307     设 标识值表 为 参数["session_ids"]
+E      308     非空数组断言("session_ids", 标识值表)
+E      309     列表追加(过滤器, ["kind": "id", "values": 副本(标识值表)])
+E      │
+E      │                                                 ^
+E      │
+E      310   设 创建 为 时间戳区间("created_at", 参数.获取("created_at_from", 空), 参数.获取("created_at_to", 空))
+E      311   如果 创建 != 空:
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+________________ test_example_exit_code[test_行为对照_会话持久化.light] ________________
+tests\test_回归.py:268: in test_example_exit_code
+    assert rc == 0, (
+E   AssertionError: test_行为对照_会话持久化.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）
+E     --- 输出尾 ---
+E     序号为0 (事件身份与日志偏移分离：首条序号0)
+E     ✓ 2a 节点0首投影 (system/message 成为节点0)
+E     ✓ 2b append 连接 (append 语义为连接)
+E     ✓ 2c replace 替换 (replace 遮蔽此前节点)
+E     ✓ 2d 遮蔽后回退 (被遮蔽的 system/message 跳过)
+E     ✓ 2e 节点0置于最前 (system 角色消息领先)
+E     ✓ 3a 起点不存在抛错 (上游同文案)
+E     ✓ 3b 起点大于终点抛错 (上游同文案)
+E     ✓ 3b2 终点不存在抛错 (上游同文案)
+E     ✓ 3c 命中区间才遮蔽 (合法区间遮蔽语义仍在)
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       206   如果 (来源表 != 空):
+E       207     # L-082 已修复：副本 一等浅拷贝原语可用，直接快照脱钩（对齐上游 sourceEventSeqs snapshot，调用方后续改动不透传）。
+E       208     事件项["来源事件序号"] 为 副本(来源表)
+E       │
+E       │                           ^
+E       │
+E       209   返回 事件项
+E       210 
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+_______________________________ test_冷读_平衡日志读回 ________________________________
+tests\unit\test_会话冷读.py:88: in test_冷读_平衡日志读回
+    assert_success(r)
+tests\unit\test_support.py:141: in assert_success
+    assert r.rc == 0, (
+E   AssertionError: 期望 rc=0，实际 rc=1
+E     --- stdout ---
+E     
+E     --- stderr ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       97   设 合成表 为 中断轮闭合器(事件表)
+E       98   # 合并表 = 原事件表副本 + 合成关闭事件；不写回存储
+E       99   设 合并表 为 副本(事件表)
+E       │
+E       │                 ^
+E       │
+E      100   遍历 项 之 合成表:
+E      101     列表追加(合并表, 项)
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = LightResult(rc=1, stdout='', stderr='错误: 属性错误\n  属性错误：对象缺少该属性或方法（G:\\dswork\\duan-light-merge\\lightharness\\src\\会话冷读...\\Local\\Temp\\lh_unit_bh7f9h47', light_file='C:\\Users\\skywalk\\AppData\\Local\\Temp\\lh_unit_bh7f9h47\\_unit.light').rc
+______________________________ test_冷读_继承事件数缺省零 _______________________________
+tests\unit\test_会话冷读.py:109: in test_冷读_继承事件数缺省零
+    assert_success(r)
+tests\unit\test_support.py:141: in assert_success
+    assert r.rc == 0, (
+E   AssertionError: 期望 rc=0，实际 rc=1
+E     --- stdout ---
+E     
+E     --- stderr ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       97   设 合成表 为 中断轮闭合器(事件表)
+E       98   # 合并表 = 原事件表副本 + 合成关闭事件；不写回存储
+E       99   设 合并表 为 副本(事件表)
+E       │
+E       │                 ^
+E       │
+E      100   遍历 项 之 合成表:
+E      101     列表追加(合并表, 项)
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = LightResult(rc=1, stdout='', stderr='错误: 属性错误\n  属性错误：对象缺少该属性或方法（G:\\dswork\\duan-light-merge\\lightharness\\src\\会话冷读...\\Local\\Temp\\lh_unit_gvyeddxv', light_file='C:\\Users\\skywalk\\AppData\\Local\\Temp\\lh_unit_gvyeddxv\\_unit.light').rc
+_____________________________ test_冷读_未闭合轮合成关闭事件 ______________________________
+tests\unit\test_会话冷读.py:140: in test_冷读_未闭合轮合成关闭事件
+    assert_success(r)
+tests\unit\test_support.py:141: in assert_success
+    assert r.rc == 0, (
+E   AssertionError: 期望 rc=0，实际 rc=1
+E     --- stdout ---
+E     
+E     --- stderr ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话冷读.light:99）
+E       97   设 合成表 为 中断轮闭合器(事件表)
+E       98   # 合并表 = 原事件表副本 + 合成关闭事件；不写回存储
+E       99   设 合并表 为 副本(事件表)
+E       │
+E       │                 ^
+E       │
+E      100   遍历 项 之 合成表:
+E      101     列表追加(合并表, 项)
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = LightResult(rc=1, stdout='', stderr='错误: 属性错误\n  属性错误：对象缺少该属性或方法（G:\\dswork\\duan-light-merge\\lightharness\\src\\会话冷读...\\Local\\Temp\\lh_unit_37icbvnk', light_file='C:\\Users\\skywalk\\AppData\\Local\\Temp\\lh_unit_37icbvnk\\_unit.light').rc
+______________________________ test_事件带来源_附加来源表 _______________________________
+tests\unit\test_会话格式.py:120: in test_事件带来源_附加来源表
+    assert_success(r)
+tests\unit\test_support.py:141: in assert_success
+    assert r.rc == 0, (
+E   AssertionError: 期望 rc=0，实际 rc=1
+E     --- stdout ---
+E     
+E     --- stderr ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\会话格式.light:208）
+E       206   如果 (来源表 != 空):
+E       207     # L-082 已修复：副本 一等浅拷贝原语可用，直接快照脱钩（对齐上游 sourceEventSeqs snapshot，调用方后续改动不透传）。
+E       208     事件项["来源事件序号"] 为 副本(来源表)
+E       │
+E       │                           ^
+E       │
+E       209   返回 事件项
+E       210 
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = LightResult(rc=1, stdout='', stderr='错误: 属性错误\n  属性错误：对象缺少该属性或方法（G:\\dswork\\duan-light-merge\\lightharness\\src\\会话格式...\\Local\\Temp\\lh_unit_0q3dnmml', light_file='C:\\Users\\skywalk\\AppData\\Local\\Temp\\lh_unit_0q3dnmml\\_unit.light').rc
+_________________________________ test_快照与恢复 __________________________________
+tests\unit\test_宿主上下文.py:145: in test_快照与恢复
+    assert_success(r)
+tests\unit\test_support.py:141: in assert_success
+    assert r.rc == 0, (
+E   AssertionError: 期望 rc=0，实际 rc=1
+E     --- stdout ---
+E     
+E     --- stderr ---
+E     错误: 属性错误
+E       属性错误：对象缺少该属性或方法（G:\dswork\duan-light-merge\lightharness\src\宿主上下文.light:102）
+E       （Python 原始错误：module '内置核心列表' has no attribute '副本'）
+E       （位置: G:\dswork\duan-light-merge\lightharness\src\宿主上下文.light:102）
+E      100   设 合并为 {}
+E      101   遍历 键 之 字典键列表(上下文["属性"]):
+E      102     设 合并[键] 为 副本(上下文["属性"][键])
+E      │
+E      │                              ^
+E      │
+E      103   返回 合并
+E      104 
+E       建议: 请检查对象是否拥有该属性或方法，需确认类定义中已声明。注意区分属性和方法——方法需要加括号调用。
+E       参考示例：
+E       设 文本 为 "hello"
+E       打印(字符串长度(文本))  # 使用函数而非属性
+E     
+E     
+E   assert 1 == 0
+E    +  where 1 = LightResult(rc=1, stdout='', stderr='错误: 属性错误\n  属性错误：对象缺少该属性或方法（G:\\dswork\\duan-light-merge\\lightharness\\src\\宿主上下...\\Local\\Temp\\lh_unit_tqz4yilg', light_file='C:\\Users\\skywalk\\AppData\\Local\\Temp\\lh_unit_tqz4yilg\\_unit.light').rc
+============================== warnings summary ===============================
+tests/test_R26_词首并入_token.py::TestCorpusZeroTokenChange::test_fingerprint_unchanged
+  G:\dswork\duan-light-merge\light-merge\.venv\Lib\site-packages\_pytest\fixtures.py:1313: PytestRemovedIn10Warning: Class-scoped fixture defined as instance method is deprecated.
+  Instance attributes set in this fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use @classmethod decorator and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+tests/test_R45_L166影子变量告警.py::test_形参同名_不误报
+  G:\dswork\duan-light-merge\light-merge\src\parser_stmt.py:525: DeprecationWarning: 语法「段落 名 接收 参数」已废弃，请改用「函数 名(参数)」或「段落 名(参数)」。在未来的版本中将移除「接收」关键字。
+    return self._parse_paragraph_v2()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_回归.py::test_example_exit_code[test_R51_image卸载.light]
+FAILED tests/test_回归.py::test_example_exit_code[test_代理团队.light] - Asse...
+FAILED tests/test_回归.py::test_example_exit_code[test_会话冷读.light] - Asse...
+FAILED tests/test_回归.py::test_example_exit_code[test_会话冷读_接线.light]
+FAILED tests/test_回归.py::test_example_exit_code[test_会话引用深化.light] - ...
+FAILED tests/test_回归.py::test_example_exit_code[test_会话引用深化_接线.light]
+FAILED tests/test_回归.py::test_example_exit_code[test_修复_会话.light] - Ass...
+FAILED tests/test_回归.py::test_example_exit_code[test_修复_拷贝.light] - Ass...
+FAILED tests/test_回归.py::test_example_exit_code[test_函数增强.light] - Asse...
+FAILED tests/test_回归.py::test_example_exit_code[test_宿主上下文.light] - As...
+FAILED tests/test_回归.py::test_example_exit_code[test_宿主事件.light] - Asse...
+FAILED tests/test_回归.py::test_example_exit_code[test_快捷键.light] - Assert...
+FAILED tests/test_回归.py::test_example_exit_code[test_文件深.light] - Assert...
+FAILED tests/test_回归.py::test_example_exit_code[test_查询工具.light] - Asse...
+FAILED tests/test_回归.py::test_example_exit_code[test_行为对照_会话持久化.light]
+FAILED tests/unit/test_会话冷读.py::test_冷读_平衡日志读回 - AssertionError: ...
+FAILED tests/unit/test_会话冷读.py::test_冷读_继承事件数缺省零 - AssertionErr...
+FAILED tests/unit/test_会话冷读.py::test_冷读_未闭合轮合成关闭事件 - Assertio...
+FAILED tests/unit/test_会话格式.py::test_事件带来源_附加来源表 - AssertionErr...
+FAILED tests/unit/test_宿主上下文.py::test_快照与恢复 - AssertionError: 期望 ...
+20 failed, 2064 passed, 4 skipped, 2 warnings in 6332.48s (1:45:32)
+PYTEST_RC=1

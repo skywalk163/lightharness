@@ -1,0 +1,60 @@
+# 公共地址.light —— R126 §4-9：web-app parsePublicUrl 纯校验复刻
+#
+# 上游：packages/bundle/web-app/src/public-url.ts（@ a7c3ad99bc，39 行）
+# 语义：拒绝 ASCII 空白/控制字符、非 http(s) 绝对地址、query/fragment、
+#   userinfo、空 authority；路径尾斜杠归一。
+# 差异登记（投影偏差）：
+#   1) 上游返回 URL 解析对象并归一 pathname；此处返回归一化地址串。
+#   2) 上游末步走 WHATWG URL.parse 复验字面合法性；此处拒绝规则已覆盖其
+#      常见危险形态（控制字符/query/fragment/userinfo/空 authority），
+#      个别 exotic 非法字面（如非法 IDN）留待宿主接线时以 URL.parse 复验。
+# 落点说明：web服务器.light 是重型路由壳（模块级 Web服务端 单例 + 全应用接线），
+#   不宜作纯逻辑导入目标，故立新模块（A 清单允许的备选落点）。
+
+导入 re
+从 字符串工具轻量 导入 分割字符串
+
+# 控制字符/ASCII 空白（上游 [\u0000-\u0020\u007f]，含空格本身）
+段落 有控制字符(值):
+  设 i 为 0
+  当 i < 字符串长度(值):
+    设 码 为 ord(截取(值, i, i + 1))
+    如果 码 <= 32 或 码 == 127:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+段落 是http方案(值):
+  如果 re.match("(?i)^https?://", 值) != 空:
+    返回 真
+  返回 假
+
+# authority：:// 之后到第一个 / 或 \ 之前（空 authority 形如 https:// 也在此拦下）
+段落 取authority(值):
+  设 i 为 查找子串(值, "://")
+  设 余 为 截取到末尾(值, i + 3)
+  设 段 为 分割字符串(余, "/")
+  设 权 为 段[0]
+  设 段2 为 分割字符串(权, "\\")
+  返回 段2[0]
+
+# parsePublicUrl：返回 {"错误": "", "地址": 归一化} 或 {"错误": 原因, "地址": ""}。
+#   标签 为字段名/CLI 旗标名（进拒绝文案），上游缺省 "publicUrl"。
+#   拒绝文案逐字对齐上游（含 label 插值）。
+段落 解析公开地址(值, 标签 = "publicUrl"):
+  如果 有控制字符(值) == 真:
+    返回 {"错误": 标签 + " must not contain ASCII whitespace or control characters", "地址": ""}
+  如果 是http方案(值) == 假:
+    返回 {"错误": 标签 + " must be an absolute http or https URL of the form http(s)://host[/prefix]", "地址": ""}
+  如果 字符串包含(值, "?") 或 字符串包含(值, "#"):
+    返回 {"错误": 标签 + " must not include a query or fragment (? or #)", "地址": ""}
+  设 权 为 取authority(值)
+  如果 权 == "":
+    返回 {"错误": 标签 + " must name a host after http:// or https://", "地址": ""}
+  如果 字符串包含(权, "@") == 真:
+    返回 {"错误": 标签 + " must not include credentials (a username or password before @, including an empty user)", "地址": ""}
+  如果 结尾(值, "/"):
+    返回 {"错误": "", "地址": 值}
+  返回 {"错误": "", "地址": 值 + "/"}
+
+导出 解析公开地址, 有控制字符, 取authority

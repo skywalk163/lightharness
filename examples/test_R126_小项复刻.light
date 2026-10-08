@@ -1,0 +1,276 @@
+# test_R126_小项复刻.light —— R126 B3 线六小项回归判据（A 清单 §4 #3#4#5#6#7#9）
+# 运行：python 运行.py examples/test_R126_小项复刻.light
+#
+# 反跑判据（改反任一期望值测试必须红）：
+#   - §A 包清单 icon：把 优先级/相对拒绝/越界拒绝/白名单/大小上限/空串拒绝 任一期望改反必须红
+#   - §B 安装规格：把 任一形态种类/主机/错误原因/凭证剥离/规整路径/别名跟名/影子前缀 期望改反必须红
+#   - §C 取消轮结算：把 撤回/暂停/无动作 任一期望改反必须红
+#   - §D 前置元数据：把 任一 源/正文/空 期望改反必须红
+#   - §E 公开地址：把 任一 接受/拒绝/归一斜杠/文案标签 期望改反必须红
+#   - §F 写文件参数序：把 描述引导句 期望改反必须红
+
+从 包清单 导入 判定插件图标, 是绝对图标路径
+从 插件安装 导入 解析安装规格, 依赖规格
+从 目标轮驱动 导入 取消轮结算
+从 前置元数据 导入 拆分前置元数据
+从 公共地址 导入 解析公开地址
+从 工具_写文件 导入 写文件模式
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 信息 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真(条件, 信息):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 信息)
+
+# ---------- §A 投影 ----------
+段落 归一界内(路径):
+  如果 字符串包含(路径, ".."):
+    返回 "/外/图.png"
+  返回 路径
+
+段落 信息小(路径):
+  返回 {"是文件": 真, "大小": 10}
+
+段落 信息大(路径):
+  返回 {"是文件": 真, "大小": 262145}
+
+段落 信息目录(路径):
+  返回 {"是文件": 假, "大小": 10}
+
+段落 编码桩(路径):
+  返回 "QUJD"
+
+段落 归属真(路径, 包名):
+  返回 真
+
+段落 归属假(路径, 包名):
+  返回 假
+
+# ---------- §C 预约/目标形状 ----------
+段落 造预约(相位, 取消 = 假):
+  返回 {"goalId": "g1", "revision": 2, "round": 3, "messageId": "m9", "phase": 相位, "cancelled": 取消, "content": []}
+
+段落 造目标():
+  返回 {"id": "g1", "revision": 2, "phase": "active", "activation": "armed"}
+
+段落 造目标异():
+  返回 {"id": "g1", "revision": 9, "phase": "active", "activation": "armed"}
+
+段落 造目标停():
+  返回 {"id": "g1", "revision": 2, "phase": "paused", "activation": "armed"}
+
+段落 主:
+  # ============ §A 包清单 icon 判定（#3） ============
+  # A1 manifest icon 优先 + 白名单：png → dataURI
+  设 a1 为 判定插件图标("logo.png", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a1["错误"], "", "A1 清单 icon 合法")
+  断言相等(a1["图标"], "data:image/png;base64,QUJD", "A1 png dataURI")
+  # A2 绝对路径拒绝（win32 盘符）
+  设 a2 为 判定插件图标("C:\\x\\y.png", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a2["错误"], "/根/package.json: icon must be a relative file path", "A2 盘符绝对拒绝")
+  # A3 URL scheme 拒绝
+  设 a3 为 判定插件图标("https://cdn/x.png", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a3["错误"], "/根/package.json: icon must be a relative file path", "A3 scheme 拒绝")
+  # A4 UNC 绝对拒绝
+  断言真(是绝对图标路径("\\\\srv\\share\\x.png"), "A4 UNC 是绝对")
+  # A5 ".." 越界拒绝（realpath 投影出界）
+  设 a5 为 判定插件图标("../外/图.svg", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a5["错误"], "/根/package.json: icon must remain inside its manifest directory", "A5 越界拒绝")
+  # A6 后缀白名单拒绝
+  设 a6 为 判定插件图标("图标.txt", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a6["错误"], "/根/package.json: icon must be SVG, PNG, JPEG, or WebP", "A6 白名单拒绝")
+  # A7 大小写后缀归一：JPG → image/jpeg
+  设 a7 为 判定插件图标("LOGO.JPG", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a7["媒体类型"], "image/jpeg", "A7 大写后缀归一")
+  # A8 超 256KiB 拒绝
+  设 a8 为 判定插件图标("logo.png", 空, "pkg", "/根/package.json", 归一界内, 信息大, 编码桩, 归属真)
+  断言相等(a8["错误"], "/根/package.json: icon exceeds 256 KiB", "A8 大小上限")
+  # A9 非常规文件拒绝
+  设 a9 为 判定插件图标("logo.png", 空, "pkg", "/根/package.json", 归一界内, 信息目录, 编码桩, 归属真)
+  断言相等(a9["错误"], "/根/package.json: icon must be a regular file", "A9 目录拒绝")
+  # A10 省略 icon → 导出 ./icon 资源（svg）+ 包归属真
+  设 a10 为 判定插件图标(空, "/包/图标.svg", "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a10["错误"], "", "A10 导出资源合法")
+  断言相等(a10["图标"], "data:image/svg+xml;base64,QUJD", "A10 svg dataURI")
+  # A11 省略 icon + 归属假 → 拒
+  设 a11 为 判定插件图标(空, "/别包/图标.svg", "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属假)
+  断言相等(a11["错误"], "/别包/图标.svg: icon must remain inside its package directory", "A11 包归属拒绝")
+  # A12 省略 icon 且无导出资源 → 图标空、无错
+  设 a12 为 判定插件图标(空, 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a12["错误"], "", "A12 双缺无错")
+  断言真(a12["图标"] == 空, "A12 图标空")
+  # A13 manifest icon 空串拒绝（textOf 契约）
+  设 a13 为 判定插件图标("", 空, "pkg", "/根/package.json", 归一界内, 信息小, 编码桩, 归属真)
+  断言相等(a13["错误"], "/根/package.json: icon must be a non-empty string", "A13 空串拒绝")
+
+  # ============ §B 安装规格解析（#4） ============
+  # B1 registry 裸名
+  设 b1 为 解析安装规格("lodash")
+  断言相等(b1["种类"], "registry", "B1 裸名 registry")
+  断言相等(b1["名"], "lodash", "B1 名")
+  # B2 registry 名@界
+  设 b2 为 解析安装规格("lodash@^4.0.0")
+  断言相等(b2["界"], "^4.0.0", "B2 界")
+  # B3 scoped 名的头部 @ 不算界
+  设 b3 为 解析安装规格("@scope/pkg@1.2.3")
+  断言相等(b3["名"], "@scope/pkg", "B3 scoped 名")
+  断言相等(b3["界"], "1.2.3", "B3 scoped 界")
+  # B4 空 @ 界拒绝
+  设 b4 为 解析安装规格("lodash@")
+  断言相等(b4["错误"], "a version after @ must not be empty", "B4 空界拒绝")
+  # B5 非法名拒绝
+  设 b5 为 解析安装规格("Foo")
+  断言相等(b5["错误"], "not a package name the registry accepts", "B5 大写名拒绝")
+  # B6 空规格拒绝
+  设 b6 为 解析安装规格("   ")
+  断言相等(b6["错误"], "the package spec must not be empty", "B6 空规格")
+  # B7 相对路径拒绝
+  设 b7 为 解析安装规格("./x")
+  断言相等(b7["错误"], "a local path must be absolute", "B7 相对路径拒绝")
+  # B8 绝对压缩包路径
+  设 b8 为 解析安装规格("/tmp/x.tgz")
+  断言相等(b8["种类"], "tarball", "B8 压缩包")
+  # B9 shorthand git
+  设 b9 为 解析安装规格("github:owner/repo")
+  断言相等(b9["种类"], "git", "B9 shorthand git")
+  断言相等(b9["主机"], "github.com", "B9 主机映射")
+  # B10 scp-like git（大小写归一）
+  设 b10 为 解析安装规格("git@GitHub.com:owner/repo.git")
+  断言相等(b10["主机"], "github.com", "B10 scp 主机归一")
+  # B11 git+https URL
+  设 b11 为 解析安装规格("git+https://github.com/o/r")
+  断言相等(b11["种类"], "git", "B11 git+https")
+  断言相等(b11["主机"], "github.com", "B11 主机")
+  # B12 hosted 仓库 URL（host/owner/repo(.git) 三段形；深路径不算 hosted 形）
+  设 b12 为 解析安装规格("https://example.com/o/repo.git")
+  断言相等(b12["种类"], "git", "B12 hosted URL")
+  设 b12b 为 解析安装规格("https://example.com/o/r/repo.git")
+  断言相等(b12b["错误"], "a URL must point at a git repository or a tarball", "B12b 深路径非hosted")
+  # B13 http 压缩包
+  设 b13 为 解析安装规格("https://example.com/x.tgz")
+  断言相等(b13["种类"], "tarball", "B13 http 压缩包")
+  断言相等(b13["主机"], "example.com", "B13 主机")
+  # B14 网页 URL 拒绝
+  设 b14 为 解析安装规格("https://example.com/page")
+  断言相等(b14["错误"], "a URL must point at a git repository or a tarball", "B14 网页拒绝")
+  # B15 凭证剥离保留 query
+  断言相等(依赖规格("a", "git+https://user:token@github.com/u/r?q=1", "/p"), "git+https://github.com/u/r?q=1", "B15 凭证剥query留")
+  # B16 多 @ 剥到最后一个
+  断言相等(依赖规格("a", "https://a:b@c.example/x", "/p"), "https://c.example/x", "B16 剥到最后@")
+  # B17 link 相对绝对化（.. 消解）
+  断言相等(依赖规格("a", "link:../shared", "/profile"), "link:/shared", "B17 link绝对化")
+  # B18 file ~ 展开
+  断言相等(依赖规格("a", "file:~/lib", "/p", 空, "/home/u"), "file:/home/u/lib", "B18 tilde展开")
+  # B19 npm 别名跟名
+  断言相等(依赖规格("a", "npm:b@^1", "/p"), "a@npm:b@^1", "B19 npm别名")
+  # B20 jsr 别名跟名
+  断言相等(依赖规格("x", "jsr:@y/z", "/p"), "x@jsr:@y/z", "B20 jsr别名")
+  # B21 影子依赖：安装自报名异于依赖名 → 前缀 名@
+  断言相等(依赖规格("a", "github:o/r", "/p", "real-name"), "a@github:o/r", "B21 影子前缀")
+  断言相等(依赖规格("a", "github:o/r", "/p", "a"), "github:o/r", "B21 同名不前缀")
+  # B22 scp-like 记录值：同名原样返回，影子名才前缀 名@
+  断言相等(依赖规格("a", "git@corp.local:team/repo.git", "/p"), "git@corp.local:team/repo.git", "B22 scp同名原样")
+  断言相等(依赖规格("a", "git@corp.local:team/repo.git", "/p", "shadow"), "a@git@corp.local:team/repo.git", "B22b scp影子前缀")
+
+  # ============ §C 取消轮结算（#5） ============
+  # C1 queued + 围栏全匹配 → 撤回 + 暂停
+  设 c1 为 取消轮结算(造预约("queued"), 造目标())
+  断言相等(c1["动作"], "结算", "C1 结算")
+  断言真(c1["撤回"], "C1 撤回真")
+  断言真(c1["暂停"], "C1 暂停真")
+  断言相等(c1["消息标识"], "m9", "C1 消息标识")
+  # C2 queued + revision 不匹配 → 只撤回不暂停
+  设 c2 为 取消轮结算(造预约("queued"), 造目标异())
+  断言真(c2["撤回"], "C2 只撤回")
+  断言真(c2["暂停"] == 假, "C2 围栏不暂停")
+  # C3 claimed + 围栏匹配 → 只暂停不撤回
+  设 c3 为 取消轮结算(造预约("claimed"), 造目标())
+  断言真(c3["撤回"] == 假, "C3 claimed不撤回")
+  断言真(c3["暂停"], "C3 暂停真")
+  # C4 claimed + 目标 paused → 无动作（预约保留）
+  断言相等(取消轮结算(造预约("claimed"), 造目标停())["动作"], "无", "C4 暂停目标不结算")
+  # C5 cancelled 标记 + 围栏匹配 → 暂停
+  设 c5 为 取消轮结算(造预约("admitted", 真), 造目标())
+  断言真(c5["暂停"], "C5 cancelled围栏暂停")
+  # C6 admitted 无取消标记 → 无动作
+  断言相等(取消轮结算(造预约("admitted"), 造目标())["动作"], "无", "C6 admitted无动作")
+  # C7 预约空 → 无动作
+  断言相等(取消轮结算(空, 造目标())["动作"], "无", "C7 空预约")
+  # C8 queued + 目标空 → 仍撤回（idle 滞留撤回不依赖目标）
+  设 c8 为 取消轮结算(造预约("queued"), 空)
+  断言真(c8["撤回"], "C8 目标空仍撤回")
+  断言真(c8["暂停"] == 假, "C8 目标空不暂停")
+
+  # ============ §D 前置元数据检测（#6） ============
+  # D1 常规块
+  设 d1 为 拆分前置元数据("---\ntitle: x\n---\nbody")
+  断言相等(d1["源"], "title: x", "D1 块体")
+  断言相等(d1["正文"], "body", "D1 正文")
+  # D2 BOM + ... 闭界
+  设 d2 为 拆分前置元数据("\uFEFF---\na: 1\n...\nrest")
+  断言相等(d2["源"], "a: 1", "D2 BOM块体")
+  断言相等(d2["正文"], "rest", "D2 点点闭界")
+  # D3 空块次行闭
+  设 d3 为 拆分前置元数据("---\n---\nbody")
+  断言相等(d3["源"], "", "D3 空块")
+  断言相等(d3["正文"], "body", "D3 空块正文")
+  # D4 未闭合不算
+  断言真(拆分前置元数据("---\ntitle: x\n") == 空, "D4 未闭合")
+  # D5 非首行开界不算
+  断言真(拆分前置元数据("\n---\nx\n---\n") == 空, "D5 非首行")
+  # D6 开界后跟 '-'（----）不算
+  断言真(拆分前置元数据("----\nx\n---\n") == 空, "D6 四连杠")
+  # D7 正文保留后续 --- 行
+  设 d7 为 拆分前置元数据("---\na\n---\nmid\n---\ntail")
+  断言相等(d7["源"], "a", "D7 首个闭界")
+  断言相等(d7["正文"], "mid\n---\ntail", "D7 后续正文")
+  # D8 闭界行尾随空白
+  设 d8 为 拆分前置元数据("---\nk: v\n---   \nbody")
+  断言相等(d8["源"], "k: v", "D8 尾随空白")
+  # D9 CRLF 行尾
+  设 d9 为 拆分前置元数据("---\r\nk: v\r\n...\r\nbody")
+  断言相等(d9["源"], "k: v", "D9 CRLF块体")
+  断言相等(d9["正文"], "body", "D9 CRLF正文")
+  # D10 开界次行为空行再闭界（空块闭在第一个闭界）
+  设 d10 为 拆分前置元数据("---\n\n---\nb")
+  断言相等(d10["源"], "", "D10 空行块")
+  断言相等(d10["正文"], "b", "D10 空行正文")
+  # D11 无 frontmatter 原样返回空
+  断言真(拆分前置元数据("hello world") == 空, "D11 普通文本")
+
+  # ============ §E 公开地址（#9） ============
+  # E1 尾斜杠归一
+  设 e1 为 解析公开地址("https://api.example.com/v1")
+  断言相等(e1["错误"], "", "E1 合法")
+  断言相等(e1["地址"], "https://api.example.com/v1/", "E1 补尾斜杠")
+  # E2 已有尾斜杠原样
+  断言相等(解析公开地址("http://localhost:8080/")["地址"], "http://localhost:8080/", "E2 原样")
+  # E3 非 http(s) 拒绝
+  断言相等(解析公开地址("ftp://x.com")["错误"], "publicUrl must be an absolute http or https URL of the form http(s)://host[/prefix]", "E3 方案拒绝")
+  # E4 query 拒绝
+  断言相等(解析公开地址("https://x.com/p?q=1")["错误"], "publicUrl must not include a query or fragment (? or #)", "E4 query")
+  # E5 fragment 拒绝
+  断言真(字符串包含(解析公开地址("https://x.com/p#f")["错误"], "query or fragment"), "E5 fragment")
+  # E6 userinfo 拒绝
+  断言真(字符串包含(解析公开地址("https://user@x.com/p")["错误"], "credentials"), "E6 凭证")
+  # E7 空 authority 拒绝
+  断言相等(解析公开地址("https:///ui")["错误"], "publicUrl must name a host after http:// or https://", "E7 空authority")
+  # E8 前导空白拒绝（ASCII 空白属控制字符带）
+  断言相等(解析公开地址(" https://x.com")["错误"], "publicUrl must not contain ASCII whitespace or control characters", "E8 空白")
+  # E9 控制字符拒绝
+  断言相等(解析公开地址("https://x.com/a\u0007")["错误"], "publicUrl must not contain ASCII whitespace or control characters", "E9 控制字符")
+  # E10 反斜杠 authority 分隔 + 标签插值
+  设 e10 为 解析公开地址("https://user@x.com\\p", "CLI --public-url")
+  断言真(字符串包含(e10["错误"], "CLI --public-url"), "E10 标签插值")
+
+  # ============ §F 写文件参数序引导句（#7，文案契约级） ============
+  设 f1 为 写文件模式()
+  设 f描述 为 f1["properties"]["路径"]["description"]
+  断言真(字符串包含(f描述, "Provide `file_path` before `content` in the arguments."), "F1 参数序引导句")
+  断言真(字符串包含(f描述, "要写入的文件路径"), "F2 原描述保留")
+
+  打印("--- R126 B3 六小项复刻测试通过（#3 #4 #5 #6 #7 #9） ---")
+
+主()

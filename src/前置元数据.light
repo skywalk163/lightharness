@@ -1,0 +1,31 @@
+# 前置元数据.light —— R126 §4-6：client markdown frontmatter 检测复刻
+#
+# 上游：packages/client/ui-sidebar-documentpreview/src/client/markdown/frontmatter.ts
+#       （@ 2ca5f648c3 / 39c614a143，splitFrontmatter 纯函数）
+# 语义（逐字对齐上游 FRONTMATTER 正则）：
+#   - 仅首行（允许前置 BOM）以 --- 开才算 frontmatter；
+#   - 块体止于第一行 --- 或 ... 闭界（闭界行允许尾随空白）；
+#   - 空块可由开界的次行直接闭合；
+#   - 未闭合不算 frontmatter（返回 空）。
+# 落点说明：流.light 是 LLM 流式词汇表 + 块组装器，与 markdown 检测不同域，
+#   故按 A 清单「落点二选一」立新模块。
+# 实现方式：光明经 re 投影直接承载上游多行正则（[\s\S] 跨行惰性 + 可选组），
+#   语义与 JS 版一致，无需逐行手写状态机。
+
+导入 re
+
+# 逐字对齐上游 const FRONTMATTER（^ 锚 + BOM 可选 + 惰性块体 + 闭界 ---/...）
+设 前置元数据模式 为 "\\uFEFF?---[ \\t]*\\r?\\n(?:([\\s\\S]*?)\\r?\\n)??(?:---|\\.\\.\\.)[ \\t]*(?:\\r?\\n|$)"
+
+# splitFrontmatter：拆出块体源文与闭界后的正文；无 frontmatter 返回 空。
+#   {"源": 闭界前的 YAML 源文（空块为空串）, "正文": 闭界行之后的 Markdown 正文}
+段落 拆分前置元数据(文本):
+  设 m 为 re.match(前置元数据模式, 文本)
+  如果 m == 空:
+    返回 空
+  设 源 为 m.group(1)
+  如果 源 == 空:
+    设 源 为 ""
+  返回 {"源": 源, "正文": 截取(文本, m.end(), 字符串长度(文本))}
+
+导出 拆分前置元数据, 前置元数据模式

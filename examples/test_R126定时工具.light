@@ -1,0 +1,203 @@
+# test_R126定时工具.light —— R126 §4-1/§4-2：schedule 四工具纯逻辑面 + subagent 拒绝链判据
+#
+# 上游：
+#   packages/schedule/tool-schedule/src/index.ts @ 5badb15009（6c1a590a4c 迁出 + 1b1b09e1fb caller 闸门）
+#   packages/schedule/schedule/src/index.ts（96c421d985 reminderTargetRefusal + 500295b2bd update 走 result）
+#
+# 判据（增量清单 §5 四判据 + 两校验判据）：
+#   §E1 深度>0 create → 抛出 subagent_session（create 无 result 通道，必走 throw）
+#   §E2 深度>0 update → 返回 refusal 结果而非抛错（500295b2bd 语义）
+#   §E3 list/delete/仅改内容的 update 亦被工具层拒绝（1b1b09e1fb）
+#   §E4 深度=0 或无代理 → 放行
+#   §B 校验创建参数 恰一 selector 约束；§C 间隔非法 安全整数 + 下限
+#
+# 运行：cd lightharness && python 运行.py examples/test_R126定时工具.light
+
+从 定时工具 导入 调度工具名表, 最小重复间隔秒, 最大标题长度, 必填标题文案, 稳定错误码表
+从 定时工具 导入 基础错误骨架, 错误骨架表, 共享视图字段, 时机视图骨架表, 视图骨架
+从 定时工具 导入 创建输出骨架, 列表输出骨架, 删除输出骨架, 更新输出骨架
+从 定时工具 导入 创建描述, 列表描述, 删除描述, 更新描述, 四工具定义表, 渲染值, 造调用卡片
+从 定时工具 导入 校验创建参数, 校验更新参数, 校验删除参数, 时序变更提取
+从 定时工具 导入 是安全整数, 间隔非法, 操作错误映射
+从 调度深化 导入 定时目标拒绝, 定时创建执行, 定时更新执行, 定时工具拒绝
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败：" + 信息 + " | 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  返回 真
+
+段落 断言真(条件, 信息):
+  如果 条件 == 假:
+    抛出 新建 错误("断言失败：" + 信息)
+  返回 真
+
+段落 含子串(文本, 子串):
+  设 n 为 字符串长度(文本)
+  设 m 为 字符串长度(子串)
+  设 i 为 0
+  当 i + m <= n:
+    如果 截取(文本, i, i + m) == 子串:
+      返回 真
+    设 i 为 i + 1
+  返回 假
+
+段落 取码(错误):
+  返回 错误["code"]
+
+# 异常文本：绕开 e.参数 / obj.attr[i] 语言缺陷（同 stdlib/HTTP服务端.light:474）
+段落 异常文本(e):
+  设 a 为 e.args
+  如果 长(a) > 0:
+    返回 转字符串(a[0])
+  返回 ""
+
+段落 主:
+  打印 "===== R126 §4-1/§4-2：schedule 四工具纯逻辑面 + subagent 拒绝链 ====="
+
+  # ---- §A 常量 / 错误码表 / 视图骨架 ----
+  断言相等(调度工具名表(), ["schedule_create", "schedule_list", "schedule_delete", "schedule_update"], "A1 工具名表")
+  断言相等(最小重复间隔秒(), 60, "A2 间隔下限 60")
+  断言相等(最大标题长度(), 120, "A3 标题上限 120")
+  断言相等(必填标题文案(), "title is required and must be non-empty after trimming.", "A4 必填标题文案")
+  断言相等(列表长度(稳定错误码表()), 9, "A5 错误码 9 条")
+  断言真(列表包含(稳定错误码表(), "subagent_session"), "A6 含 subagent_session")
+  设 错误骨架 为 基础错误骨架("subagent_session")
+  断言相等(错误骨架["properties"]["code"]["const"], "subagent_session", "A7 错误骨架 保留字面量码")
+  断言相等(错误骨架["additionalProperties"], 假, "A8 错误骨架 封闭")
+  断言相等(列表长度(错误骨架表()), 9, "A9 错误骨架表 9 条")
+  断言相等(列表长度(时机视图骨架表()), 6, "A10 时机视图 6 种")
+  断言相等(视图骨架()["oneOf"], 时机视图骨架表(), "A11 视图骨架 oneOf")
+  断言相等(共享视图字段()["deliveryMode"]["const"], "host", "A12 投递方式常量 host")
+  断言相等(共享视图字段()["state"]["enum"], ["scheduled", "overdue"], "A13 状态枚举")
+  断言相等(列表长度(创建输出骨架()["oneOf"]), 10, "A14 创建输出 1视图+9错误")
+  断言相等(列表长度(列表输出骨架()["oneOf"]), 10, "A15 列表输出 数组+9错误")
+  断言相等(列表长度(删除输出骨架()["oneOf"]), 11, "A16 删除输出 两分支+9错误")
+  断言相等(列表长度(更新输出骨架()["oneOf"]), 11, "A17 更新输出 视图+未变更+9错误")
+  断言相等(删除未找到骨架码(), "schedule_not_found", "A18 删除未找到码")
+  断言相等(更新未变更码表(), ["schedule_not_found", "schedule_ended", "schedule_conflict"], "A19 更新未变更码表")
+
+  # ---- §B 四工具描述 / 参数 / 定义表 / 渲染 / 调用卡片 ----
+  断言真(含子串(创建描述(), "exactly one timing parameter"), "B1 创建描述 含 selector 句")
+  断言真(含子串(列表描述(), "active reminders"), "B2 列表描述")
+  断言真(含子串(删除描述(), "does not retract"), "B3 删除描述")
+  断言真(含子串(更新描述(), "at most one timing parameter"), "B4 更新描述")
+  断言相等(列表长度(四工具定义表()), 4, "B5 定义表 4 工具")
+  断言相等(取名字(四工具定义表()[0]), "schedule_create", "B6 首工具 create")
+  断言相等(取名字(四工具定义表()[3]), "schedule_update", "B7 末工具 update")
+  断言真(列表包含(字典键列表(四工具定义表()[0]["parameters"]), "after_seconds"), "B8 创建参数 含 after_seconds")
+  断言真(列表包含(字典键列表(四工具定义表()[0]["parameters"]), "cron"), "B9 创建参数 含 cron")
+  断言真(列表包含(字典键列表(四工具定义表()[3]["parameters"]), "id"), "B10 更新参数 含 id")
+  断言真(列表包含(字典键列表(四工具定义表()[1]["parameters"]), "every_seconds") == 假, "B11 列表参数 无 selector")
+  设 渲染 为 渲染值({"kind": "after", "afterSeconds": 60})
+  断言相等(渲染[0]["type"], "text", "B12 渲染值 文本块")
+  断言相等(渲染[0]["text"], "{\"kind\":\"after\",\"afterSeconds\":60}", "B13 渲染值 紧凑无空格")
+  断言相等(造调用卡片("List reminders", "read", 空), {"card": "generic", "title": "List reminders", "kind": "read"}, "B14 卡片 无输入省 rawInput")
+  断言相等(取卡片输入(造调用卡片("Create reminder", "other", "喝水")), "喝水", "B15 卡片 带 rawInput")
+  设 创建描述含上限 为 四工具定义表()[0]["parameters"]["title"]["description"]
+  断言真(含子串(创建描述含上限, "at most 120 characters"), "B16 标题描述 含上限")
+
+  # ---- §C 校验创建参数：恰一 selector 约束 ----
+  断言相等(校验创建参数({"prompt": "喝水", "title": "提醒", "after_seconds": 10}), 空, "C1 恰一 selector 放行")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "after_seconds": 10, "at": "2026-10-09T00:00:00Z"})), "invalid_selector", "C2 两 selector 拒绝")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "every_seconds": 60, "daily": {"time": "23:00:00", "time_zone": "UTC"}})), "invalid_selector", "C3 两 selector(每+每日) 拒绝")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t"})), "invalid_selector", "C4 零 selector 拒绝")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "after_seconds": 10, "旁门": 1})), "invalid_selector", "C5 未知键拒绝")
+  断言相等(取码(校验创建参数({"prompt": "   ", "title": "t", "after_seconds": 10})), "invalid_prompt", "C6 空 prompt 拒绝")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "  ", "after_seconds": 10})), "invalid_prompt", "C7 空标题拒绝")
+  断言相等(校验创建参数({"prompt": "p", "title": "  ", "after_seconds": 10})["message"], 必填标题文案(), "C8 空标题消息 用必填文案")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": 造长文(121), "after_seconds": 10})), "invalid_prompt", "C9 标题超上限拒绝")
+  断言相等(校验创建参数({"prompt": "p", "title": 造长文(120), "after_seconds": 10}), 空, "C10 标题恰 120 放行")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "after_seconds": 0})), "invalid_rule", "C11 after_seconds 零拒绝")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "after_seconds": 0 - 5})), "invalid_rule", "C12 after_seconds 负拒绝")
+  断言相等(校验创建参数({"prompt": "p", "title": "t", "after_seconds": 1}), 空, "C13 after_seconds 正一放行")
+
+  # ---- §D 间隔非法 / 安全整数 ----
+  断言相等(间隔非法(空), 空, "D1 空 放行")
+  断言相等(取码(间隔非法(59)), "frequency_too_high", "D2 低于下限拒绝")
+  断言相等(间隔非法(60), 空, "D3 恰下限放行")
+  断言相等(取码(间隔非法(9007199254740992)), "invalid_rule", "D4 超 2^53-1 非安全整数")
+  断言相等(间隔非法(9007199254740991), 空, "D5 恰 2^53-1 放行")
+  断言相等(是安全整数(3.5), 假, "D6 浮点非安全整数")
+  断言相等(取码(校验创建参数({"prompt": "p", "title": "t", "every_seconds": 30})), "frequency_too_high", "D7 创建参数 走间隔校验")
+  断言相等(校验创建参数({"prompt": "p", "title": "t", "every_seconds": 60}), 空, "D8 创建参数 间隔合法放行")
+
+  # ---- §E 操作错误映射 ----
+  断言相等(操作错误映射({"错误名": "ScheduleInputError", "code": "not_future", "message": "目标在过去"}), {"code": "not_future", "message": "目标在过去"}, "E1 输入错误 透传")
+  断言相等(操作错误映射({"错误名": "ScheduleInputError", "code": "subagent_session", "message": "拒绝"}), {"code": "subagent_session", "message": "拒绝"}, "E2 输入错误 subagent_session 透传")
+  断言相等(操作错误映射({"错误名": "StorageError", "message": "磁盘坏了"}), {"code": "internal_error", "message": "The schedule operation failed."}, "E3 其余错误 归 internal_error")
+  断言相等(操作错误映射("裸异常"), {"code": "internal_error", "message": "The schedule operation failed."}, "E4 非字典 归 internal_error")
+
+  # ---- §F 校验更新参数 / 删除参数 / 时序变更提取 ----
+  断言相等(校验更新参数({"id": "s1", "prompt": "新内容"}), 空, "F1 仅改内容放行")
+  断言相等(校验更新参数({"id": "s1", "title": "新名", "every_seconds": 60}), 空, "F2 名+间隔放行")
+  断言相等(取码(校验更新参数({"id": "s1", "at": "2026-10-09T00:00:00Z", "every_seconds": 60})), "invalid_selector", "F3 两 selector 拒绝")
+  断言相等(取码(校验更新参数({"id": "s1"})), "invalid_selector", "F4 无可改字段拒绝")
+  断言相等(取码(校验更新参数({"id": " s1 "})), "invalid_rule", "F5 id 首尾空白拒绝")
+  断言相等(取码(校验更新参数({"id": ""})), "invalid_rule", "F6 空 id 拒绝")
+  断言相等(取码(校验更新参数({"id": "s1", "title": "  "})), "invalid_prompt", "F7 空标题拒绝")
+  断言相等(取码(校验更新参数({"id": "s1", "prompt": " "})), "invalid_prompt", "F8 空 prompt 拒绝")
+  断言相等(取码(校验更新参数({"id": "s1", "title": 造长文(121)})), "invalid_prompt", "F9 标题超限拒绝")
+  断言相等(取码(校验更新参数({"id": "s1", "every_seconds": 59})), "frequency_too_high", "F10 间隔走校验")
+  断言相等(取码(校验更新参数({"id": "s1", "旁门": 1})), "invalid_selector", "F11 未知键拒绝")
+  断言相等(校验删除参数({"id": "s1"}), 空, "F12 删除参数 放行")
+  断言相等(取码(校验删除参数({"id": " s1 "})), "invalid_rule", "F13 删除 id 空白拒绝")
+  断言相等(时序变更提取({"every_seconds": 60}), {"kind": "every", "every_seconds": 60}, "F14 间隔变更提取")
+  断言相等(时序变更提取({"at": "2026-10-09T00:00:00Z"}), {"kind": "at", "at": "2026-10-09T00:00:00Z"}, "F15 于变更提取")
+  断言相等(时序变更提取({"title": "新名"}), 空, "F16 无 selector 返回空")
+
+  # ==== §G 拒绝链四判据（增量清单 §5）====
+
+  # 判据1：深度>0 create → 抛出 subagent_session（create 无 result 通道，必走 throw）
+  设 捕获文本 为 ""
+  尝试:
+    定时创建执行(2, {"kind": "after", "id": "s1"})
+  捕获 异常 e:
+    设 捕获文本 为 异常文本(e)
+  断言真(含子串(捕获文本, "subagent_session"), "G1 create 深度2 抛出 subagent_session")
+
+  # 判据2：深度>0 update → 返回 refusal 结果而非抛错（500295b2bd： Remote 网关把 throw 变 failed result）
+  设 更新拒绝 为 定时更新执行(2)
+  断言相等(更新拒绝["code"], "subagent_session", "G2 update 返回 refusal 不抛")
+  断言真(含子串(更新拒绝["message"], "never receives reminder delivery"), "G2b refusal 消息逐字")
+
+  # 判据3：list/delete/仅改内容的 update 亦被工具层拒绝（caller 闸门先于参数与派发）
+  遍历 工具名 之 ["schedule_create", "schedule_list", "schedule_delete", "schedule_update"]:
+    断言相等(取码(定时工具拒绝(1)), "subagent_session", "G3 深度1 " + 工具名 + " 拒绝")
+  断言真(含子串(取码与消息(定时工具拒绝(1)), "A delegated subagent cannot use reminders."), "G3b 工具层消息逐字")
+
+  # 判据4：深度=0 或无代理（空）→ 放行
+  断言相等(定时目标拒绝(0), 空, "G4 服务层 深度0 放行")
+  断言相等(定时目标拒绝(空), 空, "G5 服务层 无代理放行")
+  断言相等(定时工具拒绝(0), 空, "G6 工具层 深度0 放行")
+  断言相等(定时工具拒绝(空), 空, "G7 工具层 无调用方放行")
+  断言相等(定时创建执行(0, {"ok": 真}), {"ok": 真}, "G8 create 深度0 返回拟建记录不抛")
+  断言相等(定时更新执行(0), 空, "G9 update 深度0 无 refusal")
+
+  # 服务层与工具层拒绝同码不同消息（两条独立规则的口径对齐）
+  断言相等(取码(定时目标拒绝(3)), "subagent_session", "G10 服务层深拒绝同码")
+  断言真(取码与消息(定时目标拒绝(3)) != 取码与消息(定时工具拒绝(3)), "G11 两层消息独立")
+
+  打印 "test_R126定时工具 PASS"
+
+段落 造长文(n):
+  设 结果 为 ""
+  设 i 为 0
+  当 i < n:
+    设 结果 为 结果 + "x"
+    设 i 为 i + 1
+  返回 结果
+
+段落 取名字(工具):
+  返回 工具["name"]
+
+段落 取卡片输入(卡片):
+  返回 卡片["rawInput"]
+
+段落 删除未找到骨架码():
+  返回 "schedule_not_found"
+
+段落 更新未变更码表():
+  返回 ["schedule_not_found", "schedule_ended", "schedule_conflict"]
+
+段落 取码与消息(拒绝):
+  返回 拒绝["code"] + "|" + 拒绝["message"]
