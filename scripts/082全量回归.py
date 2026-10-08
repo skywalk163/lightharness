@@ -46,6 +46,19 @@ R111 R2 变更：新增 `--target {light-merge,lightharness}` 与 `--round`。
   * target=light-merge（默认）：行为、文件名、latest 指针与历史完全一致；
   * target=lightharness：跑远端 lightharness/tests/ 全量，落 `082_lh基线_<ts>.json`
     + `082_lh基线_latest.json`，远端执行前注入 LIGHT_MERGE 指向同一副本的 light-merge。
+
+R125-C5 登记（运行环境铁律固化，纯注释零行为改动）：
+  * **Windows Git-Bash 下必须 `MSYS_NO_PATHCONV=1`** 再跑本脚本（尤其 `--py
+    /usr/local/bin/python3.12` 这类远端绝对路径参数）——否则 MSYS 会把
+    `/usr/local/...` 当成本机路径做 POSIX→Windows 改写，远端命令 rc=127/路径错乱。
+    示例：`MSYS_NO_PATHCONV=1 python scripts/082全量回归.py all --py
+    /usr/local/bin/python3.12 --round R125 --target light-merge`。
+  * **github 推送通道登记**：github.com 的 git 智能 HTTP 经代理偶发 502，
+    `POST /git/blobs` 亦长期 500 ⇒ 推 github 一律走
+    `lightharness/scripts/push_github_inline.py <repo> <dir> <sha> [tag]`
+    （`POST /git/trees` inline content + base_tree 只交改动项）；
+    `_push_github_tree_sync.py`（blob SHA 比对）在 blobs 端点恢复前不可用；
+    `_push_github_api.py`（全量上传）已禁用。推完必须 `git ls-remote` 复核。
 """
 from __future__ import annotations
 
