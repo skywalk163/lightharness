@@ -13,6 +13,8 @@
 #      （对齐 composeEntries L846-853 + profile.spec.ts 的 id 覆盖/insert 追加语义）。
 #   ⑤ launcher flags 解析：解析启动参数(argv) 返回 {模式, profile, patches, args, ...}
 #      三态（profile / dump-config / plugin），对齐 args.ts parseDshArgs。
+#   ⑥ RETIRED_BUNDLES 退役清单摘除 + 仅在变更时写回（R128 C 线任务 3；
+#      对齐 9633724b40 profile.ts normalizeProfileManifest）。
 #
 # 光明现实差异（重要，已在行为差异清单登记）：
 #   - 上游 patch 文件为 YAML（cordis.patch.yml），光明无 YAML 解析 → 改用 JSON 数组
@@ -61,6 +63,17 @@
 
 # ---- 自定义 profile 的缺省 bundles（对齐 DEFAULT_PROFILE_BUNDLES L139）----
 设 缺省bundles 为 ["@deepseek-ai/dsh-base"]
+
+# ---- 已退役 bundle 清单（对齐 9633724b40 RETIRED_BUNDLES L202-208）----
+# 早期版本发布过、当前装机已不带：加载任意 profile 时从 bundles 列表里摘除。
+# 上游注释：Web composition 自己挂载 Schedule，故该 bundle 退役。
+设 退役bundles 为 ["@deepseek-ai/dsh-experimental-schedule-bundle"]
+
+# ---- 装机自带的旧 bundles 元组（对齐 INSTALLATION_OWNED_PROFILE_TUPLES L198-200）----
+# 命中的 profile 名：其 bundles 若与元组逐项相同，归一为 已发布模板 的 bundles。
+设 装机元组 为 {
+  "headless": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless"]
+}
 
 # ============================================================
 # ① profile 目录解析（对齐 resolveProfileDir L100-107）
@@ -122,6 +135,114 @@
   设 工作区路径 为 连接路径(目录, 工作区文件名)
   如果 文件存在(工作区路径) == 假:
     写入文件(工作区路径, "packages:\n  - .\n\nnodeLinker: hoisted\nautoInstallPeers: false\n")
+
+# ============================================================
+# ⑥ 退役清单摘除 + 写回（对齐 9633724b40 profile.ts:583-608 normalizeProfileManifest）
+# ============================================================
+# 语义（与上游逐条对照）：
+#   - 清单缺 dsh.profile.bundles（或任一层不是字典）→ 不动、不写回（上游 `if (bundles === undefined) return`）。
+#   - 命中「装机自带旧元组」→ 归一为 已发布模板 的 bundles；否则只摘除 退役bundles 里的名字。
+#   - 新表与旧表逐项相同 → 不写回（上游 `if (sameBundles(normalized, bundles)) return`）。
+#   - 写回时保留清单其余字段（dependencies 等），按上游展开式重建 dsh.profile。
+#
+# 光明现实差异：
+#   - 上游 normalizeProfileManifest 返回 void（原地写文件）；本模块返回写回后的清单，
+#     便于纯逻辑对拍（规划退役摘除 无副作用，写回只在 规范化profile清单 里发生）。
+#   - 上游 writeProfileManifest 走 node:fs；本模块沿用既有 写入profile清单（JSON 清单文件）。
+#
+# 落点说明（R128 C 线任务 3，可追溯）：
+#   任务书点名的 src/插件注册表计划.light 不承载 bundle 列表概念——它只做注册表 URL
+#   归一化 / 询问顺序规划 / 失败归因 / git 宿主解析（插册归一/插册计划/插册归属/
+#   插册解析宿主，235 行内无 bundles 字段）。上游 9633724b40 改的是
+#   packages/boot/app-boot/src/profile.ts 的 loadProfile 归一链，其光明侧同构模块是
+#   本模块（见头注 ②「profile manifest 读写：package.json 中的 dsh.profile.bundles
+#   有序列表」，已有 已发布模板/缺省bundles/读取profile清单/写入profile清单）。
+#   按「不为移植硬造模块」原则，落在本真实承载模块、不新建模块。
+#   该落点偏离已报 team-lead 并获裁定接受（R128 收口时登记进对标清单）。
+
+段落 拷字典(原):
+  设 新 为 字典创建()
+  遍历 键 之 字典键列表(原):
+    字典设置(新, 键, 字典获取(原, 键))
+  返回 新
+
+段落 拷列表(原):
+  设 新 为 []
+  遍历 项 之 原:
+    列表追加(新, 项)
+  返回 新
+
+段落 同bundles(左, 右):
+  如果 是列表(左) == 假 或 是列表(右) == 假:
+    返回 假
+  如果 列表长度(左) != 列表长度(右):
+    返回 假
+  设 i 为 0
+  当 i < 列表长度(左):
+    如果 列表获取(左, i) != 列表获取(右, i):
+      返回 假
+    设 i 为 i + 1
+  返回 真
+
+# 取 清单.dsh.profile.bundles；任一层缺失或非字典 → 空
+段落 取bundles(清单):
+  如果 是字典(清单) == 假:
+    返回 空
+  如果 字典包含键(清单, "dsh") == 假:
+    返回 空
+  设 dsh 为 字典获取(清单, "dsh")
+  如果 是字典(dsh) == 假:
+    返回 空
+  如果 字典包含键(dsh, "profile") == 假:
+    返回 空
+  设 profile 为 字典获取(dsh, "profile")
+  如果 是字典(profile) == 假:
+    返回 空
+  如果 字典包含键(profile, "bundles") == 假:
+    返回 空
+  返回 字典获取(profile, "bundles")
+
+# 重建清单：只换 dsh.profile.bundles，其余字段原样保留（对齐上游展开式重建）
+段落 写bundles(清单, bundles表):
+  设 新 为 拷字典(清单)
+  设 dsh 为 字典创建()
+  如果 字典包含键(清单, "dsh") == 真 且 是字典(字典获取(清单, "dsh")) == 真:
+    设 dsh 为 拷字典(字典获取(清单, "dsh"))
+  设 profile 为 字典创建()
+  如果 字典包含键(dsh, "profile") == 真 且 是字典(字典获取(dsh, "profile")) == 真:
+    设 profile 为 拷字典(字典获取(dsh, "profile"))
+  字典设置(profile, "bundles", bundles表)
+  字典设置(dsh, "profile", profile)
+  字典设置(新, "dsh", dsh)
+  返回 新
+
+# 规划（纯逻辑、无副作用）：返回 {改, bundles, 清单}
+#   改 = 假 表示无需写回（无 bundles 字段 / 摘除后无变化）；此时 清单 原样返回
+段落 规划退役摘除(名称, 清单):
+  设 原表 为 取bundles(清单)
+  如果 原表 == 空 或 是列表(原表) == 假:
+    返回 {"改": 假, "bundles": 空, "清单": 清单}
+  设 模板 为 字典获取(已发布模板, 名称, 空)
+  设 装机 为 字典获取(装机元组, 名称, 空)
+  设 新表 为 []
+  如果 模板 != 空 且 装机 != 空 且 同bundles(原表, 装机) == 真:
+    设 新表 为 拷列表(字典获取(模板, "bundles", []))
+  否则:
+    遍历 项 之 原表:
+      如果 列表包含(退役bundles, 项) == 假:
+        列表追加(新表, 项)
+  设 改 为 假
+  如果 同bundles(新表, 原表) == 假:
+    设 改 为 真
+  返回 {"改": 改, "bundles": 新表, "清单": 写bundles(清单, 新表)}
+
+# 规范化：按规划结果决定是否写回清单文件（对齐 loadProfile 里的调用点 L727）
+段落 规范化profile清单(名称, 目录, 清单):
+  设 规 为 规划退役摘除(名称, 清单)
+  如果 规["改"] == 假:
+    返回 清单
+  写入profile清单(目录, 规["清单"])
+  返回 规["清单"]
 
 # ============================================================
 # ④ patch 层加载与组合

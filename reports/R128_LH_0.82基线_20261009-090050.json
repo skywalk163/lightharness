@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "round": "R128-E3",
+  "generated_at": "2026-10-09T09:00:57+08:00",
+  "target": {
+    "name": "lightharness",
+    "platform": "0.82 FreeBSD 15.1-STABLE",
+    "host": "192.168.0.82",
+    "remote_dir": "/tmp/r128-b-20261009-084425",
+    "cwd": "/tmp/r128-b-20261009-084425/lightharness"
+  },
+  "runner": {
+    "mode": "full",
+    "parallel": true,
+    "target": "lightharness",
+    "cmd": "-m pytest -q --tb=no -rfE -p no:cacheprovider --junitxml .../lh_results.xml tests/ -n 4 --dist loadscope --timeout 120",
+    "python": "/tmp/r128-venv/bin/python",
+    "pytest_rc": "0",
+    "jobs": 4,
+    "case_timeout": 120,
+    "addopts_cleared": false,
+    "select": [],
+    "caps": {
+      "python": "/tmp/r128-venv/bin/python",
+      "xdist": true,
+      "pytest_timeout": true,
+      "bsd_timeout": true,
+      "ncpu": 8,
+      "pytest": "9.1.1"
+    }
+  },
+  "totals": {
+    "total": 2087,
+    "failure": 0,
+    "error": 0,
+    "skipped": 18,
+    "xfailed": 4,
+    "xpassed": 0,
+    "passed": 2065,
+    "failed": 0,
+    "duration_sec": 862.189
+  },
+  "failed": [],
+  "skipped": [
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_主症_SRC_两行都是7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_主症_ANTLR_两行都是7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_两后端输出一致",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反向对照_普通名两后端均7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例同行_裸返回后接跳过仍是continue",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_裸返回缩进更深的跳过仍是continue",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_ANTLR同语义",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_两后端输出一致",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_语义正确",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_ANTLR_退出码0_无语法元素报错",
+    "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
+    "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+    "tests/test_R21_词法确定性_超集.py::test_definitions_growth_on_l152_file",
+    "tests/test_回归.py::test_example_exit_code[test_事件循环.light]",
+    "tests/test_回归.py::test_example_exit_code[test_会话冷读_接线.light]",
+    "tests/test_回归.py::test_example_exit_code[test_套接字.light]",
+    "tests/test_回归.py::test_example_exit_code[test_进程树接线.light]"
+  ],
+  "tree": {
+    "lightharness": {
+      "path": "G:\\dswork\\duan-light-merge\\lightharness",
+      "head": "b87ab40",
+      "dirty_count": 16
+    },
+    "light-merge": {
+      "path": "../light-merge",
+      "head": "aef6b4beb",
+      "dirty_count": 40
+    },
+    "lightplugin": {
+      "path": "../lightplugin",
+      "head": "1a0ae6a",
+      "dirty_count": 0
+    }
+  }
+}

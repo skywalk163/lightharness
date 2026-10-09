@@ -18,6 +18,9 @@ generated-images/
 # === 测试 / 构建临时产物与 scratch（2026-09-28 清理，降 git status 噪声） ===
 # 这些多为各泳道（R/E/W/T 系列）跑测试、打包、探针留下的产物，不入库。
 reports/
+# R128-B 基线 JSON 需入库（门禁基线类 JSON 例外，对齐 LM 规则）：只放行 R128 LH 0.82 基线
+!reports/R128_LH_0.82基线_*.json
+!reports/R128_LH_0.82基线_latest.json
 .bench_out/
 .bench_out
 .e2e_full.py

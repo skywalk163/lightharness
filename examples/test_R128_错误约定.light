@@ -1,0 +1,81 @@
+# R128 C 线任务 2：跨投影错误以 name 字段比较（约定登记 + 最小用例）
+# 落点：src/错误增强.light §11（错误名 / 是名错误 / 造带名错误 / 抛出带名错误）
+#
+# 约定要点（详见 错误增强.light §11 头注）：
+#   1. 跨投影后错误类身份不可靠 → 识别用 name 字段，不用 instanceof/类身份
+#      （上游实证：session-controller/src/agent.ts:218、commands.ts:535 的
+#       `error instanceof Error && error.name === 'SessionAlreadyOwnedError'`；
+#       stream-protocol.ts:201 `error.name = rejection.name` 在还原端只保住 name）。
+#   2. code 面向日志（可含 'gateway/...' 命名空间），name 面向比较（稳定短名）——比较只认 name。
+#   3. 与 R126 调度深化.light 已用的 "subagent_session: " 消息前缀 duck-typing 先例共存：
+#      纯文本通道走前缀，结构化通道走 name 字段；两条通道互不冒充（见 判据5）。
+#
+# 反跑锚点：A=造带名错误的名改一字 → 是名错误 立假；
+#           B=抛出→捕获→从消息串取名（跨抛出投影）→ 名一致；
+#           C=空名/非字符串名 → 是名错误 恒假（不因消息相同而误判）。
+
+从 错误增强 导入 造带名错误, 抛出带名错误, 错误名, 是名错误, 获取最后异常, 解析错误消息
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 信息 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言为真(值, 信息):
+  如果 值 == 假:
+    抛出 新建 错误("断言失败[" + 信息 + "]：期望真，实际=" + 转字符串(值))
+
+段落 断言为假(值, 信息):
+  如果 值 == 真:
+    抛出 新建 错误("断言失败[" + 信息 + "]：期望假，实际=" + 转字符串(值))
+
+段落 抛所有权错:
+  抛出带名错误("SessionAlreadyOwnedError", "session already owned", "session/writer-held", {"id": "s1"})
+
+段落 主:
+  # ── 判据1：造带名错误的字段形状（名/码/消息/详情/时间 齐全） ──
+  设 e1 为 造带名错误("SessionAlreadyOwnedError", "session already owned", "session/writer-held", {"id": "s1"})
+  断言相等(字典获取(e1, "名", 空), "SessionAlreadyOwnedError", "判据1a 名")
+  断言相等(字典获取(e1, "码", 空), "session/writer-held", "判据1b 码（面向日志，含命名空间）")
+  断言相等(字典获取(e1, "消息", 空), "session already owned", "判据1c 消息")
+  断言相等(字典获取(e1, "详情", 空), {"id": "s1"}, "判据1d 详情")
+  断言为真(字典获取(e1, "时间", 空) != 空, "判据1e 时间非空")
+
+  # ── 判据2：字典形态按 name 比较（同名为真、异名为假） ──
+  断言为真(是名错误(e1, "SessionAlreadyOwnedError"), "判据2a 同名判真")
+  设 e2 为 造带名错误("SessionNotFound", "session already owned", "session/writer-held", {"id": "s1"})
+  断言为假(是名错误(e2, "SessionAlreadyOwnedError"), "判据2b 异名判假（消息/码再像也不认）")
+
+  # ── 判据3：抛出→捕获（跨抛出投影）后从消息串仍能按 name 识别 ──
+  设 捕获串 为 空
+  尝试:
+    抛所有权错()
+  捕获 异常:
+    设 捕获串 为 获取最后异常()
+  断言为真(捕获串 != 空, "判据3a 捕获到消息串")
+  断言相等(错误名(捕获串), "SessionAlreadyOwnedError", "判据3b 从消息串取出名")
+  断言为真(是名错误(捕获串, "SessionAlreadyOwnedError"), "判据3c 消息串形态按名判真")
+  断言为假(是名错误(捕获串, "SessionNotFound"), "判据3d 消息串形态异名判假")
+  # 同名的结构化字典与消息串两种形态互认（同一 name 即同一语义错误）
+  断言为真(是名错误(e1, "SessionAlreadyOwnedError") 且 是名错误(捕获串, "SessionAlreadyOwnedError"), "判据3e 两形态互认")
+
+  # ── 判据4：空名 / 非字符串名 / 无名字段 一律判假（防误判） ──
+  设 e4 为 造带名错误("", "无名的错", "x/y")
+  断言为假(是名错误(e4, "SessionAlreadyOwnedError"), "判据4a 无名错误不误判")
+  断言为假(是名错误(e1, ""), "判据4b 空名判假")
+  断言为假(是名错误(e1, 空), "判据4c 空值名判假")
+  断言为假(是名错误(e1, 42), "判据4d 非字符串名判假")
+  断言为假(是名错误("不是错误的普通串", "SessionAlreadyOwnedError"), "判据4e 非错误串判假")
+  断言相等(错误名(造带名错误("A", "m")), "A", "判据4f 缺码时名仍在")
+
+  # ── 判据5：与 R126 先例（消息前缀 duck-typing）不互相冒充 ──
+  #   纯文本通道：调度深化.light create 抛 "subagent_session: ..."，只认前缀不产生 name
+  设 前缀串 为 "subagent_session: This Session belongs to subagent routing."
+  断言相等(错误名(前缀串), 空, "判据5a 前缀文本不产生 name")
+  断言为假(是名错误(前缀串, "subagent_session"), "判据5b 前缀文本不走 name 通道")
+  #   结构化通道：同名错误应走 name 比较
+  设 e5 为 造带名错误("subagent_session", "This Session belongs to subagent routing.", "subagent_session")
+  断言为真(是名错误(e5, "subagent_session"), "判据5c 结构化同名走 name 通道")
+
+  打印 "test_R128_错误约定 PASS"
+
+主()

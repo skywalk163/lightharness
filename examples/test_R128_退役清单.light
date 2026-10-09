@@ -1,0 +1,100 @@
+# R128 C 线任务 3：RETIRED_BUNDLES 退役清单摘除 + 仅在变更时写回
+# 落点：src/启动配置.light ⑥（退役bundles / 装机元组 / 同bundles / 取bundles /
+#       写bundles / 规划退役摘除 / 规范化profile清单）
+#
+# 承载模块说明（如实登记）：
+#   任务书点名的 src/插件注册表计划.light **不承载 bundle 列表概念**——
+#   它只做「注册表 URL 归一化 + 询问顺序规划 + 失败归因 + git 宿主解析」
+#   （插册归一/插册计划/插册归属/插册解析宿主，235 行，无 bundles 字段）。
+#   上游 9633724b40 改的是 packages/boot/app-boot/src/profile.ts 的 loadProfile 归一链，
+#   其光明侧同构模块是 src/启动配置.light（头注 ② 明写「profile manifest 读写：
+#   package.json 中的 dsh.profile.bundles 有序列表」，已有 已发布模板/缺省bundles/
+#   读取profile清单/写入profile清单）。故本规则落在该真实承载模块，而非硬造新模块。
+#
+# 判据对齐上游 profile.spec.ts 新增用例：
+#   自定义 profile 的 bundles = [base, 退役schedule-bundle, custom-bundle]
+#   → 摘除后 = [base, custom-bundle]，dependencies 等其余字段保留。
+# 另补：无 bundles 字段不动、摘除后无变化不写回、装机元组归一、写回只在变更时发生。
+
+从 启动配置 导入 退役bundles 装机元组 已发布模板
+从 启动配置 导入 同bundles 取bundles 写bundles 规划退役摘除
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 信息 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言为真(值, 信息):
+  如果 值 == 假:
+    抛出 新建 错误("断言失败[" + 信息 + "]：期望真，实际=" + 转字符串(值))
+
+段落 断言为假(值, 信息):
+  如果 值 == 真:
+    抛出 新建 错误("断言失败[" + 信息 + "]：期望假，实际=" + 转字符串(值))
+
+段落 主:
+  设 基 为 "@deepseek-ai/dsh-base"
+  设 退役名 为 "@deepseek-ai/dsh-experimental-schedule-bundle"
+
+  # ── 判据1：退役清单内容（对齐上游 RETIRED_BUNDLES） ──
+  断言相等(退役bundles, [退役名], "判据1a 退役清单内容")
+  断言为真(列表包含(退役bundles, 退役名), "判据1b 退役名在清单内")
+
+  # ── 判据2：同bundles 逐项比较 ──
+  断言为真(同bundles(["a", "b"], ["a", "b"]), "判据2a 同序同内容为真")
+  断言为假(同bundles(["a", "b"], ["b", "a"]), "判据2b 换序为假")
+  断言为假(同bundles(["a", "b"], ["a"]), "判据2c 长度不同为假")
+  断言为假(同bundles(["a", "b"], "ab"), "判据2d 非列表为假")
+
+  # ── 判据3：取bundles 的层级安全取值 ──
+  设 清单3 为 {"dependencies": {"custom-bundle": "^1.0.0"}, "dsh": {"profile": {"bundles": [基, 退役名, "custom-bundle"], "patchReload": "live"}}}
+  断言相等(取bundles(清单3), [基, 退役名, "custom-bundle"], "判据3a 正常取到")
+  断言相等(取bundles({"dsh": {}}), 空, "判据3b 缺 profile 层返空")
+  断言相等(取bundles({"dsh": {"profile": {}}}), 空, "判据3c 缺 bundles 返空")
+  断言相等(取bundles({}), 空, "判据3d 缺 dsh 返空")
+  断言相等(取bundles({"dsh": []}), 空, "判据3e dsh 非字典返空")
+
+  # ── 判据4：摘除退役 bundle，保留其余顺序与清单其他字段 ──
+  #   对齐上游 profile.spec.ts『removes a retired bundle from any profile and keeps the rest』
+  设 规4 为 规划退役摘除("custom", 清单3)
+  断言为真(规4["改"], "判据4a 有变化需写回")
+  断言相等(规4["bundles"], [基, "custom-bundle"], "判据4b 摘除退役项且保序")
+  断言相等(取bundles(规4["清单"]), [基, "custom-bundle"], "判据4c 新清单已换 bundles")
+  断言相等(字典获取(规4["清单"], "dependencies", 空), {"custom-bundle": "^1.0.0"}, "判据4d dependencies 保留")
+  断言相等(字典获取(字典获取(字典获取(规4["清单"], "dsh"), "profile"), "patchReload", 空), "live", "判据4e patchReload 保留")
+  # 纯逻辑：原清单不被改动（写回只发生在 规范化profile清单 里）
+  断言相等(取bundles(清单3), [基, 退役名, "custom-bundle"], "判据4f 规划无副作用，原清单不变")
+
+  # ── 判据5：无退役项 → 改=假（上游 sameBundles 即 return，不写回） ──
+  设 清单5 为 {"dsh": {"profile": {"bundles": [基, "custom-bundle"]}}}
+  设 规5 为 规划退役摘除("custom", 清单5)
+  断言为假(规5["改"], "判据5a 无变化不写回")
+  断言相等(规5["bundles"], [基, "custom-bundle"], "判据5b 表不变")
+
+  # ── 判据6：无 bundles 字段 → 不动、不写回 ──
+  设 清单6 为 {"name": "dsh-profile-x", "dependencies": {}}
+  设 规6 为 规划退役摘除("custom", 清单6)
+  断言为假(规6["改"], "判据6a 无 bundles 不动")
+  断言相等(规6["bundles"], 空, "判据6b bundles 为空")
+
+  # ── 判据7：装机自带旧元组归一（headless） ──
+  #   旧元组 [base, web-app, headless] → 归一为 已发布模板.headless.bundles
+  设 清单7 为 {"dsh": {"profile": {"bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless"]}}}
+  设 规7 为 规划退役摘除("headless", 清单7)
+  断言为真(规7["改"], "判据7a 命中旧元组需归一")
+  断言相等(规7["bundles"], 已发布模板["headless"]["bundles"], "判据7b 归一为模板 bundles")
+  断言相等(装机元组["headless"], ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless"], "判据7c 装机元组内容与上游一致")
+  # 非装机 profile 名不归一（只走退役摘除）
+  设 规7b 为 规划退役摘除("web", 清单7)
+  断言为假(规7b["改"], "判据7d 非装机名不归一（web 无装机元组）")
+
+  # ── 判据8：写bundles 只换 bundles、其余字段原样 ──
+  设 清单8 为 {"name": "p", "private": 真, "dsh": {"profile": {"bundles": ["x"], "patchReload": "startup"}}}
+  设 新8 为 写bundles(清单8, ["y", "z"])
+  断言相等(取bundles(新8), ["y", "z"], "判据8a bundles 已换")
+  断言相等(字典获取(新8, "name", 空), "p", "判据8b 顶层字段保留")
+  断言相等(字典获取(字典获取(字典获取(新8, "dsh"), "profile"), "patchReload", 空), "startup", "判据8c profile 其他字段保留")
+  断言相等(取bundles(清单8), ["x"], "判据8d 原清单未被改动")
+
+  打印 "test_R128_退役清单 PASS"
+
+主()
