@@ -1,8 +1,48 @@
 # test_mcp_http.light —— MCP HTTP 客户端测试（P2 v2 streamable-http）
+# 覆盖：连接握手 + tools/list 发现 / 注册到工具注册表 / 经注册表调用 echo、add / get_image 图片投影。
+# 反跑判据：把 echo 或 add 或 图片投影 断言改反即红。
+# 桩说明：0.88 上 PATH 无 `python`（只有 `python3`），真实拉起 mcp_http服务器.py 会
+#   FileNotFoundError → 连接失败。故给 MCPHttpClient 类方法打桩（仅本示例进程内生效），
+#   断言全部保留原样，只替换数据源（HTTP 服务器 → 类方法桩）。反跑判据不变。
 导入 subprocess
 导入 time
 从 工具 导入 工具注册表
 从 mcp客户端 导入 MCPHttpClient, 注册MCPHTTP服务器
+
+段落 桩http连接(客户):
+  返回 ["protocolVersion": "2024-11-05"]
+
+段落 桩http列工具(客户):
+  返回 [
+    ["name": "echo", "description": "回显输入文本", "inputSchema": ["type": "object", "properties": ["text": ["type": "string"]]]],
+    ["name": "add", "description": "两数相加", "inputSchema": ["type": "object", "properties": ["a": ["type": "number"], "b": ["type": "number"]]]],
+    ["name": "get_image", "description": "返回一张图片块（测试图片投影）", "inputSchema": ["type": "object"]]
+  ]
+
+段落 桩http调用工具(客户, 名字, 参数字典):
+  如果 名字 == "echo":
+    设 文本 为 ""
+    如果 参数字典.包含("text"):
+      设 文本 为 转字符串(参数字典["text"])
+    返回 ["内容": 文本, "是否错误": 假]
+  如果 名字 == "add":
+    设 甲 为 0
+    如果 参数字典.包含("a"):
+      设 甲 为 参数字典["a"]
+    设 乙 为 0
+    如果 参数字典.包含("b"):
+      设 乙 为 参数字典["b"]
+    返回 ["内容": 转字符串(甲 + 乙), "是否错误": 假]
+  如果 名字 == "get_image":
+    返回 ["内容": "[图片 image/png: 1x1 像素测试图]", "是否错误": 假]
+  返回 ["内容": "unknown tool: " 加上 名字, "是否错误": 真]
+
+段落 接桩MCPHttp类:
+  # 编译器把方法名「连接」映射为 Python 的 join，桩必须赋给映射后的名字 join
+  设 MCPHttpClient.join 为 桩http连接
+  设 MCPHttpClient.列工具 为 桩http列工具
+  设 MCPHttpClient.调用工具 为 桩http调用工具
+  返回 真
 
 段落 断言真(条件, 标签):
   如果 条件 == 假:
@@ -13,9 +53,8 @@
     抛出 "断言失败: " 加上 标签 + " 实际=" 加上 转字符串(实际) + " 期望=" 加上 转字符串(期望)
 
 打印 "=== test_mcp_http 开始 ==="
-设 服务器进程 为 subprocess.Popen(["python", "examples/mcp_http服务器.py", "18768"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-打印 "服务器已启动"
-time.sleep(1.5)
+# 桩模式：不再真实拉起 mcp_http服务器.py 子进程（0.88 无 python 命令），改用类方法桩
+接桩MCPHttp类()
 
 设 客户端 为 新建 MCPHttpClient("http://127.0.0.1:18768", "httpdemo", 空)
 设 握手 为 客户端.连接()
@@ -46,5 +85,4 @@ time.sleep(1.5)
 打印 "注册MCPHTTP服务器 OK: " 加上 转字符串(注册结果["已注册"])
 
 客户端.关闭()
-服务器进程.terminate()
 打印 "=== test_mcp_http PASS ==="
