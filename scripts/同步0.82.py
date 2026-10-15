@@ -47,6 +47,7 @@ PY = "/usr/local/bin/python3.11"
 EXCLUDE_DIRS = {
     ".git", "__pycache__", ".venv", "venv", ".pytest_cache", ".mypy_cache",
     "node_modules", "build", "dist", ".idea", ".vscode",
+    "nuitka_final",           # Nuitka 构建产物 366MB（git 忽略），且其内 .env 带真 OPENAI_API_KEY
 }
 EXCLUDE_SUFFIX = {".pyc", ".pyo", ".pyd", ".so", ".dylib"}
 
@@ -74,6 +75,7 @@ EXCLUDE_REL_PREFIXES = (
     ("sessions",),               # lightharness：会话日志 2.56MB（R40 用例只碰自己的沙箱临时根）
     (".ci",),                    # light-merge：仅 report_local.xml 1.15MB（非 CI 配置，配置在 .gitea/.github/.gitcode）
     ("light.egg-info",),         # light-merge：1.65MB（git 未跟踪，tests/ 零引用）
+    (".env",),                   # 凭据：SSH/OPENAI 等敏感文件，禁止同步到 0.82（凭证防泄露铁律）
 )
 # `_082_lm_results_*.xml`（1.23MB/份）是 pytest 结果落盘，只写不读 → 走前缀规则排除。
 # 保持不排除（0.82 跑测试必需 / 报告类小文件）：docs/功能对标/、docs/语言缺陷账.md、
@@ -107,6 +109,11 @@ def load_env() -> tuple[str, str]:
 # ---------------------------------------------------------------- 打包
 def _should_skip(path: Path) -> bool:
     parts = tuple(path.parts)
+    # 凭证防泄露（2026-10-15 R151 门前实测补强）：前缀规则 (".env",) 按各仓根
+    # 相对路径匹配，只罩两仓根级 .env；nuitka_final/.env 这类**嵌套** .env
+    # （内有真 OPENAI_API_KEY）会漏过被整树上传。这里按文件名任意深度一律排除。
+    if parts and parts[-1] == ".env":
+        return True
     # R62：相对仓根的精确路径前缀（先判，命中即排除）
     for pref in EXCLUDE_REL_PREFIXES:
         if parts[:len(pref)] == pref:
