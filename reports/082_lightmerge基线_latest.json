@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "round": "R151",
-  "generated_at": "2026-10-15T20:30:52+08:00",
+  "round": "R55",
+  "generated_at": "2026-10-16T00:00:59+08:00",
   "target": {
     "name": "light-merge",
     "platform": "0.82 FreeBSD 15.1",
     "host": "192.168.0.82",
-    "remote_dir": "/tmp/r44-20261015-201322",
-    "cwd": "/tmp/r44-20261015-201322/light-merge"
+    "remote_dir": "/tmp/r44-20261015-234118",
+    "cwd": "/tmp/r44-20261015-234118/light-merge"
   },
   "runner": {
     "mode": "fast",
@@ -15,87 +15,23 @@
     "timeout_sec": 2700,
     "target": "light-merge",
     "marker": "not slow",
-    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20261015-201322/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20261015-201322/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
-    "elapsed_sec": 899.3,
-    "pytest_rc": 1,
+    "cmd": "export PYTHONIOENCODING=utf-8 && export PATH=/tmp/r44-shim:$PATH && timeout 2700 sh -c 'cd /tmp/r44-20261015-234118/light-merge && /usr/local/bin/python3.12 '\\''-m'\\'' '\\''pytest'\\'' '\\''tests/'\\'' '\\''-q'\\'' '\\''--tb=no'\\'' '\\''-rfE'\\'' '\\''-p'\\'' '\\''no:cacheprovider'\\'' '\\''--junitxml'\\'' '\\''/tmp/r44-20261015-234118/lm_results_fast.xml'\\'' '\\''-m'\\'' '\\''not slow'\\'' '\\''-n'\\'' '\\''auto'\\'' '\\''--dist'\\'' '\\''loadscope'\\'''",
+    "elapsed_sec": 974.5,
+    "pytest_rc": 0,
     "timed_out": false
   },
   "totals": {
-    "total": 8931,
-    "failure": 9,
+    "total": 8948,
+    "failure": 0,
     "error": 0,
     "skipped": 135,
     "xfailed": 10,
     "xpassed": 0,
-    "passed": 8777,
-    "failed": 9,
-    "duration_sec": 897.146
+    "passed": 8803,
+    "failed": 0,
+    "duration_sec": 972.49
   },
-  "failed": [
-    {
-      "id": "tests/test_stdlib_phase13/测试集合工具模块.py::test_双端队列",
-      "cid": "tests.test_stdlib_phase13.测试集合工具模块::test_双端队列",
-      "status": "failure",
-      "file": "tests/test_stdlib_phase13/测试集合工具模块.py",
-      "message": "AttributeError: 'dict' object has no attribute '右入队'"
-    },
-    {
-      "id": "tests/test_stdlib_phase13/测试集合工具模块.py::test_命名元组",
-      "cid": "tests.test_stdlib_phase13.测试集合工具模块::test_命名元组",
-      "status": "failure",
-      "file": "tests/test_stdlib_phase13/测试集合工具模块.py",
-      "message": "TypeError: 'list' object is not callable"
-    },
-    {
-      "id": "tests/test_stdlib_phase13/测试集合工具模块.py::test_计数器最常见",
-      "cid": "tests.test_stdlib_phase13.测试集合工具模块::test_计数器最常见",
-      "status": "failure",
-      "file": "tests/test_stdlib_phase13/测试集合工具模块.py",
-      "message": "AttributeError: 'dict' object has no attribute '最常见'"
-    },
-    {
-      "id": "tests/test_stdlib_phase13/测试集合工具模块.py::test_默认字典",
-      "cid": "tests.test_stdlib_phase13.测试集合工具模块::test_默认字典",
-      "status": "failure",
-      "file": "tests/test_stdlib_phase13/测试集合工具模块.py",
-      "message": "KeyError: '不存在的键'"
-    },
-    {
-      "id": "tests/test_stdlib_phase13/测试集合工具模块.py::test_默认字典列表",
-      "cid": "tests.test_stdlib_phase13.测试集合工具模块::test_默认字典列表",
-      "status": "failure",
-      "file": "tests/test_stdlib_phase13/测试集合工具模块.py",
-      "message": "KeyError: '键'"
-    },
-    {
-      "id": "tests/test_filesystem.py::test_展开用户目录",
-      "cid": "tests.test_filesystem.Test路径验证::test_展开用户目录",
-      "status": "failure",
-      "file": "tests/test_filesystem.py",
-      "message": "AssertionError: assert False"
-    },
-    {
-      "id": "tests/test_harness_e2e_light.py::test_限时大于延迟时与不限时逐项等价",
-      "cid": "tests.test_harness_e2e_light.Test单条超时::test_限时大于延迟时与不限时逐项等价",
-      "status": "failure",
-      "file": "tests/test_harness_e2e_light.py",
-      "message": "Failed: Timeout (>60.0s) from pytest-timeout."
-    },
-    {
-      "id": "tests/test_harness_agent_light.py::test_限时宽松时与不限时同结论",
-      "cid": "tests.test_harness_agent_light.TestM18超时::test_限时宽松时与不限时同结论",
-      "status": "failure",
-      "file": "tests/test_harness_agent_light.py",
-      "message": "Failed: Timeout (>60.0s) from pytest-timeout."
-    },
-    {
-      "id": "tests/unit/test_R148_文件系统补齐.py::test_获取文件所有者",
-      "cid": "tests.unit.test_R148_文件系统补齐::test_获取文件所有者",
-      "status": "failure",
-      "file": "tests/unit/test_R148_文件系统补齐.py",
-      "message": "AssertionError: assert 'ai' == '1002'"
-    }
-  ],
+  "failed": [],
   "skipped": [
     "tests/unit/test_stdlib_import_consistency.py::test_反跑_删stub的py_包路径import必须ModuleNotFoundError[\\u4e2d\\u6587NLP]",
     "tests/unit/test_stdlib_import_consistency.py::test_反跑_包路径import的stdlib模块_删py后import必须红[Base64]",
@@ -204,9 +140,8 @@
     "tests/test_agent_tools_light.py::test_junction指向外部被拒",
     "tests/test_agent_tools_light.py::test_嵌套junction不被递归展开",
     "tests/test_agent_tools_light.py::test_尾随空格点不穿透",
-    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
     "tests/test_path_guard_light.py::test_硬链接指向根外被拒",
-    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_字符串对齐_center",
     "tests/test_pty_light.py::test_启动命令读到带ANSI的输出",
     "tests/test_pty_light.py::test_设窗口大小不炸",
     "tests/test_pty_light.py::test_写输入不崩",
@@ -214,6 +149,7 @@
     "tests/test_pty_light.py::test_平台缺失明确报错类存在",
     "tests/test_stdlib_phase13/测试高级文件模块.py::test_命令存在",
     "tests/test_stdlib_phase13/测试高级文件模块.py::test_磁盘使用情况",
+    "tests/unit/test_原生腿_R13C_对拍扩展.py::test_HTML编码解码",
     "tests/unit/test_light_examples_run.py::test_dict_word_count",
     "tests/integration/test_playground_api.py::test_parse_empty",
     "tests/integration/test_playground_api.py::test_parse_simple",
@@ -223,15 +159,15 @@
     "tests/integration/test_playground_api.py::test_get_examples",
     "tests/integration/test_playground_api.py::test_get_grammar",
     "tests/integration/test_playground_api.py::test_get_stdlib",
-    "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
     "tests/test_llm_client_light.py::test_stream_chat",
     "tests/test_llm_client_light.py::test_nonstream_chat",
     "tests/test_llm_client_light.py::test_真实模型接受tools声明并返回tool_calls",
     "tests/unit/test_原生腿_R13B_能力扩展.py::test_O0_HTTPS_需网络环境",
-    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
-    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
+    "tests/test_path_guard_light.py::test_Windows短名与UNC与大小写变体",
     "tests/test_llvm_tls.py::test_tls_positive_handshake_echo",
     "tests/test_llvm_tls.py::test_tls_negative_untrusted_cert",
+    "tests/test_llvm_net.py::test_mcjit_accepts_generated_ir",
+    "tests/test_llvm_net.py::test_mcjit_verifies_socket_ir",
     "tests/test_path_guard_light.py::test_junction指向外部被拒",
     "tests/test_第7轮_io矩阵.py::test_Windows置空断言",
     "tests/test_进程树_jobobject.py::test_绑定任务对象_产生有效句柄",
