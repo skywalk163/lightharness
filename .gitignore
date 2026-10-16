@@ -78,3 +78,9 @@ _w3_sess/
 *.artifact.json
 # 对标清单等的手工回滚备份
 docs/功能对标/*.bak_*
+
+# === R155 收口（2026-10-16）：清理 8 项无关 untracked 的预防规则 ===
+# .tmp_r110*/ 等点开头测试数据根：上方 tmp_* 通配不匹配点开头段，单独补
+.tmp_*/
+# 光明编译器 --report 生成的编译性能 sidecar（历来不入库，对齐 LM 惯例）
+*_profile.json
