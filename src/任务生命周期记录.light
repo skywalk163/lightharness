@@ -1,0 +1,179 @@
+# 任务生命周期记录.light —— R176-B4：jobs 0.2.1-rc.3 持久生命周期记录纯逻辑移植
+#
+# 上游（G:/github/deepseek-harness，锚点 dsh-v0.2.1-rc.3 = 1f81c047fc）：
+#   packages/jobs/jobs/src/types.ts 增量（**新增** JobToolCall / JobRegisteredData / JobSettledData
+#     + SessionEventMap 两条 log-only 事件 `job/registered` / `job/settled`）
+#   packages/jobs/jobs-local/src/index.ts 增量（recordSessionEvent + producerReported 语义）
+#
+# 上游原文要点：
+#   - `job/registered`：Log-only job registration; model output collection is not required.
+#   - `job/settled`：Log-only terminal record, paired by the same unique jobId used for live control.
+#   - `producerReported`：True when done fulfilled; false for rejection or forced failure.
+#     Does not certify resource release.
+#   - JobSettleCause = 'producer' | 'kill' | 'teardown'
+#   - recordSessionEvent 在 owner === undefined 时**直接返回**（无归属任务不写会话记录）。
+#
+# 上游 → 光明对照表：
+#   JobToolCall{callId, rootCallId}   → 工具调用形状 / 是工具调用
+#   JobRegisteredData                 → 登记记录 / 是登记记录
+#   JobSettledData extends Registered → 结算记录 / 是结算记录
+#   producerDone 的 then(fulfilled, rejected) 双分支 → 生产者结算
+#   无 owner 不记录                    → 判需记录
+#
+# 宿主面登记（不移植，调用方注入承接）：
+#   1. `session.append('job/registered', data)` 是宿主会话写入；本模块只产出**该事件的载荷形状**。
+#   2. `done` 是 Promise：fulfilled/rejected 的判定属宿主；本模块接收「已判定」的事实
+#      （型协…→ 生产者结算 的第二个参数 已兑现），保持纯函数可断言。
+#
+# 命名避坑：段落带前缀「生命」，避免与 src/ 其它模块撞名（已 grep 自查）。
+
+从 内置核心判型 导入 是字典, 是字符串, 是整数, 是浮点, 是空
+从 内置核心字典 导入 字典设置, 字典获取, 字典包含键, 字典键列表
+从 内置核心列表 导入 列表包含
+从 内置核心转换 导入 转字符串
+
+# =====================================================================
+# §0 事件名与结算原因词表（逐字复刻上游）
+# =====================================================================
+
+# 生命事件名表() -> ["job/registered", "job/settled"]
+段落 生命事件名表:
+  返回 ["job/registered", "job/settled"]
+
+# 生命结算原因表() -> ["producer", "kill", "teardown"]
+段落 生命结算原因表:
+  返回 ["producer", "kill", "teardown"]
+
+# 生命终态表() -> ["completed", "killed", "failed"]
+段落 生命终态表:
+  返回 ["completed", "killed", "failed"]
+
+# =====================================================================
+# §1 工具调用（JobToolCall）
+# =====================================================================
+
+# 生命工具调用(调用标识, 根调用标识) -> {"callId": 串, "rootCallId": 串}
+#   上游：nested calls retain their root invocation（PTC 子调用仍记根调用）。
+段落 生命工具调用(调用标识, 根调用标识):
+  返回 {"callId": 调用标识, "rootCallId": 根调用标识}
+
+# 生命是工具调用(值) -> 真假
+段落 生命是工具调用(值):
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "callId", 空)) == 假:
+    返回 假
+  返回 是字符串(字典获取(值, "rootCallId", 空))
+
+# =====================================================================
+# §2 登记记录（JobRegisteredData）
+# =====================================================================
+
+# 生命判需记录(记录) -> 真假
+#   上游 recordSessionEvent：`const owner = job.owner; if (owner === undefined) return`。
+#   无归属任务不落会话记录（它对本会话之外不可见，也就没有可归属的日志位置）。
+段落 生命判需记录(记录):
+  如果 是字典(记录) == 假:
+    返回 假
+  返回 字典获取(记录, "owner", 空) != 空
+
+# 生命登记记录(记录) -> 载荷字典
+#   载荷键：jobId / owner / kind / label / startedAt（+ 可选 toolCall）。
+#   ⛔ 不复制执行期可变字段（status/output/waiters 等）——上游注册记录是**快照**。
+段落 生命登记记录(记录):
+  设 载荷 为 {}
+  字典设置(载荷, "jobId", 字典获取(记录, "id", ""))
+  字典设置(载荷, "owner", 字典获取(记录, "owner", ""))
+  字典设置(载荷, "kind", 字典获取(记录, "kind", ""))
+  字典设置(载荷, "label", 字典获取(记录, "label", ""))
+  字典设置(载荷, "startedAt", 字典获取(记录, "startedAt", 0))
+  设 工具调用 为 字典获取(记录, "toolCall", 空)
+  如果 工具调用 != 空:
+    字典设置(载荷, "toolCall", 工具调用)
+  返回 载荷
+
+# 生命是登记记录(值) -> 真假
+段落 生命是登记记录(值):
+  如果 是字典(值) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "jobId", 空)) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "kind", 空)) == 假:
+    返回 假
+  如果 是字符串(字典获取(值, "label", 空)) == 假:
+    返回 假
+  设 起始 为 字典获取(值, "startedAt", 空)
+  如果 是整数(起始) == 假 且 是浮点(起始) == 假:
+    返回 假
+  如果 字典包含键(值, "toolCall") == 假:
+    返回 真
+  如果 值["toolCall"] == 空:
+    返回 真
+  返回 生命是工具调用(值["toolCall"])
+
+# =====================================================================
+# §3 结算记录（JobSettledData）
+# =====================================================================
+
+# 生命结算记录(记录, 结算时刻, 状态, 原因, 生产者已报, 细节) -> 载荷字典
+#   上游：`{...data, finishedAt, status, cause, producerReported, detail?}`；
+#   detail 缺省（空）时整键不出现（TS 可选字段语义）。
+段落 生命结算记录(记录, 结算时刻, 状态, 原因, 生产者已报, 细节):
+  设 载荷 为 生命登记记录(记录)
+  字典设置(载荷, "finishedAt", 结算时刻)
+  字典设置(载荷, "status", 状态)
+  字典设置(载荷, "cause", 原因)
+  字典设置(载荷, "producerReported", 生产者已报)
+  如果 细节 != 空:
+    字典设置(载荷, "detail", 细节)
+  返回 载荷
+
+# 生命是结算记录(值) -> 真假
+段落 生命是结算记录(值):
+  如果 生命是登记记录(值) == 假:
+    返回 假
+  设 结算时刻 为 字典获取(值, "finishedAt", 空)
+  如果 是整数(结算时刻) == 假 且 是浮点(结算时刻) == 假:
+    返回 假
+  如果 列表包含(生命终态表(), 字典获取(值, "status", 空)) == 假:
+    返回 假
+  如果 列表包含(生命结算原因表(), 字典获取(值, "cause", 空)) == 假:
+    返回 假
+  设 已报 为 字典获取(值, "producerReported", 空)
+  如果 已报 != 真 且 已报 != 假:
+    返回 假
+  如果 字典包含键(值, "detail") == 假:
+    返回 真
+  返回 是字符串(值["detail"])
+
+# 生命生产者结算(结局, 已兑现) -> {"status": 串, "producerReported": 真假, "detail": 串|空}
+#   上游 producerDone 的双分支：
+#     fulfilled → { outcome, producerReported: true }
+#     rejected  → { outcome: {status:'failed', detail:String(error)}, producerReported: false }
+#   并把 producerReported 传给 settle，用于「生产者是否自报终态」的可观测性。
+段落 生命生产者结算(结局, 已兑现):
+  如果 已兑现 == 真:
+    设 状态 为 字典获取(结局, "status", "completed")
+    返回 {"status": 状态, "producerReported": 真, "detail": 字典获取(结局, "detail", 空)}
+  设 错误文本 为 转字符串(结局)
+  如果 是字典(结局) == 真:
+    如果 字典包含键(结局, "message") == 真:
+      设 错误文本 为 转字符串(结局["message"])
+  返回 {"status": "failed", "producerReported": 假, "detail": 错误文本}
+
+# 生命结算原因(记录) -> 串
+#   上游：`job.settleCause ?? 'producer'`（被 kill 过就记 kill，否则记生产者自报）。
+段落 生命结算原因(记录):
+  设 已定 为 字典获取(记录, "settleCause", 空)
+  如果 是字符串(已定) == 真:
+    返回 已定
+  返回 "producer"
+
+# =====================================================================
+# 导出
+# =====================================================================
+
+导出 生命事件名表, 生命结算原因表, 生命终态表
+导出 生命工具调用, 生命是工具调用
+导出 生命判需记录, 生命登记记录, 生命是登记记录
+导出 生命结算记录, 生命是结算记录, 生命生产者结算, 生命结算原因
