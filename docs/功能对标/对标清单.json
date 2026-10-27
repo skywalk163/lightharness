@@ -4522,6 +4522,23 @@
       "本轮目标": "10 组判据全绿（含各拒绝形态+尾斜杠归一）",
       "反跑判据": "test_R126_小项复刻.light §E：任一拒绝判据期望反转即红",
       "语言缺陷": []
+    },
+    {
+      "编号": 328,
+      "功能": "agent-instructions 0.2.1-rc.3 增量：双用户全局根与候选组去重、dshHome 不可覆盖、项目路径作用域转义",
+      "原版包": "packages/context/agent-instructions/src/{config,files,render,state,index}.ts",
+      "光明模块": "src/智能体指令.light（续编，442→589 行）",
+      "状态": "done（T-0174 / 0.2.1-rc.3 B2，+160/-13）：①双用户全局根 user-global + agents-global，两者构成同一候选组，内容相同只渲染一次（去重单位由「目录」升为「候选组」，对应 dedupInstructionFilesByCandidateGroup）；②dshHome 从 Config schema 移除、不可由配置覆盖（改由进程环境解析后入参注入），新增 agentsHome；③escapeProjectDisplayPath：项目显示路径首段与保留作用域目录同名时加 \"./\" 转义，避免被误读为全局根；④附加段落对用户全局作用域改用 \"These user-global instructions apply to all work.\"，内部对账键不泄漏到模型可见文案；⑤RenderedInstructionSet 新增 deduped 字段（被折叠候选仍保留探测资格）；⑥基线作用域集合含两个全局根。宿主面剥离：fs stat/read、AbortSignal、WeakMap 缓存、cordis 钩子未移植（沿用既有登记）。",
+      "证据": [
+        "packages/context/agent-instructions/src/{config,files,render,state,index}.ts（上游 1f81c047fc）",
+        "src/智能体指令.light",
+        "examples/test_智能体指令_0.2.1增量.light（19 组）",
+        "examples/test_智能体指令.light（模块32 原有用例全绿）",
+        "docs/功能对标/0.2.1-rc.3增量清单.md §3.1 / §6-5"
+      ],
+      "本轮目标": "19 组判据全绿，且既有 442 行用例零回归",
+      "反跑判据": "四点破坏-还原均实测红：候选组并入取消→「agents-global 并入 user-global 组」红；转义取消→「user-global 首段转义」红；dshHome 配置覆盖恢复→「配置里的 dshHome 被忽略」红；deduped 恒空→「deduped 记下被折叠者」红",
+      "语言缺陷": []
     }
   ]
 }
