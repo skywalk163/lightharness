@@ -1,37 +1,93 @@
 {
   "schema": 1,
   "round": "R55",
-  "generated_at": "2026-09-23T17:43:45+08:00",
+  "generated_at": "2026-10-27T21:51:45+08:00",
   "target": {
     "name": "lightharness",
     "platform": "本机 Windows 10",
     "host": "",
     "remote_dir": "",
-    "cwd": "G:\\dswork\\duan-light-merge\\lightharness"
+    "cwd": "C:\\Users\\skywalk\\.hive\\wt\\workbuddyai-win\\T-0177"
   },
   "runner": {
     "mode": "full",
     "parallel": false,
     "cmd": "-m pytest tests/ -q --tb=no -rfE -o addopts= -p no:cacheprovider -p no:xdist --timeout 60",
-    "elapsed_sec": 990.7,
-    "pytest_rc": 0
+    "elapsed_sec": null,
+    "pytest_rc": null
   },
   "totals": {
-    "total": 1400,
-    "failure": 0,
+    "total": 2103,
+    "failure": 6,
     "error": 0,
-    "skipped": 4,
+    "skipped": 17,
     "xfailed": 0,
     "xpassed": 0,
-    "passed": 1396,
-    "failed": 0,
-    "duration_sec": 987.754
+    "passed": 2080,
+    "failed": 6,
+    "duration_sec": 3183.627
   },
-  "failed": [],
+  "failed": [
+    {
+      "id": "tests/test_R21_词法确定性_超集.py::test_definitions_superset",
+      "cid": "tests.test_R21_词法确定性_超集::test_definitions_superset",
+      "status": "failure",
+      "file": "tests/test_R21_词法确定性_超集.py",
+      "message": "AssertionError: definitions 出现非残片丢失（1）: [('test_R176_型协清单校验.light', '者种类')]"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R72_C_推导式.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R72_C_推导式.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R72_C_推导式.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R20_词法边界综合.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R20_词法边界综合.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R20_词法边界综合.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_R48_hooks三事件.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_R48_hooks三事件.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_R48_hooks三事件.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_agentE5钩子.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_agentE5钩子.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_agentE5钩子.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    },
+    {
+      "id": "tests/test_回归.py::test_example_exit_code[test_字符串替换编辑器.light]",
+      "cid": "tests.test_回归::test_example_exit_code[test_字符串替换编辑器.light]",
+      "status": "failure",
+      "file": "tests/test_回归.py",
+      "message": "AssertionError: test_字符串替换编辑器.light 应绿，实际 rc=1（非环境红台账条目 → 疑似回归）"
+    }
+  ],
   "skipped": [
     "tests/test_R26_词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R27_CS表16字词首并入_token.py::test_fingerprint_unchanged",
     "tests/test_R28_CS表2字词尾上下文_token.py::test_fingerprint_unchanged",
-    "tests/test_回归.py::test_env_red_baseline_report"
+    "tests/test_回归.py::test_env_red_baseline_report",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_主症_SRC_两行都是7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_主症_ANTLR_两行都是7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_两后端输出一致",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反向对照_普通名两后端均7",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例同行_裸返回后接跳过仍是continue",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_裸返回缩进更深的跳过仍是continue",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP018_反例跨块_ANTLR同语义",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_两后端输出一致",
+    "tests/unit/test_Day3_T3T4_LP018_LP019回归.py::test_LP019判型族_语义正确",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_SRC_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_SRC_退出码0_无语法元素报错",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe1_ANTLR_退出码0_输出含1",
+    "tests/unit/test_Day4_LP013_探针回归.py::test_LP013_probe2_ANTLR_退出码0_无语法元素报错"
   ]
 }
