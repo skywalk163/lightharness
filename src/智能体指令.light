@@ -1,8 +1,18 @@
 # 智能体指令（agent-instructions）纯逻辑核心
 # 1:1 复刻 deepseek-harness/packages/context/agent-instructions
 # 覆盖范围：render（字节预算渲染/作用域键/转义/截断）、digest（SHA-1 摘要）、
-#           config（配置解析）、files（目录链/相对显示/按目录去重）、
+#           config（配置解析）、files（目录链/相对显示/按候选组去重）、
 #           state（变更比较/基线状态/版本更新保留）。
+#
+# 0.2.1-rc.3 增量（T-0174 / 清单第 5 项）：
+#   - 双用户全局根：harness home（user-global）+ 共享 agents 根（agents-global），
+#     构成同一候选组，内容相同只渲染一次（去重单位由「目录」升为「候选组」）
+#   - dshHome 不再可由配置覆盖，改由进程环境解析后入参注入；新增 agentsHome
+#   - 项目显示路径与用户全局作用域目录同名时用前导 "./" 转义（escapeProjectDisplayPath）
+#   - 附加段落对用户全局作用域改用 "These user-global instructions apply to all work."，
+#     避免内部对账键泄漏到模型可见文案
+#   - RenderedInstructionSet 新增 deduped 字段（被折叠候选仍保留探测资格）
+#
 # 不在范围内（环境/I-O 依赖，登记为不可移植缺口）：
 #   - files 的文件系统 stat/read、provider 抽象、AbortSignal 取消
 #   - state 的会话事件扫描、WeakMap 缓存、cordis 钩子
@@ -21,9 +31,17 @@
 设 缺省替换介绍 为 "This complete workspace instruction baseline replaces all earlier workspace instruction baselines. No workspace instructions are currently active."
 设 紧凑介绍 为 "Workspace instructions were omitted or truncated to fit the configured byte budget."
 设 用户全局目录 为 "user-global"
+设 代理全局目录 为 "agents-global"
+# 两个用户全局根，迭代顺序恒定：harness home 在前，决定内容重复的取舍。
+设 用户全局目录表 为 ["user-global", "agents-global"]
 设 用户全局文件 为 "AGENTS.md"
+# 用户全局根的显示形态（对应上游 dshHomeDisplay / agentsHomeDisplay）。
+设 主目录显示 为 "~/.dsh"
+设 代理主目录显示 为 "~/.agents"
 # NUL 分隔符：任何目录或文件名都不能包含它，从而让「目录+候选名」两两不撞键。
 设 作用域分隔符 为 "\u0000"
+# 附加指令的用途说明后缀（上游 ADDITIONAL_INSTRUCTIONS_GUIDANCE）。
+设 附加用途说明 为 "Use them as guidance when relevant; more specific instructions take precedence. They do not override system, developer, or direct user instructions."
 
 # ===== 小工具（列表/路径）=====
 段落 列表取(列表, i):
@@ -118,27 +136,33 @@
     列表追加(结果, 候选名)
   返回 结果
 
-段落 解析发现配置(配置):
+段落 解析发现配置(配置, 已解析主目录=空, 已解析代理目录=空):
   设 默认根标记 为 ["\.git"]
   设 默认可选 为 ["AGENTS.md", "CLAUDE.md"]
   设 默认本地 为 ["AGENTS.local.md", "CLAUDE.local.md"]
+  # 上游 0.2.1-rc.3：dshHome 不再从配置读（"Undeclared row fields cannot override
+  # the process home"），一律由进程环境解析；已解析值作为入参注入。
   设 主目录 为 "$DSH_HOME"
-  如果 字典包含键(配置, "dshHome"): 设 主目录 为 配置["dshHome"]
+  如果 已解析主目录 != 空: 设 主目录 为 已解析主目录
+  设 代理目录 为 "$AGENTS_HOME"
+  如果 已解析代理目录 != 空: 设 代理目录 为 已解析代理目录
   设 根标记 为 默认根标记
   如果 字典包含键(配置, "projectRootMarkers"): 设 根标记 为 配置["projectRootMarkers"]
   返回 {
     "dshHome": 主目录,
+    "agentsHome": 代理目录,
     "projectRootMarkers": 根标记,
     "instructionFileCandidates": 解析指令文件候选(字典获取(配置, "instructionFileCandidates"), 默认可选),
     "localInstructionFileCandidates": 解析指令文件候选(字典获取(配置, "localInstructionFileCandidates"), 默认本地),
   }
 
-段落 解析配置(配置):
-  设 发现 为 解析发现配置(配置)
+段落 解析配置(配置, 已解析主目录=空, 已解析代理目录=空):
+  设 发现 为 解析发现配置(配置, 已解析主目录, 已解析代理目录)
   设 最大源字节 为 1048576
   如果 字典包含键(配置, "maxSourceBytes"): 设 最大源字节 为 配置["maxSourceBytes"]
   返回 {
     "dshHome": 发现["dshHome"],
+    "agentsHome": 发现["agentsHome"],
     "projectRootMarkers": 发现["projectRootMarkers"],
     "instructionFileCandidates": 发现["instructionFileCandidates"],
     "localInstructionFileCandidates": 发现["localInstructionFileCandidates"],
@@ -159,8 +183,36 @@
 
 # ===== render：作用域键 =====
 段落 显示路径作用域(显示路径):
-  如果 显示路径 == "~/.dsh/AGENTS.md" 或 显示路径 == "$DSH_HOME/AGENTS.md": 返回 用户全局目录
+  # 顺序敏感：先判 harness home，再判共享 agents 根，两者各自独立作用域键。
+  如果 显示路径 == 主目录显示 + "/" + 用户全局文件: 返回 用户全局目录
+  如果 显示路径 == "$DSH_HOME/" + 用户全局文件: 返回 用户全局目录
+  如果 显示路径 == 代理主目录显示 + "/" + 用户全局文件: 返回 代理全局目录
+  如果 显示路径 == "$AGENTS_HOME/" + 用户全局文件: 返回 代理全局目录
   返回 取目录(显示路径)
+
+段落 是用户全局目录(目录):
+  返回 目录 == 用户全局目录 或 目录 == 代理全局目录
+
+段落 指令候选组(目录):
+  # 两个用户全局根同属一个候选组：内容相同的只渲染一次；
+  # 项目目录各自成组，互不折叠。
+  如果 目录 == 代理全局目录: 返回 用户全局目录
+  返回 目录
+
+段落 是保留作用域目录(目录):
+  返回 是用户全局目录(目录)
+
+段落 转义项目显示路径(相对路径):
+  # 项目目录名若与用户全局作用域目录同名，会被误读成全局根（探测错位 + 并入全局候选组）。
+  # 前导 "." 转义使其留在自己的项目作用域内。分隔符同时认 "/" 与 "\"。
+  设 斜 为 查找子串(相对路径, "/")
+  设 反斜 为 查找子串(相对路径, "\\")
+  设 分隔 为 斜
+  如果 分隔 < 0 或 (反斜 >= 0 且 反斜 < 分隔): 设 分隔 为 反斜
+  设 首段 为 相对路径
+  如果 分隔 >= 0: 设 首段 为 截取(相对路径, 0, 分隔)
+  如果 是保留作用域目录(首段): 返回 "./" + 相对路径
+  返回 相对路径
 
 段落 候选作用域键(目录, 候选名):
   返回 连接字符串([目录, 作用域分隔符, 候选名])
@@ -179,10 +231,16 @@
 
 段落 附加段落文本(文件):
   设 作用域 为 显示路径作用域(文件["displayPath"])
+  # 用户全局作用域目录是内部对账键，绝不能进入模型可见的这句话。
+  设 适用说明 为 ""
+  如果 是用户全局目录(作用域):
+    设 适用说明 为 "These user-global instructions apply to all work."
+  否则:
+    设 适用说明 为 连接字符串(["These instructions apply to work under `", 作用域, "`."], "")
   返回 连接字符串([
     "Additional instructions from: ", 文件["displayPath"],
     "\n\n",
-    "These instructions apply to work under `", 作用域, "`. Use them as guidance when relevant; more specific instructions take precedence. They do not override system, developer, or direct user instructions.",
+    适用说明, " ", 附加用途说明,
     "\n\n",
     文件["content"],
   ], "")
@@ -369,6 +427,33 @@
   返回 {"文本": 结果["文本"], "变更": 变更表}
 
 # ===== files 纯逻辑 =====
+段落 用户全局根表(配置):
+  # 对应上游 userGlobalRoots：按 用户全局目录表 的固定顺序产出两个根。
+  # harness home 在前，决定内容重复的取舍。
+  设 根表 为 []
+  遍历 目录 之 用户全局目录表:
+    设 根 为 {}
+    如果 目录 == 用户全局目录:
+      设 根 为 {"directory": 目录, "home": 配置["dshHome"], "display": 主目录显示}
+    否则:
+      设 根 为 {"directory": 目录, "home": 配置["agentsHome"], "display": 代理主目录显示}
+    列表追加(根表, 根)
+  返回 根表
+
+段落 用户全局探测路径(根):
+  返回 连接字符串([根["home"], "/", 用户全局文件], "")
+
+段落 用户全局显示路径(根):
+  返回 连接字符串([根["display"], "/", 用户全局文件], "")
+
+段落 基线作用域键集合(项目根, cwd):
+  # 两个用户全局根都进基线作用域集合；此前只有 user-global 一个。
+  设 集合 为 []
+  遍历 目录 之 用户全局目录表:
+    列表追加(集合, 候选作用域键(目录, 用户全局文件))
+  遍历 层 之 祖先链(项目根, cwd):
+    列表追加(集合, 候选作用域键(相对路径(项目根, 层), 用户全局文件))
+  返回 集合
 段落 祖先链(根, cwd):
   设 链 为 []
   设 当前 为 解析路径(cwd)
@@ -393,26 +478,66 @@
   返回 列表切片(祖先链(解根, 目标目录), 1)
 
 段落 相对显示(根, 路径):
-  返回 相对路径(根, 路径)
+  返回 转义项目显示路径(相对路径(根, 路径))
 
-段落 按目录去重指令文件(文件表):
-  设 按目录摘要 为 {}
+段落 按候选组去重指令文件(文件表):
+  # 上游 0.2.1-rc.3：去重单位从「目录」改为「候选组」。
+  # 两个用户全局根同组，共享内容相同的折叠在 harness home 之后；
+  # 不同组即使内容相同也不折叠。
+  设 按组摘要 为 {}
   设 保留 为 []
   遍历 文件 之 文件表:
-    设 目录 为 取目录(文件["displayPath"])
-    设 已有 为 字典获取(按目录摘要, 目录)
+    设 组 为 指令候选组(显示路径作用域(文件["displayPath"]))
+    设 已有 为 字典获取(按组摘要, 组)
     如果 已有 == 空:
       设 已有 为 {}
-      字典设置(按目录摘要, 目录, 已有)
+      字典设置(按组摘要, 组, 已有)
     设 摘要 为 去空白指令摘要(文件["content"])
     如果 字典包含键(已有, 摘要): 继续
     字典设置(已有, 摘要, 真)
     列表追加(保留, 文件)
   返回 保留
 
+段落 按目录去重指令文件(文件表):
+  # 兼容旧名：语义已升级为「按候选组」。
+  返回 按候选组去重指令文件(文件表)
+
+段落 被去重指令文件(全量表, 保留表):
+  # 对应上游 RenderedInstructionSet.deduped：
+  # 因内容重复被丢弃的候选。被预算保留项的重复者仍保留探测资格，
+  # 因为删除或改动被保留项会使其重新可见。
+  设 保留路径 为 {}
+  遍历 文件 之 保留表:
+    字典设置(保留路径, 文件["absolutePath"], 真)
+  设 结果 为 []
+  遍历 文件 之 全量表:
+    如果 字典包含键(保留路径, 文件["absolutePath"]): 继续
+    列表追加(结果, 文件)
+  返回 结果
+
 # ===== state 纯逻辑 =====
 段落 相同指令变更(a, b):
   返回 a["action"] == b["action"] 且 a["scope"] == b["scope"] 且 a["path"] == b["path"] 且 a["digest"] == b["digest"]
+
+段落 已保留摘要判定(按组摘要, 组, 摘要):
+  # 对应上游 hasKeptTrimmed：本组此前是否已保留过该 trimmed 摘要。
+  设 已有 为 字典获取(按组摘要, 组)
+  如果 已有 == 空: 返回 假
+  返回 字典包含键(已有, 摘要)
+
+段落 登记保留摘要(按组摘要, 组, 摘要):
+  # 对应上游 registerKeptTrimmed：返回值＝该摘要此前是否已存在（已存在即重复）。
+  设 已有 为 字典获取(按组摘要, 组)
+  如果 已有 == 空:
+    设 已有 为 {}
+    字典设置(按组摘要, 组, 已有)
+  如果 字典包含键(已有, 摘要): 返回 真
+  字典设置(已有, 摘要, 真)
+  返回 假
+
+段落 候选去重键(显示路径):
+  # 对账期的去重单位与文件加载期一致：都按候选组。
+  返回 指令候选组(显示路径作用域(显示路径))
 
 段落 基线指令状态(文件表):
   设 变更表 为 {}
@@ -429,6 +554,28 @@
         "trimmedDigest": 去空白指令摘要(文件["content"]),
       })
   返回 {"变更": 变更表, "版本": 版本表}
+
+段落 加载基线指令集(已读文件表, 最大字节, 替换先前基线=假):
+  # 对应上游 loadBaselineInstructionSet 的纯逻辑部分（读盘与并发限制已剥离）：
+  # 返回 observed（去重前全量）、deduped（因内容重复被丢弃）、included（最终进预算者）。
+  设 保留 为 按候选组去重指令文件(已读文件表)
+  如果 列表长度(保留) == 0:
+    如果 替换先前基线 != 真: 返回 空
+    设 空表 为 []
+    设 渲染 为 渲染工作区指令集(空表, 最大字节, 替换先前基线)
+    返回 {
+      "rendered": 渲染["渲染"],
+      "observed": 空表,
+      "deduped": 空表,
+      "included": 渲染["包含"],
+    }
+  设 渲染 为 渲染工作区指令集(保留, 最大字节, 替换先前基线)
+  返回 {
+    "rendered": 渲染["渲染"],
+    "observed": 已读文件表,
+    "deduped": 被去重指令文件(已读文件表, 保留),
+    "included": 渲染["包含"],
+  }
 
 段落 保留的指令版本更新(更新表, 渲染变更表):
   设 结果 为 []

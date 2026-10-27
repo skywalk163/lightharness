@@ -1,0 +1,204 @@
+# 智能体指令 0.2.1-rc.3 增量回归（T-0174 / A 路清单第 5 项）
+# 覆盖五条新增规则：
+#   1. 双用户全局根 + 候选组去重（agents-global 并入 user-global 组）
+#   2. dshHome 不可由配置覆盖，新增 agentsHome
+#   3. 项目显示路径与保留作用域目录同名的转义
+#   4. 用户全局作用域不进模型可见文案
+#   5. 基线作用域集合含两个用户全局根
+从 智能体指令 导入 代理全局目录, 用户全局目录, 用户全局目录表
+从 智能体指令 导入 显示路径作用域, 是用户全局目录, 指令候选组, 转义项目显示路径
+从 智能体指令 导入 解析发现配置, 解析配置, 相对显示
+从 智能体指令 导入 按候选组去重指令文件, 被去重指令文件, 加载基线指令集
+从 智能体指令 导入 用户全局根表, 用户全局探测路径, 用户全局显示路径, 基线作用域键集合
+从 智能体指令 导入 附加段落文本, 候选作用域键, 用户全局文件
+从 字符串处理 导入 包含
+
+段落 断言相等(实际, 期望, 描述):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 描述 + "] 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真(条件, 描述):
+  如果 条件 != 真: 抛出 新建 错误("断言失败(应为真): " + 描述)
+
+段落 断言假(条件, 描述):
+  如果 条件 == 真: 抛出 新建 错误("断言失败(应为假): " + 描述)
+
+# ===== 规则 1：双用户全局根 + 候选组 =====
+段落 测_双全局根作用域():
+  断言相等(显示路径作用域("~/.dsh/AGENTS.md"), 用户全局目录, "harness home 归 user-global")
+  断言相等(显示路径作用域("$DSH_HOME/AGENTS.md"), 用户全局目录, "$DSH_HOME 形态归 user-global")
+  断言相等(显示路径作用域("~/.agents/AGENTS.md"), 代理全局目录, "agents 根归 agents-global")
+  断言相等(显示路径作用域("$AGENTS_HOME/AGENTS.md"), 代理全局目录, "$AGENTS_HOME 形态归 agents-global")
+  断言相等(显示路径作用域("src/工具/AGENTS.md"), "src/工具", "项目路径仍取目录")
+
+段落 测_是用户全局目录():
+  断言真(是用户全局目录(用户全局目录), "user-global 是全局")
+  断言真(是用户全局目录(代理全局目录), "agents-global 是全局")
+  断言假(是用户全局目录("src"), "项目目录不是全局")
+
+段落 测_候选组():
+  # 关键规则：两个全局根同组，项目目录各自成组
+  断言相等(指令候选组(代理全局目录), 用户全局目录, "agents-global 并入 user-global 组")
+  断言相等(指令候选组(用户全局目录), 用户全局目录, "user-global 自成组首")
+  断言相等(指令候选组("src/工具"), "src/工具", "项目目录自成组")
+  断言相等(指令候选组("."), ".", "根目录自成组")
+
+段落 测_候选组去重_跨根折叠():
+  # 内容相同的两个全局根 → 只留 harness home（迭代顺序在前）
+  设 文件表 为 [
+    {"absolutePath": "/h/.dsh/AGENTS.md", "displayPath": "~/.dsh/AGENTS.md", "content": "共享内容\n"},
+    {"absolutePath": "/h/.agents/AGENTS.md", "displayPath": "~/.agents/AGENTS.md", "content": "共享内容\n"},
+  ]
+  设 保留 为 按候选组去重指令文件(文件表)
+  断言相等(列表长度(保留), 1, "同组同内容只留一个")
+  断言相等(保留[0]["displayPath"], "~/.dsh/AGENTS.md", "保留 harness home 那个")
+
+段落 测_候选组去重_不同组不折叠():
+  # 不同组的相同内容不得折叠（旧实现按目录也不折叠，此断言守住语义）
+  设 文件表 为 [
+    {"absolutePath": "/p/a/AGENTS.md", "displayPath": "a/AGENTS.md", "content": "同内容\n"},
+    {"absolutePath": "/p/b/AGENTS.md", "displayPath": "b/AGENTS.md", "content": "同内容\n"},
+  ]
+  设 保留 为 按候选组去重指令文件(文件表)
+  断言相等(列表长度(保留), 2, "不同组同内容不折叠")
+
+段落 测_候选组去重_首尾空白归一():
+  # 摘要按 trim 后比较：首尾空白不同仍算重复
+  设 文件表 为 [
+    {"absolutePath": "/h/.dsh/AGENTS.md", "displayPath": "~/.dsh/AGENTS.md", "content": "内容"},
+    {"absolutePath": "/h/.agents/AGENTS.md", "displayPath": "~/.agents/AGENTS.md", "content": "  内容 \n"},
+  ]
+  设 保留 为 按候选组去重指令文件(文件表)
+  断言相等(列表长度(保留), 1, "trim 后相同即折叠")
+
+# ===== 规则 2：dshHome 不可覆盖，新增 agentsHome =====
+段落 测_dshHome不可由配置覆盖():
+  # 上游：dshHome 从 Config schema 移除，"Undeclared row fields cannot override the process home"
+  设 配置 为 {"maxBytes": 1024, "dshHome": "/攻击者可控"}
+  设 发现 为 解析发现配置(配置)
+  断言相等(发现["dshHome"], "$DSH_HOME", "配置里的 dshHome 被忽略，退回进程环境")
+  断言相等(发现["agentsHome"], "$AGENTS_HOME", "agentsHome 缺省取进程环境")
+
+段落 测_已解析主目录注入():
+  # 宿主已解析时通过入参注入，配置仍不可覆盖
+  设 配置 为 {"maxBytes": 1024, "dshHome": "/忽略"}
+  设 发现 为 解析发现配置(配置, "/opt/dsh", "/opt/agents")
+  断言相等(发现["dshHome"], "/opt/dsh", "注入的主目录生效")
+  断言相等(发现["agentsHome"], "/opt/agents", "注入的代理目录生效")
+
+段落 测_解析配置带双根():
+  设 配置 为 {"maxBytes": 2048}
+  设 解析 为 解析配置(配置)
+  断言相等(解析["dshHome"], "$DSH_HOME", "解析配置保留主目录")
+  断言相等(解析["agentsHome"], "$AGENTS_HOME", "解析配置新增代理目录")
+  断言相等(解析["maxBytes"], 2048, "maxBytes 透传")
+
+# ===== 规则 3：显示路径转义 =====
+段落 测_转义保留作用域目录():
+  # 项目里真有个叫 user-global 的目录时，前缀 "./" 把它挡在全局作用域命名空间外
+  断言相等(转义项目显示路径("user-global/AGENTS.md"), "./user-global/AGENTS.md", "user-global 首段转义")
+  断言相等(转义项目显示路径("agents-global/AGENTS.md"), "./agents-global/AGENTS.md", "agents-global 首段转义")
+  断言相等(转义项目显示路径("src/工具/AGENTS.md"), "src/工具/AGENTS.md", "普通路径不转义")
+  断言相等(转义项目显示路径("AGENTS.md"), "AGENTS.md", "单文件不转义")
+
+段落 测_转义后不落全局作用域():
+  # 转义前会被误读为全局作用域；转义后必须落回项目目录
+  断言相等(显示路径作用域("user-global/AGENTS.md"), 用户全局目录, "未转义时确实是全局（前提成立）")
+  断言相等(显示路径作用域("./user-global/AGENTS.md"), "./user-global", "转义后落回项目目录")
+
+段落 测_转义反斜杠分隔():
+  断言相等(转义项目显示路径("user-global\\AGENTS.md"), "./user-global\\AGENTS.md", "反斜杠首段也转义")
+
+# ===== 规则 4：用户全局作用域不进模型可见文案 =====
+段落 测_附加段落_全局不泄漏作用域键():
+  设 文件 为 {"absolutePath": "/h/.dsh/AGENTS.md", "displayPath": "~/.dsh/AGENTS.md", "content": "全局规则"}
+  设 文本 为 附加段落文本(文件)
+  断言真(包含(文本, "These user-global instructions apply to all work."), "全局用专属文案")
+  断言假(包含(文本, "under `user-global`"), "不得把 user-global 当目录名暴露")
+
+段落 测_附加段落_项目仍带作用域():
+  设 文件 为 {"absolutePath": "/p/src/AGENTS.md", "displayPath": "src/工具/AGENTS.md", "content": "项目规则"}
+  设 文本 为 附加段落文本(文件)
+  断言真(包含(文本, "under `src/工具`"), "项目段落带作用域")
+
+# ===== 规则 5：基线作用域集合含两根 =====
+段落 测_基线作用域集合含两全局根():
+  设 集合 为 基线作用域键集合("/proj", "/proj/a/b")
+  设 期望主 为 候选作用域键(用户全局目录, 用户全局文件)
+  设 期望代 为 候选作用域键(代理全局目录, 用户全局文件)
+  设 有主 为 假
+  设 有代 为 假
+  遍历 键 之 集合:
+    如果 键 == 期望主: 设 有主 为 真
+    如果 键 == 期望代: 设 有代 为 真
+  断言真(有主, "基线集合含 user-global")
+  断言真(有代, "基线集合含 agents-global")
+
+# ===== 用户全局根表 =====
+段落 测_用户全局根表顺序():
+  # 顺序决定内容重复时保留谁：harness home 必须在前
+  设 配置 为 {"dshHome": "/h/.dsh", "agentsHome": "/h/.agents"}
+  设 根表 为 用户全局根表(配置)
+  断言相等(列表长度(根表), 2, "两个全局根")
+  断言相等(根表[0]["directory"], 用户全局目录, "首位是 harness home")
+  断言相等(根表[1]["directory"], 代理全局目录, "次位是 agents 根")
+  断言相等(用户全局探测路径(根表[0]), "/h/.dsh/AGENTS.md", "探测路径拼接")
+  断言相等(用户全局显示路径(根表[1]), "~/.agents/AGENTS.md", "显示路径用代理形态")
+
+# ===== deduped 字段 =====
+段落 测_加载基线_deduped():
+  # 被折叠的候选要能被单独取回（仍需保留探测资格）
+  设 文件表 为 [
+    {"absolutePath": "/h/.dsh/AGENTS.md", "displayPath": "~/.dsh/AGENTS.md", "content": "共享"},
+    {"absolutePath": "/h/.agents/AGENTS.md", "displayPath": "~/.agents/AGENTS.md", "content": "共享"},
+  ]
+  设 结果 为 加载基线指令集(文件表, 65536)
+  断言相等(列表长度(结果["observed"]), 2, "observed 是去重前全量")
+  断言相等(列表长度(结果["deduped"]), 1, "deduped 记下被折叠者")
+  断言相等(结果["deduped"][0]["displayPath"], "~/.agents/AGENTS.md", "被折叠的是 agents 根")
+
+段落 测_加载基线_空表替换语义():
+  # 空表 + replacePreviousBaseline 才返回结果，否则 undefined
+  设 空表 为 []
+  断言相等(加载基线指令集(空表, 65536, 假), 空, "非替换模式空表返回空")
+  设 结果 为 加载基线指令集(空表, 65536, 真)
+  断言真(结果 != 空, "替换模式空表仍出结果")
+  断言相等(结果["observed"], [], "observed 为空")
+
+段落 测_deduped仍保留探测资格():
+  # 关键规则：被预算裁掉的重复项仍可探测——删除被保留项会让它重新可见。
+  # 这里守住「deduped 与 included 不重叠、且并集等于 observed」。
+  设 文件表 为 [
+    {"absolutePath": "/h/.dsh/AGENTS.md", "displayPath": "~/.dsh/AGENTS.md", "content": "共享"},
+    {"absolutePath": "/h/.agents/AGENTS.md", "displayPath": "~/.agents/AGENTS.md", "content": "共享"},
+    {"absolutePath": "/p/a/AGENTS.md", "displayPath": "a/AGENTS.md", "content": "别的内容"},
+  ]
+  设 结果 为 加载基线指令集(文件表, 65536)
+  断言相等(列表长度(结果["observed"]), 3, "observed 为全量")
+  断言相等(列表长度(结果["deduped"]), 1, "deduped 为一个")
+  断言相等(列表长度(结果["included"]), 2, "included 为两个")
+  断言相等(列表长度(结果["deduped"]) + 列表长度(结果["included"]), 列表长度(结果["observed"]), "不重不漏")
+
+段落 主():
+  测_双全局根作用域()
+  测_是用户全局目录()
+  测_候选组()
+  测_候选组去重_跨根折叠()
+  测_候选组去重_不同组不折叠()
+  测_候选组去重_首尾空白归一()
+  测_dshHome不可由配置覆盖()
+  测_已解析主目录注入()
+  测_解析配置带双根()
+  测_转义保留作用域目录()
+  测_转义后不落全局作用域()
+  测_转义反斜杠分隔()
+  测_附加段落_全局不泄漏作用域键()
+  测_附加段落_项目仍带作用域()
+  测_基线作用域集合含两全局根()
+  测_用户全局根表顺序()
+  测_加载基线_deduped()
+  测_加载基线_空表替换语义()
+  测_deduped仍保留探测资格()
+  打印("--- 智能体指令 0.2.1-rc.3 增量测试通过 ---")
+
+主()
