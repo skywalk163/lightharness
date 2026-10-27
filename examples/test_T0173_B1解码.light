@@ -1,0 +1,134 @@
+# test_T0173_B1解码.light —— T-0173 B1 项#1：DeepSeek `GET /models` 清单解码回归
+# 运行：python 运行.py examples/test_T0173_B1解码.light
+#
+# 反跑判据（改反任一期望必须红）：
+#   §1 地址推导：把 任一 源/路径 期望改反必须红
+#   §2 基本解码：把 任一 id/name/contextWindow/systemPromptUpdate/toolUpdate 期望改反必须红
+#   §3 不可用保留：把 不可用条目仍入 条目 / 需求 min-version 期望改反必须红
+#   §4 跳过计数：把 skipped=重复+空id 期望改反必须红
+#   §5 无 data 抛错：若不再抛错则红（假绿）
+#   §6 降级规则：systemPromptUpdate 非 in-history 必须读 leading-only；非法 context_window 必须不可用
+
+从 模型目录 导入 模型清单地址, 解码模型清单
+从 内置核心列表 导入 列表长度
+从 内置核心字典 导入 字典获取
+从 内置核心字符串 导入 字符串包含
+
+段落 断言相等(实际, 期望, 信息):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 信息 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真(条件, 信息):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 信息)
+
+段落 期望抛错(调用):
+  尝试:
+    调用()
+    返回 假
+  捕获 错误 为 e:
+    返回 真
+
+段落 造可用条目(id值):
+  设 条目 为 {}
+  字典设置(条目, "id", id值)
+  字典设置(条目, "name", id值)
+  字典设置(条目, "output_modalities", ["text"])
+  字典设置(条目, "input_modalities", ["text"])
+  设 消息 为 {}
+  字典设置(消息, "system_prompt_update", "in-history")
+  字典设置(消息, "tool_update", "addition-only")
+  设 api 为 {}
+  字典设置(api, "anthropic_messages", 消息)
+  字典设置(条目, "api_capabilities", api)
+  返回 条目
+
+段落 主:
+  # ============ §1 地址推导（恒取 origin + /models） ============
+  断言相等(模型清单地址("https://api.deepseek.com/v1"), "https://api.deepseek.com/models", "§1 带路径")
+  断言相等(模型清单地址("https://api.deepseek.com"), "https://api.deepseek.com/models", "§1 无路径")
+  断言相等(模型清单地址("http://localhost:8080/foo/bar"), "http://localhost:8080/models", "§1 多级路径")
+
+  # ============ §2 基本解码（单条可用） ============
+  设 条目1 为 造可用条目("deepseek-chat")
+  字典设置(条目1, "context_window", 64000)
+  字典设置(条目1, "max_output_tokens", 8192)
+  设 清单 为 解码模型清单({"data": [条目1]})
+  断言相等(列表长度(清单["条目"]), 1, "§2 条目数")
+  设 e0 为 清单["条目"][0]
+  断言相等(e0["id"], "deepseek-chat", "§2 id")
+  断言相等(e0["name"], "deepseek-chat", "§2 name")
+  断言相等(e0["capabilities"]["usable"], 真, "§2 可用")
+  设 事实 为 e0["capabilities"]["facts"]
+  断言相等(事实["contextWindow"], 64000, "§2 contextWindow")
+  断言相等(事实["maxOutputTokens"], 8192, "§2 maxOutputTokens")
+  断言相等(事实["systemPromptUpdate"], "in-history", "§2 systemPromptUpdate in-history")
+  断言相等(事实["toolUpdate"], "addition-only", "§2 toolUpdate addition-only")
+
+  # ============ §3 不可用条目保留 id/name/requirement ============
+  设 不可用 为 {}
+  字典设置(不可用, "id", "old-model")
+  字典设置(不可用, "name", "Old")
+  设 需求 为 {}
+  字典设置(需求, "deepseek-harness", {"min_version": "1.2.3"})
+  字典设置(不可用, "client_requirements", 需求)
+  设 清单2 为 解码模型清单({"data": [不可用]})
+  断言相等(清单2["跳过"], 0, "§3 不可用不计入 skipped")
+  设 u0 为 清单2["条目"][0]
+  断言相等(u0["id"], "old-model", "§3 保留 id")
+  断言相等(u0["name"], "Old", "§3 保留 name")
+  断言相等(u0["capabilities"]["usable"], 假, "§3 不可用")
+  断言真(字符串包含(u0["capabilities"]["reason"], "anthropic_messages"), "§3 原因含 anthropic_messages")
+  断言相等(u0["requirement"]["kind"], "min-version", "§3 需求 min-version")
+  断言相等(u0["requirement"]["version"], "1.2.3", "§3 需求版本")
+
+  # ============ §4 重复 id + 空 id 计入 skipped ============
+  设 a 为 造可用条目("a")
+  设 b 为 造可用条目("b")
+  设 空id 为 {}
+  字典设置(空id, "id", "")
+  字典设置(空id, "output_modalities", ["text"])
+  字典设置(空id, "api_capabilities", {"anthropic_messages": {}})
+  设 重复 为 造可用条目("a")
+  设 清单3 为 解码模型清单({"data": [a, 重复, 空id, b]})
+  断言相等(清单3["跳过"], 2, "§4 跳过=重复+空id")
+  断言相等(列表长度(清单3["条目"]), 2, "§4 条目=a,b")
+  断言相等(清单3["条目"][0]["id"], "a", "§4 首条 a")
+  断言相等(清单3["条目"][1]["id"], "b", "§4 次条 b")
+
+  # ============ §5 无 data 数组必须抛错 ============
+  段落 解码无数据():
+    返回 解码模型清单({"foo": 1})
+  断言真(期望抛错(解码无数据), "§5 无 data 抛错")
+
+  # ============ §6 降级规则 ============
+  设 s 为 {}
+  字典设置(s, "id", "s")
+  字典设置(s, "output_modalities", ["text"])
+  字典设置(s, "api_capabilities", {"anthropic_messages": {"system_prompt_update": "whatever"}})
+  设 清单4 为 解码模型清单({"data": [s]})
+  断言相等(清单4["条目"][0]["capabilities"]["facts"]["systemPromptUpdate"], "leading-only", "§6 systemPromptUpdate 降级")
+  设 c 为 {}
+  字典设置(c, "id", "c")
+  字典设置(c, "context_window", -5)
+  字典设置(c, "output_modalities", ["text"])
+  字典设置(c, "api_capabilities", {"anthropic_messages": {}})
+  设 清单5 为 解码模型清单({"data": [c]})
+  断言相等(清单5["条目"][0]["capabilities"]["usable"], 假, "§6 非法ctx不可用")
+  断言真(字符串包含(清单5["条目"][0]["capabilities"]["reason"], "context_window"), "§6 非法ctx原因")
+
+  # ============ §7 需求 none / invalid ============
+  设 无需求 为 造可用条目("n")
+  设 清单6 为 解码模型清单({"data": [无需求]})
+  断言相等(清单6["条目"][0]["requirement"]["kind"], "none", "§7 无需求 none")
+  设 坏需求 为 {}
+  字典设置(坏需求, "id", "b2")
+  字典设置(坏需求, "client_requirements", "notobject")
+  字典设置(坏需求, "output_modalities", ["text"])
+  字典设置(坏需求, "api_capabilities", {"anthropic_messages": {}})
+  设 清单7 为 解码模型清单({"data": [坏需求]})
+  断言相等(清单7["条目"][0]["requirement"]["kind"], "invalid", "§7 坏需求 invalid")
+
+  打印("--- T-0173 B1 项#1 模型列表解码 测试通过 ---")
+
+主()

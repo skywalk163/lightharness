@@ -28,7 +28,7 @@
 从 JSON 导入 解析JSON
 从 内置核心字典 导入 字典设置, 字典包含键, 字典键列表, 字典获取, 取可选
 从 内置核心列表 导入 列表追加, 列表包含, 列表长度
-从 内置核心判型 导入 是字符串, 是字典, 是空, 是整数, 是浮点
+从 内置核心判型 导入 是字符串, 是字典, 是空, 是整数, 是浮点, 是列表
 从 内置核心字符串 导入 去除空白, 结尾, 开头, 字符串包含, 截取
 
 # =====================================================================
@@ -491,3 +491,163 @@
 导出 派生凭据引用, 校验收据路由, 合并提供商目录, 可删除判定, 删除序列
 导出 构造发现请求, 发现地址, 发现请求头, 解析发现响应, 渲染提供商目录, 发现文案
 导出 协议白名单, 默认协议
+
+# =====================================================================
+# §B1 T-0173：DeepSeek `GET /models` 清单解码（纯逻辑，上游 listing.ts 逐字复刻）
+#   宿主面（fetch / 重定向 / 超时 / 凭据头 / attribution）一律不移植；
+#   本段只做：URL 源推导 + 逐条目解码 + 不可用条目保留 id/name/requirement
+#   + 重复与空 id 计入 skipped。
+#   偏离声明：上游 client_requirements 的索引键取 APP_IDENTITY.product；本仓固定为
+#     常量 客户端产品（纯解码语义不受影响，调用方按需覆盖）。
+#   语言坑规避：L-151（「设 X 为」的 为 前必须有空格）；字面量不内含换行。
+# =====================================================================
+
+设 模型清单模态 为 ["text", "image"]
+设 客户端产品 为 "deepseek-harness"
+
+# 模型清单地址：恒取 baseURL 的 origin 再拼 /models（上游 modelListingURL 逐字）。
+#   origin = scheme://host[:port]，即 "://" 之后第一个 "/" 之前的全段。
+段落 模型清单地址(基址):
+  设 协议尾 为 查找子串(基址, "://")
+  如果 协议尾 == -1:
+    返回 基址 + "/models"
+  设 起 为 协议尾 + 3
+  设 全长 为 长(基址)
+  设 下标 为 起
+  设 斜 为 -1
+  当 下标 < 全长:
+    如果 基址[下标] == "/":
+      设 斜 为 下标
+      设 下标 为 全长
+    否则:
+      设 下标 为 下标 + 1
+  如果 斜 == -1:
+    返回 基址 + "/models"
+  返回 截取(基址, 0, 斜) + "/models"
+
+# 已知模态：从声明数组里筛出本构建支持的模态（text/image），按声明顺序，非数组返回 空。
+段落 已知模态(值):
+  如果 是列表(值) == 假:
+    返回 空
+  设 结果 为 []
+  遍历 模态 之 值:
+    如果 列表包含(模型清单模态, 模态):
+      列表追加(结果, 模态)
+  返回 结果
+
+# 容量值：缺省返回 空；正数安全整数返回该值；其余（0/负/非整数/浮点）返回 假。
+段落 容量值(值):
+  如果 值 == 空:
+    返回 空
+  如果 是整数(值) == 假 或 值 <= 0:
+    返回 假
+  返回 值
+
+# 条目需求：client_requirements[客户端产品].min_version 的判定（上游 requirementOf 逐字）。
+#   kind ∈ none / min-version / invalid；用 字典包含键 区分「缺」与「值为 null」。
+段落 条目需求(条目):
+  如果 是字典(条目) == 假:
+    返回 {"kind": "none"}
+  如果 字典包含键(条目, "client_requirements") == 假:
+    返回 {"kind": "none"}
+  设 需求 为 字典获取(条目, "client_requirements", 空)
+  如果 是字典(需求) == 假:
+    返回 {"kind": "invalid"}
+  如果 字典包含键(需求, 客户端产品) == 假:
+    返回 {"kind": "none"}
+  设 声明 为 字典获取(需求, 客户端产品, 空)
+  如果 是字典(声明) == 假:
+    返回 {"kind": "invalid"}
+  如果 字典包含键(声明, "min_version") == 假:
+    返回 {"kind": "none"}
+  设 最小版本 为 字典获取(声明, "min_version", 空)
+  如果 是字符串(最小版本) == 假 或 最小版本 == "":
+    返回 {"kind": "invalid"}
+  返回 {"kind": "min-version", "version": 最小版本}
+
+# 条目能力：api_capabilities.anthropic_messages 的展开（上游 capabilitiesOf 逐字）。
+#   缺 text 输出 / 无支持输入模态 / 非法 context_window 或 max_output_tokens → 不可用并带原因。
+#   system_prompt_update 非 in-history 一律读作 leading-only；tool_update 非 in-history/addition-only 亦读作 leading-only。
+段落 条目能力(条目):
+  如果 是字典(条目) == 假:
+    返回 {"usable": 假, "reason": "entry is not an object"}
+  设 能力 为 字典获取(条目, "api_capabilities", 空)
+  设 消息 为 空
+  如果 是字典(能力):
+    设 消息 为 字典获取(能力, "anthropic_messages", 空)
+  如果 是字典(消息) == 假:
+    返回 {"usable": 假, "reason": "declares no api_capabilities.anthropic_messages"}
+  设 输出 为 空
+  如果 字典包含键(条目, "output_modalities"):
+    设 输出 为 已知模态(字典获取(条目, "output_modalities", 空))
+  否则:
+    设 输出 为 ["text"]
+  如果 输出 == 空 或 列表包含(输出, "text") == 假:
+    返回 {"usable": 假, "reason": "declares no text output"}
+  设 输入 为 空
+  如果 字典包含键(条目, "input_modalities"):
+    设 输入 为 已知模态(字典获取(条目, "input_modalities", 空))
+  否则:
+    设 输入 为 ["text"]
+  如果 输入 == 空 或 列表长度(输入) == 0:
+    返回 {"usable": 假, "reason": "declares no input modality DeepSeek Harness supports"}
+  设 上下文窗 为 容量值(字典获取(条目, "context_window", 空))
+  设 最大输出 为 容量值(字典获取(条目, "max_output_tokens", 空))
+  如果 上下文窗 == 假 或 最大输出 == 假:
+    返回 {"usable": 假, "reason": "declares an invalid context_window or max_output_tokens"}
+  设 提示更新 为 空
+  如果 是字典(消息):
+    设 提示更新 为 字典获取(消息, "system_prompt_update", 空)
+  设 工具更新 为 空
+  如果 是字典(消息):
+    设 工具更新 为 字典获取(消息, "tool_update", 空)
+  设 事实 为 {}
+  字典设置(事实, "inputModalities", 输入)
+  如果 上下文窗 != 空:
+    字典设置(事实, "contextWindow", 上下文窗)
+  如果 最大输出 != 空:
+    字典设置(事实, "maxOutputTokens", 最大输出)
+  如果 提示更新 != 空:
+    如果 提示更新 == "in-history":
+      字典设置(事实, "systemPromptUpdate", "in-history")
+    否则:
+      字典设置(事实, "systemPromptUpdate", "leading-only")
+  如果 工具更新 != 空:
+    如果 工具更新 == "in-history" 或 工具更新 == "addition-only":
+      字典设置(事实, "toolUpdate", 工具更新)
+    否则:
+      字典设置(事实, "toolUpdate", "leading-only")
+  返回 {"usable": 真, "facts": 事实}
+
+# 解码模型清单：解析响应体，逐条目解码，保留不可用条目（id/name/requirement 不隐藏），
+#   非对象行 / 空或非法 id / 重复 id 全部计入 skipped。无 data 数组或无任何条目 → 抛出。
+段落 解码模型清单(响应体):
+  设 数据 为 空
+  如果 是字典(响应体):
+    设 数据 为 字典获取(响应体, "data", 空)
+  如果 是列表(数据) == 假:
+    抛出 新建 错误("DeepSeek 模型清单缺少 data 数组")
+  设 条目表 为 []
+  设 已见 为 {}
+  遍历 行 之 数据:
+    如果 是字典(行) == 假:
+      继续
+    设 id值 为 字典获取(行, "id", 空)
+    如果 是字符串(id值) == 假 或 id值 == "":
+      继续
+    如果 字典包含键(已见, id值):
+      继续
+    字典设置(已见, id值, 真)
+    设 候选 为 {}
+    字典设置(候选, "id", id值)
+    设 名 为 字典获取(行, "name", 空)
+    如果 是字符串(名) 且 名 != "":
+      字典设置(候选, "name", 名)
+    字典设置(候选, "requirement", 条目需求(行))
+    字典设置(候选, "capabilities", 条目能力(行))
+    列表追加(条目表, 候选)
+  如果 列表长度(条目表) == 0:
+    抛出 新建 错误("DeepSeek 模型清单不含任何模型条目")
+  返回 {"条目": 条目表, "跳过": 列表长度(数据) - 列表长度(条目表)}
+
+导出 模型清单地址, 已知模态, 容量值, 条目需求, 条目能力, 解码模型清单, 模型清单模态, 客户端产品
