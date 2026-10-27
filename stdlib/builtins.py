@@ -1213,14 +1213,18 @@ def 求和(数据: list) -> float:
     int/bool 走朴素 `f_result += (double)value`，3.14 起才进 `cs_add`。本侧按
     `sys.version_info >= (3, 14)` 算出来显式传，否则 3.12/3.13 宿主上会分叉
     （实测 [1e16, True, 1.0, -1e16]：3.12/3.13 给 1.0，3.14 给 2.0）。
+    ⚠️ **R177 修正（Python 腿专用，勿被 builtins 联动同步覆盖）**：上面三个参数
+    （`长整上限`/`启用补偿`/`整数进补偿`）是**原生腿（LLVM）**为了在没有 CPython
+    `sum()` 可调的情况下复刻其逐位行为才需要的；本仓是 Python 腿，真源
+    `stdlib/列表工具.light` 的 4 参签名在这里没有对应实现（本仓
+    `stdlib/列表工具.py:求和` 只收 `列表` 一个参数），照抄真源调用会直接
+    `TypeError: 求和() takes from 1 to 3 positional arguments but 4 were given`
+    —— R150/R151「联动同步 builtins.py」时只同步了 builtins、漏了列表工具，
+    导致 `test_R20_词法边界综合` / `test_R72_C_推导式` 两个 example 自 2026-10 起恒红。
+    本腿只传数据本身；如需逐位对齐宿主 `sum()`，直接调宿主 `sum(数据)` 即可。
     """
-    import struct
-    import sys
     import 列表工具
-    return 列表工具.求和(数据,
-                       (1 << (8 * struct.calcsize("l") - 1)) - 1,
-                       sys.version_info >= (3, 12),
-                       sys.version_info >= (3, 14))
+    return 列表工具.求和(数据)
 
 
 
