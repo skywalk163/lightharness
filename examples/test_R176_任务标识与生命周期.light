@@ -1,0 +1,96 @@
+# test_R176_任务标识与生命周期.light —— B4 路 jobs rc.3 生命周期记录判据
+# 上游锚点：packages/jobs/jobs/src/types.ts 增量 + jobs-local/src/index.ts recordSessionEvent
+#            @ dsh-v0.2.1-rc.3（1f81c047fc）
+# 反跑判据：把 生命生产者结算 的「已兑现」分支改成一律 producerReported 假，
+#           或把 生命判需记录 的 owner 判定删掉 → 本文件必红。
+
+从 任务生命周期记录 导入 生命事件名表, 生命结算原因表, 生命终态表, 生命工具调用, 生命是工具调用, 生命判需记录, 生命登记记录, 生命是登记记录, 生命结算记录, 生命是结算记录, 生命生产者结算, 生命结算原因
+
+段落 断言相等(甲, 乙, 信息):
+  如果 甲 != 乙:
+    抛出 "断言失败: " + 信息 + " (期望 " + 转字符串(乙) + " 实得 " + 转字符串(甲) + ")"
+
+段落 断言真(值, 信息):
+  如果 值 != 真:
+    抛出 "断言失败: " + 信息 + " (期望 真)"
+
+段落 造记录:
+  返回 {"id": "bash-aaaaaaaaaaaaaaaa", "kind": "bash", "label": "跑测试", "owner": "s1", "startedAt": 1000, "status": "running", "output": 空}
+
+段落 主:
+  # ---------- §0 词表 ----------
+  断言相等(生命事件名表(), ["job/registered", "job/settled"], "§0 两条 log-only 事件名")
+  断言相等(生命结算原因表(), ["producer", "kill", "teardown"], "§0b 结算原因三值")
+  断言相等(生命终态表(), ["completed", "killed", "failed"], "§0c 终态三值")
+
+  # ---------- §1 工具调用 ----------
+  设 调 为 生命工具调用("c1", "root1")
+  断言相等(调["callId"], "c1", "§1 callId")
+  断言相等(调["rootCallId"], "root1", "§1b rootCallId（PTC 子调用记根）")
+  断言真(生命是工具调用(调), "§1c 形状合法")
+  断言相等(生命是工具调用({"callId": "c1"}), 假, "§1d 缺 rootCallId 非法")
+
+  # ---------- §2 登记记录 ----------
+  设 记录 为 造记录()
+  断言真(生命判需记录(记录), "§2 有 owner 需记录")
+  设 无主 为 {"id": "bash-bbbbbbbbbbbbbbbb", "kind": "bash", "label": "x", "owner": 空, "startedAt": 1}
+  断言相等(生命判需记录(无主), 假, "§2b 无 owner 不落会话记录（上游直接 return）")
+
+  设 登记 为 生命登记记录(记录)
+  断言相等(登记["jobId"], "bash-aaaaaaaaaaaaaaaa", "§2c jobId")
+  断言相等(登记["owner"], "s1", "§2d owner")
+  断言相等(登记["kind"], "bash", "§2e kind")
+  断言相等(登记["startedAt"], 1000, "§2f startedAt")
+  断言相等(字典包含键(登记, "toolCall"), 假, "§2g 无工具调用时整键不出现")
+  断言相等(字典包含键(登记, "status"), 假, "§2h 不复制执行期可变字段")
+  断言真(生命是登记记录(登记), "§2i 载荷形状合法")
+
+  设 记录带调 为 造记录()
+  字典设置(记录带调, "toolCall", 调)
+  设 登记带调 为 生命登记记录(记录带调)
+  断言相等(登记带调["toolCall"]["rootCallId"], "root1", "§2j 带工具调用时随行")
+  断言真(生命是登记记录(登记带调), "§2k 带工具调用仍合法")
+  断言相等(生命是登记记录({"jobId": "x", "kind": "bash", "label": "y", "startedAt": "1000"}), 假, "§2l startedAt 非数字非法")
+
+  # ---------- §3 结算记录 ----------
+  设 结算 为 生命结算记录(记录, 2000, "completed", "producer", 真, 空)
+  断言相等(结算["finishedAt"], 2000, "§3 finishedAt")
+  断言相等(结算["status"], "completed", "§3b status")
+  断言相等(结算["cause"], "producer", "§3c cause")
+  断言相等(结算["producerReported"], 真, "§3d producerReported")
+  断言相等(字典包含键(结算, "detail"), 假, "§3e detail 缺省不出现")
+  断言相等(结算["jobId"], "bash-aaaaaaaaaaaaaaaa", "§3f 继承登记事实")
+  断言真(生命是结算记录(结算), "§3g 结算载荷合法")
+
+  设 结算带细 为 生命结算记录(记录, 2001, "failed", "kill", 假, "被 kill")
+  断言相等(结算带细["detail"], "被 kill", "§3h detail 有值则出现")
+  断言真(生命是结算记录(结算带细), "§3i 带 detail 仍合法")
+  断言相等(生命是结算记录(生命登记记录(记录)), 假, "§3j 纯登记载荷不是结算载荷")
+
+  设 坏因 为 生命结算记录(记录, 2002, "completed", "unknown", 真, 空)
+  断言相等(生命是结算记录(坏因), 假, "§3k cause 不在三值内非法")
+  设 坏态 为 生命结算记录(记录, 2003, "running", "producer", 真, 空)
+  断言相等(生命是结算记录(坏态), 假, "§3l status 非终态非法")
+
+  # ---------- §4 生产者结算（done fulfilled / rejected） ----------
+  设 兑现 为 生命生产者结算({"status": "completed", "detail": 空}, 真)
+  断言相等(兑现["status"], "completed", "§4 fulfilled 用生产者自报状态")
+  断言相等(兑现["producerReported"], 真, "§4b fulfilled → producerReported 真")
+
+  设 拒 为 生命生产者结算({"message": "boom"}, 假)
+  断言相等(拒["status"], "failed", "§4c rejected → failed")
+  断言相等(拒["producerReported"], 假, "§4d rejected → producerReported 假")
+  断言相等(拒["detail"], "boom", "§4e detail 取错误消息")
+
+  设 兑现细 为 生命生产者结算({"status": "killed", "detail": "超时"}, 真)
+  断言相等(兑现细["status"], "killed", "§4f fulfilled 也可是 killed")
+  断言相等(兑现细["detail"], "超时", "§4g 结局自带 detail 随行")
+
+  # ---------- §5 结算原因 ----------
+  断言相等(生命结算原因({"settleCause": "kill"}), "kill", "§5 已定原因优先")
+  断言相等(生命结算原因({"settleCause": 空}), "producer", "§5b 未定原因缺省 producer")
+  断言相等(生命结算原因({}), "producer", "§5c 缺键缺省 producer")
+
+  打印("test_R176_任务标识与生命周期: 全部用例通过")
+
+主()

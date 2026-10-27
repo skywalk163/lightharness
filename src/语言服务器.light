@@ -538,3 +538,27 @@
   如果 窗界 == 真:
     设 果 为 替换字符串(果, "\\", "/")
   返回 果
+
+# =====================================================================
+# R176-B4：工作区根解析（上游 packages/lsp/tool-lsp/src/index.ts 的 rc.3 变更）
+# =====================================================================
+# 上游 rc.2：`const workspaceRoot = sessionCwd(exec)`，其中 sessionCwd 读
+#   `exec.agent?.session.header.cwd`（独立文件 session-cwd.ts，17 行）。
+# 上游 rc.3：session-cwd.ts **整文件删除**，改为
+#   `const workspaceRoot = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)`
+#   并在根为空时抛 LspError('the lsp tool requires a session workspace cwd', 'LSP_WORKSPACE_REQUIRED')。
+# 语义差异（可移植的纯逻辑面）：
+#   1. 无 agent 的调用者 → 工作区根为「未定义」（不是空串），必须走同一条拒绝路径；
+#   2. 拒绝文案与错误码逐字固定（LSP_WORKSPACE_REQUIRED）；
+#   3. 根由 workingDirectory 服务**确保存在**后给出，不再直接读会话头（架构面：工作区根统一出口）。
+
+# 工作区根判定(有代理, 确保后根) -> {"根": 串|空, "码": 串, "错误": 串}
+#   有代理为假 → 根 空（上游 undefined）；确保后根为空 → 拒绝。
+段落 工作区根判定(有代理, 确保后根):
+  如果 有代理 == 假:
+    返回 {"根": 空, "码": "LSP_WORKSPACE_REQUIRED", "错误": "the lsp tool requires a session workspace cwd"}
+  如果 确保后根 == 空:
+    返回 {"根": 空, "码": "LSP_WORKSPACE_REQUIRED", "错误": "the lsp tool requires a session workspace cwd"}
+  返回 {"根": 确保后根, "码": "", "错误": ""}
+
+导出 工作区根判定

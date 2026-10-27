@@ -1,6 +1,12 @@
 # test_凭据链.light —— R108 任务线 E 判据（独立凭据链语义投影）
+# R176-B4 判据改形态：对齐上游 0.2.1-rc.3 的凭据优先级**倒置** + writable 恒真 + 写入不再因遮蔽被拒。
+#   改形态依据（一手实测，非推断）：上游 credentials-local/src/index.ts 在
+#   dsh-v0.2.0-rc.2..dsh-v0.2.1-rc.3 的 diff 中，resolve() 把 `stored` 分支提到 `inherited` 之前、
+#   describe() 对 env/回退层一律返回 writable:true、write() 的两次 assertUnshadowed 调用被删除。
+#   判别力边界：本文件只判「四源命中序 + writable + 空值拒绝」，不判文件权限与落盘 IO（宿主面）。
+#   有牙职责移交：R176 新增 examples/test_R176_凭据优先级倒置.light 专门钉倒置与 unknown-top-key 容忍。
 # 运行：cd lightharness && python 运行.py examples/test_凭据链.light
-# 反跑：把 解析凭据视图 的优先级序颠倒（file 优先于 env）→ 「source=env 且 writable=假」断言必须红；还原后复绿。
+# 反跑：把 来源优先级 的 file/env 两行对调（或把 可否写入 的空值分支删掉）→ 本文件必须红；还原后复绿。
 
 从 凭据链 导入 来源表, 来源优先级, 解析凭据视图, 可否写入, 撤下凭据, 遮蔽文案, 空值文案
 从 内置核心字典 导入 字典包含键, 字典获取, 字典键列表
@@ -27,7 +33,7 @@
   打印 "===== R108 任务线 E：独立凭据链语义投影 ====="
 
   # ---- §1 来源表（恰四值，不增不减） ----
-  设 期望来源 为 ["env", "file", "project-env", "user-env"]
+  设 期望来源 为 ["file", "env", "project-env", "user-env"]
   断言相等(来源表(), 期望来源, "1a 来源表四值逐字")
   断言相等(列表长度(来源表()), 4, "1b 来源表恰好四值")
   设 唯 为 真
@@ -40,28 +46,28 @@
   断言真(唯, "1c 来源表四值互异")
 
   # ---- §2 优先级序（由高到低 = env>file>project-env>user-env） ----
-  断言相等(来源优先级(), 期望来源, "2a 优先级序 env>file>project-env>user-env")
+  断言相等(来源优先级(), 期望来源, "2a 优先级序 file(托管存储)>env>project-env>user-env（rc.3 倒置）")
   断言真(列表包含(来源表(), 来源优先级()[0]) 或 真, "2b 优先级首源在来源表内")
 
   # ---- §3 解析凭据视图（6+ 例，四源各命中一次 + 全无 + 遮蔽优先） ----
   设 仅环境 为 解析凭据视图(真, 假, 假, 假)
-  断言相等(仅环境, {"configured": 真, "source": "env", "writable": 假}, "3a 仅进程环境 → env/不可写")
+  断言相等(仅环境, {"configured": 真, "source": "env", "writable": 真}, "3a 仅进程环境 → env/可写（rc.3 全引用可写）")
   设 仅文件 为 解析凭据视图(假, 真, 假, 假)
   断言相等(仅文件, {"configured": 真, "source": "file", "writable": 真}, "3b 仅凭据文件 → file/可写")
   设 仅项目 为 解析凭据视图(假, 假, 真, 假)
-  断言相等(仅项目, {"configured": 真, "source": "project-env", "writable": 假}, "3c 仅项目.env → project-env/不可写")
+  断言相等(仅项目, {"configured": 真, "source": "project-env", "writable": 真}, "3c 仅项目.env → project-env/可写")
   设 仅用户 为 解析凭据视图(假, 假, 假, 真)
-  断言相等(仅用户, {"configured": 真, "source": "user-env", "writable": 假}, "3d 仅用户.env → user-env/不可写")
+  断言相等(仅用户, {"configured": 真, "source": "user-env", "writable": 真}, "3d 仅用户.env → user-env/可写")
   设 全无 为 解析凭据视图(假, 假, 假, 假)
-  断言相等(全无, {"configured": 假, "source": "", "writable": 假}, "3e 全无 → 未配置/无来源")
+  断言相等(全无, {"configured": 假, "source": "", "writable": 真}, "3e 全无 → 未配置/无来源但仍可写（上游 describe 缺省 writable:true）")
   设 环境文件同有 为 解析凭据视图(真, 真, 假, 假)
-  断言相等(环境文件同有, {"configured": 真, "source": "env", "writable": 假}, "3f 环境与文件同有 → env 优先且不可写")
+  断言相等(环境文件同有, {"configured": 真, "source": "file", "writable": 真}, "3f 环境与文件同有 → file 压过 env（rc.3 倒置）")
   设 项目用户同有 为 解析凭据视图(假, 假, 真, 真)
-  断言相等(项目用户同有, {"configured": 真, "source": "project-env", "writable": 假}, "3g 项目与用户同有 → project-env 优先")
+  断言相等(项目用户同有, {"configured": 真, "source": "project-env", "writable": 真}, "3g 项目与用户同有 → project-env 优先")
   设 文件项目同有 为 解析凭据视图(假, 真, 真, 假)
-  断言相等(文件项目同有, {"configured": 真, "source": "file", "writable": 真}, "3h 文件与项目同有 → file 优先且可写")
+  断言相等(文件项目同有, {"configured": 真, "source": "file", "writable": 真}, "3h 文件与项目同有 → file 优先")
   设 环境项目用户同有 为 解析凭据视图(真, 假, 真, 真)
-  断言相等(环境项目用户同有, {"configured": 真, "source": "env", "writable": 假}, "3i 环境+项目+用户同有 → env 优先")
+  断言相等(环境项目用户同有, {"configured": 真, "source": "env", "writable": 真}, "3i 文件缺位 → env 优先于两个 .env")
   # 返回值恰好三键（硬约束：不得有第四键放明文）
   断言相等(列表长度(字典键列表(仅环境)), 3, "3j 视图恰好三键")
   断言相等(字典包含键(仅环境, "值"), 假, "3k 视图不含值键")
@@ -69,8 +75,8 @@
 
   # ---- §4 可否写入（5+ 例） ----
   设 写被遮蔽 为 可否写入(仅环境, "any-secret")
-  断言相等(写被遮蔽["合法"], 假, "4a 被环境遮蔽 → 不可写")
-  断言相等(写被遮蔽["消息"], 遮蔽文案("env"), "4b 遮蔽消息逐字")
+  断言相等(写被遮蔽["合法"], 真, "4a rc.3 起 env 来源也可写（写托管存储即压过 env）")
+  断言相等(写被遮蔽["消息"], "", "4b 合法时消息为空")
   设 写空值 为 可否写入(仅文件, "")
   断言相等(写空值["合法"], 假, "4c 空值 → 不可写")
   断言相等(写空值["消息"], 空值文案("file"), "4d 空值消息逐字")
@@ -78,7 +84,7 @@
   断言相等(写合法["合法"], 真, "4e file 来源可写 → 合法")
   断言相等(写合法["消息"], "", "4f 合法时消息为空")
   设 仅用不可写 为 可否写入(仅用户, "x")
-  断言相等(仅用不可写["合法"], 假, "4g 仅 user-env 来源不可写")
+  断言相等(仅用不可写["合法"], 真, "4g rc.3 起 user-env 来源同样可写")
 
   # ---- §5 撤下凭据（不含值） ----
   设 撤 为 撤下凭据("DEEPSEEK_API_KEY")
@@ -94,7 +100,8 @@
   断言假(字符串包含(转字符串(写被遮蔽), 明文), "6d 遮蔽判定返回不含明文")
 
   # ---- §7 文案逐字（本仓自拟，上游无中文对应） ----
-  断言相等(遮蔽文案("DEEPSEEK_API_KEY"), "此引用「DEEPSEEK_API_KEY」由启动环境以只读方式提供，写入会被遮蔽。", "7a 遮蔽文案逐字")
+  # 7a 保留存量文案逐字断言（rc.3 起该文案不再参与写入判定，仅防误改存量 UI 文本）
+  断言相等(遮蔽文案("DEEPSEEK_API_KEY"), "此引用「DEEPSEEK_API_KEY」由启动环境以只读方式提供，写入会被遮蔽。", "7a 存量遮蔽文案逐字")
   断言相等(空值文案("DEEPSEEK_API_KEY"), "空值不可保存（引用「DEEPSEEK_API_KEY」）；如需清除请使用「撤下」。", "7b 空值文案逐字")
 
   打印 "test_凭据链 PASS"

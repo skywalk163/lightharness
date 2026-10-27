@@ -4,8 +4,16 @@
 #   1) credentialRef(value)：校验 POSIX shell 标识符 /^[A-Za-z_][A-Za-z0-9_]*$/
 #   2) CredentialProvider 抽象服务：resolve / describe / set / unset，
 #      核心契约——空字符串在所有层都视为「不存在」（绝不伪装成已配置）。
-#   3) credentials-local：四层存储 env > file > project-env > user-env，
-#      只有 user-env 可写；set/unset 遇到只读层遮蔽时拒绝。
+#   3) credentials-local：四层存储 file > env > project-env > user-env，
+#      托管存储 file 可写；set/unset **不再**因只读层遮蔽而拒绝（rc.3）。
+#
+# R176-B4 变更（对齐上游 dsh-v0.2.1-rc.3 = 1f81c047fc，packages/credentials/credentials-local）：
+#   rc.2：env(只读,最高) > file(可写) > project-env > user-env，且「被 env 遮蔽时写入被拒」。
+#   rc.3：**file(托管存储) 最高**，env / project-env / user-env 退为回退层；
+#         describe 对任何引用都返回可写；set/unset 的 assertUnshadowed 拒绝路径已从上游删除。
+#         上游原文："The managed store wins because a credential the user explicitly saved in the
+#         product must take effect consistently for every provider."
+#   判据：examples/test_R176_凭据优先级倒置.light（本文件的类行为）+ examples/test_凭据链.light。
 #
 # 这里用纯光明 1:1 复刻「校验 + 分层本地提供者」的核心契约。
 # 不做 Cordis 事件扇出（notifyUpdated），那是基础设施，不影响凭据语义。
@@ -18,9 +26,9 @@
     抛出 新建 错误("凭证引用 \"" 加上 值 加上 "\" 必须匹配 ^[A-Za-z_][A-Za-z0-9_]*$")
   返回 值
 
-# 四层优先级：高 -> 低。env 遮蔽 file 遮蔽 project-env 遮蔽 user-env。
-设 层顺序 为 ["env", "file", "project-env", "user-env"]
-设 写层 为 "user-env"
+# 四层优先级：高 -> 低。rc.3：托管存储 file 压过 env，再压 project-env / user-env。
+设 层顺序 为 ["file", "env", "project-env", "user-env"]
+设 写层 为 "file"
 
 类 本地凭证提供者:
   属性 层 等于 字典创建()
@@ -62,21 +70,15 @@
       设 源 为 解决结果["源"]
     返回 { "配置中": 配置中, "源": 源, "可写": 真 }
 
-  # set：非空才能存；只读层遮蔽时拒绝（写入看似成功其实被遮蔽）
+  # set：非空才能存。rc.3 起**不再**因只读层遮蔽而拒绝——托管存储本身就压过所有回退层。
   段落 置(引用, 值):
     如果 去除空白(值) == "":
       抛出 新建 错误("凭证值不能为空，请用清除() 移除")
-    设 遮蔽 为 己.最高层含(引用)
-    如果 遮蔽 != 空 且 遮蔽 != 写层:
-      抛出 新建 错误("只读层 \"" 加上 遮蔽 加上 "\" 正遮蔽 \"" 加上 引用 加上 "\"，拒绝写入")
     设 箱 为 字典获取(己.层, 写层)
     字典设置(箱, 引用, 值)
 
-  # unset：移除可写层的引用；缺席即 no-op；只读层遮蔽时拒绝
+  # unset：移除可写层的引用；缺席即 no-op；rc.3 起不再拒绝（撤下后回退层重新生效）。
   段落 清除(引用):
-    设 遮蔽 为 己.最高层含(引用)
-    如果 遮蔽 != 空 且 遮蔽 != 写层:
-      抛出 新建 错误("只读层 \"" 加上 遮蔽 加上 "\" 正遮蔽 \"" 加上 引用 加上 "\"，拒绝清除")
     设 箱 为 字典获取(己.层, 写层)
     如果 字典包含键(箱, 引用):
       字典删除(箱, 引用)
