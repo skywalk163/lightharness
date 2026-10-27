@@ -33,3 +33,16 @@ F-02	test_async_await.light	linux	0.86 xdist 高负载计时抖动（R85 全量 
 # test_子进程后台.light（windows）：R44 时代全量偶发红（固定 5s 等待撞高负载）。
 #   R45 已根治（HARNESS_PY 绝对路径 + 等待 20s + 失败归因信息）。
 #   R87-E 复核：Windows 全量 2 轮均绿（1396 passed，173.59s / 247.65s）无复发。
+#
+# ── T-0178 F 路登记（2026-10-28，E 路 R177 三平台回归 Windows 全量偶发移交）──
+# 取证口径：E 路 R177 Windows 全量 53min xdist(-n auto) 轮中偶发 5 条红；
+#   E 路在 0.88 全量 + Windows 隔离复跑均绿。F 路复核：本机 Windows
+#   隔离 pytest（-o addopts= --timeout=60，禁用 xdist）5 passed in 83.31s，
+#   逐条恒绿。现象分两类：① xdist worker 子进程并发崩溃（gw1/gw3/gw4）；
+#   ② Windows 文件锁/Permission denied（写 src/团队花名册.light、
+#   stdlib/内置核心字典.light 瞬时占用）。非断言失败，非语义回归。
+F-03	test_CLI命令面.light	windows	Windows 全量 xdist 并发偶发：worker 'gw3' crashed（子进程崩溃，非断言失败）。隔离单跑恒绿。F 路复核：-o addopts= --timeout=60 隔离 5 passed 之一，恒绿。	登记豁免同类 xdist 并发 worker 崩溃；隔离/串行复跑绿；稳定复现或断言失败须人工归因。
+F-04	test_R42_真实webhook.light	windows	Windows 全量 xdist 并发偶发：worker 'gw1' crashed（本地 loopback webhook 服务与并发 worker 端口/句柄竞争）。隔离单跑恒绿（好签名202/错签名401/非POST405/超大413/秘密空503 全过）。F 路复核隔离恒绿。	登记豁免同类并发 worker 崩溃；稳定复现须人工归因。
+F-05	运行Web服务器.light	windows	Windows 全量 xdist 并发偶发：worker 'gw4' crashed（本身起 HTTP 服务监听，并发下超时/句柄竞争被 xdist 杀）。隔离单跑有 timeout 保护时恒绿。F 路复核 -o addopts= --timeout=60 隔离通过。	登记豁免同类并发崩溃/超时；稳定复现须人工归因。
+F-06	test_R87_B3_基建_团队状态收敛.light	windows	Windows 全量偶发 Permission denied: src\团队花名册.light（并发写/锁占用瞬时拒绝）。隔离单跑恒绿。F 路复核隔离 5 passed 之一。	登记豁免同类 Windows 文件锁 Permission denied；稳定复现须人工归因。
+F-07	tests/unit/test_会话持久化JSONL.py::test_投影目录_空cwd	windows	Windows 全量偶发 Permission denied: stdlib\内置核心字典.light（投影目录空 cwd 写内置字典瞬时占用）。隔离单跑恒绿（NOWD=_no-cwd 断言通过）。F 路复核隔离通过。	登记豁免同类 Windows 文件锁 Permission denied；稳定复现须人工归因。
