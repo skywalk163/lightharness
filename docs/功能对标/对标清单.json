@@ -16,9 +16,10 @@
     "【R105 2026-10-01 收口】任务书 §3 原定卡号 A=#255 / C=#256 / D=#257 —— 实测三卡均已被第8轮终轮收口占用（#255 CLI 外壳 / #256 远端 API 总线宿主出口 / #257 ACP 内容准入投影），故按「不可硬填已占编号」原则顺延取当前空号 #296/#297/#298，B 线（webui/settings.js + settings.css 设置对话框复刻）按任务书不占卡。",
     "【R105 2026-10-01 收口】合流点：src/设置页.light.渲染设置页() 的 模型/内置插件/Agent预设 三键已改调 src/设置页深化.light 导出；C 线 合并已存设置 已按 A 线 {配置文档, 行集} 形状复核通过，未启用临时校验器。",
     "【R111 2026-10-03】Day3 并行批 R4（轨道 B 上游纯逻辑面移植）：R110 暂缓 5 组收口——新增 #314~#318：#314 schedule 提醒框架渲染（定时提醒框架.light，framing 固定文本变更+紧凑JSON 逐字节对齐）/ #315 user-questions 折叠状态机（用户问题投影.light）/ #316 tool-ask-user timed 纯逻辑（审批.light 增补）/ #317 shell 提示词文案（工具_bash.light 描述增补）/ #318 llm 兼容门暂缓登记（无对应承载）。四组移植各有探针（test_r111*），对标源锚点 dsh-v0.2.0-rc.2（639ed01539）。",
-    "【R176 2026-10-27】B4 路（T-0176）新增 #328~#339 纯逻辑移植 + #340~#342 登记项；本轮 B4 包簇 13 个包逐包甄别结论见 docs/功能对标/R176_B4_0.2.1-rc.3增量清单.md。判据改形态两处（test_凭据.light / test_凭据链.light / test_任务系统.light），依据均为上游 rc.2→rc.3 的一手 diff，文件头写明判别力边界与有牙职责移交。"
+    "【R176 2026-10-27】B4 路（T-0176）新增 #328~#339 纯逻辑移植 + #340~#342 登记项；本轮 B4 包簇 13 个包逐包甄别结论见 docs/功能对标/R176_B4_0.2.1-rc.3增量清单.md。判据改形态两处（test_凭据.light / test_凭据链.light / test_任务系统.light），依据均为上游 rc.2→rc.3 的一手 diff，文件头写明判别力边界与有牙职责移交。",
+    "【R176 补 2026-10-27】A 路 T-0170 清单把 B4 按主题重分配为 4 项（远程访问控制 / 请求信任 / 凭据优先级 / 截图坐标协议），B4 已全部落地：#345 / #343 / #332 / #344。原按任务书包簇做的 12 项（#328-#339）保留有效（A 路清单未覆盖这些包，属增量覆盖）。"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）；R111（Day3 R4 上游 rc.2 纯逻辑面：#314 schedule framing / #315 user-questions 状态机 / #316 timed 工具 / #317 shell 提示词 / #318 llm 兼容门暂缓）；R176（0.2.1-rc.3 B4 路纯逻辑复刻：#328 typert remote-info / #329 typert principal+资源访问 / #330 typert 资源声明登记册 / #331 typert loader 清单校验 / #332 credentials 优先级倒置 / #333 credentials 未知顶层键容忍 / #334 ptc-runtime 保留环境 / #335 jobs 短 UUID 标识 / #336 jobs 生命周期记录 / #337 deliverables 意图路径捕获 / #338 ACP 轮次状态机 / #339 lsp 工作区根；登记项 #340 webhook 整包删除 / #341 runtime-diagnostics 整包删除 / #342 settings+document+attachment+identity 元数据增量，锚点 dsh-v0.2.1-rc.3=1f81c047fc）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）；R111（Day3 R4 上游 rc.2 纯逻辑面：#314 schedule framing / #315 user-questions 状态机 / #316 timed 工具 / #317 shell 提示词 / #318 llm 兼容门暂缓）；R176（0.2.1-rc.3 B4 路纯逻辑复刻：#328 typert remote-info / #329 typert principal+资源访问 / #330 typert 资源声明登记册 / #331 typert loader 清单校验 / #332 credentials 优先级倒置 / #333 credentials 未知顶层键容忍 / #334 ptc-runtime 保留环境 / #335 jobs 短 UUID 标识 / #336 jobs 生命周期记录 / #337 deliverables 意图路径捕获 / #338 ACP 轮次状态机 / #339 lsp 工作区根；登记项 #340 webhook 整包删除 / #341 runtime-diagnostics 整包删除 / #342 settings+document+attachment+identity 元数据增量，锚点 dsh-v0.2.1-rc.3=1f81c047fc）；R176 补（A 路清单 B4 主题项：#343 请求信任 / #344 截图坐标协议 / #345 远程访问控制规则层）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -4747,6 +4748,51 @@
       ],
       "本轮目标": "登记完成，无代码改动",
       "反跑判据": "不适用（登记项，无判据）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 343,
+      "功能": "/api 请求浏览器信任栅栏（Host 防 DNS 重绑定 + Fetch-Metadata 跨站 + Origin 同源）",
+      "原版包": "packages/client/connection/src/{api-request-trust.ts（+81/−23）,loopback-hostname.ts}（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/请求信任.light（新建 268 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #6）：Host 栅栏对每个 /api 请求生效（不论是否像浏览器）；回环 / trustedHosts / 监听方 bind 字面量三条通过路径；trustedHosts 条目按「裸权威规范形式」加载期断言（带路径/userinfo/空白/悬空冒号/前导零端口/越界端口一律拒载，文案逐字）；sec-fetch-site=cross-site 直接拒绝；Origin 缺席放行、在场必须同权威、`null` 与 file: 拒绝；带端口条目只匹配该端口、无端口条目匹配任意端口。差异登记：归一化不用 WHATWG（不实现 punycode/percent-decode，直接判非法字符拒绝，结论一致）；默认端口不剥离。",
+      "证据": [
+        "G:/github/deepseek-harness packages/client/connection/src/api-request-trust.ts（git show dsh-v0.2.1-rc.3）",
+        "src/请求信任.light",
+        "examples/test_R176_请求信任.light（50 判据）"
+      ],
+      "本轮目标": "50 判据全绿（含重绑定域名拒绝、Origin null 拒绝、条目加载期断言）",
+      "反跑判据": "test_R176_请求信任.light：把 sec-fetch-site 分支或「Host 必须存在」删掉即红（R176 实测）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 344,
+      "功能": "cua 截图/坐标协议（19 method 判别联合 + 千分比/像素换算 + 映射失效 + 规范 base64）",
+      "原版包": "packages/experimental/cua/src/{protocol.ts,coordinates.ts,types.ts}（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/截图坐标协议.light（新建 330 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #11）：19 个 method 表与严格成员判定；取值域（point 非负有限 / relativePoint 0..1000 整数 / id ≤2^32-1 / pid ≤2^31-1）；相对坐标 min(v/1000*轴, max(0,轴-1)) 钳制、绝对坐标按最新截图图素换算且越界抛 INVALID_ARGUMENT；无帧或宽高≤0 → STALE_SNAPSHOT、绝对坐标无绑定截图 → SCREENSHOT_REQUIRED（三条文案逐字）；observe 的失效规则（尺寸未变保留旧帧连同截图绑定、变化即换帧、局部观察删除已关窗口）；规范 base64 往返校验（含 pad 位）。宿主面（zod/AX/剪贴板/派发）登记不移植。",
+      "证据": [
+        "G:/github/deepseek-harness packages/experimental/cua/src/{protocol.ts,coordinates.ts}（git show dsh-v0.2.1-rc.3）",
+        "src/截图坐标协议.light",
+        "examples/test_R176_截图坐标协议.light（54 判据）"
+      ],
+      "本轮目标": "54 判据全绿（含三条错误码文案、钳制边界、pad 位拒绝）",
+      "反跑判据": "test_R176_截图坐标协议.light：把相对钳制或 SCREENSHOT_REQUIRED 分支删掉即红（R176 实测）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 345,
+      "功能": "远程访问控制规则层（动作/角色/绑定/条件 → decide + allows + 授权表 + 快照帧差分）",
+      "原版包": "packages/api/remote-access/src/index.ts（+424）等（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/远程访问控制.light（新建 386 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #4，规则层）：动作=<ns>/<method> 或 event:<name>，另有恒允许的 remoteAccess/follow；owner 恒允许；无策略 deny/no-allow；对「被触及资源全集」逐项判定，每个资源须有「资源相同+角色含动作+无条件或条件允许」的绑定，全通过才允许；拒绝优先级 = 条件原因 → explain() → no-allow；策略/条件/explain 抛错 → deny/policy-failed；allows 列表过滤（调用外与 owner 恒真、无策略恒假）；授权表按首次绑定序、动作去重排除 event: 后按码元序；follow 帧 baseline/upsert/remove 差分。宿主面（Cordis 服务、ctx.invocation、AsyncIterable、AbortSignal、index 注入、日志）登记不移植；A 路 §6-1 的主体模型决策仍待业主裁定，故本轮只落规则层。",
+      "证据": [
+        "G:/github/deepseek-harness packages/api/remote-access/src/index.ts（git show dsh-v0.2.1-rc.3）",
+        "src/远程访问控制.light",
+        "examples/test_R176_远程访问控制.light（48 判据）"
+      ],
+      "本轮目标": "48 判据全绿（含「资源全集必须全通过」这条核心语义）",
+      "反跑判据": "test_R176_远程访问控制.light：把 owner 短路删掉、或把全通过改成任一通过即红（R176 实测）",
       "语言缺陷": []
     }
   ]

@@ -1,0 +1,128 @@
+# test_R176_请求信任.light —— B4 路 #6 浏览器信任栅栏判据（Host / Origin / Fetch-Metadata）
+# 上游锚点：packages/client/connection/src/{api-request-trust.ts,loopback-hostname.ts} @ dsh-v0.2.1-rc.3
+# 反跑判据：把 信是可信api请求 的 sec-fetch-site 分支删掉、或把「Host 必须存在」判定删掉 → 本文件必红。
+
+从 内置核心字符串 导入 字符串包含
+从 请求信任 导入 信是回环主机名, 信解析权威, 信规范权威, 信断言可信权威, 信是远端权威, 信是可信权威, 信是绑定地址权威, 信是可信api请求, 信是同源
+
+段落 断言相等(甲, 乙, 信息):
+  如果 甲 != 乙:
+    抛出 "断言失败: " + 信息 + " (期望 " + 转字符串(乙) + " 实得 " + 转字符串(甲) + ")"
+
+段落 断言真(值, 信息):
+  如果 值 != 真:
+    抛出 "断言失败: " + 信息 + " (期望 真)"
+
+段落 主:
+  # ---------- §1 回环分类（loopback-hostname.ts 逐字） ----------
+  断言真(信是回环主机名("localhost"), "§1 localhost")
+  断言真(信是回环主机名("[::1]"), "§1b IPv6 回环带括号")
+  断言真(信是回环主机名("127.0.0.1"), "§1c 127.0.0.1")
+  断言真(信是回环主机名("127.255.255.255"), "§1d 127/8 全段")
+  断言相等(信是回环主机名("128.0.0.1"), 假, "§1e 非 127/8")
+  断言相等(信是回环主机名("127.0.0.256"), 假, "§1f 段越界")
+  断言相等(信是回环主机名("127.0.0"), 假, "§1g 段数不足")
+  断言相等(信是回环主机名("harness.internal"), 假, "§1h 域名非回环")
+
+  # ---------- §2 裸权威解析 ----------
+  设 解1 为 信解析权威("Example.COM:8080")
+  断言相等(解1["主机名"], "example.com", "§2 主机名归一化为小写")
+  断言相等(解1["端口"], "8080", "§2b 端口保留")
+  断言相等(解1["权威"], "example.com:8080", "§2c 规范串")
+
+  设 解2 为 信解析权威("[::1]:80")
+  断言相等(解2["主机名"], "[::1]", "§2d IPv6 保留括号")
+  断言相等(解2["端口"], "80", "§2e IPv6 端口")
+
+  断言相等(信解析权威("harness.internal")["端口"], "", "§2f 无端口")
+  断言相等(信解析权威("harness.internal/path"), 空, "§2g 带路径拒绝")
+  断言相等(信解析权威("user@harness.internal"), 空, "§2h 带 userinfo 拒绝（否则会授权内嵌主机名）")
+  # 上游 parseAuthority 对 "host:" 是**解析成功**（端口为空），由 assertTrustedAuthority 的
+  # 「规范串必须原样等于条目」把它拒掉——忠实投影这两层分工
+  断言相等(信解析权威("harness.internal:")["端口"], "", "§2i 悬空冒号解析成功但端口为空")
+  设 悬空错 为 信断言可信权威("harness.internal:")
+  断言真(字符串包含(悬空错, "is not a bare host[:port] authority"), "§2i2 悬空冒号在加载期被拒")
+  断言相等(信解析权威("harness.internal:080"), 空, "§2j 前导零端口拒绝（否则会放宽端口授权）")
+  断言相等(信解析权威("harness.internal:70000"), 空, "§2k 端口越界拒绝")
+  断言相等(信解析权威(" harness.internal"), 空, "§2l 前导空白拒绝")
+  断言相等(信解析权威("harness.internal "), 空, "§2m 尾随空白拒绝")
+  断言相等(信解析权威(""), 空, "§2n 空串拒绝")
+  断言相等(信解析权威(1), 空, "§2o 非字符串拒绝")
+
+  # ---------- §3 可信条目断言（加载期） ----------
+  断言相等(信断言可信权威("harness.internal"), "", "§3 裸主机通过")
+  断言相等(信断言可信权威("harness.internal:8443"), "", "§3b 裸主机+端口通过")
+  断言相等(信断言可信权威("Harness.Internal"), "", "§3c 大小写不同仍通过（大小写除外）")
+  断言相等(信断言可信权威("harness.internal/path"), "client-connection: trustedHosts entry \"harness.internal/path\" is not a bare host[:port] authority", "§3d 带路径文案")
+  断言相等(信断言可信权威("user@harness.internal"), "client-connection: trustedHosts entry \"user@harness.internal\" is not a bare host[:port] authority", "§3e 带 userinfo 文案")
+  断言相等(信断言可信权威("harness.internal:080"), "client-connection: trustedHosts entry \"harness.internal:080\" is not a bare host[:port] authority", "§3f 前导零端口文案")
+
+  # ---------- §4 远端/本机分类 ----------
+  断言相等(信是远端权威("harness.internal"), 真, "§4 域名是远端")
+  断言相等(信是远端权威("127.0.0.1"), 假, "§4b 回环不是远端")
+  断言相等(信是远端权威("bad host"), 真, "§4c 解析失败按远端（保守）")
+
+  # ---------- §5 可信权威匹配（端口语义） ----------
+  设 表无端 为 ["harness.internal"]
+  设 表带端 为 ["harness.internal:8443"]
+  断言真(信是可信权威("harness.internal", "1234", 表无端, "http"), "§5 无端口条目匹配任意端口")
+  断言真(信是可信权威("harness.internal", "8443", 表带端, "http"), "§5b 带端口条目匹配该端口")
+  断言相等(信是可信权威("harness.internal", "1234", 表带端, "http"), 假, "§5c 带端口条目不匹配其它端口")
+  断言相等(信是可信权威("other.internal", "8443", 表带端, "http"), 假, "§5d 主机不同不匹配")
+  断言相等(信是可信权威("harness.internal", "8443", [], "http"), 假, "§5e 空表不匹配")
+
+  # ---------- §6 绑定地址（忽略端口与 %zone） ----------
+  断言真(信是绑定地址权威("0.0.0.0", "0.0.0.0"), "§6 bind 字面量匹配")
+  断言真(信是绑定地址权威("[fe80::1]", "fe80::1%eth0"), "§6b %zone 被剥掉、IPv6 加括号")
+  断言相等(信是绑定地址权威("harness.internal", "0.0.0.0"), 假, "§6c 域名不匹配 bind 字面量")
+  断言相等(信是绑定地址权威("0.0.0.0", 空), 假, "§6d 无 bind 配置不匹配")
+
+  # ---------- §7 三道栅栏（总入口） ----------
+  设 头本机 为 {"host": "127.0.0.1:3000"}
+  断言真(信是可信api请求(头本机, [], 空, "http"), "§7 回环 Host 放行")
+
+  设 头重绑 为 {"host": "evil.example:3000"}
+  断言相等(信是可信api请求(头重绑, [], 空, "http"), 假, "§7b 重绑定域名拒绝（核心防线）")
+
+  设 头无host 为 {"origin": "http://127.0.0.1:3000"}
+  断言相等(信是可信api请求(头无host, [], 空, "http"), 假, "§7c 无 Host 拒绝")
+
+  设 头坏host 为 {"host": "127.0.0.1/path"}
+  断言相等(信是可信api请求(头坏host, [], 空, "http"), 假, "§7d Host 不可解析拒绝")
+
+  设 头可信 为 {"host": "harness.internal:8443"}
+  设 表可信 为 ["harness.internal:8443"]
+  断言真(信是可信api请求(头可信, 表可信, 空, "http"), "§7e trustedHosts 命中放行")
+
+  设 头绑定 为 {"host": "0.0.0.0:3000"}
+  断言真(信是可信api请求(头绑定, [], "0.0.0.0", "http"), "§7f 监听方 bind 字面量放行")
+
+  # 跨站标记：即使 Host 是本机也拒绝
+  设 头跨站 为 {"host": "127.0.0.1:3000", "sec-fetch-site": "cross-site"}
+  断言相等(信是可信api请求(头跨站, [], 空, "http"), 假, "§7g sec-fetch-site=cross-site 直接拒绝")
+  设 头同站 为 {"host": "127.0.0.1:3000", "sec-fetch-site": "same-origin"}
+  断言真(信是可信api请求(头同站, [], 空, "http"), "§7h same-origin 放行")
+
+  # Origin 栅栏
+  设 头同源 为 {"host": "127.0.0.1:3000", "origin": "http://127.0.0.1:3000"}
+  断言真(信是可信api请求(头同源, [], 空, "http"), "§7i 同源 Origin 放行")
+  设 头异源 为 {"host": "127.0.0.1:3000", "origin": "http://evil.example"}
+  断言相等(信是可信api请求(头异源, [], 空, "http"), 假, "§7j 异源 Origin 拒绝")
+  设 头不透明 为 {"host": "127.0.0.1:3000", "origin": "null"}
+  断言相等(信是可信api请求(头不透明, [], 空, "http"), 假, "§7k Origin: null 拒绝（沙箱 iframe / file:）")
+  设 头file 为 {"host": "127.0.0.1:3000", "origin": "file://"}
+  断言相等(信是可信api请求(头file, [], 空, "http"), 假, "§7l 非 http(s) Origin 拒绝")
+  设 头异端口 为 {"host": "127.0.0.1:3000", "origin": "http://127.0.0.1:4000"}
+  断言相等(信是可信api请求(头异端口, [], 空, "http"), 假, "§7m 同主机异端口拒绝")
+  设 头大写 为 {"host": "127.0.0.1:3000", "origin": "HTTP://127.0.0.1:3000"}
+  断言真(信是可信api请求(头大写, [], 空, "http"), "§7n Origin 方案大小写不敏感")
+
+  # ---------- §8 同源比较 ----------
+  断言真(信是同源("https://harness.internal", "harness.internal"), "§8 同主机无端口")
+  断言相等(信是同源("https://harness.internal:8443", "harness.internal"), 假, "§8b 端口不一致")
+  断言相等(信是同源("http://harness.internal/x", "harness.internal"), 假, "§8c Origin 带路径拒绝")
+  断言相等(信是同源("ftp://harness.internal", "harness.internal"), 假, "§8d 非 http(s) 方案拒绝")
+
+  打印("test_R176_请求信任: 全部用例通过")
+
+主()
