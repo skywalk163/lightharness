@@ -1,0 +1,116 @@
+# acp轮次状态.light —— R176-B4：ACP 0.2.1-rc.3 轮次/取消结算状态机纯逻辑移植
+#
+# 上游（G:/github/deepseek-harness，锚点 dsh-v0.2.1-rc.3 = 1f81c047fc）：
+#   packages/acp/acp/src/session.ts（rc.2→rc.3 的轮次生命周期增量）
+#   packages/acp/acp/tests/turns.spec.ts（**新增** 420 行，本轮唯一大块纯逻辑判据源）
+#
+# rc.3 相对 rc.2 的语义增量（逐条，来自上游 diff 与注释）：
+#   1. `turn/start` 事件若发生在既有 inflight 之上，则 inflight 的 turn 号**跟随**新轮，
+#      并清掉旧 endReason（"A later committed turn/end supersedes this live failure"）。
+#   2. `turn/end` 记录 endReason 的同时**清空 agentError**。
+#   3. `onAgentError` 不再按 turn 号过滤（rc.2：`if (inflight.turn === turn) return`），
+#      改为「任何同进程失败都记进 agentError 并触发结算」。
+#   4. 取消完成判定从 `cancelRequested` 布尔改为 `admissionController.signal.aborted` +
+#      新增 `cancelStartedIdle`：`onAgentStatus` 在 status === 'idle' **或** cancelStartedIdle
+#      时结算取消（"Maintenance remains publicly idle; its next running transition belongs to
+#      work released after the maintenance task finished."）。
+#   5. 子代理 teardown 由 `drainContinuableDescendants` 改为 `drainDescendants`
+#      （所有后代，不再只挑 continuable）——宿主面，仅登记。
+#
+# 上游 → 光明对照表：
+#   InflightPrompt{turn, endReason, agentError, messageQueued} → 造轮次状态 / 各迁移段落
+#   onSessionEvent 的 turn/start 分支      → 轮次跟随
+#   onSessionEvent 的 turn/end 分支        → 轮次终结
+#   onAgentError                           → 轮次失败
+#   onAgentStatus                          → 轮次取消完成
+#
+# 宿主面登记（不移植）：Promise/AbortSignal/JSON-RPC 请求取消、update 队列 drain、Agent 生命周期
+#   全部由宿主承接；本模块只做状态迁移与判定，入参是「已发生的事实」。
+#
+# 命名避坑：段落带前缀「轮」，避免与 src/ 其它模块撞名（已 grep 自查）。
+
+从 内置核心判型 导入 是字典, 是字符串, 是整数, 是空
+从 内置核心字典 导入 字典设置, 字典获取, 字典包含键
+
+# =====================================================================
+# §1 状态构造
+# =====================================================================
+
+# 造轮次状态() -> 状态字典
+#   turn = 空（尚未收到 turn/start）；endReason = 空；agentError = 空；
+#   messageQueued = 假；取消相关 = 假。
+段落 造轮次状态:
+  设 状态 为 {}
+  字典设置(状态, "turn", 空)
+  字典设置(状态, "endReason", 空)
+  字典设置(状态, "agentError", 空)
+  字典设置(状态, "messageQueued", 假)
+  字典设置(状态, "已取消", 假)
+  字典设置(状态, "取消启动时已空闲", 假)
+  返回 状态
+
+# =====================================================================
+# §2 迁移（rc.3 语义）
+# =====================================================================
+
+# 轮次跟随(状态, 新轮号) -> 状态
+#   上游 turn/start 分支：`this.inflight.turn = event.data.turn; this.inflight.endReason = undefined`
+#   （轮号跟随新轮 + 清旧终结原因；注意**不**清 agentError——失败观测保持到 turn/end）。
+段落 轮次跟随(状态, 新轮号):
+  字典设置(状态, "turn", 新轮号)
+  字典设置(状态, "endReason", 空)
+  返回 状态
+
+# 轮次终结(状态, 轮号, 原因) -> 状态
+#   上游 turn/end 分支：仅当 inflight.turn === event.data.turn 时记录原因，并清 agentError。
+#   轮号不匹配 → 状态原样返回（旧轮的终结不覆盖当前轮）。
+段落 轮次终结(状态, 轮号, 原因):
+  设 当前 为 字典获取(状态, "turn", 空)
+  如果 当前 == 空:
+    返回 状态
+  如果 当前 != 轮号:
+    返回 状态
+  字典设置(状态, "endReason", 原因)
+  字典设置(状态, "agentError", 空)
+  返回 状态
+
+# 轮次失败(状态, 错误文本) -> 状态
+#   上游 rc.3 onAgentError：不再按 turn 号过滤，直接记 agentError。
+#   前置：只有已入队消息（messageQueued）才记（上游 `!inflight.messageQueued` 直接返回）。
+段落 轮次失败(状态, 错误文本):
+  如果 字典获取(状态, "messageQueued", 假) == 假:
+    返回 状态
+  字典设置(状态, "agentError", 错误文本)
+  返回 状态
+
+# 轮次取消开始(状态, 启动时已空闲) -> 状态
+#   上游 cancelRequested → admissionController.signal.aborted + cancelStartedIdle。
+段落 轮次取消开始(状态, 启动时已空闲):
+  字典设置(状态, "已取消", 真)
+  字典设置(状态, "取消启动时已空闲", 启动时已空闲)
+  返回 状态
+
+# 轮次取消完成(状态, 代理状态) -> 真假
+#   上游 onAgentStatus：非取消中 → 假；status === 'idle' 或 cancelStartedIdle → 结算取消。
+段落 轮次取消完成(状态, 代理状态):
+  如果 字典获取(状态, "已取消", 假) == 假:
+    返回 假
+  如果 字典获取(状态, "messageQueued", 假) == 假:
+    返回 假
+  如果 代理状态 == "idle":
+    返回 真
+  返回 字典获取(状态, "取消启动时已空闲", 假) == 真
+
+# 轮次需结算(状态) -> 真假
+#   上游：取消已请求 或 有 agentError 时走 settleAfterQuiescence。
+段落 轮次需结算(状态):
+  如果 字典获取(状态, "已取消", 假) == 真:
+    返回 真
+  返回 字典获取(状态, "agentError", 空) != 空
+
+# =====================================================================
+# 导出
+# =====================================================================
+
+导出 造轮次状态
+导出 轮次跟随, 轮次终结, 轮次失败, 轮次取消开始, 轮次取消完成, 轮次需结算

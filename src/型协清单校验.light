@@ -1,0 +1,236 @@
+# 型协清单校验.light —— R176-B4：typert loader 清单校验 0.2.1-rc.3 增量纯逻辑移植
+#
+# 上游（G:/github/deepseek-harness，锚点 dsh-v0.2.1-rc.3 = 1f81c047fc）：
+#   packages/typert/loader/src/index.ts（requireInvocation / requireOptionalString /
+#   requireSchemaProjection / requireStrictCodec 的 rc.3 增量）
+#
+# rc.3 相对 rc.2 的校验增量（逐条）：
+#   1. invocation.description 可选，但在场必须是字符串；
+#   2. invocation.mode 若在场必须是 "stream"（"mode must be \"stream\" when present"）；
+#   3. parameter.description 可选，但在场必须是字符串；
+#   4. parameter.strictCodec 若在场，必须也过一遍严格编码器校验；
+#   5. invocation.input / invocation.invoke 若任一在场：接收者必须是 direct，
+#      且 input / invoke 都必须**是函数**（"has no input() selector" / "has no invoke() function"）；
+#   6. 编码器投影改为 requireSchemaProjection：create 必须是工厂函数，description /
+#      jsonSchemaError 若在场必须是字符串，jsonSchema 若在场必须是对象。
+#   另（rc.3 注释）："Dispatch facts and eager projection fields are checked; computed tool
+#   projections remain lazy until a consumer requests them."
+#
+# 上游 → 光明对照表：
+#   requireObject / requireArray        → 型协是字典 / 型协是列表（上游抛错，本模块返回错误串）
+#   requireString                       → 型协验必填串
+#   requireOptionalString               → 型协验可选串
+#   requireSchemaProjection             → 型协验模式投影
+#   requireStrictCodec                  → 型协验严格编码器
+#   requireInvocation 的 rc.3 增量       → 型协验调用
+#
+# 宿主面登记（不移植）：`Object.getOwnPropertyDescriptors` 检查「不触发 getter」的实现细节属宿主；
+#   本模块用「字段在场即读值」的等价判定（差异登记 D1：上游刻意不调用缓存的投影 getter，
+#   本模块对纯数据字典无 getter 概念，故直接读值）。
+#
+# 命名避坑：段落带前缀「型协验」，避免与 src/ 其它模块撞名（已 grep 自查）。
+# 关键字避坑：不用 `定义`/`回调`/`作用域` 作参数名。
+
+从 内置核心判型 导入 是字典, 是字符串, 是列表, 是整数, 是浮点, 是空
+从 内置核心字典 导入 字典设置, 字典获取, 字典包含键, 字典键列表
+从 内置核心列表 导入 列表包含, 列表追加
+
+# =====================================================================
+# §0 基础谓词（对应 typeof value === 'function' 的反推）
+# =====================================================================
+
+# 型协验是可调用(值) -> 真假
+段落 型协验是可调用(值):
+  如果 值 == 空:
+    返回 假
+  如果 值 == 真:
+    返回 假
+  如果 值 == 假:
+    返回 假
+  如果 是字典(值) == 真:
+    返回 假
+  如果 是列表(值) == 真:
+    返回 假
+  如果 是字符串(值) == 真:
+    返回 假
+  如果 是整数(值) == 真:
+    返回 假
+  如果 是浮点(值) == 真:
+    返回 假
+  返回 真
+
+# 型协验是数(值) -> 真假（时间戳等数值字段）
+段落 型协验是数(值):
+  如果 是整数(值) == 真:
+    返回 真
+  返回 是浮点(值)
+
+# =====================================================================
+# §1 必填/可选字符串（requireString / requireOptionalString）
+# =====================================================================
+
+# 型协验必填串(包名, 载体, 键, 主题) -> 错误串（""=通过）
+#   上游：`${pkg} ${subject} has a missing or empty ${key}`
+段落 型协验必填串(包名, 载体, 键, 主题):
+  设 值 为 字典获取(载体, 键, 空)
+  如果 是字符串(值) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " has a missing or empty " + 键
+  如果 字符串长度(值) == 0:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " has a missing or empty " + 键
+  返回 ""
+
+# 型协验可选串(包名, 载体, 键, 主题) -> 错误串（""=通过）
+#   上游：字段 undefined 放行；在场但非字符串拒绝。
+段落 型协验可选串(包名, 载体, 键, 主题):
+  如果 字典包含键(载体, 键) == 假:
+    返回 ""
+  设 值 为 载体[键]
+  如果 值 == 空:
+    返回 ""
+  如果 是字符串(值) == 真:
+    返回 ""
+  返回 "typert-loader: " + 包名 + " " + 主题 + "." + 键 + " must be a string"
+
+# =====================================================================
+# §2 模式投影与严格编码器（requireSchemaProjection / requireStrictCodec）
+# =====================================================================
+
+# 型协验模式投影(包名, 值, 主题) -> 错误串
+#   上游：create 必须是函数；description / jsonSchemaError 在场必须字符串；
+#         jsonSchema 在场必须是对象。
+段落 型协验模式投影(包名, 值, 主题):
+  如果 是字典(值) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " must be an object"
+  如果 型协验是可调用(字典获取(值, "create", 空)) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " has no create() factory"
+  设 错1 为 型协验可选串(包名, 值, "description", 主题)
+  如果 错1 != "":
+    返回 错1
+  设 错2 为 型协验可选串(包名, 值, "jsonSchemaError", 主题)
+  如果 错2 != "":
+    返回 错2
+  如果 字典包含键(值, "jsonSchema") == 真:
+    如果 值["jsonSchema"] != 空:
+      如果 是字典(值["jsonSchema"]) == 假:
+        返回 "typert-loader: " + 包名 + " " + 主题 + ".jsonSchema must be an object"
+  返回 ""
+
+# 型协验严格编码器(包名, 值, 主题) -> 错误串
+#   上游：mode 必须 'strict'；typeSymbol 必填非空；decode/encode 在场必须函数；再过模式投影。
+段落 型协验严格编码器(包名, 值, 主题):
+  如果 是字典(值) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " must be an object"
+  如果 字典获取(值, "mode", 空) != "strict":
+    返回 "typert-loader: " + 包名 + " " + 主题 + " must use a strict codec"
+  设 错符 为 型协验必填串(包名, 值, "typeSymbol", 主题)
+  如果 错符 != "":
+    返回 错符
+  如果 字典包含键(值, "decode") == 真:
+    如果 值["decode"] != 空:
+      如果 型协验是可调用(值["decode"]) == 假:
+        返回 "typert-loader: " + 包名 + " " + 主题 + " decode must be a function"
+  如果 字典包含键(值, "encode") == 真:
+    如果 值["encode"] != 空:
+      如果 型协验是可调用(值["encode"]) == 假:
+        返回 "typert-loader: " + 包名 + " " + 主题 + " encode must be a function"
+  返回 型协验模式投影(包名, 值, 主题)
+
+# =====================================================================
+# §3 调用条目校验（requireInvocation 的 rc.3 增量）
+# =====================================================================
+
+# 型协验调用(包名, 调用) -> 错误串（""=通过）
+#   校验顺序对齐上游：id → description → mode → 参数表 → strictCodec → input/invoke。
+#   注：receipt 的接收者类型判断只看 kind 字段（context / direct / 其他），
+#   上游对 context 接收者另查 context/wire 字段，本模块只表达 rc.3 增量所需的最小面。
+段落 型协验调用(包名, 调用):
+  如果 是字典(调用) == 假:
+    返回 "typert-loader: " + 包名 + " invocation must be an object"
+  设 标识 为 字典获取(调用, "id", 空)
+  如果 是字符串(标识) == 假:
+    返回 "typert-loader: " + 包名 + " invocation has a missing or empty id"
+  如果 字符串长度(标识) == 0:
+    返回 "typert-loader: " + 包名 + " invocation has a missing or empty id"
+  设 主题 为 "invocation \"" + 标识 + "\""
+
+  设 错描述 为 型协验可选串(包名, 调用, "description", 主题)
+  如果 错描述 != "":
+    返回 错描述
+
+  如果 字典包含键(调用, "mode") == 真:
+    如果 调用["mode"] != 空:
+      如果 调用["mode"] != "stream":
+        返回 "typert-loader: " + 包名 + " " + 主题 + " mode must be \"stream\" when present"
+
+  设 接收者 为 字典获取(调用, "invocation", 空)
+  如果 是字典(接收者) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " receiver must be an object"
+  设 种类 为 字典获取(接收者, "kind", 空)
+
+  设 已见线 为 []
+  设 参数表 为 字典获取(调用, "parameters", 空)
+  如果 是列表(参数表) == 假:
+    返回 "typert-loader: " + 包名 + " " + 主题 + " parameters must be an array"
+  遍历 参数 之 参数表:
+    如果 是字典(参数) == 假:
+      返回 "typert-loader: " + 包名 + " " + 主题 + " parameter must be an object"
+    设 错名 为 型协验必填串(包名, 参数, "name", 主题 + " parameter")
+    如果 错名 != "":
+      返回 错名
+    设 错线 为 型协验必填串(包名, 参数, "wire", 主题 + " parameter")
+    如果 错线 != "":
+      返回 错线
+    设 错参述 为 型协验可选串(包名, 参数, "description", 主题 + " parameter")
+    如果 错参述 != "":
+      返回 错参述
+    设 线 为 参数["wire"]
+    如果 列表包含(已见线, 线) == 真:
+      返回 "typert-loader: " + 包名 + " " + 主题 + " repeats wire field \"" + 线 + "\""
+    列表追加(已见线, 线)
+    设 错编 为 型协验严格编码器(包名, 字典获取(参数, "codec", 空), 主题 + " parameter codec")
+    如果 错编 != "":
+      返回 错编
+    如果 字典包含键(参数, "strictCodec") == 真:
+      如果 参数["strictCodec"] != 空:
+        设 错严 为 型协验严格编码器(包名, 参数["strictCodec"], 主题 + " strict input codec")
+        如果 错严 != "":
+          返回 错严
+
+  设 有输入 为 字典包含键(调用, "input") == 真
+  设 有调用 为 字典包含键(调用, "invoke") == 真
+  如果 有输入 == 真 或 有调用 == 真:
+    如果 种类 != "direct":
+      返回 "typert-loader: " + 包名 + " " + 主题 + " input/invoke require a direct receiver"
+    如果 型协验是可调用(字典获取(调用, "input", 空)) == 假:
+      返回 "typert-loader: " + 包名 + " " + 主题 + " has no input() selector"
+    如果 型协验是可调用(字典获取(调用, "invoke", 空)) == 假:
+      返回 "typert-loader: " + 包名 + " " + 主题 + " has no invoke() function"
+
+  返回 型协验严格编码器(包名, 字典获取(调用, "result", 空), 主题 + " result codec")
+
+# =====================================================================
+# §4 批量校验（TYPERT.invocations 逐条）
+# =====================================================================
+
+# 型协验调用表(包名, 调用表) -> {"合法": 真假, "错误": 串, "通过数": 整数}
+段落 型协验调用表(包名, 调用表):
+  如果 是列表(调用表) == 假:
+    返回 {"合法": 假, "错误": "typert-loader: " + 包名 + " TYPERT.invocations must be an array", "通过数": 0}
+  设 i 为 0
+  设 过 为 0
+  当 i < 长度(调用表):
+    设 错 为 型协验调用(包名, 调用表[i])
+    如果 错 != "":
+      返回 {"合法": 假, "错误": 错, "通过数": 过}
+    设 过 为 过 + 1
+    设 i 为 i + 1
+  返回 {"合法": 真, "错误": "", "通过数": 过}
+
+# =====================================================================
+# 导出
+# =====================================================================
+
+导出 型协验是可调用, 型协验是数
+导出 型协验必填串, 型协验可选串
+导出 型协验模式投影, 型协验严格编码器
+导出 型协验调用, 型协验调用表

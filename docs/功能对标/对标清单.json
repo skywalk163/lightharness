@@ -3804,17 +3804,6 @@
       ]
     },
     {
-      "编号": 274,
-      "功能": "事件循环×套接字集成回归：R66/R67/R69 建的 I/O 底座（事件驱动/异步运行时/选择器/伪终端/进程树/并发/流式七件套 + HTTP服务端）收敛为统一跨平台 I/O 地基——取消语义统一（stdlib/中止.light 唯一中止令牌，贯穿 选择器/流式/并发/伪终端/进程树，各层先清理 pending 再抛 已取消异常 冒泡）+ 跨平台门（socketpair 唤醒通道、AF_UNIX 仅 POSIX/Windows 置空）+ 套接字集成回归（非阻塞 TCP/UDP echo、HTTP 服务端）+ 各模块顶部跨平台支持矩阵注释",
-      "原版包": "core/event-loop + net/socket",
-      "光明模块": "stdlib/中止.light(新增,统一中止令牌) + stdlib/lightpub/事件驱动.py + stdlib/lightpub/异步运行时.py + stdlib/选择器.light + stdlib/伪终端.light + stdlib/进程树.light + stdlib/并发.light + stdlib/流式.light + stdlib/HTTP服务端.light",
-      "状态": "done",
-      "本轮目标": "跨平台 I/O 底座收敛+回归（第7轮 A线：取消语义统一 + 跨平台门 + 套接字集成回归 + 支持矩阵注释）",
-      "证据": "tests/test_第7轮_io矩阵.py 本机 14 passed/1 skipped（默认 xdist 与 -p no:xdist 双口径）+ 0.82 FreeBSD（/usr/local/bin/python3.12，/tmp/r44-20260930-171400）同 14 passed/1 skipped；0.82 全量 8174 用例 8075 passed/0 failed，对拍基线 2026-09-29-112417 新增红 0；tests/unit/test_ci_gates_round9.py 本机与 0.82 各 41 passed/1 skipped（模块表咬合含新模块 中止）；tools/ci/native_product.py 门禁 rc=0（中止.light 真编译探针实测：不可编译，因=导入 asyncio，基线 native_product_baseline.json 合并点重建 115→116）；反跑 3 组「改->红->还原」全闭环（见反跑判据）",
-      "反跑判据": "① 事件循环去掉 socketpair 唤醒投递 → test_socketpair唤醒跨线程投递 红；② 选择器.等待 超时改抛异常替代返回 [] → test_等待超时返回空列表不抛异常 红；③ 进程树.等待 去掉超时杀树 → test_超时杀树 红",
-      "语言缺陷": "无新增"
-    },
-    {
       "编号": 275,
       "功能": "apps/web ↔ webui/ 架构对齐 + 缺失客户端模块补完。逐模块比对上游 apps/web 功能点（conversation list / settings / model picker / streaming render / attachment upload / slash command palette / session resume）与 webui/ 现状，覆盖情况写入 docs/功能对标/apps_web对齐.md。本线补完两个缺口：① 附件上传——启用原 disabled 的 #attach-btn，加隐藏 file input（多选）+ FileReader 读 dataURL + 输入框上方可删除 chip，随 body.attachments best-effort 上送；② 斜杠命令面板——新增 webui/slash-palette.js，输入框首位敲 / 弹候选浮层，↑↓/Enter/Tab/Esc 导航，七命令集（/help /clear /model /compact /save /resume /exit）对齐 src/cli外壳.light 斜杠命令表，选中回填输入框、/clear 触发新对话。预设选择器四键（standard/cordis/ptc/minimal）与后端 是已知预设/取预设注册表 对齐，body.preset 随消息上送。",
       "原版包": "apps/web（React 客户端：conversation list / settings / model picker / streaming render / attachment upload / slash command palette / session resume）",
@@ -4013,24 +4002,15 @@
       "语言缺陷": "无新增（复用 宿主IO 路由骨架，无闭包用模块级槽）"
     },
     {
-      "编号": 292,
-      "功能": "真实 OS 后端默认化：宿主默认后端.light（默认后端或桩 选择器：桩槽非空走 R7 桩、桩槽为空走真后端兜底，IO结果统一形状包装，元数据[后端]=真后端 判路）+ 真子进程执行（stdlib 外部命令.执行命令，退出码精确保留）+ 真沙箱执行（进程树.light 引擎，资源限制=process-tree）+ 真凭据读取（凭据.light 本地凭证提供者）+ 真审批记录（审批.light 审批管理器 请求→处理 真链路）+ 真遥测记录（遥测.light 遥测收集器 span 真链路）+ 接线段：子进程.运行进程默认/沙箱.运行受限默认/e2b客户端.执行代码默认（真e2b本地模拟，避免循环导入本地适配）/交互命令.记录审批默认/反馈.记录遥测默认/钩子.宿主钩子默认（真宿主钩子派发，PreToolUse/PostToolUse→capability、Stop→agent 本地三域映射）；#20 代码运行时按上游 0.1.6 ptc-runtime 宿主执行面维持登记不做默认真后端",
-      "原版包": "host-integration-bus（真后端默认化增强）",
-      "光明模块": "src/宿主默认后端.light(新增) + src/子进程.light/沙箱.light/e2b客户端.light/交互命令.light/反馈.light/钩子.light 默认后端选择段",
-      "状态": "done(真后端已接默认路径)",
-      "证据": [
-        "src/宿主默认后端.light",
-        "examples/test_宿主默认后端.light",
-        "src/子进程.light(运行进程默认)",
-        "src/沙箱.light(运行受限默认)",
-        "src/e2b客户端.light(执行代码默认)",
-        "src/交互命令.light(记录审批默认)",
-        "src/反馈.light(记录遥测默认)",
-        "src/钩子.light(宿主钩子默认)"
-      ],
-      "本轮目标": "第8轮A线：把 R7 桩从「仅可测」翻成「默认走真后端、桩为测试注入」——桩槽未接时外部命令/进程树/凭据/审批/遥测/e2b local-sim 真实执行接成默认路径，桩仅在测试注入；fail-closed 不变（真后端异常返回失败信封不崩）",
-      "反跑判据": "① 默认后端或桩 桩判定反（桩槽 != 空 改 ==）-> 桩已接却走真后端，test_宿主默认后端 红（已验证改->红->还原）；② 真子进程执行 退出码映射错（结果.返回码 硬改 0）-> 非零退出码精确保留断言 2b 立（已验证改->红->还原）",
-      "语言缺陷": "无新增（光明无闭包：真后端有状态实现经模块级 默认后端槽 共享；e2b/钩子适配本地定义避免循环导入）"
+      "编号": 274,
+      "功能": "事件循环×套接字集成回归：R66/R67/R69 建的 I/O 底座（事件驱动/异步运行时/选择器/伪终端/进程树/并发/流式七件套 + HTTP服务端）收敛为统一跨平台 I/O 地基——取消语义统一（stdlib/中止.light 唯一中止令牌，贯穿 选择器/流式/并发/伪终端/进程树，各层先清理 pending 再抛 已取消异常 冒泡）+ 跨平台门（socketpair 唤醒通道、AF_UNIX 仅 POSIX/Windows 置空）+ 套接字集成回归（非阻塞 TCP/UDP echo、HTTP 服务端）+ 各模块顶部跨平台支持矩阵注释",
+      "原版包": "core/event-loop + net/socket",
+      "光明模块": "stdlib/中止.light(新增,统一中止令牌) + stdlib/lightpub/事件驱动.py + stdlib/lightpub/异步运行时.py + stdlib/选择器.light + stdlib/伪终端.light + stdlib/进程树.light + stdlib/并发.light + stdlib/流式.light + stdlib/HTTP服务端.light",
+      "状态": "done",
+      "本轮目标": "跨平台 I/O 底座收敛+回归（第7轮 A线：取消语义统一 + 跨平台门 + 套接字集成回归 + 支持矩阵注释）",
+      "证据": "tests/test_第7轮_io矩阵.py 本机 14 passed/1 skipped（默认 xdist 与 -p no:xdist 双口径）+ 0.82 FreeBSD（/usr/local/bin/python3.12，/tmp/r44-20260930-171400）同 14 passed/1 skipped；0.82 全量 8174 用例 8075 passed/0 failed，对拍基线 2026-09-29-112417 新增红 0；tests/unit/test_ci_gates_round9.py 本机与 0.82 各 41 passed/1 skipped（模块表咬合含新模块 中止）；tools/ci/native_product.py 门禁 rc=0（中止.light 真编译探针实测：不可编译，因=导入 asyncio，基线 native_product_baseline.json 合并点重建 115→116）；反跑 3 组「改->红->还原」全闭环（见反跑判据）",
+      "反跑判据": "① 事件循环去掉 socketpair 唤醒投递 → test_socketpair唤醒跨线程投递 红；② 选择器.等待 超时改抛异常替代返回 [] → test_等待超时返回空列表不抛异常 红；③ 进程树.等待 去掉超时杀树 → test_超时杀树 红",
+      "语言缺陷": "无新增"
     },
     {
       "编号": 293,
@@ -4073,6 +4053,26 @@
       "本轮目标": "第8轮B线：IPC 路由契约形状；真实跨进程 send/结构化克隆/权限校验永久宿主绑定",
       "反跑判据": "① 校验IPC消息 放行缺 payload 或未知 channel -> test_桌面IPC 立红；② 路由表 未注册通道也派发成功 -> test_桌面IPC 立红",
       "语言缺陷": "无新增"
+    },
+    {
+      "编号": 292,
+      "功能": "真实 OS 后端默认化：宿主默认后端.light（默认后端或桩 选择器：桩槽非空走 R7 桩、桩槽为空走真后端兜底，IO结果统一形状包装，元数据[后端]=真后端 判路）+ 真子进程执行（stdlib 外部命令.执行命令，退出码精确保留）+ 真沙箱执行（进程树.light 引擎，资源限制=process-tree）+ 真凭据读取（凭据.light 本地凭证提供者）+ 真审批记录（审批.light 审批管理器 请求→处理 真链路）+ 真遥测记录（遥测.light 遥测收集器 span 真链路）+ 接线段：子进程.运行进程默认/沙箱.运行受限默认/e2b客户端.执行代码默认（真e2b本地模拟，避免循环导入本地适配）/交互命令.记录审批默认/反馈.记录遥测默认/钩子.宿主钩子默认（真宿主钩子派发，PreToolUse/PostToolUse→capability、Stop→agent 本地三域映射）；#20 代码运行时按上游 0.1.6 ptc-runtime 宿主执行面维持登记不做默认真后端",
+      "原版包": "host-integration-bus（真后端默认化增强）",
+      "光明模块": "src/宿主默认后端.light(新增) + src/子进程.light/沙箱.light/e2b客户端.light/交互命令.light/反馈.light/钩子.light 默认后端选择段",
+      "状态": "done(真后端已接默认路径)",
+      "证据": [
+        "src/宿主默认后端.light",
+        "examples/test_宿主默认后端.light",
+        "src/子进程.light(运行进程默认)",
+        "src/沙箱.light(运行受限默认)",
+        "src/e2b客户端.light(执行代码默认)",
+        "src/交互命令.light(记录审批默认)",
+        "src/反馈.light(记录遥测默认)",
+        "src/钩子.light(宿主钩子默认)"
+      ],
+      "本轮目标": "第8轮A线：把 R7 桩从「仅可测」翻成「默认走真后端、桩为测试注入」——桩槽未接时外部命令/进程树/凭据/审批/遥测/e2b local-sim 真实执行接成默认路径，桩仅在测试注入；fail-closed 不变（真后端异常返回失败信封不崩）",
+      "反跑判据": "① 默认后端或桩 桩判定反（桩槽 != 空 改 ==）-> 桩已接却走真后端，test_宿主默认后端 红（已验证改->红->还原）；② 真子进程执行 退出码映射错（结果.返回码 硬改 0）-> 非零退出码精确保留断言 2b 立（已验证改->红->还原）",
+      "语言缺陷": "无新增（光明无闭包：真后端有状态实现经模块级 默认后端槽 共享；e2b/钩子适配本地定义避免循环导入）"
     },
     {
       "编号": 296,
@@ -4542,50 +4542,257 @@
     },
     {
       "编号": 329,
-      "功能": "模型列表解码（/models 端点推导 + 逐条目解码）",
-      "原版包": "packages/llm/llm-deepseek/src/{listing,listed-catalog}.ts（上游 dsh-v0.2.0-rc.2→dsh-v0.2.1-rc.3）",
-      "光明模块": "src/模型目录.light（续编 +200 行）",
-      "状态": "done（T-0173 B1 #1）：baseURL 源推导（origin 提取，循环找 '/' 后 '/'）；逐条目解码 modality 白名单、contextWindow、maxOutputTokens、systemPromptUpdate/toolUpdate 降级规则（非 in-history→leading-only）、不可用条目保留 id/name/requirement、重复与空 id 计入 skipped；导出 模型清单地址/已知模态/容量值/条目需求/条目能力/解码模型清单/模型清单模态/客户端产品/协议白名单/默认协议。",
+      "功能": "typert principal + 资源访问模型（principalOf / global 资源 / 按 kind 身份 / emit 访问决策边界）",
+      "原版包": "packages/typert/protocol/src/{principal.ts,remote-access.ts,types.ts 增量}（上游新增 55 行 @ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/型协资源访问.light（新建 244 行，§1-§2/§4）",
+      "状态": "done（R176-B4）：principalOf 对 owner 与可信进程内调用返回「无主体」；资源两态 {kind:'global'} 与 {kind,id}；emit 条目无 resources 声明即触碰 global；非 owner 的 emit 需访问决策、waterfall 永不下发非 owner（文案逐字）。资源「读取器」是函数属宿主面，本模块改吃「已读身份表」。",
       "证据": [
-        "packages/llm/llm-deepseek/src/listing.ts、listed-catalog.ts（fork-after-upstream-v0.2.1-rc.3 提取）",
-        "src/模型目录.light",
-        "examples/test_T0173_B1解码.light（7 判据）",
-        "docs/功能对标/0.2.1-rc.3增量清单.md §5 #1"
+        "G:/github/deepseek-harness packages/typert/protocol/src/{principal.ts,remote-access.ts}（git show dsh-v0.2.1-rc.3）",
+        "src/型协资源访问.light",
+        "examples/test_R176_型协资源访问.light（§1/§2/§5/§6）"
       ],
-      "本轮目标": "7 判据全绿（地址推导/基本解码/不可用条目保留/skip 计数/无 data 抛错/降级规则/requirement none|invalid）",
-      "反跑判据": "test_T0173_B1解码.light：任一判据期望反转即红（rc=1→还原 rc=0）",
+      "本轮目标": "principal/资源形状/emit-waterfall 边界判据全绿",
+      "反跑判据": "test_R176_型协资源访问.light：§6e 把 waterfall 允许非 owner 即红",
       "语言缺陷": []
     },
     {
       "编号": 330,
-      "功能": "模型列表缓存（按凭据+端点分作用域、单飞、后台刷新、失败保留上次可用值、失败连续只报首次、时序边界二次校验）",
-      "原版包": "packages/llm/llm-deepseek/src/{listing-cache,listing-config}.ts",
-      "光明模块": "src/模型列表缓存.light（新建 142 行）",
-      "状态": "done（T-0173 B1 #2）：纯逻辑同步版，剔除 node:crypto sha256（用 url+凭据 作用域串）、AbortController/signal/async（同步模型）、dsh-timeout deadline（仅校验）、真实 fetch（注入 加载 能力函数）。常量 默认列表超时_MS=5000/默认列表最大年龄_MS=600000/最大计时延迟_MS=2147483647。导出 解析列表时序/建模型列表缓存/当前视图/重定域/启动/视图/失效/释放。失败保留上次清单（keep previous）+ 连败只告警首次。",
+      "功能": "typert registry 资源声明登记册（global 保留 / 段名与线名校验 / 重复拒绝 / 插入序条目 / 变更事件）",
+      "原版包": "packages/typert/registry/src/service.ts 的 ResourceStore（上游新增 56 行 @ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/型协资源访问.light（§3）",
+      "状态": "done（R176-B4）：校验顺序逐条对齐上游（段名 → global 保留 → 线名 → 重复），任一失败不写状态；global 保留文案与重复文案逐字；entries 保插入序；注销按序移除并记变更。ctx.effect 生命周期属宿主面。",
       "证据": [
-        "packages/llm/llm-deepseek/src/listing-cache.ts、listing-config.ts",
-        "src/模型列表缓存.light",
-        "examples/test_T0173_B1缓存.light（6 判据）",
-        "docs/功能对标/0.2.1-rc.3增量清单.md §5 #2"
+        "G:/github/deepseek-harness packages/typert/registry/src/service.ts（git show dsh-v0.2.1-rc.3）",
+        "src/型协资源访问.light",
+        "examples/test_R176_型协资源访问.light（§3/§4）"
       ],
-      "本轮目标": "6 判据全绿（时序边界/分作用域/单飞新鲜/后台刷新/失败保留/失效释放）",
-      "反跑判据": "test_T0173_B1缓存.light：§5 首失败告警次数 / 连败只告警首次 改反必须红",
+      "本轮目标": "登记/重复/保留/注销/条目序判据全绿",
+      "反跑判据": "test_R176_型协资源访问.light：§4c 把 global 保留分支删掉即红",
       "语言缺陷": []
     },
     {
       "编号": 331,
-      "功能": "令牌计量折叠（保留面启发式组成 + plan/commit 两段式 + 结构性附件计价 + O(1) 折叠 + 语境拆解投影）",
-      "原版包": "packages/llm/token-meter/src/{surface-fold,breakdown-projection,surface-projection}.ts",
-      "光明模块": "src/令牌计量.light（续编 +200 行）",
-      "状态": "done（T-0173 B1 #3）：保留面启发式组成——系统提示按序保留、其余按增量计价（状态随系统提示数而非消息数增长）；plan/commit 两段式（规划只读试算、提交原地、畸形区间响亮抛错）；O(1) 折叠（compaction 武装声明、替换消费声明、无声明零增量、声明区间不符抛错）；语境拆解投影（有界状态、工具价来自 request/header、compaction 声明遮蔽系统提示、表面总额夹位 0）。剔除 Cordis/zod/projection 注册胶水；事件消息导出/表面判定本地化（与 会话.light 投影消息 同语义，规避 L-004）。",
+      "功能": "typert loader 清单校验 rc.3 增量（description/mode=stream/strictCodec/input-invoke 需 direct 且双函数/投影 create 工厂）",
+      "原版包": "packages/typert/loader/src/index.ts（requireInvocation 等增量 @ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/型协清单校验.light（新建 213 行）",
+      "状态": "done（R176-B4）：六条 rc.3 校验增量逐条落地，错误文案与上游逐字对齐（`mode must be \"stream\" when present` / `input/invoke require a direct receiver` / `has no input() selector` / `has no invoke() function` / `repeats wire field` / `has no create() factory`）；批量校验返回首个错误与通过数。",
       "证据": [
-        "packages/llm/token-meter/src/surface-fold.ts、breakdown-projection.ts、surface-projection.ts",
-        "src/令牌计量.light",
-        "examples/test_T0173_B1令牌折叠.light（§1/§2/§3 共 3 组）",
-        "docs/功能对标/0.2.1-rc.3增量清单.md §5 #3"
+        "G:/github/deepseek-harness packages/typert/loader/src/index.ts（git show dsh-v0.2.1-rc.3）",
+        "src/型协清单校验.light",
+        "examples/test_R176_型协清单校验.light（35 判据）"
       ],
-      "本轮目标": "§1 plan/commit + §2 O(1) 折叠 + §3 语境拆解 共 3 组全绿",
-      "反跑判据": "test_T0173_B1令牌折叠.light：§1 非法区间抛错 / §2 声明区间不符抛错 / §3 替换移除旧系统 任一改反必须红",
+      "本轮目标": "35 判据全绿；每条 rc.3 增量都有正向+反向用例",
+      "反跑判据": "test_R176_型协清单校验.light：§4e 把 mode 校验删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 332,
+      "功能": "credentials 凭据优先级倒置 + writable 恒真 + 写入不再因遮蔽被拒",
+      "原版包": "packages/credentials/{credentials/src/index.ts,credentials-local/src/index.ts}（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/凭据.light（改）+ src/凭据链.light（改 §1-§3）",
+      "状态": "done（R176-B4，语义倒置移植）：托管存储 file 由第 2 位升到第 1 位，env 退为回退层；describe 对每个引用（含未配置）writable=true；set/unset 的 assertUnshadowed 拒绝路径按上游删除。旧判据（test_凭据.light 用例3/6/7、test_凭据链.light §1-§4）按新语义改形态并在文件头写明一手依据与判别力边界。",
+      "证据": [
+        "G:/github/deepseek-harness packages/credentials/credentials-local/src/index.ts（git diff rc.2..rc.3）",
+        "src/凭据.light",
+        "src/凭据链.light",
+        "examples/test_R176_凭据优先级倒置.light（28 判据）",
+        "examples/test_凭据.light（改形态）",
+        "examples/test_凭据链.light（改形态）"
+      ],
+      "本轮目标": "倒置/可写/写入/撤下/回退层重新生效全绿",
+      "反跑判据": "test_R176_凭据优先级倒置.light：把 来源优先级 的 file/env 对调即红（R176 实测）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 333,
+      "功能": "credentials 文档未知顶层键容忍（ignoredKeys）",
+      "原版包": "packages/credentials/credentials-local/src/index.ts parseCredentialsDocument（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/凭据链.light（§5）",
+      "状态": "done（R176-B4）：rc.2 未知顶层键抛错拒绝整个文档；rc.3 容忍并回报 ignoredKeys。本模块给 分类顶层键（已读/忽略/未知三键，保序）与 是空文档键表（零键=空存储，不需要 version）。refs/records 内部仍是拒绝而非跳过（本模块不越权放宽）。",
+      "证据": [
+        "G:/github/deepseek-harness packages/credentials/credentials-local/src/index.ts（git diff rc.2..rc.3）",
+        "src/凭据链.light",
+        "examples/test_R176_凭据优先级倒置.light（§4）"
+      ],
+      "本轮目标": "未知键进忽略、已知三键保序、空文档判定全绿",
+      "反跑判据": "test_R176_凭据优先级倒置.light：把 忽略 分支改并入 已读 即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 334,
+      "功能": "ptc-runtime 保留环境 / stateOwner 生命周期（programFormat + 准入 + 清理 + 释放）",
+      "原版包": "packages/ptc-runtime/{ptc-runtime/src/{index.ts,types.ts} 增量, ptc-runtime-node/src/persistent.ts 新增 375 行}（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/代码运行时保留环境.light（新建 205 行）",
+      "状态": "done（R176-B4）：programFormat 两值+缺省 function-body；stateOwner 缺省=每轮新鲜环境；准入状态机逐条对齐 Kernel.assertIdle 与 run 的四处拒绝（并发/清理未完/策略变更/已关闭重建），错误文案逐字；release 幂等；临时环境结算即销毁。对象身份→属主键映射、Node 内核、子进程与沙箱全属宿主面。",
+      "证据": [
+        "G:/github/deepseek-harness packages/ptc-runtime/ptc-runtime-node/src/persistent.ts（git show dsh-v0.2.1-rc.3）",
+        "src/代码运行时保留环境.light",
+        "examples/test_R176_代码运行时保留环境.light（36 判据）"
+      ],
+      "本轮目标": "36 判据全绿（含四条拒绝文案逐字 + 重建代号推进）",
+      "反跑判据": "test_R176_代码运行时保留环境.light：把「运行中」分支删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 335,
+      "功能": "jobs 任务标识改短 UUID（<kind>-<16 位>，取代 kind-count 计数器）+ 撞号重试",
+      "原版包": "packages/jobs/jobs-local/src/index.ts（start 发号 @ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/任务系统.light（改：发号段 + 登记任务）",
+      "状态": "done（R176-B4）：删 查类别序号/计次表 口径，改 判短号（16 位十六进制）/ 构造任务标识 / 分配任务标识（撞号重试，候选耗尽返回空）；登记任务 改吃调用方注入的短号（宿主随机源），短号非法或撞号即抛且不落状态。旧判据 test_任务系统.light §6 与 32 处调用按新签名改形态。",
+      "证据": [
+        "G:/github/deepseek-harness packages/jobs/jobs-local/src/index.ts（git diff rc.2..rc.3）",
+        "src/任务系统.light",
+        "examples/test_任务系统.light（改形态）"
+      ],
+      "本轮目标": "短号合法性/撞号重试/非法短号不落状态全绿",
+      "反跑判据": "test_任务系统.light §6：把 分配任务标识 的 contains 判定反转即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 336,
+      "功能": "jobs 持久生命周期记录（job/registered + job/settled + producerReported）",
+      "原版包": "packages/jobs/jobs/src/types.ts 增量 + jobs-local recordSessionEvent（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/任务生命周期记录.light（新建 186 行）",
+      "状态": "done（R176-B4）：两条 log-only 事件载荷形状（登记快照不复制执行期可变字段；结算=登记事实+finishedAt/status/cause/producerReported/detail?）；结算原因三值、终态三值；producerReported 语义（done 兑现=真，拒绝=假且 status=failed、detail=错误消息）；无 owner 不落会话记录。session.append 属宿主面。",
+      "证据": [
+        "G:/github/deepseek-harness packages/jobs/jobs/src/types.ts（git show dsh-v0.2.1-rc.3）",
+        "src/任务生命周期记录.light",
+        "examples/test_R176_任务标识与生命周期.light（32 判据）"
+      ],
+      "本轮目标": "32 判据全绿（含 rejected 分支与 detail 缺省不出现）",
+      "反跑判据": "test_R176_任务标识与生命周期.light：把 生命生产者结算 的兑现分支改假即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 337,
+      "功能": "deliverables 变更捕获改吃 fs 意图路径（mutationPath 上游整段删除）",
+      "原版包": "packages/deliverables/workspace-changes/src/{capture.ts,index.ts,recorder.ts}（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/工作区变更.light（§R176 新增两段落 + 旧段落标废弃）",
+      "状态": "done（R176-B4，架构面登记为主）：上游删 mutationPath，改由 fs/write-intent 与 fs/edit-intent 提供 processPath 解析后的绝对路径，记录器不再 resolve(cwd,path)。本模块新增 工区意图捕获（直接取目标绝对路径，不推导）与 工区判首捕获（本轮首次变更才捕获）；旧 工区捕获编辑 保留为存量兼容并标注移除条件（记录器迁签名后删）。",
+      "证据": [
+        "G:/github/deepseek-harness packages/deliverables/workspace-changes/src/{capture.ts,index.ts,recorder.ts}（git diff rc.2..rc.3）",
+        "src/工作区变更.light",
+        "examples/test_R176_交付意图捕获.light（11 判据）"
+      ],
+      "本轮目标": "意图路径直取/不 resolve/首捕获去重全绿",
+      "反跑判据": "test_R176_交付意图捕获.light：把 判首捕获 的 contains 反转即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 338,
+      "功能": "ACP 轮次/取消结算状态机（turn 跟随 + turn/end 清失败 + 失败不再按轮过滤 + cancelStartedIdle）",
+      "原版包": "packages/acp/acp/src/session.ts 增量 + tests/turns.spec.ts 新增 420 行（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/acp轮次状态.light（新建 132 行）",
+      "状态": "done（R176-B4）：turn/start 让 inflight 轮号跟随并清旧 endReason；turn/end 仅对当前轮生效并清 agentError；onAgentError 去掉轮号过滤（保留 messageQueued 前置）；取消完成判定=status idle 或 cancelStartedIdle；结算触发=已取消或 agentError 非空。子代理 teardown 改 drainDescendants 属宿主面登记。",
+      "证据": [
+        "G:/github/deepseek-harness packages/acp/acp/src/session.ts（git diff rc.2..rc.3）",
+        "src/acp轮次状态.light",
+        "examples/test_R176_acp轮次状态.light（24 判据）"
+      ],
+      "本轮目标": "24 判据全绿（含「轮已终结后失败仍记录」这条 rc.3 专属差异）",
+      "反跑判据": "test_R176_acp轮次状态.light：把 轮次失败 的 messageQueued 前置删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 339,
+      "功能": "lsp 工作区根判定（session-cwd 删除，改 workingDirectory.ensure + LSP_WORKSPACE_REQUIRED）",
+      "原版包": "packages/lsp/tool-lsp/src/index.ts（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/语言服务器.light（追加 工作区根判定）",
+      "状态": "done（R176-B4，纯逻辑残量）：无 agent → 根未定义（不退回会话头）；根未定义 → 错误码 LSP_WORKSPACE_REQUIRED 与文案逐字；空串不等于未定义故不拒绝（忠实上游 === undefined，不擅自加严）。LSP stdio 与工具注册全属宿主面。",
+      "证据": [
+        "G:/github/deepseek-harness packages/lsp/tool-lsp/src/index.ts（git diff rc.2..rc.3）",
+        "src/语言服务器.light",
+        "examples/test_R176_lsp工作区根.light（9 判据）"
+      ],
+      "本轮目标": "9 判据全绿（含空串不拒绝的忠实性判据）",
+      "反跑判据": "test_R176_lsp工作区根.light：把「无代理」分支改成带根即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 340,
+      "功能": "webhook 包整包上游删除 → 登记不移植（本仓实现保留，无上游锚点可对）",
+      "原版包": "packages/webhook/（rc.3 已删除 30 文件 / -2803 行）",
+      "光明模块": "src/webhook会话.light、src/网络钩子GitHub.light（保留不动）",
+      "状态": "登记（R176-B4）：上游 dsh-v0.2.1-rc.3 已整体移除 packages/webhook（git ls-tree 确认 rc3=0 文件），本仓既有实现无上游锚点可对，保留现状不删不改；后续若需演进按本仓需求走，不再声称对标。",
+      "证据": [
+        "git ls-tree -r --name-only dsh-v0.2.1-rc.3 -- packages/webhook（空）",
+        "git diff --stat dsh-v0.2.0-rc.2..dsh-v0.2.1-rc.3 -- packages/webhook（30 文件全删）"
+      ],
+      "本轮目标": "登记完成，无代码改动",
+      "反跑判据": "不适用（登记项，无判据）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 341,
+      "功能": "runtime-diagnostics 包整包上游删除 → 登记不移植（能力由 invariants 承接）",
+      "原版包": "packages/runtime-diagnostics/（rc.3 已删除 10 文件 / -1081 行）",
+      "光明模块": "src/不变量登记.light、src/任务不变式.light（保留不动）",
+      "状态": "登记（R176-B4）：上游 rc.3 移除该包；本仓不变量登记能力已由 #252 覆盖，保留现状。",
+      "证据": [
+        "git ls-tree -r --name-only dsh-v0.2.1-rc.3 -- packages/runtime-diagnostics（空）",
+        "git diff --stat dsh-v0.2.0-rc.2..dsh-v0.2.1-rc.3 -- packages/runtime-diagnostics（10 文件全删）"
+      ],
+      "本轮目标": "登记完成，无代码改动",
+      "反跑判据": "不适用（登记项，无判据）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 342,
+      "功能": "settings / document / attachment / identity 四包仅元数据增量 → 登记不移植",
+      "原版包": "packages/{settings,document,attachment,identity}/（@ dsh-v0.2.1-rc.3 = 1f81c047fc）",
+      "光明模块": "src/{设置*.light, office转PDF.light, 附件准入.light, 附件反馈.light}（保留不动）",
+      "状态": "登记（R176-B4）：四包 rc.2→rc.3 的 diff 只有 README/README.zh/README.i18n/locale/*.json/package.json（settings 19+/8-、document 25+/12-、attachment 29+/14-、identity 9+/22-），**零 src 代码改动**，故无可移植逻辑；locale 增量（en/zh 各 5-6 行）属产品文案，本仓文案自持不跟版。",
+      "证据": [
+        "git diff --stat dsh-v0.2.0-rc.2..dsh-v0.2.1-rc.3 -- packages/settings packages/document packages/attachment packages/identity",
+        "逐包 diff 复核：无 src/** 条目"
+      ],
+      "本轮目标": "登记完成，无代码改动",
+      "反跑判据": "不适用（登记项，无判据）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 343,
+      "功能": "/api 请求浏览器信任栅栏（Host 防 DNS 重绑定 + Fetch-Metadata 跨站 + Origin 同源）",
+      "原版包": "packages/client/connection/src/{api-request-trust.ts（+81/−23）,loopback-hostname.ts}（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/请求信任.light（新建 268 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #6）：Host 栅栏对每个 /api 请求生效（不论是否像浏览器）；回环 / trustedHosts / 监听方 bind 字面量三条通过路径；trustedHosts 条目按「裸权威规范形式」加载期断言（带路径/userinfo/空白/悬空冒号/前导零端口/越界端口一律拒载，文案逐字）；sec-fetch-site=cross-site 直接拒绝；Origin 缺席放行、在场必须同权威、`null` 与 file: 拒绝；带端口条目只匹配该端口、无端口条目匹配任意端口。差异登记：归一化不用 WHATWG（不实现 punycode/percent-decode，直接判非法字符拒绝，结论一致）；默认端口不剥离。",
+      "证据": [
+        "G:/github/deepseek-harness packages/client/connection/src/api-request-trust.ts（git show dsh-v0.2.1-rc.3）",
+        "src/请求信任.light",
+        "examples/test_R176_请求信任.light（50 判据）"
+      ],
+      "本轮目标": "50 判据全绿（含重绑定域名拒绝、Origin null 拒绝、条目加载期断言）",
+      "反跑判据": "test_R176_请求信任.light：把 sec-fetch-site 分支或「Host 必须存在」删掉即红（R176 实测）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 344,
+      "功能": "cua 截图/坐标协议（19 method 判别联合 + 千分比/像素换算 + 映射失效 + 规范 base64）",
+      "原版包": "packages/experimental/cua/src/{protocol.ts,coordinates.ts,types.ts}（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/截图坐标协议.light（新建 330 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #11）：19 个 method 表与严格成员判定；取值域（point 非负有限 / relativePoint 0..1000 整数 / id ≤2^32-1 / pid ≤2^31-1）；相对坐标 min(v/1000*轴, max(0,轴-1)) 钳制、绝对坐标按最新截图图素换算且越界抛 INVALID_ARGUMENT；无帧或宽高≤0 → STALE_SNAPSHOT、绝对坐标无绑定截图 → SCREENSHOT_REQUIRED（三条文案逐字）；observe 的失效规则（尺寸未变保留旧帧连同截图绑定、变化即换帧、局部观察删除已关窗口）；规范 base64 往返校验（含 pad 位）。宿主面（zod/AX/剪贴板/派发）登记不移植。",
+      "证据": [
+        "G:/github/deepseek-harness packages/experimental/cua/src/{protocol.ts,coordinates.ts}（git show dsh-v0.2.1-rc.3）",
+        "src/截图坐标协议.light",
+        "examples/test_R176_截图坐标协议.light（54 判据）"
+      ],
+      "本轮目标": "54 判据全绿（含三条错误码文案、钳制边界、pad 位拒绝）",
+      "反跑判据": "test_R176_截图坐标协议.light：把相对钳制或 SCREENSHOT_REQUIRED 分支删掉即红（R176 实测）",
+      "语言缺陷": []
+    },
+    {
+      "编号": 345,
+      "功能": "远程访问控制规则层（动作/角色/绑定/条件 → decide + allows + 授权表 + 快照帧差分）",
+      "原版包": "packages/api/remote-access/src/index.ts（+424）等（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/远程访问控制.light（新建 386 行）",
+      "状态": "done（R176-B4，A 路清单（T-0170）B4 主题分配 #4，规则层）：动作=<ns>/<method> 或 event:<name>，另有恒允许的 remoteAccess/follow；owner 恒允许；无策略 deny/no-allow；对「被触及资源全集」逐项判定，每个资源须有「资源相同+角色含动作+无条件或条件允许」的绑定，全通过才允许；拒绝优先级 = 条件原因 → explain() → no-allow；策略/条件/explain 抛错 → deny/policy-failed；allows 列表过滤（调用外与 owner 恒真、无策略恒假）；授权表按首次绑定序、动作去重排除 event: 后按码元序；follow 帧 baseline/upsert/remove 差分。宿主面（Cordis 服务、ctx.invocation、AsyncIterable、AbortSignal、index 注入、日志）登记不移植；A 路 §6-1 的主体模型决策仍待业主裁定，故本轮只落规则层。",
+      "证据": [
+        "G:/github/deepseek-harness packages/api/remote-access/src/index.ts（git show dsh-v0.2.1-rc.3）",
+        "src/远程访问控制.light",
+        "examples/test_R176_远程访问控制.light（48 判据）"
+      ],
+      "本轮目标": "48 判据全绿（含「资源全集必须全通过」这条核心语义）",
+      "反跑判据": "test_R176_远程访问控制.light：把 owner 短路删掉、或把全通过改成任一通过即红（R176 实测）",
       "语言缺陷": []
     }
   ]

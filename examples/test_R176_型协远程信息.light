@@ -1,0 +1,131 @@
+# test_R176_型协远程信息.light —— B4 路 typert remote-info 纯逻辑移植判据
+# 上游锚点：packages/typert/protocol/src/remote-info.ts @ dsh-v0.2.1-rc.3（1f81c047fc）
+# 反跑判据：把任一 断言相等 的期望值改反（或把 型协远参数可选 的 source 判据取反）即红。
+
+从 型协远程信息 导入 型协远拆分端点, 型协远描述标识, 型协远参数可选, 型协远规整参数, 型协远构造调用描述, 型协远投影参数模式, 型协远投影结果模式, 型协远是远程方法, 型协远直调参数序, 型协远复制字典
+
+段落 断言相等(甲, 乙, 信息):
+  如果 甲 != 乙:
+    抛出 "断言失败: " + 信息 + " (期望 " + 转字符串(乙) + " 实得 " + 转字符串(甲) + ")"
+
+段落 断言真(值, 信息):
+  如果 值 != 真:
+    抛出 "断言失败: " + 信息 + " (期望 真)"
+
+段落 空回调:
+  返回 真
+
+段落 造编码器(模式):
+  返回 {"mode": "strict", "typeSymbol": "T", "jsonSchema": 模式}
+
+段落 主:
+  # ---------- §1 端点拆分 ----------
+  设 s1 为 型协远拆分端点("用户/登录")
+  断言相等(s1["命名空间"], "用户", "§1 命名空间")
+  断言相等(s1["方法"], "登录", "§1 方法")
+
+  设 s2 为 型协远拆分端点("a/b/c")
+  断言相等(s2["命名空间"], "a", "§1b 只按首个斜杠切")
+  断言相等(s2["方法"], "b/c", "§1b 余下全归方法")
+
+  # D3：无 '/' 的退化形态（上游 JS slice 语义）
+  设 s3 为 型协远拆分端点("abc")
+  断言相等(s3["命名空间"], "ab", "§1c 无斜杠时命名空间=去末字符")
+  断言相等(s3["方法"], "abc", "§1c 无斜杠时方法=整串")
+
+  断言相等(型协远描述标识("pkg", "a/b"), "pkg#a/b", "§1d 描述标识")
+
+  # ---------- §2 参数可选 / 规整 ----------
+  设 p可选 为 {"name": "x", "wire": "x", "source": "json", "acceptsUndefined": 真}
+  断言真(型协远参数可选(p可选), "§2 json+acceptsUndefined 为可选")
+  设 p宿主 为 {"name": "y", "wire": "y", "source": "host", "acceptsUndefined": 真}
+  断言相等(型协远参数可选(p宿主), 假, "§2b host 参数恒必需")
+  设 p裸 为 {"name": "z", "wire": "z", "source": "json"}
+  断言相等(型协远参数可选(p裸), 假, "§2c 未声明 acceptsUndefined 为必需")
+
+  设 参数表0 为 [{"name": "a"}, {"name": "b", "wire": "bb"}]
+  设 规整 为 型协远规整参数(参数表0)
+  断言相等(规整[0]["wire"], "a", "§2d wire 缺省取 name")
+  断言相等(规整[1]["wire"], "bb", "§2d 已有 wire 保留")
+
+  # ---------- §3 调用描述构造 ----------
+  设 定义 为 {"parameters": 参数表0, "result": 造编码器({"type": "string"}), "invocation": {"kind": "direct"}}
+  设 描述 为 型协远构造调用描述("pkg", "用户/登录", 定义)
+  断言相等(描述["id"], "pkg#用户/登录", "§3 id")
+  断言相等(描述["namespace"], "用户", "§3 命名空间")
+  断言相等(描述["method"], "登录", "§3 方法")
+  断言相等(描述["parameters"][1]["wire"], "bb", "§3 参数已规整")
+
+  # ---------- §4 参数模式投影 ----------
+  设 参A 为 {"name": "a", "wire": "a", "source": "json", "codec": 造编码器({"type": "string"}), "description": "甲参数"}
+  设 参B 为 {"name": "b", "wire": "b", "source": "json", "acceptsUndefined": 真, "codec": 造编码器({"type": "number"})}
+  设 表AB 为 [参A, 参B]
+  设 投影 为 型协远投影参数模式(表AB, 假)
+  断言相等(投影["错误"], "", "§4 两参数都有模式时无错")
+  断言相等(投影["模式"]["type"], "object", "§4b 顶层 type")
+  断言相等(投影["模式"]["additionalProperties"], 假, "§4b additionalProperties=false")
+  断言相等(投影["模式"]["required"], ["a"], "§4c 只有必需参数进 required")
+  断言相等(投影["模式"]["properties"]["a"]["description"], "甲参数", "§4d 参数 description 并入子模式")
+  断言相等(投影["模式"]["properties"]["b"]["type"], "number", "§4e 子模式类型保留")
+
+  # 缺 jsonSchema 的参数 → 上游兜底文案
+  设 参C 为 {"name": "c", "wire": "c", "source": "json", "codec": {"mode": "strict", "typeSymbol": "T"}}
+  设 表AC 为 [参A, 参C]
+  设 投影2 为 型协远投影参数模式(表AC, 假)
+  断言相等(投影2["模式"], 空, "§4f 缺模式时不出模式")
+  断言相等(投影2["错误"], "No JSON Schema for parameter c", "§4f 兜底文案逐字对齐上游")
+
+  # 编码器自带 jsonSchemaError → 优先用它
+  设 参D 为 {"name": "d", "wire": "d", "source": "json", "codec": {"mode": "strict", "typeSymbol": "T", "jsonSchemaError": "自定义缺模式"}}
+  设 表AD 为 [参D]
+  设 投影3 为 型协远投影参数模式(表AD, 假)
+  断言相等(投影3["错误"], "自定义缺模式", "§4g 自带错误优先")
+
+  # 严格模式取 strictCodec，不回退 codec
+  设 参E 为 {"name": "e", "wire": "e", "source": "json", "codec": 造编码器({"type": "string"})}
+  设 表AE 为 [参E]
+  设 投影4 为 型协远投影参数模式(表AE, 真)
+  断言相等(投影4["模式"], 空, "§4h 严格模式缺 strictCodec 不回退 codec")
+  断言相等(投影4["错误"], "No JSON Schema for parameter e", "§4h 文案")
+
+  设 参F 为 {"name": "f", "wire": "f", "source": "json", "strictCodec": 造编码器({"type": "boolean"})}
+  设 表AF 为 [参F]
+  设 投影5 为 型协远投影参数模式(表AF, 真)
+  断言相等(投影5["模式"]["properties"]["f"]["type"], "boolean", "§4i 严格模式用 strictCodec")
+
+  # ---------- §5 结果模式投影 ----------
+  设 结果1 为 {"mode": "strict", "jsonSchema": {"type": "string"}, "description": "结果说明"}
+  设 投结1 为 型协远投影结果模式(结果1)
+  断言相等(投结1["模式"]["type"], "string", "§5 结果模式保留类型")
+  断言相等(投结1["模式"]["description"], "结果说明", "§5b 结果 description 合并进模式")
+
+  设 结果2 为 {"mode": "strict"}
+  设 投结2 为 型协远投影结果模式(结果2)
+  断言相等(投结2["模式"], 空, "§5c 无 schema 时无模式且无错")
+  断言相等(投结2["错误"], "", "§5c 无 schema 不算错")
+
+  # ---------- §6 是远程方法 ----------
+  设 方法1 为 {"invocation": {"kind": "direct"}, "result": {"mode": "strict"}, "input": 空回调, "invoke": 空回调}
+  断言真(型协远是远程方法(方法1), "§6 直调+严格+双函数 → 真")
+  设 方法2 为 {"invocation": {"kind": "context"}, "result": {"mode": "strict"}, "input": 空回调, "invoke": 空回调}
+  断言相等(型协远是远程方法(方法2), 假, "§6b Context 接收者 → 假")
+  设 方法3 为 {"invocation": {"kind": "direct"}, "result": {"mode": "src-json"}, "input": 空回调, "invoke": 空回调}
+  断言相等(型协远是远程方法(方法3), 假, "§6c 非严格结果 → 假")
+  设 方法4 为 {"invocation": {"kind": "direct"}, "result": {"mode": "strict"}, "invoke": 空回调}
+  断言相等(型协远是远程方法(方法4), 假, "§6d 缺 input → 假")
+
+  # ---------- §7 直调参数序 ----------
+  设 描述7 为 型协远构造调用描述("pkg", "ns/m", {"parameters": [{"name": "a", "wire": "a"}, {"name": "b", "wire": "b"}], "cancellation": {"wire": "signal"}})
+  设 入参 为 {"a": 1, "b": 2}
+  设 序 为 型协远直调参数序(描述7, 入参, "SIG")
+  断言相等(序[0], 1, "§7 首参按 wire 取值")
+  断言相等(序[1], 2, "§7b 次参按 wire 取值")
+  断言相等(序[2], "SIG", "§7c 有 cancellation 时末尾追加信号")
+
+  设 描述7b 为 型协远构造调用描述("pkg", "ns/m", {"parameters": [{"name": "a", "wire": "a"}]})
+  设 序2 为 型协远直调参数序(描述7b, 入参, "SIG")
+  断言相等(长度(序2), 1, "§7d 无 cancellation 不追加信号")
+
+  打印("test_R176_型协远程信息: 全部用例通过")
+
+主()

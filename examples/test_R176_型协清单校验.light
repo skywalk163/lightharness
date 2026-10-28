@@ -1,0 +1,127 @@
+# test_R176_型协清单校验.light —— B4 路 typert loader 清单校验 rc.3 增量判据
+# 上游锚点：packages/typert/loader/src/index.ts @ dsh-v0.2.1-rc.3（requireInvocation 增量）
+# 反跑判据：把 型协验调用 的 mode 校验删掉，或把 input/invoke 的 direct 接收者要求删掉 → 本文件必红。
+
+从 型协清单校验 导入 型协验是可调用, 型协验是数, 型协验必填串, 型协验可选串, 型协验模式投影, 型协验严格编码器, 型协验调用, 型协验调用表
+
+段落 断言相等(甲, 乙, 信息):
+  如果 甲 != 乙:
+    抛出 "断言失败: " + 信息 + " (期望 " + 转字符串(乙) + " 实得 " + 转字符串(甲) + ")"
+
+段落 断言真(值, 信息):
+  如果 值 != 真:
+    抛出 "断言失败: " + 信息 + " (期望 真)"
+
+段落 空回调:
+  返回 真
+
+段落 造编码器(模式):
+  返回 {"mode": "strict", "typeSymbol": "T", "create": 空回调, "jsonSchema": 模式}
+
+段落 造调用(接收者种类):
+  设 参 为 {"name": "a", "wire": "a", "codec": 造编码器({"type": "string"})}
+  设 参表 为 [参]
+  返回 {"id": "ns/m", "invocation": {"kind": 接收者种类}, "parameters": 参表, "result": 造编码器({"type": "string"})}
+
+段落 主:
+  # ---------- §0 基础谓词 ----------
+  断言真(型协验是可调用(空回调), "§0 段落引用可调用")
+  断言相等(型协验是可调用({"a": 1}), 假, "§0b 字典不可调用")
+  断言相等(型协验是可调用("x"), 假, "§0c 字符串不可调用")
+  断言真(型协验是数(1000), "§0d 整数是数")
+  断言真(型协验是数(1.5), "§0e 浮点是数")
+  断言相等(型协验是数("1"), 假, "§0f 字符串不是数")
+
+  # ---------- §1 必填/可选串 ----------
+  断言相等(型协验必填串("pkg", {"k": "v"}, "k", "subj"), "", "§1 必填串通过")
+  断言相等(型协验必填串("pkg", {"k": ""}, "k", "subj"), "typert-loader: pkg subj has a missing or empty k", "§1b 空串文案")
+  断言相等(型协验必填串("pkg", {}, "k", "subj"), "typert-loader: pkg subj has a missing or empty k", "§1c 缺键文案")
+  断言相等(型协验可选串("pkg", {}, "k", "subj"), "", "§1d 可选字段缺席放行")
+  断言相等(型协验可选串("pkg", {"k": ""}, "k", "subj"), "", "§1e 可选字段空串放行")
+  断言相等(型协验可选串("pkg", {"k": 1}, "k", "subj"), "typert-loader: pkg subj.k must be a string", "§1f 可选字段类型错文案")
+
+  # ---------- §2 模式投影 ----------
+  断言相等(型协验模式投影("pkg", 造编码器({"type": "string"}), "subj"), "", "§2 合法投影")
+  断言相等(型协验模式投影("pkg", {"mode": "strict"}, "subj"), "typert-loader: pkg subj has no create() factory", "§2b 缺 create 文案")
+  断言相等(型协验模式投影("pkg", {"create": 空回调, "description": 1}, "subj"), "typert-loader: pkg subj.description must be a string", "§2c description 类型错")
+  断言相等(型协验模式投影("pkg", {"create": 空回调, "jsonSchema": "x"}, "subj"), "typert-loader: pkg subj.jsonSchema must be an object", "§2d jsonSchema 非对象")
+
+  # ---------- §3 严格编码器 ----------
+  断言相等(型协验严格编码器("pkg", 造编码器({}), "subj"), "", "§3 严格编码器通过")
+  断言相等(型协验严格编码器("pkg", {"mode": "src-json"}, "subj"), "typert-loader: pkg subj must use a strict codec", "§3b 非严格模式文案")
+  断言相等(型协验严格编码器("pkg", {"mode": "strict", "create": 空回调}, "subj"), "typert-loader: pkg subj has a missing or empty typeSymbol", "§3c 缺 typeSymbol")
+  断言相等(型协验严格编码器("pkg", {"mode": "strict", "typeSymbol": "T", "create": 空回调, "decode": 1}, "subj"), "typert-loader: pkg subj decode must be a function", "§3d decode 非函数")
+
+  # ---------- §4 调用校验：基线通过 ----------
+  设 好 为 造调用("direct")
+  断言相等(型协验调用("pkg", 好), "", "§4 最小合法调用通过")
+
+  # description 可选，但在场必须字符串
+  设 好描述 为 造调用("direct")
+  字典设置(好描述, "description", "说明")
+  断言相等(型协验调用("pkg", 好描述), "", "§4b description 在场为字符串通过")
+  设 坏描述 为 造调用("direct")
+  字典设置(坏描述, "description", 1)
+  断言相等(型协验调用("pkg", 坏描述), "typert-loader: pkg invocation \"ns/m\".description must be a string", "§4c description 类型错文案")
+
+  # mode 只能是 stream
+  设 流式 为 造调用("direct")
+  字典设置(流式, "mode", "stream")
+  断言相等(型协验调用("pkg", 流式), "", "§4d mode=stream 通过")
+  设 坏模式 为 造调用("direct")
+  字典设置(坏模式, "mode", "batch")
+  断言相等(型协验调用("pkg", 坏模式), "typert-loader: pkg invocation \"ns/m\" mode must be \"stream\" when present", "§4e mode 非 stream 文案")
+
+  # 参数 description 与重复 wire
+  设 参描述 为 造调用("direct")
+  字典设置(参描述["parameters"][0], "description", "参数说明")
+  断言相等(型协验调用("pkg", 参描述), "", "§4f 参数 description 通过")
+  设 参坏描述 为 造调用("direct")
+  字典设置(参坏描述["parameters"][0], "description", 真)
+  断言相等(型协验调用("pkg", 参坏描述), "typert-loader: pkg invocation \"ns/m\" parameter.description must be a string", "§4g 参数 description 类型错")
+
+  设 重复线 为 造调用("direct")
+  设 第二 为 {"name": "b", "wire": "a", "codec": 造编码器({})}
+  列表追加(重复线["parameters"], 第二)
+  断言相等(型协验调用("pkg", 重复线), "typert-loader: pkg invocation \"ns/m\" repeats wire field \"a\"", "§4h 重复 wire 文案")
+
+  # strictCodec 在场须过严格编码器校验
+  设 带严 为 造调用("direct")
+  字典设置(带严["parameters"][0], "strictCodec", 造编码器({"type": "string"}))
+  断言相等(型协验调用("pkg", 带严), "", "§4i 合法 strictCodec 通过")
+  设 坏严 为 造调用("direct")
+  字典设置(坏严["parameters"][0], "strictCodec", {"mode": "src-json"})
+  断言相等(型协验调用("pkg", 坏严), "typert-loader: pkg invocation \"ns/m\" strict input codec must use a strict codec", "§4j strictCodec 非严格文案")
+
+  # input / invoke 必须是 direct 接收者 + 双函数
+  设 带输入 为 造调用("direct")
+  字典设置(带输入, "input", 空回调)
+  字典设置(带输入, "invoke", 空回调)
+  断言相等(型协验调用("pkg", 带输入), "", "§4k direct + 双函数通过")
+  设 上下文带输入 为 造调用("context")
+  字典设置(上下文带输入, "input", 空回调)
+  字典设置(上下文带输入, "invoke", 空回调)
+  断言相等(型协验调用("pkg", 上下文带输入), "typert-loader: pkg invocation \"ns/m\" input/invoke require a direct receiver", "§4l 非 direct 拒绝文案")
+  设 缺输入 为 造调用("direct")
+  字典设置(缺输入, "input", 1)
+  字典设置(缺输入, "invoke", 空回调)
+  断言相等(型协验调用("pkg", 缺输入), "typert-loader: pkg invocation \"ns/m\" has no input() selector", "§4m 无 input() 文案")
+  设 缺调用 为 造调用("direct")
+  字典设置(缺调用, "input", 空回调)
+  字典设置(缺调用, "invoke", "x")
+  断言相等(型协验调用("pkg", 缺调用), "typert-loader: pkg invocation \"ns/m\" has no invoke() function", "§4n 无 invoke() 文案")
+
+  # ---------- §5 批量 ----------
+  设 两好 为 [好, 带输入]
+  设 批1 为 型协验调用表("pkg", 两好)
+  断言真(批1["合法"], "§5 两条合法")
+  断言相等(批1["通过数"], 2, "§5b 通过数")
+  设 批2 为 型协验调用表("pkg", [好, 坏模式])
+  断言相等(批2["合法"], 假, "§5c 含坏条目 → 整体非法")
+  断言相等(批2["通过数"], 1, "§5d 报出通过数")
+  设 批3 为 型协验调用表("pkg", "x")
+  断言相等(批3["错误"], "typert-loader: pkg TYPERT.invocations must be an array", "§5e 非数组文案")
+
+  打印("test_R176_型协清单校验: 全部用例通过")
+
+主()
