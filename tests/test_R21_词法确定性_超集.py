@@ -118,12 +118,23 @@ def test_definitions_superset(scan_result):
         「（接收执行上下文）」；同上为注释误报。真名 造执行上下文（L7 导入）
         新旧两版均正确登记，且非「执行上下文」的真前缀豁免能覆盖的形态。
     （归因：R86 路 A 步骤3，实测注释行外零出现 → 断言口径问题，非 lexer 缺陷。）
+
+    R177 头部截断误报豁免（同一类「旧版误登记」，来源不是注释而是中文形参名）：
+      · test_R176_型协清单校验.light / 者种类 —— 该例 `段落 造调用(接收者种类):`
+        在 d2857dd5 版预扫描里被登记成 `者种类`（**丢了头部「接收」两字**），
+        现行 lexer 登记完整名 `接收者种类`。实测探针（同一片段、只换 lexer）：
+            old(d2857dd5) → {'造调用', '者种类'}
+            new(HEAD)     → {'造调用', '接收者种类'}
+        ⇒ 「只增不减」在这里不成立的原因是**基线侧有 bug**，不是新 lexer 丢名；
+        且 `者种类` 是 `接收者种类` 的**后缀**，落不进上面「真前缀残片」豁免，
+        故显式登记。新增例（B4/T-0176）只是第一个使用该形参名的触发器。
     """
     files, old, new = scan_result
-    # (文件名, 丢失名) → 注释文本误报（旧版把注释中「接收」子串登记为定义名）
-    known_comment_false_positives = {
-        ('test_L020.light', '无法正确注册'),
-        ('test_宿主工具.light', '执行上下文'),
+    # (文件名, 丢失名) → 旧版误登记（把子串/截断残片当成定义名），非新 lexer 丢名
+    known_old_side_false_positives = {
+        ('test_L020.light', '无法正确注册'),      # 注释里的「接收」子串
+        ('test_宿主工具.light', '执行上下文'),    # 注释里的「接收执行上下文」
+        ('test_R176_型协清单校验.light', '者种类'),  # 形参名截头：接收者种类 → 者种类
     }
     violations = []
     expected_shrink = []
@@ -133,7 +144,7 @@ def test_definitions_superset(scan_result):
         if not missing:
             continue
         for m in sorted(missing):
-            if (os.path.basename(fp), m) in known_comment_false_positives:
+            if (os.path.basename(fp), m) in known_old_side_false_positives:
                 expected_shrink.append((os.path.basename(fp), m))
             elif any(x != m and x.startswith(m) for x in n):
                 expected_shrink.append((os.path.basename(fp), m))
