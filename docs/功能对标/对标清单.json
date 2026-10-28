@@ -4794,6 +4794,54 @@
       "本轮目标": "48 判据全绿（含「资源全集必须全通过」这条核心语义）",
       "反跑判据": "test_R176_远程访问控制.light：把 owner 短路删掉、或把全通过改成任一通过即红（R176 实测）",
       "语言缺陷": []
+    },
+    {
+      "编号": 346,
+      "功能": "子代理 agent preset 选择（默认预设 + 模型可选白名单 + 提供方能力断言 + validate 纯组装）",
+      "原版包": "packages/subagent/tool-subagent/src/preset-selection.ts（+98，dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/子代理预设选择.light（新建 175 行）",
+      "状态": "done（R175-B3）：构造期拒重复白名单 id、拒「默认值不在白名单内」、拒非字符串数组；configured/choices 只读判定；description 按上游逐字回落（有默认→「Omit to use X.」，无→「Omit to inherit the parent agent's current preset.」）并拼 Available presets；resolve 缺省回默认、未开白名单即禁用、非串/不在白名单报「agent_preset must be one of: …」；assertProvider 对「不支持独立预设」或「继承父上下文」的提供方拒；validate 纯段按「默认+白名单保序去重、只收白名单内且带 description 的项」组装。宿主面（Cordis ctx.get('agentPresets')、异步 readDocument）登记不移植，改为传「有服务」标志 + 文档表；TS 静态类型约束改运行时守卫（差异登记）。",
+      "证据": [
+        "G:/github/deepseek-harness packages/subagent/tool-subagent/src/preset-selection.ts（git show dsh-v0.2.1-rc.3）",
+        "src/子代理预设选择.light",
+        "examples/test_R175_B3复刻.light §A（11 判据）",
+        "tests/unit/test_子代理预设选择.py（12 例）"
+      ],
+      "本轮目标": "§A 11 判据全绿 + 单测 12 例（含 6 条拒收路径逐字文案）",
+      "反跑判据": "test_R175_B3复刻.light §A：把「默认值须在白名单内」或 resolve 的白名单校验删掉即红",
+      "语言缺陷": ["L-184"]
+    },
+    {
+      "编号": 347,
+      "功能": "子代理活化：名额池（容量上限/幂等释放）+ 本地取 Agent / 外部拒收 + 子代串行锁（FIFO 串接 + 尾替换 + 条件收尾）",
+      "原版包": "packages/subagent/subagent/src/activation.ts（+186，dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/子代理活化.light（新建 126 行）",
+      "状态": "done（R175-B3）：ACTIVATION_LIMIT_REACHED 文案逐字；释放幂等（未占用/已释放返假）；令牌单调递增；本地活化可取 Agent、外部活化取回 空 且要求继续输入即 NOT_CONTINUABLE；串行锁记录同子标识的前序序号（FIFO）、不同子标识互不串接、只有「本轮仍是尾」才收尾。宿主面（captureLocalResult / observeLocalFailure 依赖会话事件流与 Promise、AbortController、WeakSet 祖先判定）登记不移植。",
+      "证据": [
+        "G:/github/deepseek-harness packages/subagent/subagent/src/activation.ts（git show dsh-v0.2.1-rc.3）",
+        "src/子代理活化.light",
+        "examples/test_R175_B3复刻.light §B（15 判据）",
+        "tests/unit/test_子代理活化.py（5 例）"
+      ],
+      "本轮目标": "§B 15 判据全绿 + 单测 5 例（含两条错误码文案）",
+      "反跑判据": "test_R175_B3复刻.light §B：把容量判定改成 > ，或把「只在本轮仍是尾才收尾」去掉即红",
+      "语言缺陷": ["L-184"]
+    },
+    {
+      "编号": 348,
+      "功能": "工作区候选成员判定（cwd 解析不出即保留归属）+ 名单过滤 + 单写裁决的未变哨兵",
+      "原版包": "packages/workspace/workspace/src/{entity.ts（+9/−8）,types.ts,index.ts}（dsh-v0.2.1-rc.3=1f81c047fc）",
+      "光明模块": "src/工作区成员.light（新建 66 行）",
+      "状态": "done（R175-B3）：sessionPath(id)===path 改为 candidateMatches(id,path)——已记账子会话若完整 cwd 因路径分量缺失而解析不出则保留归属；getter sessionIds 按候选匹配过滤；update 的纯部分给出「未变」判定（对象同一 && 过滤后长度不变，对齐上游 unchangedSentinel）。宿主面（KvTable 事务、写链、canonical cwd 归一）登记不移植；types.ts 同批新增的 TypertResourceMap 是类型级声明、无运行期逻辑故不移植。",
+      "证据": [
+        "G:/github/deepseek-harness packages/workspace/workspace/src/entity.ts（git show dsh-v0.2.1-rc.3）",
+        "src/工作区成员.light",
+        "examples/test_R175_B3复刻.light §C（8 判据）",
+        "tests/unit/test_工作区成员.py（5 例）"
+      ],
+      "本轮目标": "§C 8 判据全绿 + 单测 5 例",
+      "反跑判据": "test_R175_B3复刻.light §C：把「可解析=假 → 保留」分支删掉即红（C3）",
+      "语言缺陷": ["L-184"]
     }
   ]
 }
