@@ -27,6 +27,37 @@
 
 ---
 
+## [v0.5.0-rc1] — 2026-10-28
+
+> **0.2.1-rc.3 对齐收口（M 路 T-0179 合流）**：上游 `dsh-v0.2.0-rc.2 → dsh-v0.2.1-rc.3` 增量甄别（A 路）+ 纯逻辑移植（B1-B4 路）+ 宿主面登记（C 路）+ FreeBSD fork 同步（D 路）+ 三平台门禁回归（E 路）+ 新红取证处置（F 路），七路并行、M 路统一收口。版本自 `v0.4.0-rc2` 走 minor 位升 **`v0.5.0-rc1`**（B 路为上游 minor 特性移植，非 patch）。交付报告见 `docs/功能对标/0.2.1-rc.3对齐_交付报告.md`。
+
+### 新增
+
+- **A 路（T-0170）上游增量甄别**：`rc.2...rc.3` 实为「架构收敛 + 平台面扩张」——1487 条非 merge commit 中 feat 仅 146 条；真实代码增量 1047 个 src 文件（+50788/−15773）；纯逻辑可移植面收敛为 **14 项 / 47 文件**；宿主面（登记不移植）约 640 个 src 文件。产出 `docs/功能对标/0.2.1-rc.3增量清单.md`。
+- **B1 路（T-0173）llm 簇纯逻辑复刻**：模型列表解码（`src/模型目录.light` +200 行，7 判据）、模型列表缓存（`src/模型列表缓存.light` 新建 142 行：分作用域/单飞/后台刷新/失败保留，6 判据）、令牌计量折叠（`src/令牌计量.light` +200 行：plan/commit 两段式 + O(1) 折叠 + 语境拆解投影，3 组判据）。
+- **B2 路（T-0174）会话与存储面**：`src/智能体指令.light` agent-instructions 0.2.1 增量（442→589 行：双用户全局根与候选组去重、dshHome 不可覆盖、项目路径作用域转义等 6 点，19 组判据）。
+- **B3 路（T-0175）subagent/workspace 簇**：`src/子代理预设选择.light`（175 行，12 例）、`src/子代理活化.light`（126 行，5 例）、`src/工作区成员.light`（66 行，5 例），端到端判据 `examples/test_R175_B3复刻.light`（34 断言）；B3 簇其余增量定性为 invariant.ts 批量退场 / locale i18n / 注释级，不移植。
+- **B4 路（T-0176）typert/credentials/ptc-runtime/jobs 等 12 簇纯逻辑复刻**（对标清单 #334-#345）。
+- **C 路（T-0171）宿主面登记扩容**：0.2.1 增量 append 进 `docs/宿主面登记清单.md`。
+- **D 路（T-0172）FreeBSD fork 脚本同步**：`lightharness/freebsd/` ↔ fork 16 文件逐一对账（`freebsd/对账记录_rc3.md`），fork 侧 3 文件变动均判定 fork 专属 → 结论零同步（需重编 setuid 0）。
+
+### 修复
+
+- `stdlib/builtins.py`：`列表工具.求和` 调用实参由 1 退化为 4 的同步遗漏补回（E 路，消 `test_R20_词法边界综合` / `test_R72_C_推导式` 两红）。
+- `src/钩子.light` 消息钩子判定：空字符串缘由被 `是空(缘由)` 误判为「无拒绝」而放行，改独立 `已拒绝` 标志位（F 路，消 `test_R48_hooks三事件`）。
+- `src/字符串替换编辑器.light`：`执行编辑命令` 的 `path=""` 被误判缺参、`必填参数` 的空串 `值` 被误判必填缺失，两处改键存在性 / None 判断（F 路，空文件 `allowEmpty=真` 语义恢复）。
+- `tests/test_R21_词法确定性_超集.py`：`者种类` 误报白名单（旧基线 d2857dd5 把形参 `接收者种类` 截头登记，非 lexer 丢名；F 路复核确认为有意豁免）。
+
+### 验证
+
+- **Windows LH 全量**：初刷 2103 用例 / 6 failed（`reports/本机lh基线_latest.json`，R177 首刷）；E 路修复 2 处后复跑绝对红 6 → 3（真红 3 + Windows 环境飘红 5，隔离复跑绿，`R177_E路_三平台门禁回归报告.md`）；F 路修复后 run2 **2085 passed / 1 failed**（唯一余红 `agentE5钩子` 为越界红：根因在 light-merge 编译器 R128 起 `段落 调用()` → `__call__` 映射，非本仓 B 线引入，开卡跟踪）。
+- **FreeBSD 0.88 LH 全量** 2103 用例：修复前 6 failed（`R177_LH_0.88基线_20261027-212754.json`，Windows 侧同源）；E 路修复后真红 3，均已修。
+- **Windows LM 全量** 9433 用例 / 23 红（`reports/本机lm基线_latest.json`，passed 9276）：21 条新增红经取证与 B 线无因果（lightmem 仓），移交 LM 专项卡。
+- **新增 flaky 登记**（`tests/flaky_registry.txt` F-03~F-09）：5 条 Windows xdist 偶发（隔离复跑恒绿）+ 2 条 PTY 环境红（无 console session 下 `CreatePseudoConsole` 稳定 E_INVALIDARG）。
+- **Linux 0.86 腿**：机器不可达，本轮阻塞未跑（遗留，见交付报告）。
+
+---
+
 ## [r95-dev] — 2026-09-25
 
 R95 收口：**根因战场闭环**（LH `61e004a`，分支 `release/r95`，tag `r95-dev`）。
