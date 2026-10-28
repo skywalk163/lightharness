@@ -46,3 +46,5 @@ F-04	test_R42_真实webhook.light	windows	Windows 全量 xdist 并发偶发：wo
 F-05	运行Web服务器.light	windows	Windows 全量 xdist 并发偶发：worker 'gw4' crashed（本身起 HTTP 服务监听，并发下超时/句柄竞争被 xdist 杀）。隔离单跑有 timeout 保护时恒绿。F 路复核 -o addopts= --timeout=60 隔离通过。	登记豁免同类并发崩溃/超时；稳定复现须人工归因。
 F-06	test_R87_B3_基建_团队状态收敛.light	windows	Windows 全量偶发 Permission denied: src\团队花名册.light（并发写/锁占用瞬时拒绝）。隔离单跑恒绿。F 路复核隔离 5 passed 之一。	登记豁免同类 Windows 文件锁 Permission denied；稳定复现须人工归因。
 F-07	tests/unit/test_会话持久化JSONL.py::test_投影目录_空cwd	windows	Windows 全量偶发 Permission denied: stdlib\内置核心字典.light（投影目录空 cwd 写内置字典瞬时占用）。隔离单跑恒绿（NOWD=_no-cwd 断言通过）。F 路复核隔离通过。	登记豁免同类 Windows 文件锁 Permission denied；稳定复现须人工归因。
+F-08	test_终端PTY.light	windows	当前 Windows session（无 console 窗口/后台进程）CreatePseudoConsole 稳定 HRESULT E_INVALIDARG(-2147024890)，隔离单跑亦红（非偶发 flaky）。0.88 环境与有 console 的交互 session 下绿。非 B 路回归（F 路未动 stdlib/伪终端.light）。	登记豁免本环境确定性红；若在有 console 的 CI/交互 session 下仍红，须人工归因（疑似真退化）。
+F-09	test_异步PTY.light	windows	同 F-08：当前 Windows session CreatePseudoConsole E_INVALIDARG，隔离单跑亦红。0.88 环境下绿。非 B 路回归。	登记豁免本环境确定性红；有 console session 下红须人工归因。
