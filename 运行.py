@@ -55,7 +55,32 @@ def _lightplugin_paths():
     return dirs
 
 # 光明编译器来自 light-merge 仓库（语言本体），可用环境变量 LIGHT_MERGE 覆盖
-LIGHT_MERGE = os.environ.get('LIGHT_MERGE', r'G:\dswork\duan-light-merge\light-merge')
+def _find_light_merge() -> str:
+    """定位光明编译器仓（判定标准：目录下有 src/）。
+
+    原先默认值是写死的 Windows 路径 `G:\\dswork\\duan-light-merge\\light-merge`，
+    换台机器（Linux / CI / 别人的 Mac）只要没设 LIGHT_MERGE，所有 .light 用例
+    一律「找不到光明编译器」，整套测试集体飘红 —— 看起来像代码坏了，其实只是
+    路径不属于这台机器。改成按常见布局探测，写死路径降级为最后兜底。
+    """
+    候选 = []
+    显式 = os.environ.get('LIGHT_MERGE')
+    if 显式:
+        候选.append(显式)                                   # 显式指定永远最优先
+    候选 += [
+        os.path.join(ROOT, '..', 'light'),                  # 本机布局：dswork/{light,lightharness}
+        os.path.join(ROOT, '..', 'light-merge'),
+        os.path.join(ROOT, '..', 'duan-light-merge', 'light-merge'),
+        os.path.join(ROOT, '..', '..', 'light'),
+        r'G:\dswork\duan-light-merge\light-merge',          # 原 Windows 开发机，兜底
+    ]
+    for c in 候选:
+        if os.path.isdir(os.path.join(c, 'src')):
+            return os.path.normpath(c)
+    return os.path.normpath(候选[0])      # 一个都不中：回显最优先候选，让报错信息可读
+
+
+LIGHT_MERGE = _find_light_merge()
 if not os.path.isdir(os.path.join(LIGHT_MERGE, 'src')):
     print(f'错误: 找不到光明编译器（LIGHT_MERGE={LIGHT_MERGE}）')
     sys.exit(1)

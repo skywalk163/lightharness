@@ -6,6 +6,26 @@
 
 ---
 
+## 环境准备（目录布局）
+
+本工程**不是独立跑得起来的**：它把「光明编译器」和「插件生态」当外部依赖，按**兄弟目录**查找。
+
+```
+dswork/
+├── light/          # 光明编译器（LIGHT_MERGE 的探测目标，判定标准：目录下有 src/）
+├── lightplugin/    # 插件生态（含 集成/生产挂载.light —— 总入口 必需）
+└── lightharness/   # 本工程
+```
+
+**缺 `lightplugin` 的症状极具迷惑性**：`src/总入口.light` 的 `从 生产挂载 导入 挂载全部插件`
+会报 `No module named '生产挂载'`，于是**几十个 example 集体红**——看着像代码坏了，
+其实只是依赖仓没并排放。反过来，`运行.py` 对缺 `lightplugin` 是静默容忍的（路径表返回空），
+所以它不会主动告诉你「缺的是哪个仓」。
+
+部署到别的路径时用两个环境变量覆盖：`LIGHT_MERGE=<编译器根>`、`LIGHTPLUGIN=<插件根>`。
+
+---
+
 ## 快速上手（5 分钟）
 
 ### 1. 启动 Web 服务
@@ -119,7 +139,10 @@ A: 网页保存的配置写入项目根目录的 `.env` 文件，可随时手工
 ## 项目定位
 
 - **对标对象**：DeepSeek Harness（`g:\github\deepseek-harness`，TypeScript monorepo，Cordis 插件驱动，50 个 packages + 2 个 apps）
-- **复刻语言**：光明（LightLang，`G:\dswork\duan-light-merge\light-merge`）
+- **复刻语言**：光明（LightLang）。原作者开发机路径为 `G:\dswork\duan-light-merge\light-merge`，
+  但**不要把这条路径当约定**：`运行.py` 会按 `$LIGHT_MERGE` → `../light` → `../light-merge`
+  → `../duan-light-merge/light-merge` → `../../light` → 上述 Windows 路径 的顺序探测编译器根目录
+  （判定标准：目录下存在 `src/`）。换机器通常什么都不用设；都不中时按提示设 `LIGHT_MERGE` 即可。
 - **工作目录**：`G:\dswork\duan-light-merge\lightharness`（本工程）
 - **复刻口径**：功能等价 1:1 —— 每个模块建一张功能对标卡（原版功能 → 光明实现 → 对齐度 done/partial/none + 证据 + 反跑判据）
 

@@ -55,8 +55,29 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # lightharness/
-# 与 运行.py 同口径：光明编译器来自 light-merge，可用环境变量覆盖
-LIGHT_MERGE = os.environ.get('LIGHT_MERGE', r'G:\dswork\duan-light-merge\light-merge')
+def _find_light_merge() -> str:
+    """与 运行.py 同口径：探测编译器仓，写死的 Windows 路径只作兜底。
+
+    改这里记得同步 运行.py 的同名函数（两份刻意重复，避免 scripts 反向依赖仓根模块）。
+    """
+    候选 = []
+    显式 = os.environ.get('LIGHT_MERGE')
+    if 显式:
+        候选.append(显式)
+    候选 += [
+        os.path.join(ROOT, '..', 'light'),
+        os.path.join(ROOT, '..', 'light-merge'),
+        os.path.join(ROOT, '..', 'duan-light-merge', 'light-merge'),
+        os.path.join(ROOT, '..', '..', 'light'),
+        r'G:\dswork\duan-light-merge\light-merge',
+    ]
+    for c in 候选:
+        if os.path.isdir(os.path.join(c, 'src')):
+            return os.path.normpath(c)
+    return os.path.normpath(候选[0])
+
+
+LIGHT_MERGE = _find_light_merge()
 DEFAULT_ROOTS = ('src', 'stdlib', 'examples', 'tests')
 DEFAULT_BASELINE = os.path.join(ROOT, 'scripts', '互举反跑基线.json')
 SKIP_DIRS = {'.git', '__pycache__', '.venv', 'build', 'dist', '.light_cache',

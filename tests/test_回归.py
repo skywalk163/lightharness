@@ -208,8 +208,13 @@ CASES = _collect()
 
 # 常驻服务用例：程序本身不退出（死循环服务），门禁注入「寿命」环境变量，
 # 让其到时走正常停机路径退出 rc=0（而非靠 300s 超时杀进程假红）。
+#
+# HARNESS_WEB_NO_OPEN 是必须的：examples/运行Web服务器.light 第 19 行自己写着
+# 「CI/门禁必须设置」。缺了它在 Windows 上无害（`start "" url` 立即返回），
+# 在 Linux 上会走 `xdg-open`，无桌面/无浏览器的机器上卡到 pytest 60s 超时 ——
+# 表现成「常驻用例超时」，其实服务早起来了，卡的是开浏览器那一步。
 RESIDENT_CASES = {
-    '运行Web服务器.light': {'HARNESS_WEB_LIFETIME': '3'},
+    '运行Web服务器.light': {'HARNESS_WEB_LIFETIME': '3', 'HARNESS_WEB_NO_OPEN': '1'},
 }
 
 

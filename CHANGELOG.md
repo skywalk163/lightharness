@@ -6,6 +6,52 @@
 
 ## [未发布]
 
+### 2026-10-30 · T-0180 合流 + 编译器路径探测
+
+- **合流 GitCode `23f7cfa`**（T-0180 工作目录集中化：cwd 收拢为会话状态 + originCwd 派生 + 运行时断言）。
+  与本地 `e097a99`（stdlib 同步：`原子写入` / `皆空` 自包含 / 删重复定义）改动的文件集合不重叠
+  （`src/*.light` vs `stdlib/*`），`--no-ff` 合并零冲突。
+- **`运行.py` / `scripts/互举反跑.py`：`LIGHT_MERGE` 默认值改为探测链。**
+  原默认值是写死的 `G:\dswork\duan-light-merge\light-merge`，只有原作者那台 Windows 恰好命中；
+  换机器（Linux / CI / 别人的 Mac）只要不显式设环境变量，就一律「找不到光明编译器」退出 ——
+  表现是整套 `.light` 用例集体飘红，**看着像代码坏了，其实只是路径不属于这台机器**
+  （本次合流后 `tests/test_T0180_工作目录集中化.py` 5 条全红就是这么来的）。
+  现在按顺序探测 `$LIGHT_MERGE` → `../light` → `../light-merge` → `../duan-light-merge/light-merge`
+  → `../../light` → 原 Windows 路径（兜底），显式环境变量仍最优先。
+- **`tests/conftest.py`（新增）：收集前统一探测编译器路径。**
+  13 个词法/回归测试文件各自写了 `LIGHT_MERGE = os.environ.get(..., r"G:\dswork\...")`
+  + `sys.path.insert(0, <LM>/src)`，缺环境变量时在**收集期**就
+  `ModuleNotFoundError: No module named 'lexer'`，21 个测试模块集体 ERROR。
+  这 13 个文件写法本身没错（只是默认值不该写死），所以不改它们：conftest 在收集前
+  把探测结果写回 `os.environ`，它们原样读到正确值。探测口径与 `运行.py` 一致。
+- **`stdlib/列表工具.light` 同步（`builtins.求和` 的转发目标）。**
+  `builtins.求和(数据)` 转发时传 **4 个位置参数**（数据 / 长整上限 / 启用补偿 / 整数进补偿），
+  而本仓那份是 **3 参旧版**，于是 `求和() takes from 1 to 3 positional arguments but 4 were given`。
+  只要 example 里出现 `求和([...])` 就炸 —— `test_R72_C_推导式`、`test_R20_词法边界综合`
+  两条**由绿转红**（用 `git worktree` 在 `be7da46` 上对照确认，不是环境问题）。
+  修法不是手改这份拷贝：把 `列表工具.light` 加进 light 侧 `sync_builtins.py` 的
+  `LH_LIGHT_SYNC`（原先只登记 `内置核心判型.light`），由脚本机械同步；自检也改成
+  **按文件各自的「必须含」判据**（原来一份判型判据套所有同步文件，加文件必误报）。
+  教训：`builtins` 的**转发目标**签名必须与真源刚性咬合，这类关系要机械化，不能靠人记。
+
+### 环境说明（不是代码问题）
+
+- **缺 `lightplugin` 仓会让几十个 example 集体红**：`src/总入口.light` 的
+  `从 生产挂载 导入 挂载全部插件` 报 `No module named '生产挂载'`，而 `运行.py` 对缺
+  `LIGHTPLUGIN` 是**静默容忍**的（路径表返回空），不会告诉你缺的是哪个仓。
+  已在本仓 README 的「环境准备」写明目录布局与该症状。
+- 补齐依赖后仍红的 6 条属**平台能力差异**（`沙箱统一` 缺 landlock/bwrap、
+  `事件循环` 的同 fd 读写派发顺序依赖 selector 实现），在基线 `be7da46` 上同样红。
+- **装了 safe-delete 钩子的环境里，`test_启动配置.py` 会整片假红**（本次实测 12 条）。
+  `run_in_repo` 在仓根写 `_unit_tmp_*.light` 并在 `finally` 里 `os.remove` 它；当运行环境
+  装了「批量删除确认」守卫（`sitecustomize.py` 里 `SAFE_DELETE_BULK_CONFIRM_REQUIRED`，
+  阈值 50 次/轮）时，一轮全量累计到 90 次删除就抛 `SystemExit(1)`，
+  表现为 `SystemExit: 1` 且**单跑该文件必过、混跑必红**——因为计数按进程/turn 重置。
+  判定方法：看 `Captured stderr` 里有没有 `[safe-delete][...]`。
+  这是**执行环境的守卫**，不是本仓缺陷；无守卫的 CI runner 上不会出现。
+
+---
+
 > **R110 收口（2026-10-03，维持 `v0.4.0-rc2`）**：A/C/D 文档交付、B 核实 0 移植、E Windows 本机双全量 0 新增红。零可执行代码改动 → 不 bump 版本号、不新建 tag。lightharness 三远端已推；light-merge 无 R110 改动未推。
 
 ### 新增

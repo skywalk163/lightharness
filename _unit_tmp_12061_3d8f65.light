@@ -1,0 +1,5 @@
+
+从 启动配置 导入 解析启动参数
+段落 主程序:
+  设 o 为 解析启动参数(["--dump-config", "--dump-default-config", "--profile", "p"])
+  打印("不应到达")
