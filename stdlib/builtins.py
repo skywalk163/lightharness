@@ -51,6 +51,14 @@ if _光明目录 not in sys.path:
 import _light_import_hook as _光明钩子
 _光明钩子.install([_光明目录])
 
+# LH-05 / L-241：用户实参（`light run <入口> -- 甲 乙`）内建。
+# 实现放 stdlib/_userargs_runtime.py（与 light 仓真源逐字同体），本文件只做名字接线 ——
+# 参数列表() 的函数体由 scripts/sync_builtins.py 从真源逐字拷贝，会用到这些名字。
+from _userargs_runtime import (
+    用户参数,
+    读注入的用户参数 as _读注入的用户参数,
+)
+
 
 def 读取文件(path: str, encoding: str = 'utf-8') -> str:
     """
@@ -357,7 +365,18 @@ def 设置环境变量(name: str, value: str) -> None:
 
 
 def 参数列表() -> List[str]:
-    """获取命令行参数列表"""
+    """获取命令行参数列表。
+
+    **两种口径（务必看清）**：
+    - `light run <入口> -- 甲 乙`：**返回用户实参** `['甲', '乙']`
+      （CLI 把 `--` 之后的实参注入进来；`--` 之前的 `--backend` 之类选项不在此列）；
+    - 未经 `light run --` 注入时：**维持原语义**，返回进程级 `sys.argv`
+      （含程序名。`.light` 是被 `light run` 加载执行的，此时它其实是 CLI 自己的 argv，
+      所以「想拿用户参数」不要用这条）—— 请用 `用户参数()`。
+    """
+    注入 = _读注入的用户参数()
+    if 注入 is not None:
+        return 注入
     return sys.argv
 
 
@@ -1927,7 +1946,7 @@ __all__ = [
     '扩展名', '分割路径', '分割扩展名',
     
     # 系统函数
-    '环境变量', '设置环境变量', '参数列表',
+    '环境变量', '设置环境变量', '参数列表', '用户参数',
     '退出程序', '当前目录', '切换目录', '执行命令',
 
     # 标准输入输出
