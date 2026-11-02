@@ -178,11 +178,11 @@ A: 网页保存的配置写入项目根目录的 `.env` 文件，可随时手工
 ## 项目定位
 
 - **对标对象**：DeepSeek Harness（`g:\github\deepseek-harness`，TypeScript monorepo，Cordis 插件驱动，50 个 packages + 2 个 apps）
-- **复刻语言**：光明（LightLang）。原作者开发机路径为 `G:\dswork\duan-light-merge\light-merge`，
-  但**不要把这条路径当约定**：`运行.py` 会按 `$LIGHT_MERGE` → `../light` → `../light-merge`
-  → `../duan-light-merge/light-merge` → `../../light` → 上述 Windows 路径 的顺序探测编译器根目录
-  （判定标准：目录下存在 `src/`）。换机器通常什么都不用设；都不中时按提示设 `LIGHT_MERGE` 即可。
-- **工作目录**：`G:\dswork\duan-light-merge\lightharness`（本工程）
+- **复刻语言**：光明（LightLang）。编译器根目录**不要写死任何本地路径**：`运行.py` 会先读
+  `$LIGHT_MERGE` 环境变量，再按仓库相对位置（如 `../light`、`../light-merge`、`../../light`）探测
+  编译器根目录（判定标准：目录下存在 `src/`）。换机器通常什么都不用设；都不中时按提示设
+  `LIGHT_MERGE` 即可。
+- **工作目录**：本仓库根目录（即 `lightharness/` 工程）
 - **复刻口径**：功能等价 1:1 —— 每个模块建一张功能对标卡（原版功能 → 光明实现 → 对齐度 done/partial/none + 证据 + 反跑判据）
 
 ## 范围与进度
