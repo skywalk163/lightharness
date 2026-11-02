@@ -140,7 +140,7 @@ if [ -z "$LP_FOUND" ]; then
         say "       - $cand （无 集成/生产挂载.light）"
     done
     say "     注意：缺这个仓时运行.py 不会立刻报错，而是在 examples 跑到总入口时"
-    say "           抛 `No module named '生产挂载'` —— 看着像代码坏了，其实只是没并排放。"
+    say "           抛 No module named '生产挂载' —— 看着像代码坏了，其实只是没并排放。"
     say "     修法："
     say "       export LIGHTPLUGIN=/path/to/lightplugin"
     say "       # 或把 lightplugin 仓平铺到 $DIR/../lightplugin"
