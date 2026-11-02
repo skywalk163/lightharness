@@ -206,3 +206,4 @@ if [ "$FAIL" -gt 0 ]; then
     exit 1
 fi
 say "smoke: ✓ 全部通过（依赖齐 + 冒烟退出码 0）"
+# T-0238: smoke.sh 一键冒烟（三仓依赖预检 + examples/冒烟.light）
