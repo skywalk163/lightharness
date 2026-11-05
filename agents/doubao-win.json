@@ -1,0 +1,14 @@
+{
+  "name": "doubao-win",
+  "host": "win10",
+  "command": "",
+  "mode": "manual",
+  "manual": true,
+  "abilities": [],
+  "capabilities": [],
+  "repos": {},
+  "launch": "",
+  "worktrees": "",
+  "max_concurrency": 1,
+  "created": "2026-11-05T23:42:09+08:00"
+}
