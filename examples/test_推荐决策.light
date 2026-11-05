@@ -1,0 +1,698 @@
+# test_推荐决策.light —— 0.2.2-rc.1 增量移植判据（B5：推荐决策与行动卡状态机）
+# 运行：python 运行.py examples/test_推荐决策.light
+# 上游：action-cards/src/{projection,index}.ts + plugin-recommendations/src/{index,skill}.ts
+#       + creation-recommendations/src/{index,types}.ts + official-bundles/src/{bundles,plugin-manager}.ts
+#       + plugin-detail/src/{document,files}.ts（锚点 66491b05e3）
+#
+# 反跑判据（改反源码任一期望必须红，见交付记录）：
+#   A（值反）荐应用事件 里「旧卡标 replaced」的条件：字典包含键(旧决策, 旧号) == 假 → == 真
+#              → 「新卡替换未开工旧卡」用例红
+#   B（抛反）荐语言链 里首片长度上界 8 → 9 → 「../x 非法」与「zh-Hans-CN 切链」用例红
+#
+# 覆盖的上游用例（≥60%）：
+#   projection.spec.ts  5/5：准入与忽略坏参数 / 一卡一轮 + replaced / 排队计数 / 继承前缀 / 待报水位 / 视图同一份
+#   act.spec.ts        10/11：未知卡 / 未注册动词 / 非根 / 关闭中 / 访问与只读闸 / 忽略（含 kind 数据）/
+#                            并发合并（本模块不建 Promise，只验 accepted 分支）/ 重复注册 / 对账先于动作 /
+#                            对账失败 / record 合法性 / 种类退役后仍可忽略
+#   tool.spec.ts        6/7：技能载入后声明 / 未知动作 / 空标题 / 细节非法 / 嵌套调用 / 一卡一轮 / 非根
+#   recommendations     8/9：目录 eligible / describe available 与 refused / enable 三态 / 已开 / 错误码 /
+#                            rejected / unconfirmed / 对账
+#   creation.spec.ts    9/29：位置校验 / create 拒非法位置 / 在途取消 / installed 的 keep 与 undo /
+#                            removed 的 restore / 恢复对账 installed / 恢复失败 unconfirmed / 忽略回落 / 收据字段
+#   official-bundles    2/2：模板五条 / 离线目录五条不变量
+#   document.spec.ts    5/5：语言链 / Markdown 去 BOM 与前置块 / meta.detail 合法与非法 / README 回落 /
+#                            图片去向
+
+从 推荐决策 导入 荐初始状态, 荐折叠, 荐应用事件, 荐读视图, 荐校验提议参数, 荐记录决策, 荐裁定忽略, 荐裁定动作, 荐提议准入, 荐插件可荐, 荐插件目录, 荐描述卡, 荐插件开启结果, 荐插件对账, 荐页面位置合法, 荐页面裁定, 荐页面恢复, 荐恢复失败, 荐页面忽略数据, 荐模板包, 荐重写安装模板, 荐剔除退役包, 荐目录条目问题, 荐语言链, 荐校验详情路径, 荐详情路径, 荐Markdown正文, 荐README名, 荐图片去向
+
+# ---- 判据辅助（与 test_应用补丁.light 同款口径）----
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言假(条件, 标签):
+  如果 条件 != 假:
+    抛出 新建 错误("断言假失败: " + 标签)
+
+# 抛错包装：光明不支持匿名「段落() 返回 …」，用具名段落承载
+段落 抛语言链相对():
+  荐语言链("../x")
+
+段落 抛语言链空():
+  荐语言链("")
+
+段落 抛语言链短首片():
+  荐语言链("a")
+
+段落 抛语言链长首片():
+  荐语言链("abcdefghi")
+
+段落 抛语言链坏子片():
+  荐语言链("zh-__")
+
+段落 抛详情路径绝对():
+  荐详情路径("/README.md", "meta.detail")
+
+段落 抛详情路径上跳():
+  荐详情路径("../x.md", "meta.detail")
+
+段落 抛详情路径非MD():
+  荐详情路径("README.txt", "meta.detail")
+
+段落 断言抛含(待测段落, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    待测段落()
+  捕获 异常 为 异常值:
+    设 已抛 为 真
+    设 报文 为 转字符串(异常值)
+    如果 字符串包含(报文, 片段) == 假:
+      抛出 新建 错误("断言抛含失败: " + 标签 + " 报文=" + 报文)
+  如果 已抛 == 假:
+    抛出 新建 错误("应抛错未抛: " + 标签)
+
+# ---- 造事件（对齐 projection.spec.ts 的 turn/call/result/spliced/records 五个工厂）----
+
+段落 造轮起(号, 轮值):
+  返回 {"型": "轮起", "序号": 号, "轮": 轮值}
+
+段落 造调用(号, 调用号, 参数文本, 轮值):
+  返回 {"型": "工具调用", "序号": 号, "轮": 轮值, "调用号": 调用号, "工具名": "propose_action", "参数文本": 参数文本}
+
+段落 造结果(号, 调用号, 是错):
+  返回 {"型": "工具结果", "序号": 号, "调用号": 调用号, "错误": 是错}
+
+段落 造记录(号, 调用号, 动作, 阶段, 数据=空):
+  设 决策 为 {"callId": 调用号, "action": 动作, "phase": 阶段}
+  如果 数据 != 空:
+    设 决策["data"] 为 数据
+  返回 {"型": "插件记录", "序号": 号, "数据": 决策}
+
+段落 造收件(号, 插入, 移除, 目标):
+  设 事件 为 {"型": "收件", "序号": 号, "目标": 目标, "插入": 插入}
+  如果 移除 >= 0:
+    设 事件["移除"] 为 移除
+  返回 事件
+
+段落 造用户消息(号, 来源, 水位):
+  返回 {"型": "用户消息", "序号": 号, "来源": 来源, "水位": 水位}
+
+# 一个合法提议的 JSON（details 里 value 是 string，与 fixture 一致）
+设 参数甲 为 "{\"action\": \"test_action\", \"title\": \"Counter\", \"brief\": \"Keep count visible\", \"details\": {\"value\": \"a\"}}"
+
+段落 主程():
+  # ===== 一、action-cards projection.spec.ts：折叠 =====
+
+  # 1. 成功的 propose_action 在它那一轮成为卡片；失败 / 坏 JSON / 坏参数 / 别的工具 / 无关结果都不产生卡片
+  设 状一 为 荐初始状态()
+  设 列一 为 [造轮起(0, 1), 造调用(1, "c1", 参数甲, 1), 造结果(2, "c1", 假)]
+  设 果一 为 荐折叠(列一, 状一)
+  设 提一 为 果一["视图"]["提议"]
+  设 卡一 为 提一["c1"]
+  断言相等(卡一["callId"], "c1", "1 卡 callId")
+  断言相等(卡一["turn"], 1, "1 卡轮")
+  断言相等(卡一["action"], "test_action", "1 卡动作")
+  断言相等(卡一["title"], "Counter", "1 卡标题")
+  断言相等(卡一["details"], {"value": "a"}, "1 卡细节")
+  断言相等(果一["在途"], {}, "1 在途清空")
+
+  设 列二 为 [造调用(0, "c2", 参数甲, 1), 造结果(1, "c2", 真)]
+  设 果二 为 荐折叠(列二, 荐初始状态())
+  断言相等(果二["视图"]["提议"], {}, "1 失败结果不成卡")
+  设 列三 为 [造调用(0, "c3", "{broken", 1)]
+  设 果三 为 荐折叠(列三, 荐初始状态())
+  断言相等(果三["视图"]["提议"], {}, "1 坏 JSON 不成卡")
+  设 列四 为 [造调用(0, "c4", "{\"action\": \"test_action\", \"title\": \" \", \"brief\": \"x\", \"details\": {}}", 1)]
+  设 果四 为 荐折叠(列四, 荐初始状态())
+  断言相等(果四["视图"]["提议"], {}, "1 空标题不成卡")
+  设 列五 为 [造调用(0, "c5", "{\"action\": \"test_action\", \"title\": \"t\", \"brief\": \"b\", \"details\": \"text\"}", 1)]
+  设 果五 为 荐折叠(列五, 荐初始状态())
+  断言相等(果五["视图"]["提议"], {}, "1 非对象 details 不成卡")
+  设 列六 为 [造调用(0, "c6", 参数甲, 1)]
+  设 列六改 为 [造调用(0, "c6", 参数甲, 1)]
+  # 换成别的工具名
+  设 列六二 为 [{"型": "工具调用", "序号": 0, "轮": 1, "调用号": "c6", "工具名": "other_tool", "参数文本": 参数甲}]
+  设 果六 为 荐折叠(列六二, 荐初始状态())
+  断言相等(果六["视图"]["提议"], {}, "1 别的工具不成卡")
+
+  # 2. 标题去首尾空白；未结算的调用留在「在途」，下一轮开头清空
+  设 果七 为 荐折叠([造调用(0, "c7", "{\"action\": \"test_action\", \"title\": \"  Counter  \", \"brief\": \"b\", \"details\": {}}", 1), 造结果(1, "c7", 假)], 荐初始状态())
+  设 卡七 为 果七["视图"]["提议"]["c7"]
+  断言相等(卡七["title"], "Counter", "2 标题去空白")
+
+  设 果八 为 荐折叠([造调用(0, "c8", 参数甲, 1)], 荐初始状态())
+  断言相等(字典键列表(果八["在途"]), ["c8"], "2 未结算留在在途")
+  设 果九 为 荐应用事件(果八, 造轮起(1, 2))
+  断言相等(果九["在途"], {}, "2 下一轮清空在途")
+
+  # 3. 一卡一轮：同轮的第二个成功调用不换卡，只清在途
+  设 果十 为 荐折叠([造轮起(0, 1), 造调用(1, "a", 参数甲, 1), 造结果(2, "a", 假), 造调用(3, "b", 参数甲, 1), 造结果(4, "b", 假)], 荐初始状态())
+  断言相等(字典键列表(果十["视图"]["提议"]), ["a"], "3 一卡一轮只留首卡")
+  断言相等(果十["在途"], {}, "3 同轮第二卡清在途")
+
+  # 4. 新轮的新卡把「未开工」旧卡标 replaced
+  设 果十一 为 荐折叠([造轮起(0, 1), 造调用(1, "a", 参数甲, 1), 造结果(2, "a", 假), 造轮起(3, 2), 造调用(4, "c", 参数甲, 2), 造结果(5, "c", 假)], 荐初始状态())
+  设 决十一 为 果十一["视图"]["决策"]
+  断言相等(决十一["a"], {"callId": "a", "action": "test_action", "phase": "replaced"}, "4 旧卡被 replaced")
+  断言相等(字典包含键(决十一, "c"), 假, "4 新卡无决策")
+
+  # 5. 已开工（有决策）的旧卡不被 replaced —— 种类已经在做这件事了
+  设 状开工 为 荐折叠([造记录(0, "a", "test_action", "creating")], 果十一)
+  设 果十二 为 荐折叠([造轮起(1, 2), 造调用(2, "d", 参数甲, 2), 造结果(3, "d", 假)], 果十)
+  设 决十二 为 果十二["视图"]["决策"]
+  断言相等(决十二["a"]["phase"], "replaced", "5 未开工旧卡被替换")
+  # 把旧卡先记成 creating，再出新卡：creating 保留
+  设 果十三 为 荐折叠([造轮起(0, 1), 造调用(1, "a", 参数甲, 1), 造结果(2, "a", 假), 造记录(3, "a", "test_action", "creating"), 造轮起(4, 2), 造调用(5, "c", 参数甲, 2), 造结果(6, "c", 假)], 荐初始状态())
+  断言相等(果十三["视图"]["决策"]["a"]["phase"], "creating", "5 开工旧卡不被替换")
+
+  # 6. 替换跨种类：别的 action 的新卡也替换未开工旧卡
+  设 参数乙 为 "{\"action\": \"other_action\", \"title\": \"Other\", \"brief\": \"b\", \"details\": {}}"
+  设 果十四 为 荐折叠([造轮起(0, 1), 造调用(1, "a", 参数甲, 1), 造结果(2, "a", 假), 造轮起(3, 2), 造调用(4, "d", 参数乙, 2), 造结果(5, "d", 假)], 荐初始状态())
+  断言相等(果十四["视图"]["决策"]["a"]["phase"], "replaced", "6 跨种类替换")
+
+  # 7. 排队计数：只认 next-turn 目标，移除可回退，下限 0
+  设 果十五 为 荐折叠([造收件(0, 1, -1, "next-step"), 造收件(1, 2, -1, "next-turn")], 荐初始状态())
+  断言相等(果十五["排队"], 2, "7 只计 next-turn")
+  设 果十六 为 荐折叠([造收件(0, 2, -1, "next-turn"), 造收件(1, 0, 2, "next-turn")], 荐初始状态())
+  断言相等(果十六["排队"], 0, "7 移除回落")
+  设 果十七 为 荐折叠([造收件(0, 0, 5, "next-turn")], 荐初始状态())
+  断言相等(果十七["排队"], 0, "7 移除下限 0")
+
+  # 8. 继承前缀：序号早于继承点的事件一律不动状态
+  设 状继 为 荐初始状态(9)
+  设 果十八 为 荐折叠([造轮起(0, 1), 造调用(1, "a", 参数甲, 1), 造结果(2, "a", 假)], 状继)
+  断言相等(果十八, 状继, "8 继承前缀不产生卡")
+
+  # 9. 待报水位：记录进待报，卡片自己的状态通知把 ≤ 水位的清掉；用户消息不清
+  设 果十九 为 荐折叠([造记录(0, "a", "test_action", "creating"), 造记录(1, "b", "test_action", "dismissed")], 荐初始状态())
+  断言相等(果十九["待报"], {"a": 0, "b": 1}, "9 决策进待报")
+  设 果二十 为 荐应用事件(果十九, 造用户消息(9, "action-cards", 0))
+  断言相等(果二十["待报"], {"b": 1}, "9 水位清 a")
+  设 果二一 为 荐应用事件(果十九, 造用户消息(10, "user", 99))
+  断言相等(果二一["待报"], {"a": 0, "b": 1}, "9 用户消息不清待报")
+
+  # 10. 坏记录跳过（phase 空），后续读不受影响；视图就是 state 里那一份
+  设 果二二 为 荐折叠([造记录(0, "a", "test_action", "")], 荐初始状态())
+  断言相等(果二二["视图"]["决策"], {}, "10 坏记录跳过")
+  设 果二三 为 荐折叠([造记录(0, "a", "test_action", "creating")], 荐初始状态())
+  设 视二三 为 荐读视图(果二三)
+  断言相等(视二三["决策"]["a"]["phase"], "creating", "10 视图即 state 视图")
+  设 果二四 为 荐应用事件(果二三, 造收件(1, 1, -1, "next-turn"))
+  设 视二四 为 荐读视图(果二四)
+  断言相等(视二四["决策"]["a"]["phase"], "creating", "10 内部变化不换视图内容")
+
+  # ===== 二、action-cards act.spec.ts：record / dismiss / perform =====
+
+  # 11. record 只认已注册或曾注册动作；派生阶段不许记
+  设 注一 为 荐记录决策(果二三, {"callId": "a", "action": "other_action", "phase": "done"}, ["test_action"], [])
+  断言相等(注一["成"], 假, "11 未注册动作拒记")
+  断言相等(注一["因"], "action-cards: cannot record a decision for unregistered action \"other_action\"", "11 未注册文案")
+  设 注二 为 荐记录决策(果二三, {"callId": "a", "action": "test_action", "phase": "replaced"}, ["test_action"], [])
+  断言相等(注二["成"], 假, "11 派生阶段拒记")
+  断言相等(注二["因"], "action-cards: phase \"replaced\" is derived from the log and cannot be recorded", "11 派生文案")
+  设 注三 为 荐记录决策(果二三, {"callId": "a", "action": "test_action", "phase": "interrupted"}, ["test_action"], ["test_action"])
+  断言相等(注三["成"], 真, "11 退役种类仍可记")
+
+  # 12. dismiss：未开工卡记 dismissed（带 kind 数据）；已记终态或非开出阶段则 settle 原决策
+  设 提甲 为 {"callId": "call-1", "action": "test_action", "details": {"value": "a"}}
+  设 忽一 为 荐裁定忽略(提甲, 空, ["failed"], {"value": "a", "choice": "later"})
+  断言相等(忽一["状态"], "settled", "12 未开工忽略 settled")
+  断言相等(忽一["决策"]["phase"], "dismissed", "12 忽略阶段")
+  断言相等(忽一["决策"]["data"], {"value": "a", "choice": "later"}, "12 忽略带数据")
+  设 忽二 为 荐裁定忽略(提甲, {"callId": "call-1", "action": "test_action", "phase": "dismissed"}, ["failed"], 空)
+  断言相等(忽二["决策"]["phase"], "dismissed", "12 已终态 settle 原决策")
+  设 忽三 为 荐裁定忽略(提甲, {"callId": "call-1", "action": "test_action", "phase": "running", "data": {"step": 1}}, ["failed"], 空)
+  断言相等(忽三["决策"]["phase"], "running", "12 非开出阶段 settle 原决策")
+  设 忽四 为 荐裁定忽略(提甲, {"callId": "call-1", "action": "test_action", "phase": "failed"}, ["failed"], {"value": "a"})
+  断言相等(忽四["决策"]["phase"], "dismissed", "12 开出阶段可再忽略")
+  设 忽五 为 荐裁定忽略(提甲, 空, [], 空)
+  断言相等(忽五["决策"]["phase"], "dismissed", "12 无 kind 数据也记 dismissed")
+  断言相等(字典包含键(忽五["决策"], "data"), 假, "12 无 kind 数据不带 data")
+
+  # 13. perform：未注册 / 缺全局许可 / 终态 / 只读 四道闸
+  设 执一 为 荐裁定动作(空, {"writes": 假}, {"已注册": 假})
+  断言相等(执一["因"], "unavailable", "13 未注册 unavailable")
+  设 执二 为 荐裁定动作(空, {"writes": 假}, {"全局许可": 假})
+  断言相等(执二["因"], "access-denied", "13 缺全局许可")
+  设 执三 为 荐裁定动作({"callId": "call-1", "action": "test_action", "phase": "dismissed"}, {"writes": 假}, {})
+  断言相等(执三["状态"], "settled", "13 终态不再执行")
+  设 执四 为 荐裁定动作(空, {"writes": 真}, {"只读": 真})
+  断言相等(执四["因"], "read-only", "13 只读拒绝 writes 动词")
+  设 执五 为 荐裁定动作(空, {"writes": 真}, {"只读": 假})
+  断言相等(执五["状态"], "交种类处理", "13 可写则交种类")
+  设 执六 为 荐裁定动作(空, {"writes": 假}, {"只读": 真})
+  断言相等(执六["状态"], "交种类处理", "13 非 writes 动词不受只读限制")
+
+  # ===== 三、action-cards tool.spec.ts：propose_action 准入八道闸 =====
+
+  # 14. 每道闸的错误码与文案（逐条对齐上游 tool.spec.ts）
+  设 基上 为 {"种类技能": {"test_action": "test-skill"}, "已注册动作表": ["test_action"], "本轮": 1,
+    "本轮已载技能": {"轮": 1, "技能": ["test-skill"]}, "标题": "Counter", "简报": "Keep count", "邀请": "Invite."}
+  设 准一 为 荐提议准入(基上, {"action": "test_action"})
+  断言相等(准一["成"], 真, "14 八闸全过")
+  断言相等(准一["值"]["title"], "Counter", "14 返回标题")
+  断言相等(准一["值"]["invitation"], "Invite.", "14 返回邀请语")
+
+  设 上嵌 为 荐复制上下文(基上)
+  设 上嵌["从代码"] 为 真
+  设 准二 为 荐提议准入(上嵌, {"action": "test_action"})
+  断言相等(准二["码"], "ACTION_CARD_NESTED", "14 嵌套调用")
+  断言相等(准二["报"], "Call propose_action directly, not from code.", "14 嵌套文案")
+
+  设 上根 为 荐复制上下文(基上)
+  设 上根["是根"] 为 假
+  设 准三 为 荐提议准入(上根, {"action": "test_action"})
+  断言相等(准三["码"], "ACTION_CARD_ROOT", "14 非根")
+  断言相等(准三["报"], "Cards are offered in the main conversation only.", "14 非根文案")
+
+  设 上排 为 荐复制上下文(基上)
+  设 上排["排队"] 为 2
+  设 准四 为 荐提议准入(上排, {"action": "test_action"})
+  断言相等(准四["码"], "ACTION_CARD_QUEUED", "14 排队达上限")
+  设 上排二 为 荐复制上下文(基上)
+  设 上排二["排队"] 为 3
+  设 上排二["上限"] 为 3
+  设 准五 为 荐提议准入(上排二, {"action": "test_action"})
+  断言相等(准五["码"], "ACTION_CARD_QUEUED", "14 上限可配")
+
+  设 准六 为 荐提议准入(基上, {"action": "nope"})
+  断言相等(准六["码"], "ACTION_CARD_UNKNOWN", "14 未知动作")
+  断言相等(准六["报"], "Unknown action \"nope\". Registered actions: test_action.", "14 未知动作文案")
+  设 上无名 为 荐复制上下文(基上)
+  设 上无名["已注册动作表"] 为 []
+  设 准七 为 荐提议准入(上无名, {"action": "nope"})
+  断言相等(准七["报"], "Unknown action \"nope\". Registered actions: none.", "14 无已注册动作文案")
+
+  设 上技 为 荐复制上下文(基上)
+  设 上技["本轮"] 为 2
+  设 准八 为 荐提议准入(上技, {"action": "test_action"})
+  断言相等(准八["码"], "ACTION_CARD_SKILL", "14 本轮未载技能")
+  断言相等(准八["报"], "Load skill test-skill first, then call propose_action.", "14 技能文案")
+
+  设 上标 为 荐复制上下文(基上)
+  设 上标["标题"] 为 " "
+  设 准九 为 荐提议准入(上标, {"action": "test_action"})
+  断言相等(准九["码"], "ACTION_CARD_BLANK", "14 空标题")
+  断言相等(准九["报"], "Write a title and a brief.", "14 空标题文案")
+  设 上简 为 荐复制上下文(基上)
+  设 上简["简报"] 为 ""
+  设 准十 为 荐提议准入(上简, {"action": "test_action"})
+  断言相等(准十["码"], "ACTION_CARD_BLANK", "14 空简报")
+
+  设 上细 为 荐复制上下文(基上)
+  设 上细["细节问题"] 为 "Invalid details: details.value: expected string"
+  设 准十一 为 荐提议准入(上细, {"action": "test_action"})
+  断言相等(准十一["码"], "ACTION_CARD_DETAILS", "14 细节非法")
+  断言相等(准十一["报"], "Invalid details: details.value: expected string", "14 细节文案透传")
+
+  设 上限 为 荐复制上下文(基上)
+  设 上限["已准入轮"] 为 1
+  设 准十二 为 荐提议准入(上限, {"action": "test_action"})
+  断言相等(准十二["码"], "ACTION_CARD_LIMIT", "14 本卡已准入")
+  设 上限二 为 荐复制上下文(基上)
+  设 上限二["本轮已有卡"] 为 真
+  设 准十三 为 荐提议准入(上限二, {"action": "test_action"})
+  断言相等(准十三["码"], "ACTION_CARD_LIMIT", "14 本轮日志里已有卡")
+  断言相等(准十三["报"], "One card per turn; the earlier card stands.", "14 一卡一轮文案")
+
+  # ===== 四、plugin-recommendations：目录 / describe / enable =====
+
+  设 包甲 为 {"name": "official-search", "official": 真, "optional": 真, "availability": "installation", "enabled": 假, "meta": {"title": {"en": "Search", "zh": "搜索"}, "description": "Search past conversations."}}
+  设 包禁 为 {"name": "custom", "official": 假, "optional": 真, "availability": "installation", "enabled": 假}
+  设 包缺 为 {"name": "missing", "official": 真, "optional": 真, "availability": "missing", "enabled": 假}
+  设 包非选 为 {"name": "on-demand", "official": 真, "optional": 假, "availability": "installation", "enabled": 假}
+  设 包只读 为 {"name": "read-only", "official": 真, "optional": 真, "availability": "installation", "enabled": 假, "readOnlyReason": "management-required"}
+  设 包错 为 {"name": "failed", "official": 真, "optional": 真, "availability": "installation", "enabled": 假, "error": {"code": "operation-error", "diagnostic": "load failed"}}
+  设 包集 为 [包甲, 包禁, 包缺, 包非选, 包只读, 包错]
+
+  # 15. eligible：official + optional + 可用 + 无只读理由 + 无 error
+  断言相等(荐插件可荐(包甲), 真, "15 合格包")
+  断言相等(荐插件可荐(包禁), 假, "15 非官方")
+  断言相等(荐插件可荐(包缺), 假, "15 availability=missing")
+  断言相等(荐插件可荐(包非选), 假, "15 非 optional")
+  断言相等(荐插件可荐(包只读), 假, "15 只读理由")
+  断言相等(荐插件可荐(包错), 假, "15 error")
+  设 包无元 为 {"name": "bare", "official": 真, "optional": 真, "availability": "installation", "enabled": 真}
+  断言相等(荐插件可荐(包无元), 真, "15 无 meta 也合格")
+
+  # 16. 目录：只列合格项；title/description 逐级回落
+  设 目一 为 荐插件目录(包集)
+  断言相等(列表长度(目一), 1, "16 目录只列合格项")
+  设 目首 为 列表获取(目一, 0)
+  断言相等(目首["name"], "official-search", "16 目录名")
+  断言相等(目首["title"], {"en": "Search", "zh": "搜索"}, "16 目录标题取 meta.title")
+  断言相等(目首["description"], "Search past conversations.", "16 目录描述取 meta.description")
+  断言相等(目首["enabled"], 假, "16 目录启用态")
+  设 包述 为 {"name": "described", "official": 真, "optional": 真, "availability": "installation", "enabled": 假, "description": "History search"}
+  设 目二 为 荐插件目录([包述, 包无元])
+  设 目二首 为 列表获取(目二, 0)
+  断言相等(目二首["title"], "described", "16 无 meta 标题回落到包名")
+  断言相等(目二首["description"], "History search", "16 无 meta 描述回落到包 description")
+  设 目二末 为 列表获取(目二, 1)
+  断言相等(目二末["title"], "bare", "16 两者都无标题用包名")
+  断言相等(目二末["description"], "", "16 两者都无描述用空串")
+
+  # 17. describe：unknown / unavailable / not-live-root / closing / available
+  设 提卡 为 {"callId": "call-plugin-1", "action": "enable_official_plugin", "details": {"name": "official-search"}}
+  设 描一 为 荐描述卡(提卡, [包甲])
+  断言相等(描一["状态"], "available", "17 可用卡")
+  断言相等(描一["标题"], {"en": "Search", "zh": "搜索"}, "17 卡标题")
+  断言相等(描一["描述"], "Search past conversations.", "17 卡描述")
+  断言相等(描一["启用"], 假, "17 卡启用态")
+  设 描二 为 荐描述卡(空, [包甲])
+  断言相等(描二["因"], "unknown", "17 无提议 unknown")
+  设 提页 为 {"callId": "call-page", "action": "create_personalized_page", "details": {"slot": "page"}}
+  设 描三 为 荐描述卡(提页, [包甲])
+  断言相等(描三["因"], "unknown", "17 别的种类 unknown")
+  设 提无 为 {"callId": "call-n", "action": "enable_official_plugin", "details": {}}
+  设 描四 为 荐描述卡(提无, [包甲])
+  断言相等(描四["因"], "unknown", "17 details 无 name unknown")
+  设 描五 为 荐描述卡(提卡, [])
+  断言相等(描五["因"], "unavailable", "17 目录空 unavailable")
+  设 描六 为 荐描述卡(提卡, [包禁])
+  断言相等(描六["因"], "unavailable", "17 非官方 unavailable")
+  设 描七 为 荐描述卡(提卡, [包甲], {"存活": 假})
+  断言相等(描七["因"], "closing", "17 关闭中")
+  设 描八 为 荐描述卡(提卡, [包甲], {"是根": 假})
+  断言相等(描八["因"], "not-live-root", "17 非根")
+  设 包无元二 为 {"name": "official-search", "official": 真, "optional": 真, "availability": "installation", "enabled": 真}
+  设 描九 为 荐描述卡(提卡, [包无元二])
+  断言相等(描九["标题"], "official-search", "17 无 meta 标题回落")
+  断言相等(描九["描述"], "", "17 无描述回落空串")
+
+  # 18. enable 阶段机：首次 enabled / 二次幂等 / 已开 already-enabled / failed 可重试 / restart-required / rejected
+  设 决零 为 {"callId": "call-plugin-1", "action": "enable_official_plugin"}
+  设 变应用 为 {"申请": "applied"}
+  设 开一 为 荐插件开启结果(决零, 包甲, 变应用)
+  断言相等(开一["状态"], "settled", "18 首次开启 settled")
+  断言相等(开一["决策"]["phase"], "enabled", "18 首次开启 enabled")
+  断言相等(开一["决策"]["data"], {"errorCode": 空}, "18 enabled 带空错误码")
+  设 开二 为 荐插件开启结果(开一["决策"], 包甲, 变应用)
+  断言相等(开二["决策"]["phase"], "enabled", "18 二次幂等不重开")
+  设 包已开 为 {"name": "official-search", "official": 真, "optional": 真, "availability": "installation", "enabled": 真}
+  设 开三 为 荐插件开启结果(决零, 包已开, 变应用)
+  断言相等(开三["决策"]["phase"], "already-enabled", "18 已开 already-enabled")
+  设 变重启 为 {"申请": "restart-required"}
+  设 开四 为 荐插件开启结果(决零, 包甲, 变重启)
+  断言相等(开四["决策"]["phase"], "enabled", "18 重启需求仍算 enabled")
+  断言相等(开四["决策"]["data"]["application"], "restart-required", "18 记 application")
+  设 变失败 为 {"申请": "failed", "错误码": "incompatible-version"}
+  设 开五 为 荐插件开启结果(决零, 包甲, 变失败)
+  断言相等(开五["决策"]["phase"], "failed", "18 失败记 failed")
+  断言相等(开五["决策"]["data"], {"errorCode": "incompatible-version"}, "18 只记错误码不记诊断")
+  设 决失 为 {"callId": "call-plugin-1", "action": "enable_official_plugin", "phase": "failed"}
+  设 开六 为 荐插件开启结果(决失, 包甲, 变应用)
+  断言相等(开六["决策"]["phase"], "enabled", "18 failed 可重试")
+  设 变拒 为 {"申请": "rejected"}
+  设 开七 为 荐插件开启结果(决零, 包甲, 变拒)
+  断言相等(开七["决策"]["data"], {"errorCode": "operation-error"}, "18 拒绝记通用码")
+  设 开八 为 荐插件开启结果(决零, 包禁, 变应用)
+  断言相等(开八["因"], "unavailable", "18 非合格包拒开")
+  设 开九 为 荐插件开启结果(决零, 空, 变应用)
+  断言相等(开九["因"], "unavailable", "18 目录里没有该包")
+  设 开十 为 荐插件开启结果(决零, 包甲, 空)
+  断言相等(开十["状态"], "unconfirmed", "18 卸载打断记 unconfirmed")
+  断言相等(开十["因"], "closing", "18 unconfirmed 原因")
+  设 决未 为 {"callId": "call-plugin-1", "action": "enable_official_plugin", "phase": "unconfirmed"}
+  设 开十一 为 荐插件开启结果(决未, 包已开, 变应用)
+  断言相等(开十一["决策"]["phase"], "enabled", "18 unconfirmed 后已开记 enabled")
+
+  # 19. 对账：只把 unconfirmed 且现在已开的翻成 enabled
+  设 对一 为 荐插件对账("unconfirmed", 包已开)
+  断言相等(对一["成"], 真, "19 unconfirmed 对账成")
+  断言相等(对一["阶段"], "enabled", "19 对账阶段")
+  设 对二 为 荐插件对账("failed", 包已开)
+  断言相等(对二["成"], 假, "19 非 unconfirmed 不对账")
+  设 对三 为 荐插件对账("unconfirmed", 包甲)
+  断言相等(对三["成"], 假, "19 尚未开启不对账")
+
+  # ===== 五、creation-recommendations：位置、动词、对账 =====
+
+  # 20. 位置校验：三槽位 + 自定义位置 1..1000
+  断言相等(荐页面位置合法({"slot": "page"}), 真, "20 page 合法")
+  断言相等(荐页面位置合法({"slot": "sidebar-left"}), 真, "20 sidebar-left 合法")
+  断言相等(荐页面位置合法({"slot": "sidebar-right"}), 真, "20 sidebar-right 合法")
+  断言相等(荐页面位置合法({"slot": "bottom"}), 假, "20 未知槽位")
+  断言相等(荐页面位置合法({"slot": "page", "customLocation": "左侧栏，放在会话里"}), 真, "20 自定义位置")
+  断言相等(荐页面位置合法({"slot": "page", "customLocation": "  "}), 假, "20 空自定义位置")
+  断言相等(荐页面位置合法({"slot": "page", "customLocation": 7}), 假, "20 非字符串自定义位置")
+  设 长文 为 字符串重复("x", 1001)
+  断言相等(荐页面位置合法({"slot": "page", "customLocation": 长文}), 假, "20 超 1000 字")
+  设 满文 为 字符串重复("x", 1000)
+  断言相等(荐页面位置合法({"slot": "page", "customLocation": 满文}), 真, "20 正好 1000 字")
+  断言相等(荐页面位置合法(空), 假, "20 非对象")
+
+  # 21. create 必须先有合法位置；无收据 + create → 记 creating 的 accepted
+  设 裁一 为 荐页面裁定(空, "create", 假, 假, 假)
+  断言相等(裁一["状态"], "refused", "21 create 非法位置")
+  断言相等(裁一["因"], "invalid-location", "21 非法位置文案")
+  设 裁二 为 荐页面裁定(空, "create", 真, 假, 假)
+  断言相等(裁二["状态"], "accepted", "21 create accepted")
+  断言相等(裁二["阶段"], "creating", "21 记 creating")
+  断言相等(裁二["决策"]["action"], "create_personalized_page", "21 决策动作名")
+  设 裁三 为 荐页面裁定(空, "keep", 真, 假, 假)
+  断言相等(裁三["因"], "unavailable", "21 无收据时非 create 动词")
+
+  # 22. 在途作业：一律 accepted，cancel 且未到 installing 才真要取消
+  设 收进 为 {"callId": "call-1", "action": "create_personalized_page", "phase": "creating", "slot": "page", "bundleName": "@dsh-local/view-1"}
+  设 裁四 为 荐页面裁定(收进, "cancel", 真, 真, 假)
+  断言相等(裁四["状态"], "accepted", "22 在途取消 accepted")
+  断言相等(裁四["取消"], 真, "22 creating 可取消")
+  设 收装 为 {"callId": "call-1", "action": "create_personalized_page", "phase": "installing", "slot": "page", "bundleName": "@dsh-local/view-1"}
+  设 裁五 为 荐页面裁定(收装, "cancel", 真, 真, 假)
+  断言相等(裁五["取消"], 假, "22 installing 不可取消")
+  设 裁六 为 荐页面裁定(收进, "create", 真, 真, 假)
+  断言相等(裁六["状态"], "accepted", "22 在途再点 create 也 accepted")
+
+  # 23. installed / kept：keep 与 undo；其它动词 settle 原收据
+  设 收装好 为 {"callId": "call-1", "action": "create_personalized_page", "phase": "installed", "slot": "page", "bundleName": "@dsh-local/view-1"}
+  设 裁七 为 荐页面裁定(收装好, "create", 真, 假, 真)
+  断言相等(裁七["状态"], "settled", "23 installed 后 create 不再执行")
+  断言相等(裁七["决策"]["phase"], "installed", "23 settle 原收据")
+  设 裁八 为 荐页面裁定(收装好, "keep", 真, 假, 真)
+  断言相等(裁八["决策"]["phase"], "kept", "23 keep 记 kept")
+  设 裁九 为 荐页面裁定(收装好, "undo", 真, 假, 真)
+  断言相等(裁九["决策"]["phase"], "removed", "23 undo 记 removed")
+  设 收无包 为 {"callId": "call-1", "action": "create_personalized_page", "phase": "installed", "slot": "page"}
+  设 裁十 为 荐页面裁定(收无包, "undo", 真, 假, 真)
+  断言相等(裁十["因"], "unavailable", "23 无 bundleName 不可 undo")
+
+  # 24. removed：restore 已装则 settled installed，未装则交 installing；其它动词 settle
+  设 收撤 为 {"callId": "call-1", "action": "create_personalized_page", "phase": "removed", "slot": "page", "bundleName": "@dsh-local/view-1"}
+  设 裁十一 为 荐页面裁定(收撤, "restore", 真, 假, 真)
+  断言相等(裁十一["决策"]["phase"], "installed", "24 restore 已装 settled")
+  设 裁十二 为 荐页面裁定(收撤, "restore", 真, 假, 假)
+  断言相等(裁十二["状态"], "accepted", "24 restore 未装交安装")
+  断言相等(裁十二["阶段"], "installing", "24 restore 记 installing")
+  设 裁十三 为 荐页面裁定(收撤, "create", 真, 假, 假)
+  断言相等(裁十三["决策"]["phase"], "removed", "24 removed 后 create settle")
+  设 裁十四 为 荐页面裁定(收撤, "cancel", 真, 假, 假)
+  断言相等(裁十四["决策"]["phase"], "removed", "24 removed 后 cancel settle")
+
+  # 25. recover：已装事实把 creating/installing/unconfirmed 翻成 installed；
+  #     否则 creating/installing/unconfirmed → interrupted；非对账阶段不产出
+  设 收甲 为 {"callId": "a", "phase": "creating", "slot": "page", "bundleName": "@dsh-local/view-a"}
+  设 收乙 为 {"callId": "b", "phase": "installing", "slot": "page", "bundleName": "@dsh-local/view-b"}
+  设 收丙 为 {"callId": "c", "phase": "unconfirmed", "slot": "page", "bundleName": "@dsh-local/view-c"}
+  设 收丁 为 {"callId": "d", "phase": "installed", "slot": "page", "bundleName": "@dsh-local/view-d"}
+  设 收戊 为 {"callId": "e", "phase": "failed", "slot": "page", "bundleName": "@dsh-local/view-e"}
+  设 恢一 为 荐页面恢复([收甲, 收乙, 收丙, 收丁, 收戊], ["@dsh-local/view-a"])
+  断言相等(列表长度(恢一), 3, "25 只产出可对账且变了的")
+  设 恢首 为 列表获取(恢一, 0)
+  断言相等(恢首["callId"], "a", "25 首条是 a")
+  断言相等(恢首["phase"], "installed", "25 a 已装翻 installed")
+  设 恢次 为 列表获取(恢一, 1)
+  断言相等(恢次["callId"], "b", "25 次条是 b")
+  断言相等(恢次["phase"], "interrupted", "25 b 未装翻 interrupted")
+  设 恢三 为 列表获取(恢一, 2)
+  断言相等(恢三["callId"], "c", "25 三条是 c")
+  断言相等(恢三["phase"], "interrupted", "25 c unconfirmed 翻 interrupted")
+  设 恢二 为 荐页面恢复([收甲, 收乙, 收丙], [], ["b"])
+  断言相等(列表长度(恢二), 2, "25 在途作业跳过")
+  设 恢四 为 荐页面恢复([收甲], [], [])
+  断言相等(列表长度(恢四), 1, "25 无在途则全部可对账")
+
+  # 26. 恢复失败：未收口的一律 unconfirmed，已 installed 的留在原位
+  #     （上游 页面重开阶段 不含 unconfirmed，所以收丙 不参与这一支）
+  设 败一 为 荐恢复失败([收甲, 收乙, 收丙, 收丁, 收戊], [])
+  断言相等(列表长度(败一), 3, "26 只翻未收口的三个")
+  设 败首 为 列表获取(败一, 0)
+  断言相等(败首["phase"], "unconfirmed", "26 失败记 unconfirmed")
+  设 败二 为 荐恢复失败([收甲, 收乙], ["a"])
+  断言相等(列表长度(败二), 1, "26 在途作业跳过")
+
+  # 27. 忽略数据：非法槽位回落到提议里的；自定义位置非法则不带
+  设 提页甲 为 {"callId": "call-1", "action": "create_personalized_page", "details": {"slot": "sidebar-left"}}
+  设 忽六 为 荐页面忽略数据(提页甲, {"slot": "page", "customLocation": "右侧"})
+  断言相等(忽六["slot"], "page", "27 合法槽位采用")
+  断言相等(忽六["customLocation"], "右侧", "27 自定义位置采用")
+  设 忽七 为 荐页面忽略数据(提页甲, {"slot": "bottom"})
+  断言相等(忽七["slot"], "sidebar-left", "27 非法槽位回落")
+  断言相等(字典包含键(忽七, "customLocation"), 假, "27 无自定义位置不带键")
+  设 忽八 为 荐页面忽略数据(提页甲, {"slot": "page", "customLocation": "  "})
+  断言相等(字典包含键(忽八, "customLocation"), 假, "27 空白自定义位置不带键")
+  设 忽九 为 荐页面忽略数据(提页甲, 空)
+  断言相等(忽九["slot"], "sidebar-left", "27 无载荷用提议槽位")
+
+  # ===== 六、official-bundles：模板与目录 =====
+
+  # 28. 五个 profile 模板：除 sdk-minimal 外都叠在 base 上
+  设 模一 为 荐模板包("acp")
+  断言相等(模一, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-acp-app"], "28 acp 模板")
+  设 模二 为 荐模板包("web")
+  断言相等(模二, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"], "28 web 模板")
+  设 模三 为 荐模板包("headless")
+  断言相等(模三, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"], "28 headless 模板")
+  设 模四 为 荐模板包("sdk")
+  断言相等(模四, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-sdk-app"], "28 sdk 模板")
+  设 模五 为 荐模板包("sdk-minimal")
+  断言相等(模五, ["@deepseek-ai/dsh-sdk-minimal"], "28 sdk-minimal 独立")
+  断言相等(荐模板包("nope"), 空, "28 无该模板")
+
+  # 29. 安装方旧元组整条命中才重写；其它列表原样
+  设 旧头 为 ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless"]
+  设 重一 为 荐重写安装模板("headless", 旧头)
+  断言相等(重一, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"], "29 旧元组被重写")
+  设 重二 为 荐重写安装模板("headless", ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"])
+  断言相等(重二, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"], "29 已正确的不动")
+  设 重三 为 荐重写安装模板("web", ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"])
+  断言相等(重三, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"], "29 无旧元组的模式原样")
+  设 重四 为 荐重写安装模板("headless", ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless", "@deepseek-ai/dsh-web-app"])
+  断言相等(重四, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless", "@deepseek-ai/dsh-web-app"], "29 顺序不同不重写")
+
+  # 30. 退役包剔除
+  设 剔一 为 荐剔除退役包(["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-experimental-schedule-bundle", "@deepseek-ai/dsh-web-app"])
+  断言相等(剔一, ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"], "30 退役包被剔除")
+  设 剔二 为 荐剔除退役包(["@deepseek-ai/dsh-base"])
+  断言相等(剔二, ["@deepseek-ai/dsh-base"], "30 无退役包不动")
+
+  # 31. 目录条目五条不变量：包名、无 version、双语 title/description、内联 svg base64
+  设 目条目 为 {"packageName": "@deepseek-ai/dsh-cua-bundle", "platforms": ["darwin"], "listedByDefault": 假,
+    "meta": {"title": {"en": "Computer use", "zh": "Computer Use"}, "description": {"en": "macOS only", "zh": "仅 macOS"}, "icon": "data:image/svg+xml;base64,PHN2Zz4="}}
+  断言相等(荐目录条目问题(目条目), 空, "31 合法条目")
+  设 目缺名 为 {"meta": {"title": {"en": "a", "zh": "b"}, "description": {"en": "c", "zh": "d"}, "icon": "data:image/svg+xml;base64,x"}}
+  断言相等(荐目录条目问题(目缺名), "目录条目缺少 packageName", "31 缺包名")
+  设 目版本 为 {"packageName": "@x/y", "version": "1.0.0", "meta": {"title": {"en": "a", "zh": "b"}, "description": {"en": "c", "zh": "d"}, "icon": "data:image/svg+xml;base64,x"}}
+  断言相等(荐目录条目问题(目版本), "目录条目不得带 version", "31 带 version")
+  设 目单语 为 {"packageName": "@x/y", "meta": {"title": {"en": "a"}, "description": {"en": "c", "zh": "d"}, "icon": "data:image/svg+xml;base64,x"}}
+  断言相等(荐目录条目问题(目单语), "目录条目 title 缺 en 或 zh", "31 title 单语")
+  设 目空述 为 {"packageName": "@x/y", "meta": {"title": {"en": "a", "zh": "b"}, "description": {"en": " ", "zh": "d"}, "icon": "data:image/svg+xml;base64,x"}}
+  断言相等(荐目录条目问题(目空述), "目录条目 description 的 en/zh 不得为空", "31 description 空")
+  设 目图标 为 {"packageName": "@x/y", "meta": {"title": {"en": "a", "zh": "b"}, "description": {"en": "c", "zh": "d"}, "icon": "data:image/png;base64,x"}}
+  断言相等(荐目录条目问题(目图标), "目录条目 icon 必须是内联 svg base64", "31 图标类型")
+  设 目无元 为 {"packageName": "@x/y"}
+  断言相等(荐目录条目问题(目无元), "目录条目缺少 meta", "31 缺 meta")
+
+  # ===== 七、plugin-detail：语言链 / meta.detail / Markdown / README / 图片 =====
+
+  # 32. 语言链：切前缀 + 兜底 en，去重保序
+  断言相等(荐语言链("zh-Hans-CN"), ["zh-hans-cn", "zh-hans", "zh", "en"], "32 zh-Hans-CN 链")
+  断言相等(荐语言链("en-US"), ["en-us", "en"], "32 en-US 链")
+  断言相等(荐语言链("en"), ["en"], "32 en 链")
+  断言相等(荐语言链("ZH-CN"), ["zh-cn", "zh", "en"], "32 大小写归一")
+  断言抛含(抛语言链相对, "Not a language id", "32 ../x 非法")
+  断言抛含(抛语言链空, "Not a language id", "32 空串非法")
+  断言抛含(抛语言链短首片, "Not a language id", "32 首片过短")
+  断言抛含(抛语言链长首片, "Not a language id", "32 首片过长")
+  断言抛含(抛语言链坏子片, "Not a language id", "32 子片含下划线")
+
+  # 33. meta.detail：合法相对 Markdown 路径；八类非法各一句规则
+  设 详一 为 荐校验详情路径("guide/DETAIL.md")
+  断言相等(详一["成"], 真, "33 合法详情路径")
+  断言相等(详一["值"], "guide/DETAIL.md", "33 合法路径原样")
+  设 详二 为 荐校验详情路径(空)
+  断言相等(详二["成"], 真, "33 缺省值为空也合法")
+  断言相等(详二["值"], 空, "33 缺省值即上游 undefined")
+  设 详三 为 荐校验详情路径("guide/D.markdown")
+  断言相等(详三["成"], 真, "33 .markdown 合法")
+  设 详四 为 荐校验详情路径("/README.md")
+  断言相等(详四["规则"], "must be a relative path inside the package", "33 绝对路径")
+  设 详五 为 荐校验详情路径("../x.md")
+  断言相等(详五["规则"], "must be a relative path inside the package", "33 上跳")
+  设 详六 为 荐校验详情路径("guide/./x.md")
+  断言相等(详六["规则"], "must be a relative path inside the package", "33 单点段")
+  设 详七 为 荐校验详情路径("guide//x.md")
+  断言相等(详七["规则"], "must be a relative path inside the package", "33 空段")
+  设 详八 为 荐校验详情路径("guide\\x.md")
+  断言相等(详八["规则"], "must be a relative path inside the package", "33 反斜杠")
+  设 详九 为 荐校验详情路径("https://example.com/x.md")
+  断言相等(详九["规则"], "must be a relative path inside the package", "33 协议前缀")
+  设 详十 为 荐校验详情路径("README.txt")
+  断言相等(详十["规则"], "must name a Markdown file", "33 非 Markdown")
+  设 详十一 为 荐校验详情路径(" ")
+  断言相等(详十一["规则"], "must be a non-empty string", "33 空白")
+  设 详十二 为 荐校验详情路径(7)
+  断言相等(详十二["规则"], "must be a non-empty string", "33 非字符串")
+  断言抛含(抛详情路径绝对, "meta.detail must be a relative path inside the package", "33 抛错版带标签")
+  断言抛含(抛详情路径上跳, "must be a relative path", "33 抛错版上跳")
+  断言抛含(抛详情路径非MD, "must name a Markdown file", "33 抛错版非 Markdown")
+
+  # 34. Markdown：去一个前导 BOM，再去首个前置块（只去第一个）
+  设 文一 为 荐Markdown正文("\uFEFF---\ntitle: x\n---\n# A\n\n---\nkept: rule\n---\n")
+  断言相等(文一, "# A\n\n---\nkept: rule\n---\n", "34 去 BOM 与首个前置块")
+  设 文二 为 荐Markdown正文("---\r\nk: v\r\n---")
+  断言相等(文二, "", "34 CRLF 前置块后为空")
+  设 文三 为 荐Markdown正文("# B")
+  断言相等(文三, "# B", "34 无前置块原样")
+  设 文四 为 荐Markdown正文("")
+  断言相等(文四, "", "34 空串")
+  设 文五 为 荐Markdown正文("---\n# A")
+  断言相等(文五, "---\n# A", "34 无收尾不当前置块")
+
+  # 35. README 名：README_NAMES 序优先，同序按名字升序
+  断言相等(荐README名(["README.md", "readme.md", "Readme.md", "README.markdown", "README"]), "README.md", "35 五名齐时取 README.md")
+  断言相等(荐README名(["README", "README.md"]), "README.md", "35 序优先")
+  断言相等(荐README名(["readme.md", "Readme.md"]), "readme.md", "35 同序按名字升序")
+  断言相等(荐README名(["notes.txt"]), 空, "35 无 README")
+  断言相等(荐README名(["README.MD"]), "README.MD", "35 大小写不敏感匹配但原名返回")
+  断言相等(荐README名([]), 空, "35 空目录")
+
+  # 36. 图片去向：查询串与片段被忽略、按文档目录解析、七种后缀、越界与坏转义拒绝
+  设 图一 为 荐图片去向("guide/DETAIL.md", "img/a.png?raw=1#x")
+  断言相等(图一["路径"], "guide/img/a.png", "36 相对图片")
+  断言相等(图一["媒体类型"], "image/png", "36 png 类型")
+  设 图二 为 荐图片去向("guide/DETAIL.md", "/logo.SVG")
+  断言相等(图二["路径"], "logo.SVG", "36 根绝对图片")
+  断言相等(图二["媒体类型"], "image/svg+xml", "36 svg 类型")
+  设 图三 为 荐图片去向("guide/DETAIL.md", "./a%20b.webp")
+  断言相等(图三["路径"], "guide/a b.webp", "36 百分号解码")
+  断言相等(图三["媒体类型"], "image/webp", "36 webp 类型")
+  设 图四 为 荐图片去向("README.md", "b.jpeg")
+  断言相等(图四["路径"], "b.jpeg", "36 jpeg 类型")
+  断言相等(图四["媒体类型"], "image/jpeg", "36 jpeg")
+  设 图五 为 荐图片去向("README.md", "c.gif")
+  断言相等(图五["媒体类型"], "image/gif", "36 gif 类型")
+  设 图六 为 荐图片去向("README.md", "d.avif")
+  断言相等(图六["媒体类型"], "image/avif", "36 avif 类型")
+  设 图七 为 荐图片去向("README.md", "e.jpg")
+  断言相等(图七["媒体类型"], "image/jpeg", "36 jpg 类型")
+  断言相等(荐图片去向("guide/DETAIL.md", "../../etc/passwd.png"), 空, "36 越界拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", ".."), 空, "36 上跳拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", "/"), 空, "36 空路径拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", "notes.txt"), 空, "36 非图片拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", "img\\a.png"), 空, "36 反斜杠拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", "%E0%A4%A.png"), 空, "36 坏转义拒绝")
+  断言相等(荐图片去向("guide/DETAIL.md", "%zz.png"), 空, "36 非十六进制拒绝")
+
+  # 37. 正例：`写` 只能吃变量——下标先落变量再写（本仓库的静默坑，留一条回归）
+  设 表样 为 [{"k": 1}]
+  设 首样 为 列表获取(表样, 0)
+  设 值样 为 首样["k"]
+  断言相等(值样, 1, "37 下标先落变量")
+
+  写 "--- 测试 推荐决策 通过 ---"
+
+# 上下文浅复制（判据侧用，等价于模块里的 荐复制字典）
+段落 荐复制上下文(源):
+  设 出 为 {}
+  遍历 键 之 字典键列表(源):
+    设 值 为 源[键]
+    设 出[键] 为 值
+  返回 出
+
+主程()

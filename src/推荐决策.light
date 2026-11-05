@@ -1,0 +1,1139 @@
+# 推荐决策.light —— 对标上游 dsh-v0.2.2-rc.1（锚点 66491b05e3）「答案下面挂卡片」一族
+#
+# 上游入口（本卡 §4 B5，纯逻辑面）：
+#   packages/experimental/action-cards/src/{projection,index,types}.ts        654 行
+#   packages/experimental/plugin-recommendations/src/{index,skill,types}.ts   240 行
+#   packages/experimental/creation-recommendations/src/{index,types}.ts       546 行
+#   packages/util/official-bundles/src/{bundles,plugin-manager,index}.ts      217 行
+#   packages/util/plugin-detail/src/{document,files}.ts（B5 清单同列：卡片文案取数）
+#
+# 移植范围：**决策与状态机 + 清单数据**，不含任何 React 组件、不含宿主 IO。
+#   * 卡片投影 = 对会话事件流做纯折叠（提案准入 / 一卡一轮 / 旧卡被 replaced / 决策待报）；
+#   * 卡片状态机 = 派生阶段（replaced）与终态阶段（dismissed）的判定、record 合法性、
+#     dismiss 与非-dismiss 动词的裁定；
+#   * propose_action 准入 = 一次调用要过哪几道闸（嵌套 / 非根 / 排队 / 未知动作 / 技能未载 /
+#     空标题 / details 非法 / 一卡一轮），逐道返回上游的 typed 错误码；
+#   * 插件推荐 = eligible 目录、describe 的 available/refused、enable 阶段机
+#     （enabled / already-enabled / failed / unconfirmed）与 unconfirmed 对账；
+#   * 页面推荐 = 槽位与自定义位置（≤1000 字）校验、五个用户动词的裁定、
+#     重开会话时收据与安装事实的对账；
+#   * 官方 bundle = profile 模板、安装方持有的旧元组、退役包、受保护/隐藏/扩展/更多/实验标记、
+#     离线目录条目校验；
+#   * 插件详情 = 语言链、meta.detail 路径校验、Markdown 去 BOM 与前置块、README 名排序、图片去向。
+#
+# 宿主面剔除（一律不在本模块里做）：Cordis Service / fiber 生命周期、zod、Session 日志写盘、
+# Agent 注册表、pluginManager 真实启停与安装、文件系统与 HTTP 读取、React 组件。
+#
+# 与 #328「智能体指令」的去重：本模块**不**碰指令装载/作用域/渲染，那套已由 src/智能体指令.light
+# 覆盖；技能名合法性走 src/技能清单.light 的 是技能名；包名/安装规格走 src/插件管理.light 的 插校验规格。
+# 本模块只保留「卡片」这一层新增语义，没有新造第二套指令或规格体系。
+#
+# 拒绝的表达方式：上游用异常的地方，本模块一律用结果字典（成/状态/码/因），
+# 只有两处与上游同文案抛错（各配一个抛错版段落）：语言链非法、meta.detail 非法。
+#
+# 语言坑（2026-11-05 本轮实测，与卡面提示第 2 条相反，已按实测为准）：
+#   * `\uXXXX` 在本编译器里**会**解释（字符串长度("\uFEFF") == 1），但仍按仓库惯例写成转义；
+#   * `写` 只吃字面量或已赋值变量——`写 首["k"]` 会静默拿到 空 再报「'NoneType' is not subscriptable」，
+#     下标必须先 `设 甲 为 首["k"]` 再写（本模块全篇遵守，判据也给了一条正例）；
+#   * `段` 不能当变量名（关键字表里有单独的「段」），本模块用 段落/片段 区分；
+#   * 变量名避开关键字尾巴：合并为 / 等待 / 映射 / 映射类 这类会踩词法最大匹配。
+#
+# 判据见 examples/test_推荐决策.light（逐条标上游用例名；反跑两处见该文件头）。
+
+导出 荐初始状态, 荐折叠, 荐应用事件, 荐读视图, 荐校验提议参数, 荐记录决策, 荐裁定忽略, 荐裁定动作, 荐提议准入, 荐插件可荐, 荐插件目录, 荐描述卡, 荐插件开启结果, 荐插件对账, 荐页面位置合法, 荐页面裁定, 荐页面恢复, 荐恢复失败, 荐页面忽略数据, 荐模板包, 荐重写安装模板, 荐剔除退役包, 荐目录条目问题, 荐语言链, 荐校验详情路径, 荐详情路径, 荐Markdown正文, 荐README名, 荐图片去向
+
+# ---- 常量（逐条对齐上游导出名）----
+
+设 荐BOM 为 "\uFEFF"
+设 荐空字符 为 "\u0000"
+设 荐卡工具 为 "propose_action"
+设 荐技能工具 为 "skill"
+设 荐忽略动词 为 "dismiss"
+# projection.ts: DERIVED_PHASES / FINAL_PHASES
+设 荐派生阶段 为 ["replaced"]
+设 荐终态阶段 为 ["dismissed", "replaced"]
+# index.ts: Config.queuedMessageLimit 默认 2
+设 荐排队上限 为 2
+# 两个卡片动作名（plugin-recommendations / creation-recommendations 各自的 ACTION）
+设 荐插件动作 为 "enable_official_plugin"
+设 荐页面动作 为 "create_personalized_page"
+# creation-recommendations/src/types.ts: CreationSlot / PageVerb / 三个阶段表
+设 荐页面槽位 为 ["sidebar-right", "page", "sidebar-left"]
+设 荐页面动词 为 ["create", "keep", "undo", "cancel", "restore"]
+设 荐页面开出阶段 为 ["cancelled", "failed", "interrupted", "unconfirmed"]
+设 荐页面对账阶段 为 ["creating", "installing", "interrupted", "cancelled", "failed", "unconfirmed"]
+设 荐页面重开阶段 为 ["creating", "installing", "interrupted", "cancelled", "failed"]
+设 荐自定义位置上限 为 1000
+# plugin-detail/src/files.ts: README_NAMES
+设 荐README名表 为 ["README.md", "readme.md", "Readme.md", "README.markdown", "README"]
+
+# ---- official-bundles/src/bundles.ts + plugin-manager.ts 的清单数据（逐字抄上游）----
+
+设 荐profile模板 为 {
+  "acp": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-acp-app"],
+  "web": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"],
+  "headless": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"],
+  "sdk": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-sdk-app"],
+  "sdk-minimal": ["@deepseek-ai/dsh-sdk-minimal"]
+}
+
+设 荐安装方旧元组 为 {
+  "headless": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless"]
+}
+
+设 荐退役包 为 ["@deepseek-ai/dsh-experimental-schedule-bundle"]
+
+设 荐默认profile包 为 ["@deepseek-ai/dsh-base"]
+
+设 荐可选包 为 ["@deepseek-ai/dsh-personalized-recommendations", "@deepseek-ai/dsh-experimental-session-search", "@deepseek-ai/dsh-experimental-ralph-bundle", "@deepseek-ai/dsh-experimental-terminal-bundle", "@deepseek-ai/dsh-experimental-badge-skill-bundle", "@deepseek-ai/dsh-experimental-session-titles-bundle", "@deepseek-ai/dsh-experimental-agent-team-profile", "@deepseek-ai/dsh-experimental-voice-input-bundle", "@deepseek-ai/dsh-experimental-cot-translation-bundle", "@deepseek-ai/dsh-experimental-auto-review", "@deepseek-ai/dsh-experimental-inspector-profile", "@deepseek-ai/dsh-experimental-liveshare", "@deepseek-ai/dsh-experimental-plugin-market-bundle", "@deepseek-ai/dsh-experimental-tool-worktree", "@deepseek-ai/dsh-experimental-forge-bundle"]
+
+设 荐按需安装包 为 ["@deepseek-ai/dsh-subagent-claude-code", "@deepseek-ai/dsh-subagent-codex", "@deepseek-ai/dsh-cua-bundle"]
+
+设 荐受保护包 为 ["@deepseek-ai/dsh-plugin-manager", "@deepseek-ai/cordis-plugin-loader", "@deepseek-ai/cordis-plugin-include", "@deepseek-ai/dsh-api-gateway", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-client-modules", "@deepseek-ai/dsh-client-ui-settings-plugin-inventory", "@deepseek-ai/dsh-client-ui-plugin-manager", "@deepseek-ai/dsh-host-plugin-inventory", "@deepseek-ai/dsh-typert-registry", "@deepseek-ai/dsh-api-remotes", "@deepseek-ai/dsh-api-remote-access", "@deepseek-ai/cordis-plugin-timer", "@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-host-frontend-static", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-hmr"]
+
+设 荐隐藏包 为 ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "@deepseek-ai/dsh-headless", "@deepseek-ai/dsh-sdk-app", "@deepseek-ai/dsh-acp-app", "@deepseek-ai/dsh-sdk-minimal", "@deepseek-ai/dsh-experimental-terminal-bundle", "@deepseek-ai/dsh-experimental-tool-worktree"]
+
+设 荐扩展包 为 ["@deepseek-ai/dsh-experimental-agent-team-profile", "@deepseek-ai/dsh-experimental-voice-input-bundle", "@deepseek-ai/dsh-experimental-plugin-market-bundle", "@deepseek-ai/dsh-experimental-auto-review"]
+
+设 荐更多包 为 ["@deepseek-ai/dsh-personalized-recommendations", "@deepseek-ai/dsh-experimental-inspector-profile", "@deepseek-ai/dsh-cua-bundle", "@deepseek-ai/dsh-experimental-cot-translation-bundle", "@deepseek-ai/dsh-experimental-session-search", "@deepseek-ai/dsh-experimental-session-titles-bundle", "@deepseek-ai/dsh-experimental-badge-skill-bundle", "@deepseek-ai/dsh-experimental-ralph-bundle", "@deepseek-ai/dsh-subagent-codex", "@deepseek-ai/dsh-subagent-claude-code"]
+
+设 荐实验包 为 ["@deepseek-ai/dsh-personalized-recommendations", "@deepseek-ai/dsh-cua-bundle", "@deepseek-ai/dsh-experimental-agent-team-profile", "@deepseek-ai/dsh-experimental-voice-input-bundle", "@deepseek-ai/dsh-experimental-auto-review", "@deepseek-ai/dsh-experimental-inspector-profile", "@deepseek-ai/dsh-experimental-forge-bundle", "@deepseek-ai/dsh-experimental-tool-worktree", "@deepseek-ai/dsh-experimental-cot-translation-bundle", "@deepseek-ai/dsh-experimental-session-search", "@deepseek-ai/dsh-experimental-session-titles-bundle", "@deepseek-ai/dsh-experimental-badge-skill-bundle", "@deepseek-ai/dsh-experimental-ralph-bundle", "@deepseek-ai/dsh-experimental-plugin-market-bundle", "@deepseek-ai/dsh-experimental-liveshare"]
+
+# ===== 一、纯小工具（不改入参；上游同名 TS 辅助的等价物）=====
+
+段落 荐复制字典(源):
+  设 出 为 {}
+  遍历 键 之 字典键列表(源):
+    设 值 为 源[键]
+    设 出[键] 为 值
+  返回 出
+
+段落 荐复制列表(源):
+  设 出 为 []
+  遍历 项 之 源:
+    列表追加(出, 项)
+  返回 出
+
+段落 荐取(字典, 键, 缺省):
+  如果 字典包含键(字典, 键) == 假:
+    返回 缺省
+  返回 字典[键]
+
+段落 荐在表(值, 表):
+  返回 列表包含(表, 值)
+
+段落 荐去掉键(字典, 键):
+  设 出 为 {}
+  遍历 项键 之 字典键列表(字典):
+    如果 项键 != 键:
+      设 值 为 字典[项键]
+      设 出[项键] 为 值
+  返回 出
+
+# ===== 二、action-cards/src/projection.ts：会话事件流的纯折叠 =====
+#
+# 事件形状（本模块自定的最小 wire，等价于上游 SessionEvent 里投影关心的那几个）：
+#   {"型": "轮起",     "序号": n}
+#   {"型": "收件",     "序号": n, "目标": "next-turn"|其他, "插入": k, "移除": m}
+#   {"型": "用户消息", "序号": n, "来源": "action-cards"|"user", "水位": w}
+#   {"型": "工具调用", "序号": n, "轮": t, "调用号": c, "工具名": g, "参数文本": s}
+#   {"型": "工具结果", "序号": n, "调用号": c, "错误": 真|假}
+#   {"型": "插件记录", "序号": n, "数据": {"callId","action","phase","data"?}}
+
+# init：继承前缀长度 + 空视图 + 空在途 + 未准入轮 + 空待报 + 排队 0
+段落 荐初始状态(继承=0):
+  返回 {"继承": 继承, "视图": {"提议": {}, "决策": {}}, "在途": {}, "已准入轮": 空, "待报": {}, "排队": 0}
+
+# wire.view：视图就是 Client 看到的那一份（内部状态变化不换引用）
+段落 荐读视图(状态):
+  返回 状态["视图"]
+
+# argumentsSchema：action 非空；title/brief 去空白后非空；details 必须是对象
+段落 荐校验提议参数(原始):
+  如果 是字典(原始) == 假:
+    返回 {"成": 假, "因": "参数必须是对象"}
+  设 动作 为 荐取(原始, "action", 空)
+  如果 是字符串(动作) == 假:
+    返回 {"成": 假, "因": "action 必须是非空字符串"}
+  如果 字符串长度(动作) == 0:
+    返回 {"成": 假, "因": "action 必须是非空字符串"}
+  设 标题 为 荐取(原始, "title", 空)
+  如果 是字符串(标题) == 假:
+    返回 {"成": 假, "因": "title 必须是字符串"}
+  设 标题净 为 去除空白(标题)
+  如果 字符串长度(标题净) == 0:
+    返回 {"成": 假, "因": "title 去空白后不得为空"}
+  设 简报 为 荐取(原始, "brief", 空)
+  如果 是字符串(简报) == 假:
+    返回 {"成": 假, "因": "brief 必须是字符串"}
+  设 简报净 为 去除空白(简报)
+  如果 字符串长度(简报净) == 0:
+    返回 {"成": 假, "因": "brief 去空白后不得为空"}
+  设 细节 为 荐取(原始, "details", 空)
+  如果 是字典(细节) == 假:
+    返回 {"成": 假, "因": "details 必须是对象"}
+  返回 {"成": 真, "值": {"action": 动作, "title": 标题净, "brief": 简报净, "details": 细节}}
+
+# 解析工具调用参数文本：坏 JSON 在工具侧同样失败，不产生卡片
+段落 荐解析对象(文本):
+  尝试:
+    设 果 为 解析JSON(文本)
+    返回 {"成": 真, "值": 果}
+  捕获 异常 为 异常值:
+    返回 {"成": 假, "因": "JSON 非法"}
+
+# decisionSchema：callId/action/phase 非空字符串；data 可选对象
+段落 荐校验决策(原始):
+  如果 是字典(原始) == 假:
+    返回 {"成": 假, "因": "决策必须是对象"}
+  设 调用号 为 荐取(原始, "callId", 空)
+  如果 是字符串(调用号) == 假:
+    返回 {"成": 假, "因": "callId 必须非空"}
+  如果 字符串长度(调用号) == 0:
+    返回 {"成": 假, "因": "callId 必须非空"}
+  设 动作 为 荐取(原始, "action", 空)
+  如果 是字符串(动作) == 假:
+    返回 {"成": 假, "因": "action 必须非空"}
+  如果 字符串长度(动作) == 0:
+    返回 {"成": 假, "因": "action 必须非空"}
+  设 阶段 为 荐取(原始, "phase", 空)
+  如果 是字符串(阶段) == 假:
+    返回 {"成": 假, "因": "phase 必须非空"}
+  如果 字符串长度(阶段) == 0:
+    返回 {"成": 假, "因": "phase 必须非空"}
+  设 数据 为 荐取(原始, "data", 空)
+  如果 数据 != 空:
+    如果 是字典(数据) == 假:
+      返回 {"成": 假, "因": "data 必须是对象"}
+  返回 {"成": 真, "值": 原始}
+
+# 一个事件一步（等价于上游 projection.apply）
+段落 荐应用事件(状态, 事件):
+  设 序号 为 荐取(事件, "序号", -1)
+  设 继承 为 荐取(状态, "继承", 0)
+  如果 序号 < 继承:
+    返回 状态
+  设 型 为 荐取(事件, "型", "")
+  # 轮起：本轮还没结算的调用一律作废（拿不到结果就成不了卡）
+  如果 型 == "轮起":
+    设 在途 为 状态["在途"]
+    如果 字典键列表(在途) == []:
+      返回 状态
+    设 新态 为 荐复制字典(状态)
+    设 新态["在途"] 为 {}
+    返回 新态
+  # 收件：只统计 next-turn 目标；移除数缺省 0，插入按条数，下限 0
+  如果 型 == "收件":
+    设 目标 为 荐取(事件, "目标", "")
+    如果 目标 != "next-turn":
+      返回 状态
+    设 插入 为 荐取(事件, "插入", 0)
+    设 移除 为 荐取(事件, "移除", 0)
+    设 排队 为 荐取(状态, "排队", 0) - 移除 + 插入
+    如果 排队 < 0:
+      设 排队 为 0
+    设 新态 为 荐复制字典(状态)
+    设 新态["排队"] 为 排队
+    返回 新态
+  # 用户消息：卡片自己的状态通知把 ≤ 水位的待报项一次清掉
+  如果 型 == "用户消息":
+    设 来源 为 荐取(事件, "来源", "")
+    如果 来源 != "action-cards":
+      返回 状态
+    设 水位 为 荐取(事件, "水位", 0)
+    设 待报 为 状态["待报"]
+    设 新报 为 {}
+    遍历 号 之 字典键列表(待报):
+      设 记序 为 待报[号]
+      如果 记序 > 水位:
+        设 新报[号] 为 记序
+    设 新态 为 荐复制字典(状态)
+    设 新态["待报"] 为 新报
+    返回 新态
+  # 工具调用：只认 propose_action，且参数要过 schema；过不了就什么都不产生
+  如果 型 == "工具调用":
+    设 工具名 为 荐取(事件, "工具名", "")
+    如果 工具名 != 荐卡工具:
+      返回 状态
+    设 参数果 为 荐解析对象(荐取(事件, "参数文本", ""))
+    如果 参数果["成"] == 假:
+      返回 状态
+    设 规则果 为 荐校验提议参数(参数果["值"])
+    如果 规则果["成"] == 假:
+      返回 状态
+    设 归一 为 规则果["值"]
+    设 轮 为 荐取(事件, "轮", 0)
+    设 调用号 为 荐取(事件, "调用号", "")
+    设 卡 为 {"轮": 轮, "action": 归一["action"], "title": 归一["title"], "brief": 归一["brief"], "details": 归一["details"]}
+    设 在途 为 荐复制字典(状态["在途"])
+    设 在途[调用号] 为 卡
+    设 新态 为 荐复制字典(状态)
+    设 新态["在途"] 为 在途
+    返回 新态
+  # 工具结果：成功且该轮尚未准入过才成为卡片；随后把「未开工、无决策」的旧卡标 replaced
+  如果 型 == "工具结果":
+    设 调用号 为 荐取(事件, "调用号", "")
+    设 在途 为 状态["在途"]
+    如果 字典包含键(在途, 调用号) == 假:
+      返回 状态
+    设 卡 为 在途[调用号]
+    设 余途 为 荐去掉键(在途, 调用号)
+    设 是错 为 荐取(事件, "错误", 假)
+    设 已准入轮 为 状态["已准入轮"]
+    设 轮 为 卡["轮"]
+    如果 是错 == 真:
+      设 新态 为 荐复制字典(状态)
+      设 新态["在途"] 为 余途
+      返回 新态
+    如果 已准入轮 == 轮:
+      设 新态 为 荐复制字典(状态)
+      设 新态["在途"] 为 余途
+      返回 新态
+    设 视图 为 状态["视图"]
+    设 旧提议 为 视图["提议"]
+    设 旧决策 为 视图["决策"]
+    设 新决策 为 荐复制字典(旧决策)
+    遍历 旧号 之 字典键列表(旧提议):
+      如果 字典包含键(旧决策, 旧号) == 假:
+        设 旧动作 为 旧提议[旧号]["action"]
+        设 新决策[旧号] 为 {"callId": 旧号, "action": 旧动作, "phase": "replaced"}
+    设 新提议 为 荐复制字典(旧提议)
+    设 卡全 为 {"callId": 调用号, "turn": 轮, "action": 卡["action"], "title": 卡["title"], "brief": 卡["brief"], "details": 卡["details"]}
+    设 新提议[调用号] 为 卡全
+    设 新态 为 荐复制字典(状态)
+    设 新态["在途"] 为 余途
+    设 新态["已准入轮"] 为 轮
+    设 新态["视图"] 为 {"提议": 新提议, "决策": 新决策}
+    返回 新态
+  # 缺省分支：插件记录。坏的/更新的记录跳过（抛错会让这张会话之后每次读都失败）
+  如果 型 == "插件记录":
+    设 数据 为 荐取(事件, "数据", 空)
+    设 校验果 为 荐校验决策(数据)
+    如果 校验果["成"] == 假:
+      返回 状态
+    设 决策 为 校验果["值"]
+    设 调用号 为 决策["callId"]
+    设 视图 为 状态["视图"]
+    设 新决策 为 荐复制字典(视图["决策"])
+    设 新决策[调用号] 为 决策
+    设 待报 为 荐复制字典(状态["待报"])
+    设 待报[调用号] 为 序号
+    设 新态 为 荐复制字典(状态)
+    设 新态["视图"] 为 {"提议": 视图["提议"], "决策": 新决策}
+    设 新态["待报"] 为 待报
+    返回 新态
+  返回 状态
+
+# 多事件折叠：等价于上游 events.reduce(projection.apply, state)
+段落 荐折叠(事件表, 状态):
+  设 当前 为 状态
+  遍历 事件 之 事件表:
+    设 当前 为 荐应用事件(当前, 事件)
+  返回 当前
+
+# ===== 三、action-cards/src/index.ts：record / dismiss / perform =====
+
+# record：只能记已注册（或曾注册）动作；派生阶段（replaced）不许记
+段落 荐记录决策(状态, 决策, 已注册表, 已退役表):
+  设 动作 为 决策["action"]
+  设 已注册 为 荐在表(动作, 已注册表)
+  如果 已注册 == 假:
+    设 已注册 为 荐在表(动作, 已退役表)
+  如果 已注册 == 假:
+    返回 {"成": 假, "因": "action-cards: cannot record a decision for unregistered action \"" + 动作 + "\""}
+  设 阶段 为 决策["phase"]
+  如果 荐在表(阶段, 荐派生阶段) == 真:
+    返回 {"成": 假, "因": "action-cards: phase \"" + 阶段 + "\" is derived from the log and cannot be recorded"}
+  设 视图 为 状态["视图"]
+  设 新决策 为 荐复制字典(视图["决策"])
+  设 新决策[决策["callId"]] 为 决策
+  设 新态 为 荐复制字典(状态)
+  设 新态["视图"] 为 {"提议": 视图["提议"], "决策": 新决策}
+  返回 {"成": 真, "值": 新态}
+
+# dismiss 的裁定（上游 dismiss()）：
+#   有记录且（终态 或 种类不认为该阶段可操作）→ settled 原决策
+#   否则记 dismissed（种类给的 dismissal 数据可选）
+段落 荐裁定忽略(提议, 已有决策, 开出阶段表, 忽略数据=空):
+  如果 已有决策 != 空:
+    设 阶段 为 已有决策["phase"]
+    如果 荐在表(阶段, 荐终态阶段) == 真:
+      返回 {"状态": "settled", "决策": 已有决策}
+    如果 荐在表(阶段, 开出阶段表) == 假:
+      返回 {"状态": "settled", "决策": 已有决策}
+  设 新决策 为 {"callId": 提议["callId"], "action": 提议["action"], "phase": "dismissed"}
+  如果 忽略数据 != 空:
+    设 新决策["data"] 为 忽略数据
+  返回 {"状态": "settled", "决策": 新决策}
+
+# 非 dismiss 动词的裁定（上游 perform()）：
+#   未注册种类 → unavailable；缺全局许可 → access-denied；终态 → settled 原决策；
+#   writes 动词 + 只读会话 → read-only；否则交种类处理
+段落 荐裁定动作(已有决策, 策略, 环境):
+  设 已注册 为 荐取(环境, "已注册", 真)
+  如果 已注册 == 假:
+    返回 {"状态": "refused", "因": "unavailable"}
+  如果 荐取(环境, "全局许可", 真) == 假:
+    返回 {"状态": "refused", "因": "access-denied"}
+  如果 已有决策 != 空:
+    设 阶段 为 已有决策["phase"]
+    如果 荐在表(阶段, 荐终态阶段) == 真:
+      返回 {"状态": "settled", "决策": 已有决策}
+  如果 荐取(策略, "writes", 假) == 真:
+    如果 荐取(环境, "只读", 假) == 真:
+      返回 {"状态": "refused", "因": "read-only"}
+  返回 {"状态": "交种类处理"}
+
+# propose_action 准入（上游 propose()）：八道闸，逐条返回上游 typed 错误码
+# 上下文键：从代码 / 是根 / 排队 / 上限 / 已注册动作表 / 种类技能（动作→技能名）/ 本轮 /
+#           本轮已载技能（{"轮": n, "技能": [...]}）/ 标题 / 简报 / 细节问题 / 已准入轮 / 本轮已有卡 / 邀请
+段落 荐提议准入(上下文, 参数):
+  如果 荐取(上下文, "从代码", 假) == 真:
+    返回 {"成": 假, "码": "ACTION_CARD_NESTED", "报": "Call propose_action directly, not from code."}
+  如果 荐取(上下文, "是根", 真) == 假:
+    返回 {"成": 假, "码": "ACTION_CARD_ROOT", "报": "Cards are offered in the main conversation only."}
+  如果 荐取(上下文, "排队", 0) >= 荐取(上下文, "上限", 荐排队上限):
+    返回 {"成": 假, "码": "ACTION_CARD_QUEUED", "报": "The user has queued more messages; show no card and answer briefly."}
+  设 动作 为 参数["action"]
+  设 技能表 为 荐取(上下文, "种类技能", {})
+  如果 字典包含键(技能表, 动作) == 假:
+    设 名表 为 荐取(上下文, "已注册动作表", [])
+    设 名串 为 连接字符串(名表, ", ")
+    如果 名串 == "":
+      设 名串 为 "none"
+    返回 {"成": 假, "码": "ACTION_CARD_UNKNOWN", "报": "Unknown action \"" + 动作 + "\". Registered actions: " + 名串 + "."}
+  设 技能 为 技能表[动作]
+  设 本轮 为 荐取(上下文, "本轮", 0)
+  设 已载表 为 荐取(上下文, "本轮已载技能", {})
+  设 已载轮 为 荐取(已载表, "轮", 空)
+  设 已载技能 为 荐取(已载表, "技能", [])
+  设 已载 为 假
+  如果 已载轮 == 本轮:
+    如果 荐在表(技能, 已载技能) == 真:
+      设 已载 为 真
+  如果 已载 == 假:
+    返回 {"成": 假, "码": "ACTION_CARD_SKILL", "报": "Load skill " + 技能 + " first, then call propose_action."}
+  设 标题 为 去除空白(荐取(上下文, "标题", ""))
+  设 简报 为 去除空白(荐取(上下文, "简报", ""))
+  如果 标题 == "":
+    返回 {"成": 假, "码": "ACTION_CARD_BLANK", "报": "Write a title and a brief."}
+  如果 简报 == "":
+    返回 {"成": 假, "码": "ACTION_CARD_BLANK", "报": "Write a title and a brief."}
+  设 细节问题 为 荐取(上下文, "细节问题", 空)
+  如果 细节问题 != 空:
+    返回 {"成": 假, "码": "ACTION_CARD_DETAILS", "报": 细节问题}
+  设 已准入轮 为 荐取(上下文, "已准入轮", 空)
+  设 本轮已卡 为 荐取(上下文, "本轮已有卡", 假)
+  如果 已准入轮 == 本轮:
+    返回 {"成": 假, "码": "ACTION_CARD_LIMIT", "报": "One card per turn; the earlier card stands."}
+  如果 本轮已卡 == 真:
+    返回 {"成": 假, "码": "ACTION_CARD_LIMIT", "报": "One card per turn; the earlier card stands."}
+  返回 {"成": 真, "码": "ACTION_CARD_OK", "值": {"action": 动作, "title": 标题, "invitation": 荐取(上下文, "邀请", "")}}
+
+# ===== 四、plugin-recommendations：目录、describe、enable 阶段机 =====
+
+# skill.ts: eligible(bundle)
+段落 荐插件可荐(包):
+  如果 荐取(包, "official", 假) == 假:
+    返回 假
+  如果 荐取(包, "optional", 假) == 假:
+    返回 假
+  如果 荐取(包, "availability", "") == "missing":
+    返回 假
+  如果 字典包含键(包, "readOnlyReason") == 真:
+    返回 假
+  如果 字典包含键(包, "error") == 真:
+    返回 假
+  返回 真
+
+# skill.ts: catalogOf —— 只列可荐项，title/description 逐级回落
+段落 荐插件目录(包表):
+  设 出 为 []
+  遍历 包 之 包表:
+    如果 荐插件可荐(包) == 真:
+      设 名 为 包["name"]
+      设 题 为 名
+      设 述 为 ""
+      设 元 为 荐取(包, "meta", 空)
+      如果 元 != 空:
+        如果 字典包含键(元, "title") == 真:
+          设 题 为 元["title"]
+        如果 字典包含键(元, "description") == 真:
+          设 述 为 元["description"]
+      如果 述 == "":
+        设 述 为 荐取(包, "description", "")
+      列表追加(出, {"name": 名, "title": 题, "description": 述, "enabled": 荐取(包, "enabled", 假)})
+  返回 出
+
+# index.ts: describe() —— 卡片文案取当前目录；目录里没有/不可荐就是 refused
+段落 荐描述卡(提议, 包表, 前置=空):
+  设 存活 为 真
+  设 是根 为 真
+  如果 前置 != 空:
+    设 存活 为 荐取(前置, "存活", 真)
+    设 是根 为 荐取(前置, "是根", 真)
+  如果 存活 == 假:
+    返回 {"状态": "refused", "因": "closing"}
+  如果 是根 == 假:
+    返回 {"状态": "refused", "因": "not-live-root"}
+  如果 提议 == 空:
+    返回 {"状态": "refused", "因": "unknown"}
+  如果 提议["action"] != 荐插件动作:
+    返回 {"状态": "refused", "因": "unknown"}
+  设 细节 为 荐取(提议, "details", 空)
+  如果 细节 == 空:
+    返回 {"状态": "refused", "因": "unknown"}
+  设 名 为 荐取(细节, "name", 空)
+  如果 是字符串(名) == 假:
+    返回 {"状态": "refused", "因": "unknown"}
+  设 名净 为 去除空白(名)
+  如果 字符串长度(名净) == 0:
+    返回 {"状态": "refused", "因": "unknown"}
+  设 命中 为 空
+  遍历 包 之 包表:
+    如果 包["name"] == 名净:
+      设 命中 为 包
+  如果 命中 == 空:
+    返回 {"状态": "refused", "因": "unavailable"}
+  如果 荐插件可荐(命中) == 假:
+    返回 {"状态": "refused", "因": "unavailable"}
+  设 题 为 命中["name"]
+  设 述 为 ""
+  设 元 为 荐取(命中, "meta", 空)
+  如果 元 != 空:
+    如果 字典包含键(元, "title") == 真:
+      设 题 为 元["title"]
+    如果 字典包含键(元, "description") == 真:
+      设 述 为 元["description"]
+  如果 述 == "":
+    设 述 为 荐取(命中, "description", "")
+  返回 {"状态": "available", "标题": 题, "描述": 述, "启用": 荐取(命中, "enabled", 假)}
+
+# index.ts: confirm() —— 中断的启用事后落地：unconfirmed → enabled
+段落 荐插件对账(前阶段, 包):
+  如果 前阶段 != "unconfirmed":
+    返回 {"成": 假}
+  如果 包 == 空:
+    返回 {"成": 假}
+  如果 荐取(包, "enabled", 假) == 真:
+    返回 {"成": 真, "阶段": "enabled"}
+  返回 {"成": 假}
+
+# index.ts: enable() 的裁定 —— 只重试 failed/unconfirmed；已开的记 already-enabled
+# 变更结果：{"申请": "applied"|"restart-required"|"failed"|"rejected", "错误码": 空/s}；空代表被卸载打断
+段落 荐插件开启结果(前决策, 包, 变更结果):
+  设 前阶段 为 空
+  设 调用号 为 ""
+  如果 前决策 != 空:
+    设 前阶段 为 荐取(前决策, "phase", 空)
+    设 调用号 为 荐取(前决策, "callId", "")
+  如果 前阶段 != 空:
+    如果 前阶段 != "failed":
+      如果 前阶段 != "unconfirmed":
+        返回 {"状态": "settled", "决策": 前决策}
+  如果 包 == 空:
+    返回 {"状态": "refused", "因": "unavailable"}
+  如果 荐插件可荐(包) == 假:
+    返回 {"状态": "refused", "因": "unavailable"}
+  如果 荐取(包, "enabled", 假) == 真:
+    如果 前阶段 == "unconfirmed":
+      返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "enabled"}}
+    返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "already-enabled"}}
+  如果 变更结果 == 空:
+    返回 {"状态": "unconfirmed", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "unconfirmed"}, "因": "closing"}
+  设 申请 为 荐取(变更结果, "申请", "applied")
+  设 错误码 为 荐取(变更结果, "错误码", 空)
+  如果 申请 == "rejected":
+    返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "failed", "data": {"errorCode": "operation-error"}}}
+  如果 申请 == "failed":
+    设 失败码 为 错误码
+    如果 失败码 == 空:
+      设 失败码 为 "operation-error"
+    返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "failed", "data": {"errorCode": 失败码}}}
+  如果 申请 == "restart-required":
+    返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "enabled", "data": {"application": "restart-required", "errorCode": 错误码}}}
+  返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐插件动作, "phase": "enabled", "data": {"errorCode": 错误码}}}
+
+# ===== 五、creation-recommendations：页面卡的槽位、动词与对账 =====
+
+# types.ts: fieldsOf —— 只带出现的字段（空值不下发）
+段落 荐页面字段(数据):
+  设 出 为 {}
+  设 槽 为 荐取(数据, "slot", 空)
+  如果 槽 != 空:
+    设 出["slot"] 为 槽
+  设 自定 为 荐取(数据, "customLocation", 空)
+  如果 自定 != 空:
+    设 出["customLocation"] 为 自定
+  设 包名 为 荐取(数据, "bundleName", 空)
+  如果 包名 != 空:
+    设 出["bundleName"] 为 包名
+  设 申请 为 荐取(数据, "application", 空)
+  如果 申请 != 空:
+    设 出["application"] 为 申请
+  返回 出
+
+# locationSchema：slot 必须是三个枚举之一；customLocation 去空白后 1..1000
+段落 荐页面位置合法(载荷):
+  如果 是字典(载荷) == 假:
+    返回 假
+  设 槽 为 荐取(载荷, "slot", 空)
+  如果 是字符串(槽) == 假:
+    返回 假
+  如果 荐在表(槽, 荐页面槽位) == 假:
+    返回 假
+  如果 字典包含键(载荷, "customLocation") == 真:
+    设 自定 为 载荷["customLocation"]
+    如果 是字符串(自定) == 假:
+      返回 假
+    设 自定净 为 去除空白(自定)
+    如果 字符串长度(自定净) == 0:
+      返回 假
+    如果 字符串长度(自定净) > 荐自定义位置上限:
+      返回 假
+  返回 真
+
+# index.ts: decide() 的裁定（去掉宿主：Creator 子会话、文件系统、安装器都外置）
+# 入参：前收据（含 callId/phase/slot/bundleName）、动词、位置是否合法、是否有在途作业、该包是否已装
+段落 荐页面裁定(前收据, 动词, 位置合法, 在途, 包已装):
+  设 前阶段 为 空
+  设 调用号 为 ""
+  如果 前收据 != 空:
+    设 前阶段 为 荐取(前收据, "phase", 空)
+    设 调用号 为 荐取(前收据, "callId", "")
+  如果 动词 == "create":
+    如果 位置合法 == 假:
+      返回 {"状态": "refused", "因": "invalid-location"}
+  如果 在途 == 真:
+    设 要取消 为 假
+    如果 动词 == "cancel":
+      如果 前阶段 != "installing":
+        设 要取消 为 真
+    返回 {"状态": "accepted", "取消": 要取消}
+  如果 前阶段 == "installed":
+    返回 荐页面终局(前收据, 前阶段, 动词, 包已装)
+  如果 前阶段 == "kept":
+    返回 荐页面终局(前收据, 前阶段, 动词, 包已装)
+  如果 前阶段 == "removed":
+    如果 动词 == "restore":
+      设 包名 为 荐取(前收据, "bundleName", 空)
+      如果 包名 == 空:
+        返回 {"状态": "refused", "因": "unavailable"}
+      如果 包已装 == 真:
+        返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐页面动作, "phase": "installed"}}
+      返回 {"状态": "accepted", "阶段": "installing"}
+    返回 {"状态": "settled", "决策": 前收据}
+  如果 动词 == "cancel":
+    如果 前收据 != 空:
+      返回 {"状态": "settled", "决策": 前收据}
+  如果 动词 != "create":
+    返回 {"状态": "refused", "因": "unavailable"}
+  返回 {"状态": "accepted", "阶段": "creating", "决策": {"callId": 调用号, "action": 荐页面动作, "phase": "creating"}}
+
+# installed / kept 两阶段的 keep 与 undo（上游同类分支抽出来）
+段落 荐页面终局(前收据, 前阶段, 动词, 包已装):
+  设 调用号 为 前收据["callId"]
+  如果 动词 != "keep":
+    如果 动词 != "undo":
+      返回 {"状态": "settled", "决策": 前收据}
+  设 包名 为 荐取(前收据, "bundleName", 空)
+  如果 包名 == 空:
+    返回 {"状态": "refused", "因": "unavailable"}
+  如果 动词 == "keep":
+    返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐页面动作, "phase": "kept"}}
+  如果 包已装 == 假:
+    返回 {"状态": "unconfirmed", "决策": {"callId": 调用号, "action": 荐页面动作, "phase": "removed"}, "因": "closing"}
+  返回 {"状态": "settled", "决策": {"callId": 调用号, "action": 荐页面动作, "phase": "removed"}}
+
+# index.ts: recover() —— 每次用户动作前先拿已装事实对账，卡片过期就 settle
+# 收据表每项含 callId/phase/slot/bundleName；已装包表是包名列表；无在途是 callId 列表
+段落 荐页面恢复(收据表, 已装包表, 无在途=[]):
+  设 出 为 []
+  遍历 收据 之 收据表:
+    设 阶段 为 收据["phase"]
+    设 命中 为 假
+    如果 荐在表(阶段, 荐页面对账阶段) == 真:
+      设 调用号 为 收据["callId"]
+      设 在途 为 荐在表(调用号, 无在途)
+      如果 在途 == 假:
+        设 命中 为 真
+    如果 命中 == 真:
+      设 包名 为 荐取(收据, "bundleName", 空)
+      设 已装 为 假
+      如果 包名 != 空:
+        如果 荐在表(包名, 已装包表) == 真:
+          设 已装 为 真
+      如果 已装 == 真:
+        设 新收 为 荐复制字典(收据)
+        设 新收["phase"] 为 "installed"
+        列表追加(出, 新收)
+      否则 如果 阶段 == "creating":
+        设 新收 为 荐复制字典(收据)
+        设 新收["phase"] 为 "interrupted"
+        列表追加(出, 新收)
+      否则 如果 阶段 == "installing":
+        设 新收 为 荐复制字典(收据)
+        设 新收["phase"] 为 "interrupted"
+        列表追加(出, 新收)
+      否则 如果 阶段 == "unconfirmed":
+        设 新收 为 荐复制字典(收据)
+        设 新收["phase"] 为 "interrupted"
+        列表追加(出, 新收)
+  返回 出
+
+# index.ts: recoverOnOpen() 的失败分支 —— 读不到档案时，未收口的收据一律记 unconfirmed
+段落 荐恢复失败(收据表, 无在途=[]):
+  设 出 为 []
+  遍历 收据 之 收据表:
+    设 阶段 为 收据["phase"]
+    设 命中 为 假
+    如果 荐在表(阶段, 荐页面重开阶段) == 真:
+      设 调用号 为 收据["callId"]
+      设 在途 为 荐在表(调用号, 无在途)
+      如果 在途 == 假:
+        设 命中 为 真
+    如果 命中 == 真:
+      设 新收 为 荐复制字典(收据)
+      设 新收["phase"] 为 "unconfirmed"
+      列表追加(出, 新收)
+  返回 出
+
+# index.ts: dismissal() —— 用户选的槽位/自定义位置非法时回落到提议里的
+段落 荐页面忽略数据(提议, 载荷=空):
+  设 提议细节 为 荐取(提议, "details", {})
+  设 槽 为 荐取(提议细节, "slot", "page")
+  设 自定 为 空
+  如果 载荷 != 空:
+    设 试槽 为 荐取(载荷, "slot", 空)
+    如果 是字符串(试槽) == 真:
+      如果 荐在表(试槽, 荐页面槽位) == 真:
+        设 槽 为 试槽
+    设 试自定 为 荐取(载荷, "customLocation", 空)
+    如果 是字符串(试自定) == 真:
+      设 试自定净 为 去除空白(试自定)
+      如果 字符串长度(试自定净) > 0:
+        如果 字符串长度(试自定净) <= 荐自定义位置上限:
+          设 自定 为 试自定净
+  设 数据 为 {"slot": 槽}
+  如果 自定 != 空:
+    设 数据["customLocation"] 为 自定
+  返回 数据
+
+# ===== 六、official-bundles：模板重写、退役剔除、离线目录条目校验 =====
+
+段落 荐模板包(名):
+  如果 字典包含键(荐profile模板, 名) == 假:
+    返回 空
+  返回 荐复制列表(荐profile模板[名])
+
+# app-boot：整条包表与安装方旧元组逐位相同 → 换成同名模板；否则原样不动
+段落 荐重写安装模板(名, 包表):
+  如果 字典包含键(荐安装方旧元组, 名) == 假:
+    返回 荐复制列表(包表)
+  设 旧表 为 荐安装方旧元组[名]
+  如果 列表长度(包表) != 列表长度(旧表):
+    返回 荐复制列表(包表)
+  设 同 为 真
+  设 位 为 0
+  当 位 < 列表长度(旧表):
+    如果 列表获取(包表, 位) != 列表获取(旧表, 位):
+      设 同 为 假
+    设 位 为 位 + 1
+  如果 同 == 假:
+    返回 荐复制列表(包表)
+  返回 荐模板包(名)
+
+# app-boot：把退役包从 profile 里摘掉（其余保持顺序）
+段落 荐剔除退役包(包表):
+  设 出 为 []
+  遍历 包 之 包表:
+    如果 荐在表(包, 荐退役包) == 假:
+      列表追加(出, 包)
+  返回 出
+
+# catalog 条目校验（official-bundles.spec.ts 的五条不变量）：
+# 包名非空、双语文案都非空、icon 是内联 svg base64、无 version
+段落 荐目录条目问题(条目):
+  设 名 为 荐取(条目, "packageName", 空)
+  如果 是字符串(名) == 假:
+    返回 "目录条目缺少 packageName"
+  如果 字符串长度(名) == 0:
+    返回 "目录条目缺少 packageName"
+  如果 字典包含键(条目, "version") == 真:
+    返回 "目录条目不得带 version"
+  设 元 为 荐取(条目, "meta", 空)
+  如果 元 == 空:
+    返回 "目录条目缺少 meta"
+  设 图标 为 荐取(元, "icon", "")
+  如果 开头(图标, "data:image/svg+xml;base64,") == 假:
+    返回 "目录条目 icon 必须是内联 svg base64"
+  设 题 为 荐取(元, "title", 空)
+  设 述 为 荐取(元, "description", 空)
+  如果 是字典(题) == 假:
+    返回 "目录条目 title/description 必须是双语对象"
+  如果 是字典(述) == 假:
+    返回 "目录条目 title/description 必须是双语对象"
+  设 题英 为 荐取(题, "en", 空)
+  设 题中 为 荐取(题, "zh", 空)
+  设 述英 为 荐取(述, "en", 空)
+  设 述中 为 荐取(述, "zh", 空)
+  如果 是字符串(题英) == 假:
+    返回 "目录条目 title 缺 en 或 zh"
+  如果 是字符串(题中) == 假:
+    返回 "目录条目 title 缺 en 或 zh"
+  如果 是字符串(述英) == 假:
+    返回 "目录条目 description 缺 en 或 zh"
+  如果 是字符串(述中) == 假:
+    返回 "目录条目 description 缺 en 或 zh"
+  如果 字符串长度(去除空白(题英)) == 0:
+    返回 "目录条目 title 的 en/zh 不得为空"
+  如果 字符串长度(去除空白(题中)) == 0:
+    返回 "目录条目 title 的 en/zh 不得为空"
+  如果 字符串长度(去除空白(述英)) == 0:
+    返回 "目录条目 description 的 en/zh 不得为空"
+  如果 字符串长度(去除空白(述中)) == 0:
+    返回 "目录条目 description 的 en/zh 不得为空"
+  返回 空
+
+# ===== 七、plugin-detail：语言链、meta.detail、Markdown、README、图片 =====
+
+# ASCII 码点 → 字符：可打印集覆盖路径与文件名（32..126）
+设 荐可打印集 为 " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+
+段落 荐是小写字母(字):
+  返回 字符串包含("abcdefghijklmnopqrstuvwxyz", 字)
+
+段落 荐是数字(字):
+  返回 字符串包含("0123456789", 字)
+
+段落 荐是字母(字):
+  设 小 为 转小写(字)
+  返回 荐是小写字母(小)
+
+段落 荐是子片(片):
+  设 长 为 字符串长度(片)
+  如果 长 < 1:
+    返回 假
+  如果 长 > 8:
+    返回 假
+  设 位 为 0
+  当 位 < 长:
+    设 字 为 字符串获取(片, 位)
+    设 好 为 荐是小写字母(字)
+    如果 好 == 假:
+      设 好 为 荐是数字(字)
+    如果 好 == 假:
+      返回 假
+    设 位 为 位 + 1
+  返回 真
+
+# document.ts: languageChain —— 语言 id 逐段校验后切前缀，末尾兜底 en（去重保序）
+段落 荐语言链(语言):
+  设 原小 为 转小写(语言)
+  设 片段表 为 分割字符串(原小, "-")
+  设 片数 为 列表长度(片段表)
+  如果 片数 == 0:
+    抛出 新建 错误("Not a language id: " + 语言)
+  设 首片 为 列表获取(片段表, 0)
+  设 首长 为 字符串长度(首片)
+  如果 首长 < 2:
+    抛出 新建 错误("Not a language id: " + 语言)
+  如果 首长 > 8:
+    抛出 新建 错误("Not a language id: " + 语言)
+  设 位 为 0
+  当 位 < 首长:
+    设 字 为 字符串获取(首片, 位)
+    如果 荐是小写字母(字) == 假:
+      抛出 新建 错误("Not a language id: " + 语言)
+    设 位 为 位 + 1
+  设 序 为 1
+  当 序 < 片数:
+    设 片 为 列表获取(片段表, 序)
+    如果 荐是子片(片) == 假:
+      抛出 新建 错误("Not a language id: " + 语言)
+    设 序 为 序 + 1
+  设 出 为 []
+  设 尾数 为 片数
+  当 尾数 > 0:
+    设 链 为 []
+    设 位 为 0
+    当 位 < 尾数:
+      列表追加(链, 列表获取(片段表, 位))
+      设 位 为 位 + 1
+    设 段名 为 连接字符串(链, "-")
+    如果 荐在表(段名, 出) == 假:
+      列表追加(出, 段名)
+    设 尾数 为 尾数 - 1
+  如果 荐在表("en", 出) == 假:
+    列表追加(出, "en")
+  返回 出
+
+# document.ts: detailPath —— `/` 相对路径、不许出包、必须 Markdown
+# 返回 {"成": 真, "值": 路径}（值为 空 代表上游的 undefined）/ {"成": 假, "规则": 说明}
+段落 荐校验详情路径(值):
+  如果 值 == 空:
+    返回 {"成": 真, "值": 空}
+  如果 是字符串(值) == 假:
+    返回 {"成": 假, "规则": "must be a non-empty string"}
+  设 文 为 去除空白(值)
+  如果 字符串长度(文) == 0:
+    返回 {"成": 假, "规则": "must be a non-empty string"}
+  如果 字符串包含(值, "\\") == 真:
+    返回 {"成": 假, "规则": "must be a relative path inside the package"}
+  如果 荐有协议前缀(值) == 真:
+    返回 {"成": 假, "规则": "must be a relative path inside the package"}
+  设 片表 为 分割字符串(值, "/")
+  遍历 片 之 片表:
+    如果 片 == "":
+      返回 {"成": 假, "规则": "must be a relative path inside the package"}
+    如果 片 == ".":
+      返回 {"成": 假, "规则": "must be a relative path inside the package"}
+    如果 片 == "..":
+      返回 {"成": 假, "规则": "must be a relative path inside the package"}
+  如果 荐是Markdown名(值) == 假:
+    返回 {"成": 假, "规则": "must name a Markdown file"}
+  返回 {"成": 真, "值": 值}
+
+# `^[A-Za-z][A-Za-z\d+.-]*:` —— 冒号前那段是协议名
+段落 荐有协议前缀(值):
+  设 长 为 字符串长度(值)
+  设 位 为 0
+  当 位 < 长:
+    设 字 为 字符串获取(值, 位)
+    如果 字 == ":":
+      如果 位 > 0:
+        返回 真
+      返回 假
+    如果 位 == 0:
+      如果 荐是字母(字) == 假:
+        返回 假
+    否则:
+      设 好 为 荐是字母(字)
+      如果 好 == 假:
+        设 好 为 荐是数字(字)
+      如果 好 == 假:
+        如果 字 != "+":
+          如果 字 != ".":
+            如果 字 != "-":
+              返回 假
+    设 位 为 位 + 1
+  返回 假
+
+段落 荐是Markdown名(值):
+  设 小 为 转小写(值)
+  如果 结尾(小, ".md") == 真:
+    返回 真
+  如果 结尾(小, ".markdown") == 真:
+    返回 真
+  返回 假
+
+# 抛错版（与上游同文案：`<标签> <规则>`）
+段落 荐详情路径(值, 标签):
+  设 果 为 荐校验详情路径(值)
+  如果 果["成"] == 假:
+    抛出 新建 错误(标签 + " " + 果["规则"])
+  返回 果["值"]
+
+# document.ts: markdownOf —— 去一个前导 BOM，再去首个前置块（--- 开头、--- 收尾）
+段落 荐Markdown正文(文本):
+  设 原文 为 文本
+  如果 字符串长度(原文) == 0:
+    返回 原文
+  如果 字符串获取(原文, 0) == 荐BOM:
+    设 原文 为 截取到末尾(原文, 1)
+  设 行表 为 分割字符串(原文, "\n")
+  设 首行 为 列表获取(行表, 0)
+  设 首行净 为 去除右侧空白(首行)
+  如果 首行净 != "---":
+    返回 原文
+  设 命中 为 -1
+  设 序 为 1
+  当 序 < 列表长度(行表):
+    设 行 为 列表获取(行表, 序)
+    设 行净 为 去除右侧空白(行)
+    如果 行净 == "---":
+      设 命中 为 序
+      跳出
+    设 序 为 序 + 1
+  如果 命中 < 0:
+    返回 原文
+  设 余行 为 []
+  设 位 为 命中 + 1
+  当 位 < 列表长度(行表):
+    设 行 为 列表获取(行表, 位)
+    设 净行 为 行
+    如果 结尾(行, "\r") == 真:
+      设 净行 为 截取(行, 0, 字符串长度(行) - 1)
+    列表追加(余行, 净行)
+    设 位 为 位 + 1
+  返回 连接字符串(余行, "\n")
+
+# files.ts: readmeName —— README_NAMES 的序优先，同序按名字升序（插入排序）
+段落 荐README名(名表):
+  设 候选 为 []
+  遍历 名 之 名表:
+    如果 荐是README名(名) == 真:
+      设 排位 为 荐README序(名)
+      列表追加(候选, {"名": 名, "排": 排位})
+  如果 列表长度(候选) == 0:
+    返回 空
+  设 有序 为 []
+  遍历 项 之 候选:
+    设 插位 为 列表长度(有序)
+    设 位 为 0
+    当 位 < 列表长度(有序):
+      如果 插位 == 列表长度(有序):
+        设 现 为 列表获取(有序, 位)
+        如果 现["排"] > 项["排"]:
+          设 插位 为 位
+        否则 如果 现["排"] == 项["排"]:
+          如果 现["名"] > 项["名"]:
+            设 插位 为 位
+      设 位 为 位 + 1
+    列表插入(有序, 插位, 项)
+  设 首项 为 列表获取(有序, 0)
+  返回 首项["名"]
+
+段落 荐是README名(名):
+  设 小 为 转小写(名)
+  如果 小 == "readme":
+    返回 真
+  如果 小 == "readme.md":
+    返回 真
+  如果 小 == "readme.markdown":
+    返回 真
+  返回 假
+
+段落 荐README序(名):
+  设 位 为 0
+  当 位 < 列表长度(荐README名表):
+    如果 列表获取(荐README名表, 位) == 名:
+      返回 位
+    设 位 为 位 + 1
+  返回 列表长度(荐README名表)
+
+# document.ts: detailImage —— 去掉 ?/#、百分号解码后按文档目录解析，只认七种图片后缀
+段落 荐图片去向(文档, 书写):
+  设 净 为 荐去查询(书写)
+  设 解 为 荐百分解码(净)
+  如果 解["成"] == 假:
+    返回 空
+  设 路 为 解["值"]
+  如果 字符串包含(路, "\\") == 真:
+    返回 空
+  如果 字符串包含(路, 荐空字符) == 真:
+    返回 空
+  设 拼 为 路
+  如果 开头(路, "/"):
+    设 拼 为 截取到末尾(路, 1)
+  否则:
+    设 拼 为 荐接文档目录(文档, 路)
+  设 规整 为 荐路径规整(拼)
+  如果 规整 == 空:
+    返回 空
+  设 类型 为 荐图片类型(规整)
+  如果 类型 == 空:
+    返回 空
+  返回 {"路径": 规整, "媒体类型": 类型}
+
+段落 荐去查询(书写):
+  设 长 为 字符串长度(书写)
+  设 位 为 0
+  当 位 < 长:
+    设 字 为 字符串获取(书写, 位)
+    如果 字 == "?":
+      返回 截取(书写, 0, 位)
+    如果 字 == "#":
+      返回 截取(书写, 0, 位)
+    设 位 为 位 + 1
+  返回 书写
+
+# 百分号解码：本模块只解 ASCII 段（%00-%7F）；%80 以上与残缺转义一律当非法。
+# 上游用 decodeURIComponent（含完整 UTF-8 组装），非 ASCII 段是宿主能力缺口（交付里已明列）。
+段落 荐百分解码(书写):
+  设 长 为 字符串长度(书写)
+  设 位 为 0
+  设 出 为 ""
+  当 位 < 长:
+    设 字 为 字符串获取(书写, 位)
+    如果 字 == "%":
+      如果 位 + 2 >= 长:
+        返回 {"成": 假}
+      设 甲 为 字符串获取(书写, 位 + 1)
+      设 乙 为 字符串获取(书写, 位 + 2)
+      设 甲值 为 荐十六进制值(甲)
+      设 乙值 为 荐十六进制值(乙)
+      如果 甲值 < 0:
+        返回 {"成": 假}
+      如果 乙值 < 0:
+        返回 {"成": 假}
+      设 码 为 甲值 * 16 + 乙值
+      如果 码 > 127:
+        返回 {"成": 假}
+      设 出 为 出 + 荐码转字符(码)
+      设 位 为 位 + 3
+    否则:
+      设 出 为 出 + 字
+      设 位 为 位 + 1
+  返回 {"成": 真, "值": 出}
+
+段落 荐十六进制值(字):
+  设 表 为 "0123456789abcdef"
+  设 小 为 转小写(字)
+  设 位 为 0
+  当 位 < 字符串长度(表):
+    如果 字符串获取(表, 位) == 小:
+      返回 位
+    设 位 为 位 + 1
+  返回 -1
+
+段落 荐码转字符(码):
+  如果 码 < 32:
+    返回 ""
+  如果 码 > 126:
+    返回 ""
+  返回 字符串获取(荐可打印集, 码 - 32)
+
+段落 荐接文档目录(文档, 名):
+  设 斜位 为 最后索引(文档, "/")
+  如果 斜位 < 0:
+    返回 名
+  返回 截取(文档, 0, 斜位) + "/" + 名
+
+# posix.normalize + 越界判定：出现 .. 越出根、或规整后是 "." 一律拒绝
+# （只判「在根内的相对路径」，不做符号链接与实际可读性——那是宿主面）
+段落 荐路径规整(路):
+  设 片表 为 分割字符串(路, "/")
+  设 栈 为 []
+  设 位 为 0
+  当 位 < 列表长度(片表):
+    设 片 为 列表获取(片表, 位)
+    如果 片 == "..":
+      如果 列表长度(栈) == 0:
+        返回 空
+      列表弹出(栈, 列表长度(栈) - 1)
+    否则 如果 片 != "":
+      如果 片 != ".":
+        列表追加(栈, 片)
+    设 位 为 位 + 1
+  如果 列表长度(栈) == 0:
+    返回 空
+  返回 连接字符串(栈, "/")
+
+段落 荐图片类型(路):
+  设 小 为 转小写(路)
+  如果 结尾(小, ".png") == 真:
+    返回 "image/png"
+  如果 结尾(小, ".jpg") == 真:
+    返回 "image/jpeg"
+  如果 结尾(小, ".jpeg") == 真:
+    返回 "image/jpeg"
+  如果 结尾(小, ".gif") == 真:
+    返回 "image/gif"
+  如果 结尾(小, ".webp") == 真:
+    返回 "image/webp"
+  如果 结尾(小, ".avif") == 真:
+    返回 "image/avif"
+  如果 结尾(小, ".svg") == 真:
+    返回 "image/svg+xml"
+  返回 空
