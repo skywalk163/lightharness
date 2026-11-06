@@ -1,0 +1,381 @@
+# test_共享协议.light —— 0.2.2-rc.1 B3 增量移植判据（liveshare-protocol 协议层）
+# 运行：python 运行.py examples/test_共享协议.light
+# 上游：packages/experimental/liveshare-protocol/src/{tunnel-protocol,viewer-carrier,viewer-states}.ts
+#       锚点 dsh-v0.2.2-rc.1 = 66491b05e3；用例对齐 tests/{protocol-frames,protocol-utilities,
+#       share-access-state,ipc-token,viewer-carrier.client}.spec.ts 与 tests/frames/{v1,unknown}/*.json
+#
+# 覆盖清单（上游用例名 → 本文件小节）：
+#   protocol-frames: 'round-trips every current frame …'            → 二（v1 夹具逐条）
+#   protocol-frames: 'keeps every recorded optional field optional'  → 二.1 / 二.7（体可缺）
+#   protocol-frames: 'refuses a frame this build does not know …'    → 三.1–三.6
+#   protocol-frames: 'answers a frame it cannot serve …'             → 三.3 / 三.4（400 vs 501）
+#   protocol-frames: 'answers nothing for a frame it does serve'     → 四
+#   protocol-frames: 'names the share a refused owner command was about' → 六
+#   protocol-frames: 'refuses malformed text without throwing'       → 三.7
+#   protocol-frames: 'states the initial wire protocol version'      → 一
+#   protocol-frames: 'accepts an absent actor credential and refuses a non-string one' → 七.2
+#   protocol-frames: 'accepts an actor display name and refuses blank or non-string ones' → 七.3
+#   protocol-frames: 'refuses an unknown connection mode and defaults an absent one to relay' → 五.2 / 五.5
+#   protocol-utilities: 'summarizes one opaque viewer request for logging' → 八
+#   protocol-utilities: 'reads the share a rejected command names'   → 六
+#   protocol-utilities: 'drops frames that carry no serveable request' → 三.1 / 三.2 / 三.4
+#   protocol-utilities: 'parses the commands a worker serves'        → 五
+#   protocol-utilities: 'refuses every malformed field of a share spec' → 五.5–五.10
+#   protocol-utilities: 'parses the lifecycle events a host receives' → 七
+#   protocol-utilities: 'owns the snapshot fields a reader follows'  → 九.1
+#   protocol-utilities: 'refuses a snapshot field this build cannot trust' → 九.2–九.6
+#   share-access-state: 'accepts lifecycle wire and IPC snapshots without an RPC id' → 九.1 / 九.7
+#   ipc-token: 'rejects an empty subject in a share registration without rejecting an empty ACL' → 九.8
+#   ipc-token: 'rejects a tier the current vocabulary does not name' → 五.8
+#   viewer-carrier: 目标路径 / 流编号窗口 / 可重试 vs 终局 / 转发路由段边界 → 十 / 十一
+#   viewer-states: 七态 + 可达性词表                                  → 十二
+#
+# 未覆盖（宿主面，见模块末「未移植」）：WebSocket/HTTP 收发、fetch/AsyncIterable 流编排、
+# DOM 全局安装与脚本转义、crypto 随机源、identity 密钥与签名、React UI、鉴权。
+#
+# 口径差异（已实测，非缺陷）：
+#   1) 过期时间：上游 Date.parse 宽松；本移植收 ISO-8601 严格子集，不收 "Oct 3 2026" 这类自然语言日期。
+#   2) 缺键访问：光明缺键即抛错（实测 2026-11-05），故所有可选字段先问键在不在，不用「空即缺」。
+#   3) 分享号不做 encodeURIComponent（光明无此内置）：Relay 签发的 uuid 形状无需转义。
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 共享隧道拒答帧 里 501 → 500                     → 三.3 红
+#   B. 共享承载失败归类 去掉 401/403 前置判断          → 十.2 红
+#   C. 共享承载段起点 去掉尾段边界判断（只要前缀）      → 十.9 红
+
+从 共享协议 导入 共享协议版本, 共享协议能力表, 共享协议观看全局名, 共享协议观看态表, 共享协议观看可达性
+从 共享协议 导入 共享隧道解析网关帧, 共享隧道解析中继帧, 共享隧道解析准入态, 共享隧道拒答帧, 共享隧道请求字段
+从 共享协议 导入 共享隧道拒令分享号, 共享隧道解析工令, 共享隧道解析工事, 共享隧道校验分享规格, 共享隧道校验行为者
+从 共享协议 导入 共享隧道校验注册牌, 共享隧道过期可解析
+从 共享协议 导入 共享承载目标路径, 共享承载失败归类, 共享承载失败帧, 共享承载拒绝解包, 共享承载编码形状
+从 共享协议 导入 共享承载转发路由, 共享承载调用路径, 共享承载流号起点
+从 JSON 导入 解析JSON, 序列化JSON
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言无键(字典, 键, 标签):
+  如果 列表包含(字典键列表(字典), 键) == 真:
+    抛出 新建 错误("断言无键失败: " + 标签)
+
+段落 断言空(值, 标签):
+  如果 值 != 空:
+    抛出 新建 错误("断言空失败: " + 标签 + " 实际=" + 序列化JSON(值))
+
+# 上游夹具的注册牌（uuid v4）与三处常用主体
+段落 牌一():
+  返回 "11111111-1111-4111-8111-111111111111"
+
+# add-share 的分享体裁：只带必填字段，连接形态由用例决定是否给
+段落 造分享(分享号):
+  返回 {"shareId": 分享号, "sessionId": "session-one", "sessionTitle": "Review the migration", "accessMode": "selected", "relay": "wss://relay.example", "gatewayToken": "token-one", "ownerDisplayName": "Owner", "allowedSubjectIds": ["user_viewer"]}
+
+段落 造工令(分享):
+  返回 {"type": "add-share", "registrationToken": 牌一(), "share": 分享}
+
+段落 主程():
+  # ===== 一、版本与能力（protocol-frames: 'states the initial wire protocol version'）=====
+  断言相等(共享协议版本(), 1, "线协议版本")
+  断言相等(共享协议观看全局名(), "__DSH_LIVESHARE_VIEWER__", "观看全局名")
+  设 能力 为 共享协议能力表()
+  断言相等(列表长度(能力), 10, "能力表条数")
+  断言真(列表包含(能力, "direct-connection"), "能力含 direct-connection")
+  断言真(列表包含(能力, "unsupported-frame-refusal"), "能力含 unsupported-frame-refusal")
+
+  # ===== 二、v1 夹具逐条往返（tests/frames/v1/*.json）=====
+  # 2.1 gateway-to-relay--share-rpc-res.json（体可选）
+  设 闸答 为 共享隧道解析网关帧("{\"type\": \"share-rpc-res\", \"id\": 7, \"status\": 200, \"body\": {\"ok\": true}}")
+  断言相等(闸答["种类"], "share-rpc-res", "闸答 种类")
+  断言相等(闸答["标识"], 7, "闸答 标识")
+  断言相等(闸答["状态"], 200, "闸答 状态")
+  断言相等(闸答["体"]["ok"], 真, "闸答 体透传")
+
+  # 2.2 同帧去掉体（可选字段保持可选）
+  设 闸答空体 为 共享隧道解析网关帧("{\"type\": \"share-rpc-res\", \"id\": 9, \"status\": 204}")
+  断言相等(闸答空体["状态"], 204, "闸答无体 状态")
+  断言无键(闸答空体, "体", "闸答无体 不造键")
+
+  # 2.3 relay-to-gateway--share-rpc.json（带 Relay 断言的行为者与 owner 凭据）
+  设 中继请求 为 共享隧道解析中继帧("{\"type\": \"share-rpc\", \"id\": 7, \"body\": {\"op\": \"call\", \"path\": \"/__share/context\", \"body\": {}}, \"actor\": {\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\", \"credential\": \"signed-owner-verified-token\"}}")
+  断言相等(中继请求["种类"], "share-rpc", "中继请求 种类")
+  断言相等(中继请求["行为者"]["subjectId"], "user_viewer", "中继请求 行为者")
+  断言相等(中继请求["行为者"]["credential"], "signed-owner-verified-token", "中继请求 凭据透传")
+  断言相等(中继请求["体"]["op"], "call", "中继请求 体保持不透明")
+
+  # 2.4 relay-to-gateway--share-rpc-cancel.json
+  设 中继取消 为 共享隧道解析中继帧("{\"type\": \"share-rpc-cancel\", \"id\": 8}")
+  断言相等(中继取消["种类"], "share-rpc-cancel", "中继取消 种类")
+  断言相等(中继取消["标识"], 8, "中继取消 标识")
+
+  # 2.5 host-to-worker--add-share.json（全部可选字段在场）
+  设 全量分享 为 解析JSON("{\"shareId\": \"share-one\", \"sessionId\": \"session-one\", \"sessionTitle\": \"Review the migration\", \"accessMode\": \"selected\", \"relay\": \"wss://relay.example\", \"gatewayToken\": \"token-one\", \"ownerDisplayName\": \"Owner\", \"allowedSubjectIds\": [\"user_viewer\", \"example:tenant-a:user-other\"], \"sessionMode\": \"write\", \"allowsFork\": true, \"dshVersion\": \"0.2.0-rc.2\", \"ownerInstanceId\": \"instance-one\", \"expiresAt\": \"2026-10-03T00:00:00.000Z\", \"connection\": {\"mode\": \"relay\"}}")
+  设 全量工令 为 共享隧道解析工令(造工令(全量分享))
+  断言相等(全量工令["种类"], "add-share", "全量工令 种类")
+  断言相等(全量工令["注册牌"], 牌一(), "全量工令 注册牌")
+  断言相等(全量工令["分享"]["sessionMode"], "write", "全量工令 会话模式")
+  断言相等(全量工令["分享"]["allowsFork"], 真, "全量工令 允许分叉")
+  断言相等(列表长度(全量工令["分享"]["allowedSubjectIds"]), 2, "全量工令 允许主体")
+  断言相等(全量工令["分享"]["expiresAt"], "2026-10-03T00:00:00.000Z", "全量工令 过期时间")
+
+  # 2.6 host-to-worker--remove-share.json
+  设 撤下工令 为 共享隧道解析工令(解析JSON("{\"type\": \"remove-share\", \"shareId\": \"share-one\"}"))
+  断言相等(撤下工令["种类"], "remove-share", "撤下工令 种类")
+  断言相等(撤下工令["分享号"], "share-one", "撤下工令 分享号")
+
+  # 2.7 host-to-worker--share-rpc-response.json
+  设 回执 为 共享隧道解析工令(解析JSON("{\"type\": \"share-rpc-response\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"token\": \"request-token\", \"id\": 7, \"status\": 200, \"body\": {\"ok\": true}, \"shareId\": \"share-one\"}"))
+  断言相等(回执["种类"], "share-rpc-response", "回执 种类")
+  断言相等(回执["请求牌"], "request-token", "回执 请求牌")
+  断言相等(回执["标识"], 7, "回执 标识")
+  断言相等(回执["状态"], 200, "回执 状态")
+  断言相等(回执["体"]["ok"], 真, "回执 体")
+
+  # 2.8 worker-to-host 四类生命周期事件
+  断言相等(共享隧道解析工事(解析JSON("{\"type\": \"ready\"}"))["种类"], "ready", "工事 ready")
+  设 已连 为 共享隧道解析工事(解析JSON("{\"type\": \"share-connected\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"shareId\": \"share-one\"}"))
+  断言相等(已连["种类"], "share-connected", "工事 已连")
+  断言相等(已连["分享号"], "share-one", "工事 已连 分享号")
+  设 出错 为 共享隧道解析工事(解析JSON("{\"type\": \"share-error\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"shareId\": \"share-one\", \"message\": \"relay refused registration status=401\"}"))
+  断言相等(出错["报文"], "relay refused registration status=401", "工事 出错报文")
+  设 工事请求 为 共享隧道解析工事(解析JSON("{\"type\": \"share-rpc-request\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"token\": \"request-token\", \"id\": 7, \"shareId\": \"share-one\", \"body\": {\"op\": \"stream-open\", \"id\": 1, \"endpoint\": \"trajectory\", \"payload\": {}}, \"actor\": {\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\"}}"))
+  断言相等(工事请求["种类"], "share-rpc-request", "工事 请求")
+  断言相等(工事请求["体"]["op"], "stream-open", "工事 请求体")
+  断言相等(工事请求["行为者"]["tenantId"], "tenant-a", "工事 请求行为者")
+
+  # ===== 三、未知/畸形帧一律拒绝（tests/frames/unknown/*.json）=====
+  # 3.1 gateway-to-relay--status-out-of-range.json
+  断言空(共享隧道解析网关帧("{\"type\": \"share-rpc-res\", \"id\": 7, \"status\": 700}"), "状态超范围")
+
+  # 3.2 relay-to-gateway--id-not-a-positive-integer.json（无 id 可对照 → 既丢帧也不拒答）
+  设 零号文本 为 "{\"type\": \"share-rpc\", \"id\": 0, \"body\": {\"op\": \"call\", \"path\": \"/__share/context\", \"body\": {}}, \"actor\": {\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\"}}"
+  断言空(共享隧道解析中继帧(零号文本), "id 非正")
+  断言空(共享隧道拒答帧(零号文本), "id 非正 不拒答")
+
+  # 3.3 relay-to-gateway--future-frame-type.json（501 unsupported-frame）
+  设 未来拒 为 共享隧道拒答帧("{\"type\": \"share-stream-delta\", \"id\": 11, \"body\": {\"op\": \"stream-next\"}}")
+  断言相等(未来拒["状态"], 501, "未来帧 拒答状态")
+  断言相等(未来拒["体"]["error"], "unsupported-frame", "未来帧 拒答体")
+  断言相等(未来拒["标识"], 11, "未来帧 拒答标识")
+  断言空(共享隧道解析中继帧("{\"type\": \"share-stream-delta\", \"id\": 11, \"body\": {\"op\": \"stream-next\"}}"), "未来帧 丢帧")
+
+  # 3.4 relay-to-gateway--share-rpc-without-actor.json（400 invalid-request）
+  设 无主体文本 为 "{\"type\": \"share-rpc\", \"id\": 12, \"body\": {\"op\": \"call\", \"path\": \"/__share/context\", \"body\": {}}}"
+  断言空(共享隧道解析中继帧(无主体文本), "缺行为者 丢帧")
+  设 无主体拒 为 共享隧道拒答帧(无主体文本)
+  断言相等(无主体拒["状态"], 400, "缺行为者 拒答状态")
+  断言相等(无主体拒["体"]["error"], "invalid-request", "缺行为者 拒答体")
+
+  # 3.5 host-to-worker--future-command.json / worker-to-host--future-event.json
+  断言空(共享隧道解析工令(解析JSON("{\"type\": \"set-share-mode\", \"shareId\": \"share-one\", \"mode\": \"view\"}")), "未来工令 丢弃")
+  断言空(共享隧道解析工事(解析JSON("{\"type\": \"share-progress\", \"shareId\": \"share-one\", \"percent\": 50}")), "未来工事 丢弃")
+
+  # 3.6 host-to-worker--unknown-access-mode.json（枚举外的准入模式整条工令作废，不做放宽）
+  设 怪准入 为 解析JSON("{\"type\": \"add-share\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"share\": {\"shareId\": \"share-three\", \"sessionId\": \"session-three\", \"sessionTitle\": \"Third\", \"accessMode\": \"future\", \"relay\": \"wss://relay.example\", \"gatewayToken\": \"token-three\", \"ownerDisplayName\": \"Owner\", \"allowedSubjectIds\": []}}")
+  断言空(共享隧道解析工令(怪准入), "未知准入模式 丢弃")
+
+  # 3.7 畸形文本不抛（protocol-frames: 'refuses malformed text without throwing'）
+  断言空(共享隧道解析网关帧("not json"), "畸形文本 网关")
+  断言空(共享隧道解析中继帧("not json"), "畸形文本 中继")
+  断言空(共享隧道拒答帧("not json"), "畸形文本 不拒答")
+
+  # ===== 四、能服务的帧不回拒答（'answers nothing for a frame it does serve'）=====
+  断言空(共享隧道拒答帧("{\"type\": \"share-rpc\", \"id\": 7, \"body\": {\"op\": \"call\"}, \"actor\": {\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\"}}"), "可服务帧 不拒答")
+  断言空(共享隧道拒答帧("{\"type\": \"share-rpc-res\", \"id\": 7, \"status\": 200}"), "答复帧 不拒答")
+  断言空(共享隧道拒答帧("{\"type\": \"share-rpc-cancel\", \"id\": 8}"), "取消帧 不拒答")
+  断言空(共享隧道拒答帧("{\"type\": \"\", \"id\": 8}"), "空类型 不拒答")
+
+  # ===== 五、工令解析与分享规格校验 =====
+  # 5.1 shutdown
+  断言相等(共享隧道解析工令(解析JSON("{\"type\": \"shutdown\"}"))["种类"], "shutdown", "工令 停机")
+  # 5.2 缺连接默认 relay（'defaults an absent one to relay'）
+  设 缺连接 为 共享隧道解析工令(造工令(造分享("share-two")))
+  断言相等(缺连接["分享"]["connection"]["mode"], "relay", "缺连接 默认 relay")
+  # 5.3 未知连接模式拒绝
+  设 怪连接体 为 造分享("share-three")
+  怪连接体["connection"] 为 {"mode": "tunnel"}
+  断言空(共享隧道解析工令(造工令(怪连接体)), "未知连接模式 丢弃")
+  # 5.4 注册牌非法（版本位不是 4）
+  设 坏牌 为 {"type": "add-share", "registrationToken": "11111111-1111-1111-8111-111111111111", "share": 造分享("share-four")}
+  断言空(共享隧道解析工令(坏牌), "非 v4 注册牌 丢弃")
+  # 5.5 分享号为空串
+  设 空号体 为 造分享("share-five")
+  空号体["shareId"] 为 ""
+  断言空(共享隧道解析工令(造工令(空号体)), "空分享号 丢弃")
+  # 5.6 允许主体里混入空串
+  设 空主体体 为 造分享("share-six")
+  空主体体["allowedSubjectIds"] 为 ["user_viewer", ""]
+  断言空(共享隧道解析工令(造工令(空主体体)), "空主体 丢弃")
+  # 5.7 allowsFork 非布尔
+  设 怪叉体 为 造分享("share-seven")
+  怪叉体["allowsFork"] 为 "yes"
+  断言空(共享隧道解析工令(造工令(怪叉体)), "非布尔分叉 丢弃")
+  # 5.8 会话模式词表外（ipc-token: 'rejects a tier the current vocabulary does not name'）
+  设 怪档体 为 造分享("share-eight")
+  怪档体["sessionMode"] 为 "admin"
+  断言空(共享隧道解析工令(造工令(怪档体)), "词表外档位 丢弃")
+  # 5.9 过期时间不可解析
+  设 怪期体 为 造分享("share-nine")
+  怪期体["expiresAt"] 为 "Oct 3 2026"
+  断言空(共享隧道解析工令(造工令(怪期体)), "自然语言过期 丢弃")
+  # 5.10 校验函数本身：完整体裁通过 / 缺 relay 拒绝
+  断言真(共享隧道校验分享规格(造分享("share-ten")), "规格 校验通过")
+  设 缺中继体 为 造分享("share-eleven")
+  缺中继体["relay"] 为 空
+  断言真(共享隧道校验分享规格(缺中继体) == 假, "规格 缺 relay 拒绝")
+  # 5.11 回执状态超范围
+  断言空(共享隧道解析工令(解析JSON("{\"type\": \"share-rpc-response\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"token\": \"request-token\", \"id\": 7, \"status\": 700, \"shareId\": \"share-one\"}")), "回执状态超范围 丢弃")
+
+  # ===== 六、被拒工令点名其分享（'names the share a refused owner command was about'）=====
+  断言相等(共享隧道拒令分享号(解析JSON("{\"type\": \"set-share-mode\", \"shareId\": \"share-one\"}")), "share-one", "拒令 直取 shareId")
+  断言相等(共享隧道拒令分享号(解析JSON("{\"type\": \"add-share\", \"share\": {\"shareId\": \"share-two\"}}")), "share-two", "拒令 取内层 shareId")
+  断言相等(共享隧道拒令分享号(解析JSON("{\"type\": \"add-share\", \"share\": {\"shareId\": \"\"}}")), "", "拒令 空串不算")
+  断言相等(共享隧道拒令分享号(解析JSON("{\"type\": \"shutdown\"}")), "", "拒令 无名返回空串")
+
+  # ===== 七、行为者校验（additive wire fields 三条）=====
+  # 7.1 完整三元组
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\"}")), "行为者 三元组")
+  # 7.2 凭据可缺；非字符串拒绝
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\", \"credential\": \"tok\"}")), "行为者 凭据在场")
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\", \"credential\": 7}")) == 假, "行为者 凭据非串拒绝")
+  # 7.3 显示名可缺；空串/非串拒绝
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\", \"displayName\": \"张三\"}")), "行为者 显示名")
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"tenant-a\", \"subjectId\": \"user_viewer\", \"displayName\": \"\"}")) == 假, "行为者 空显示名拒绝")
+  断言真(共享隧道校验行为者(解析JSON("{\"providerId\": \"example\", \"tenantId\": \"\", \"subjectId\": \"user_viewer\"}")) == 假, "行为者 空租户拒绝")
+
+  # ===== 八、不透明请求体的日志字段（'summarizes one opaque viewer request'）=====
+  设 有字段 为 共享隧道请求字段(解析JSON("{\"op\": \"stream-open\", \"id\": 3, \"payload\": {}}"))
+  断言相等(有字段["op"], "stream-open", "请求字段 op")
+  断言相等(有字段["streamId"], "3", "请求字段 streamId")
+  设 无字段 为 共享隧道请求字段(解析JSON("{\"payload\": {}}"))
+  断言相等(无字段["op"], "unknown", "请求字段 缺 op")
+  断言相等(无字段["streamId"], "-", "请求字段 缺 id")
+  设 非记录 为 共享隧道请求字段("raw")
+  断言相等(非记录["op"], "unknown", "请求字段 非记录")
+
+  # ===== 九、已授权的准入快照 =====
+  # 9.1 线/PC 快照都不带 RPC id（wire snapshot）
+  设 快照 为 共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 0, \"accessMode\": \"selected\", \"allowedSubjectIds\": [\"user_viewer\"], \"sessionMode\": \"view\"}"))
+  断言相等(快照["种类"], "share-access-state", "快照 种类")
+  断言相等(快照["版本"], 0, "快照 版本")
+  断言相等(快照["准入模式"], "selected", "快照 准入模式")
+  断言相等(快照["会话模式"], "view", "快照 会话模式")
+  断言无键(快照, "允许分叉", "快照 无分叉不开键")
+  # 9.2 版本为负拒绝
+  断言空(共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": -1, \"accessMode\": \"open\", \"allowedSubjectIds\": [], \"sessionMode\": \"view\"}")), "快照 负版本 拒绝")
+  # 9.3 准入模式词表外拒绝
+  断言空(共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 1, \"accessMode\": \"future\", \"allowedSubjectIds\": [], \"sessionMode\": \"view\"}")), "快照 准入词表外 拒绝")
+  # 9.4 档位词表外拒绝
+  断言空(共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 1, \"accessMode\": \"open\", \"allowedSubjectIds\": [], \"sessionMode\": \"admin\"}")), "快照 档位词表外 拒绝")
+  # 9.5 允许主体含空串拒绝
+  断言空(共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 1, \"accessMode\": \"open\", \"allowedSubjectIds\": [\"ok\", \"\"], \"sessionMode\": \"view\"}")), "快照 空主体 拒绝")
+  # 9.6 过期时间不可解析拒绝 / 可解析保留
+  断言空(共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 1, \"accessMode\": \"open\", \"allowedSubjectIds\": [], \"sessionMode\": \"view\", \"expiresAt\": \"2026-13-03T00:00:00Z\"}")), "快照 非法月 拒绝")
+  设 带期快照 为 共享隧道解析准入态(解析JSON("{\"type\": \"share-access-state\", \"version\": 1, \"accessMode\": \"open\", \"allowedSubjectIds\": [], \"sessionMode\": \"write\", \"allowsFork\": true, \"expiresAt\": \"2026-10-03T00:00:00.000Z\"}"))
+  断言相等(带期快照["过期时间"], "2026-10-03T00:00:00.000Z", "快照 过期时间保留")
+  断言相等(带期快照["允许分叉"], 真, "快照 分叉保留")
+  # 9.7 IPC 快照回带注册牌与分享号（'accepts lifecycle wire and IPC snapshots without an RPC id'）
+  设 IPC快照 为 共享隧道解析工事(解析JSON("{\"type\": \"share-access-state\", \"registrationToken\": \"11111111-1111-4111-8111-111111111111\", \"shareId\": \"share-one\", \"version\": 2, \"accessMode\": \"open\", \"allowedSubjectIds\": [], \"sessionMode\": \"view\"}"))
+  断言相等(IPC快照["注册牌"], 牌一(), "IPC 快照 注册牌")
+  断言相等(IPC快照["分享号"], "share-one", "IPC 快照 分享号")
+  断言相等(IPC快照["版本"], 2, "IPC 快照 版本")
+  # 9.8 空 ACL 合法，空主体不合法（'rejects an empty subject … without rejecting an empty ACL'）
+  设 空ACL 为 造分享("share-twelve")
+  空ACL["allowedSubjectIds"] 为 []
+  断言真(共享隧道校验分享规格(空ACL), "空 ACL 合法")
+  # 9.9 过期时间解析器本身
+  断言真(共享隧道过期可解析("2026-10-03"), "过期 纯日期")
+  断言真(共享隧道过期可解析("2026-10-03T00:00:00Z"), "过期 带 Z")
+  断言真(共享隧道过期可解析("2026-10-03T00:00:00.5+08:00"), "过期 带区偏移")
+  断言真(共享隧道过期可解析("2026-10-03T23:59") , "过期 到分")
+  断言真(共享隧道过期可解析("2026-02-30T00:00:00Z"), "过期 只验范围不验日历（对齐 Date.parse 宽松）")
+  断言真(共享隧道过期可解析("2026-13-03T00:00:00Z") == 假, "过期 月超范围拒绝")
+  断言真(共享隧道过期可解析("2026-10-03 00:00:00") == 假, "过期 缺 T 拒绝")
+  断言真(共享隧道过期可解析("2026-10-03T24:00:00Z") == 假, "过期 时超范围拒绝")
+  断言真(共享隧道过期可解析("") == 假, "过期 空串拒绝")
+  # 9.10 注册牌校验
+  断言真(共享隧道校验注册牌(牌一()), "注册牌 v4")
+  断言真(共享隧道校验注册牌("11111111-1111-1111-8111-111111111111") == 假, "注册牌 版本位非 4 拒绝")
+  断言真(共享隧道校验注册牌("11111111-1111-4111-c111-111111111111") == 假, "注册牌 变体位非法 拒绝")
+  断言真(共享隧道校验注册牌("11111111-1111-4111-8111-11111111111g") == 假, "注册牌 非十六进制 拒绝")
+  断言真(共享隧道校验注册牌("") == 假, "注册牌 空串拒绝")
+
+  # ===== 十、观看承载（viewer-carrier 纯判定）=====
+  # 10.1 读通道目标：指名分享 / 裸通道
+  断言相等(共享承载目标路径("", "share-one"), "/__share/rpc?shareId=share-one", "目标路径 根位")
+  断言相等(共享承载目标路径("/p", ""), "/p/__share/rpc", "目标路径 无分享号")
+  断言相等(共享承载目标路径("/p", "share-one"), "/p/__share/rpc?shareId=share-one", "目标路径 基路径")
+  # 10.2 认证拒绝恒终局，哪怕包里写着可重试的码
+  断言相等(共享承载失败归类(401, "stream-not-found"), "远端", "归类 401 终局")
+  断言相等(共享承载失败归类(403, "gateway/cancelled"), "远端", "归类 403 终局")
+  # 10.3 承载类状态可重试
+  断言相等(共享承载失败归类(408, ""), "承载", "归类 408")
+  断言相等(共享承载失败归类(429, ""), "承载", "归类 429")
+  断言相等(共享承载失败归类(503, ""), "承载", "归类 503")
+  # 10.4 两个「逻辑流丢了」的码可重连
+  断言相等(共享承载失败归类(200, "stream-not-found"), "承载", "归类 stream-not-found")
+  断言相等(共享承载失败归类(200, "gateway/cancelled"), "承载", "归类 gateway/cancelled")
+  # 10.5 普通服务器错误不假设可重试
+  断言相等(共享承载失败归类(500, ""), "远端", "归类 500 终局")
+  断言相等(共享承载失败归类(200, "remote-access/denied"), "远端", "归类 owner 拒绝终局")
+  # 10.6 200 流帧里的 failure 槽同样按码分类；无名码回落到 read-refused
+  设 丢流帧 为 共享承载失败帧(解析JSON("{\"failure\": {\"code\": \"stream-not-found\", \"message\": \"gone\"}}"))
+  断言相等(丢流帧["类"], "承载", "失败帧 丢流")
+  断言相等(丢流帧["编码"], "stream-not-found", "失败帧 编码")
+  设 拒帧 为 共享承载失败帧(解析JSON("{\"failure\": {\"message\": \"no\"}}"))
+  断言相等(拒帧["编码"], "liveshare/read-refused", "失败帧 无名码回落")
+  断言空(共享承载失败帧(解析JSON("{\"ok\": true}")), "失败帧 无槽返回空")
+  # 10.7 拒绝体两种形状都认
+  设 平体 为 共享承载拒绝解包(解析JSON("{\"error\": \"remote-access/denied\"}"))
+  断言相等(平体["编码"], "remote-access/denied", "拒绝体 平铺码")
+  设 嵌体 为 共享承载拒绝解包(解析JSON("{\"error\": {\"code\": \"liveshare/read-only\", \"message\": \"只读\"}, \"message\": \"外层\"}"))
+  断言相等(嵌体["编码"], "liveshare/read-only", "拒绝体 嵌套码")
+  断言相等(嵌体["说明"], "只读", "拒绝体 嵌套说明优先")
+  设 顶体 为 共享承载拒绝解包(解析JSON("{\"error\": \"liveshare/read-only\", \"message\": \"外层\"}"))
+  断言相等(顶体["说明"], "外层", "拒绝体 平铺取顶层说明")
+  设 形怪 为 共享承载拒绝解包(解析JSON("{\"error\": \"Bad Code\", \"message\": \"x\"}"))
+  断言无键(形怪, "编码", "拒绝体 形状不合丢弃码")
+  # 10.8 编码形状（上游 codeShaped 正则）
+  断言真(共享承载编码形状("liveshare/read-only"), "编码形状 双段")
+  断言真(共享承载编码形状("stream-not-found"), "编码形状 单段")
+  断言真(共享承载编码形状("a/b/c9"), "编码形状 三段")
+  断言真(共享承载编码形状("Bad/code") == 假, "编码形状 大写开头拒绝")
+  断言真(共享承载编码形状("a//b") == 假, "编码形状 空段拒绝")
+  断言真(共享承载编码形状("a/") == 假, "编码形状 尾斜杠拒绝")
+  断言真(共享承载编码形状("") == 假, "编码形状 空串拒绝")
+  # 10.9 转发路由只认路径段边界（'forwards a route only when it starts a path segment'）
+  断言相等(共享承载转发路由("/open-in-app/apps", "GET"), "/open-in-app/apps", "转发 根位路由")
+  断言相等(共享承载转发路由("/relay/base/open-in-app/apps", "GET"), "/open-in-app/apps", "转发 基路径之后")
+  断言相等(共享承载转发路由("/x/api/present.host", "GET"), "/api/present.host", "转发 第二路由")
+  断言相等(共享承载转发路由("/api/present.hostile", "GET"), "", "转发 前缀邻居不认")
+  断言相等(共享承载转发路由("/x/open-in-app/apps-foo", "GET"), "", "转发 长段邻居不认")
+  断言相等(共享承载转发路由("/open-in-app/apps", "POST"), "", "转发 非 GET 不认")
+  断言相等(共享承载转发路由("/other", "GET"), "", "转发 无关路径")
+  # 10.10 调用路径取最后一处 /api/（'posts the owner\u2019s /api path'）
+  断言相等(共享承载调用路径("/relay/api/alpha/api/beta"), "/api/beta", "调用路径 取末段")
+  断言相等(共享承载调用路径("/relay/other"), "", "调用路径 无 /api/")
+  # 10.11 流编号窗口：种子 0 起于 1，且整体不越过 0x7fffff00（'keeps every id inside the positive window'）
+  断言相等(共享承载流号起点(0), 1, "流号 种子 0")
+  断言相等(共享承载流号起点(2147483391), 2147483392, "流号 窗口顶值")
+  断言相等(共享承载流号起点(2147483392), 1, "流号 到窗口回卷")
+  断言相等(共享承载流号起点(4294967295), 512, "流号 满值回卷")
+
+  # ===== 十一、观看态词表（viewer-states.ts）=====
+  设 态表 为 共享协议观看态表()
+  断言相等(列表长度(态表), 7, "观看态 七条")
+  断言相等(共享协议观看可达性("owner-offline"), "retryable", "可达性 owner-offline")
+  断言相等(共享协议观看可达性("relay-unreachable"), "retryable", "可达性 relay-unreachable")
+  断言相等(共享协议观看可达性("share-not-found"), "terminal", "可达性 share-not-found")
+  断言相等(共享协议观看可达性("share-stopped"), "terminal", "可达性 share-stopped")
+  断言相等(共享协议观看可达性("share-expired"), "terminal", "可达性 share-expired")
+  断言相等(共享协议观看可达性("sign-in-expired"), "terminal", "可达性 sign-in-expired")
+  断言相等(共享协议观看可达性("access-denied"), "terminal", "可达性 access-denied")
+  断言相等(共享协议观看可达性("no-such-state"), "", "可达性 词表外空串")
+
+  写 "--- 测试 共享协议 通过 ---"
+
+主程()
