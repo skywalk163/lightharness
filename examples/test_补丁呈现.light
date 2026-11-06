@@ -1,0 +1,136 @@
+# test_补丁呈现.light —— 0.2.2-rc.1 增量移植判据（tool-fs apply-patch-output / apply-patch-presentation，B6）
+# 运行：python 运行.py examples/test_补丁呈现.light
+# 上游：packages/fs/tool-fs/src/{apply-patch-output,apply-patch-presentation,diff}.ts
+#       + tests/apply-patch-presentation.spec.ts（dsh-v0.2.2-rc.1 = 66491b05e3）
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 补丁渲染 里 stopped 首行模板 "of " + ... -> 改成 "of " 后多空格   -> renderPatch 用例红
+#   B. 补丁完成行 把 A 族循环整段删掉                                    -> 完成行用例红
+#
+# 覆盖上游用例（逐条标注）：
+#   [spec1] previews every operation using raw paths, counting distinct files including move endpoints
+#   [spec3] falls back on failed or missing metadata and titles known stopped diffs
+#   [spec4] rejects a malformed stopped flag
+#   [spec5] stores no diff for creations or removals without a bounded basis
+#   [spec6] reports cancellation and a move failure with no written destination
+#   [spec2] propagates unexpected parser defects —— 光明解析错误不分类，未移植（见交付说明）
+
+从 补丁呈现 导入 补丁预览调用, 补丁预览结果, 补丁渲染, 补丁呈现元, 补丁停止自元, 补丁差异自元
+从 应用补丁 导入 解析补丁
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言假(条件, 标签):
+  如果 条件 != 假:
+    抛出 新建 错误("断言假失败: " + 标签)
+
+# 造补丁：首尾标记 + 体
+段落 造补丁(体表):
+  设 全表 为 ["*** Begin Patch"]
+  遍历 行 之 体表:
+    列表追加(全表, 行)
+  列表追加(全表, "*** End Patch")
+  返回 连接字符串(全表, "\n")
+
+段落 主程():
+  # ===== [spec1] 调用前预览：裸路径、含移动两端去重计数 =====
+  设 体 为 ["*** Add File: a", "+new", "*** Update File: b", "@@", "-old", "+new", "*** Delete File: c", "*** Update File: d", "*** Move to: e", "@@", "-old", "+new", "*** Update File: empty", "@@", "+insert", "*** Update File: b", "@@", "-new", "+last"]
+  设 预 为 补丁预览调用(造补丁(体))
+  断言真(预 != 空, "spec1 返回非空")
+  断言相等(预["卡"], "diff", "spec1 卡")
+  断言相等(预["标题"], "Apply patch (6 files)", "spec1 标题数")
+  断言相等(列表长度(预["差异表"]), 5, "spec1 差异数")
+  设 d0 为 列表获取(预["差异表"], 0)
+  断言相等(d0["路径"], "a", "spec1 d0 路径")
+  断言相等(d0["旧文本"], 空, "spec1 d0 旧空")
+  断言相等(d0["新文本"], "new\n", "spec1 d0 新文")
+  设 d1 为 列表获取(预["差异表"], 1)
+  断言相等(d1["路径"], "b", "spec1 d1 路径")
+  断言相等(d1["旧文本"], "old", "spec1 d1 旧文")
+  断言相等(d1["新文本"], "new", "spec1 d1 新文")
+  设 d2 为 列表获取(预["差异表"], 2)
+  断言相等(d2["路径"], "d", "spec1 d2 路径")
+  断言相等(d2["旧文本"], "old", "spec1 d2 旧文")
+  设 d3 为 列表获取(预["差异表"], 3)
+  断言相等(d3["路径"], "empty", "spec1 d3 路径")
+  断言相等(d3["旧文本"], 空, "spec1 d3 旧空")
+  断言相等(d3["新文本"], "insert", "spec1 d3 新文")
+  设 d4 为 列表获取(预["差异表"], 4)
+  断言相等(d4["路径"], "b", "spec1 d4 路径")
+  断言相等(d4["旧文本"], "new", "spec1 d4 旧文")
+  断言相等(d4["新文本"], "last", "spec1 d4 新文")
+  断言相等(预["位置表"], [{"路径": "a"}, {"路径": "b"}, {"路径": "c"}, {"路径": "d"}, {"路径": "e"}, {"路径": "empty"}], "spec1 位置表")
+
+  # [spec1] 纯删除：无 diff，仅位置；单文件标题用 file
+  设 仅删 为 补丁预览调用(造补丁(["*** Delete File: only"]))
+  断言相等(仅删["标题"], "Apply patch (1 file)", "spec1 单文件 file")
+  断言相等(仅删["差异表"], [], "spec1 纯删除无 diff")
+  断言相等(仅删["位置表"], [{"路径": "only"}], "spec1 纯删除位置")
+
+  # [spec1] 语法无效 -> 空（上游 undefined）
+  断言相等(补丁预览调用("invalid"), 空, "spec1 无效补丁空")
+
+  # ===== [spec3] 结果呈现：出错/缺 meta 回退，已停标题 =====
+  设 好diff 为 [{"路径": "a", "旧文本": "old", "新文本": "new"}]
+  断言相等(补丁预览结果({"出错": 真, "元": {"差异表": 好diff}}), 空, "spec3 出错回退")
+  断言相等(补丁预览结果({"出错": 假, "内容": []}), 空, "spec3 缺 meta 回退")
+  设 正常 为 补丁预览结果({"出错": 假, "元": {"差异表": 好diff}})
+  断言相等(正常, {"卡": "diff", "标题": "Apply patch", "差异表": 好diff}, "spec3 正常呈现")
+  设 停 为 补丁预览结果({"出错": 假, "元": {"差异表": 好diff, "停止": 真}})
+  断言相等(停["标题"], "Apply patch (stopped)", "spec3 已停标题")
+  断言相等(停["差异表"], 好diff, "spec3 已停差异")
+
+  # ===== [spec4] 畸形停止旗标一律认假 =====
+  断言假(补丁停止自元(空), "spec4 空")
+  断言假(补丁停止自元([]), "spec4 空表")
+  断言假(补丁停止自元("stopped"), "spec4 字符串")
+  断言假(补丁停止自元({}), "spec4 空字典")
+  断言假(补丁停止自元({"停止": "true"}), "spec4 字符串真")
+  断言假(补丁停止自元({"停止": 假}), "spec4 显式假")
+  断言真(补丁停止自元({"停止": 真}), "spec4 恰为真")
+  # diffsFromMeta 同口径：畸形/空 -> 空
+  断言相等(补丁差异自元(空), 空, "spec4 差异空")
+  断言相等(补丁差异自元({"差异表": []}), 空, "spec4 差异空表")
+  断言相等(补丁差异自元({"差异表": [{"路径": "a", "旧文本": 1, "新文本": "x"}]}), 空, "spec4 差异项畸形")
+
+  # ===== [spec5] 创作不留 diff；无基线删除记空新文；renderPatch 全文 =====
+  设 值五 为 {"取消": 假, "受影响路径": ["a", "b"], "操作表": [
+    {"序号": 0, "种类": "delete", "路径": "a", "补丁行": 2, "状态": "completed", "变更": [{"路径": "a", "前": 空, "后": 空}]},
+    {"序号": 1, "种类": "add", "路径": "d", "补丁行": 3, "状态": "completed", "变更": [{"路径": "d", "前": 空, "后": "created\n"}]},
+    {"序号": 2, "种类": "delete", "路径": "e", "补丁行": 5, "状态": "completed", "变更": [{"路径": "e", "前": "gone\n", "后": 空}]},
+    {"序号": 3, "种类": "update", "路径": "b", "补丁行": 6, "状态": "failed", "报文": "denied"},
+    {"序号": 4, "种类": "add", "路径": "c", "补丁行": 7, "状态": "skipped"}
+  ]}
+  设 元五 为 补丁呈现元(值五)
+  断言真(元五["已停"], "spec5 已停")
+  断言相等(元五["差异表"], [{"路径": "e", "旧文本": "gone\n", "新文本": ""}], "spec5 差异表")
+  设 期望五 为 "Patch stopped after 3 of 5 operations.\nCompleted:\nA d\nD a\nD e\nFailed:\n- operation 4 (update b, patch line 6): denied\nNot executed:\n- operation 5 (add c)"
+  断言相等(补丁渲染(值五), 期望五, "spec5 renderPatch")
+
+  # ===== [spec6] 取消 + move 失败（目标未落）=====
+  设 值六 为 {"取消": 真, "受影响路径": [], "操作表": [
+    {"序号": 0, "种类": "move", "路径": "a", "目标": "b", "补丁行": 2, "状态": "failed", "报文": "cancelled", "变更": []},
+    {"序号": 1, "种类": "delete", "路径": "c", "补丁行": 7, "状态": "skipped"}
+  ]}
+  设 期望六 为 "Patch stopped after 0 of 2 operations.\nFailed:\n- operation 1 (move a -> b, patch line 2): cancelled\nNot executed:\n- operation 2 (delete c)"
+  断言相等(补丁渲染(值六), 期望六, "spec6 renderPatch")
+
+  # ===== 成功路径补样（上游未单列，补模型面文案形状）=====
+  设 值成 为 {"取消": 假, "操作表": [
+    {"序号": 0, "种类": "add", "路径": "a", "状态": "completed"},
+    {"序号": 1, "种类": "update", "路径": "b", "状态": "completed"},
+    {"序号": 2, "种类": "delete", "路径": "c", "状态": "completed"}
+  ]}
+  断言相等(补丁渲染(值成), "Success. Updated the following files:\nA a\nM b\nD c", "成功渲染")
+  设 值空 为 {"取消": 假, "操作表": []}
+  断言相等(补丁渲染(值空), "Success. No operations in patch.", "空操作成功")
+
+  写 "--- 测试 补丁呈现 通过 ---"
+
+主程()
