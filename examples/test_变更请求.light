@@ -1,0 +1,204 @@
+# test_变更请求.light —— 0.2.2-rc.1 增量移植判据（forge CR 注册表 + URL/绑定纯逻辑）
+# 运行：python 运行.py examples/test_变更请求.light
+# 上游：packages/experimental/forge/src/{keys,schedule,types}.ts + forge-session/src/{commands,projection}.ts
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 变更请求键 里 toLowerCase 去掉       -> 大小写用例红
+#   B. 下次轮询延迟 里 merged 分支改返回 idle -> merged 停轮用例红
+
+从 变更请求 导入 变更请求键 下次轮询延迟 URL身份 同变更请求URL 找变更请求URL 找自身URL 绑定追加 记录推送 评审归一
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言抛含(待测段落, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    待测段落()
+  捕获 异常 为 异常值:
+    设 已抛 为 真
+    设 报文 为 转字符串(异常值)
+    如果 字符串包含(报文, 片段) == 假:
+      抛出 新建 错误("断言抛含失败: " + 标签 + " 报文=" + 报文)
+  如果 已抛 == 假:
+    抛出 新建 错误("应抛错未抛: " + 标签)
+
+段落 造仓(forge, host, owner, name):
+  返回 {"forge": forge, "host": host, "owner": owner, "name": name}
+
+段落 造ref(仓, 号):
+  返回 {"repository": 仓, "number": 号}
+
+段落 造间隔():
+  返回 {"活跃间隔": 30000, "空闲间隔": 120000, "最大退避": 600000}
+
+段落 造快照(状态, 检查汇总, 可合并):
+  返回 {"状态": 状态, "检查汇总": 检查汇总, "可合并": 可合并}
+
+段落 造失败():
+  返回 {"错误": "not-found"}
+
+段落 抛缺repository():
+  变更请求键({"number": 1})
+
+段落 抛缺number():
+  变更请求键({"repository": 造仓("github", "github.com", "o", "r")})
+
+段落 主程():
+  # ===== 一、键归一（keys.ts changeRequestKey）=====
+
+  # 1. 基本键：forge:host/owner/name#number
+  设 仓一 为 造仓("github", "github.com", "deepseek-ai", "deepseek-harness")
+  设 键一 为 变更请求键(造ref(仓一, 7870))
+  断言相等(键一, "github:github.com/deepseek-ai/deepseek-harness#7870", "键基本")
+
+  # 2. 全小写：host/owner/name 大小写归一
+  设 仓二 为 造仓("GitHub", "GitHub.com", "DeepSeek-AI", "DeepSeek-Harness")
+  设 键二 为 变更请求键(造ref(仓二, 123))
+  断言相等(键二, "github:github.com/deepseek-ai/deepseek-harness#123", "键小写")
+
+  # 3. 缺字段抛错
+  断言抛含(抛缺repository, "缺少 repository", "键缺repository")
+  断言抛含(抛缺number, "缺少 number", "键缺number")
+
+  # ===== 二、轮询调度（schedule.ts nextPollDelay）=====
+
+  设 间隔 为 造间隔()
+
+  # 4. 失败退避：active * 2^failures
+  设 退避一 为 下次轮询延迟(造失败(), 0, 间隔)
+  断言相等(退避一, 30000, "退避0次")
+  设 退避二 为 下次轮询延迟(造失败(), 1, 间隔)
+  断言相等(退避二, 60000, "退避1次")
+  设 退避三 为 下次轮询延迟(造失败(), 3, 间隔)
+  断言相等(退避三, 240000, "退避3次")
+
+  # 5. 退避封顶：maxBackoff
+  设 退避封顶 为 下次轮询延迟(造失败(), 10, 间隔)
+  断言相等(退避封顶, 600000, "退避封顶")
+
+  # 6. merged 停轮：返回空
+  设 延迟合并 为 下次轮询延迟(造快照("已合并", "success", "mergeable"), 0, 间隔)
+  断言相等(延迟合并, 空, "merged停轮")
+
+  # 7. closed 空闲
+  设 延迟关闭 为 下次轮询延迟(造快照("已关闭", "success", "unknown"), 0, 间隔)
+  断言相等(延迟关闭, 120000, "closed空闲")
+
+  # 8. pending checks 活跃
+  设 延迟待查 为 下次轮询延迟(造快照("open", "pending", "mergeable"), 0, 间隔)
+  断言相等(延迟待查, 30000, "pending活跃")
+
+  # 9. unknown mergeability 活跃
+  设 延迟未知 为 下次轮询延迟(造快照("open", "success", "unknown"), 0, 间隔)
+  断言相等(延迟未知, 30000, "unknown活跃")
+
+  # 10. 已settled 的 open 空闲
+  设 延迟就绪 为 下次轮询延迟(造快照("open", "success", "mergeable"), 0, 间隔)
+  断言相等(延迟就绪, 120000, "settled空闲")
+
+  # ===== 三、URL 身份与比较（commands.ts urlIdentity/sameChangeRequestUrl）=====
+
+  # 11. URL身份去scheme
+  设 身份一 为 URL身份("https://github.com/o/r/pull/123")
+  断言相等(身份一, "github.com/o/r/pull/123", "身份去scheme")
+
+  # 12. URL身份去query和fragment
+  设 身份二 为 URL身份("https://github.com/o/r/pull/123?diff=unified#issuecomment-456")
+  断言相等(身份二, "github.com/o/r/pull/123", "身份去query")
+
+  # 13. URL身份去尾斜杠+小写
+  设 身份三 为 URL身份("http://GitHub.com/O/R/pull/123/")
+  断言相等(身份三, "github.com/o/r/pull/123", "身份尾斜杠小写")
+
+  # 14. 同URL：不同scheme/大小写/尾斜杠
+  断言真(同变更请求URL("https://github.com/o/r/pull/1", "http://github.com/o/r/pull/1/"), "同URL-scheme斜杠")
+  断言真(同变更请求URL("https://GitHub.com/O/R/pull/1", "https://github.com/o/r/pull/1"), "同URL-大小写")
+  断言真(同变更请求URL("https://github.com/o/r/pull/1?x=2", "https://github.com/o/r/pull/1"), "同URL-query")
+  设 不同URL 为 同变更请求URL("https://github.com/o/r/pull/1", "https://github.com/o/r/pull/2")
+  如果 不同URL != 假:
+    抛出 新建 错误("断言失败: 不同URL 应为假 实际=" + 序列化JSON(不同URL))
+
+  # ===== 四、URL 提取（commands.ts changeRequestUrls/ownChangeRequestUrls）=====
+
+  # 15. 找变更请求URL：文本中单个 URL
+  设 URL表一 为 找变更请求URL("see https://github.com/o/r/pull/123 for details")
+  断言相等(列表长度(URL表一), 1, "找URL-单")
+  断言相等(列表获取(URL表一, 0), "https://github.com/o/r/pull/123", "找URL-单内容")
+
+  # 16. 找变更请求URL：多个去重
+  设 URL表二 为 找变更请求URL("https://github.com/a/b/pull/1 and https://github.com/c/d/pull/2 and https://github.com/a/b/pull/1")
+  断言相等(列表长度(URL表二), 2, "找URL-多去重")
+
+  # 17. 找变更请求URL：无 URL 返回空
+  设 URL表三 为 找变更请求URL("no PRs here, just text")
+  断言相等(列表长度(URL表三), 0, "找URL-空")
+
+  # 18. 找变更请求URL：URL 尾部标点剥离
+  设 URL表四 为 找变更请求URL("see https://github.com/o/r/pull/123.")
+  断言相等(列表获取(URL表四, 0), "https://github.com/o/r/pull/123", "找URL-尾标点")
+
+  # 19. 找自身URL：url: 前缀行
+  设 自身一 为 找自身URL("title: Fix bug\nurl: https://github.com/o/r/pull/42\nstate: open\n--\nbody text")
+  断言相等(列表长度(自身一), 1, "自身-url前缀")
+  断言相等(列表获取(自身一, 0), "https://github.com/o/r/pull/42", "自身-url前缀内容")
+
+  # 20. 找自身URL：-- 之后不再扫描
+  设 自身二 为 找自身URL("url: https://github.com/o/r/pull/1\n--\nurl: https://github.com/o/r/pull/2")
+  断言相等(列表长度(自身二), 1, "自身-分隔截断")
+
+  # 21. 找自身URL：JSON "url" 成员
+  设 自身三 为 找自身URL('{"url": "https://github.com/o/r/pull/99", "title": "test"}')
+  断言相等(列表长度(自身三), 1, "自身-JSON")
+
+  # ===== 五、绑定投影（projection.ts bind/recordPushes）=====
+
+  # 22. 绑定追加：新绑定
+  设 绑定一 为 绑定追加([], ["https://github.com/o/r/pull/1"], "created")
+  断言相等(列表长度(绑定一), 1, "绑定-新增")
+  断言相等(列表获取(绑定一, 0)["origin"], "created", "绑定-来源")
+
+  # 23. 绑定追加：已存在的按 URL 身份跳过
+  设 绑定二 为 绑定追加(绑定一, ["http://github.com/o/r/pull/1/"], "referenced")
+  断言相等(列表长度(绑定二), 1, "绑定-去重")
+
+  # 24. 绑定追加：不同 URL 追加
+  设 绑定三 为 绑定追加(绑定二, ["https://github.com/o/r/pull/2"], "tracked")
+  断言相等(列表长度(绑定三), 2, "绑定-追加不同")
+
+  # 25. 记录推送：同 remote+branch 旧记录移除
+  设 推送一 为 记录推送([{"remote": "origin", "branch": "main", "seq": 5}], [{"remote": "origin", "branch": "main"}], 10)
+  断言相等(列表长度(推送一), 1, "推送-替换")
+  断言相等(列表获取(推送一, 0)["seq"], 10, "推送-新序号")
+
+  # 26. 记录推送：不同 branch 保留
+  设 推送二 为 记录推送([{"remote": "origin", "branch": "main", "seq": 5}], [{"remote": "origin", "branch": "dev"}], 10)
+  断言相等(列表长度(推送二), 2, "推送-不同分支保留")
+
+  # 27. 记录推送：空新推送不变
+  设 推送三 为 记录推送([{"remote": "origin", "branch": "main", "seq": 5}], [], 10)
+  断言相等(列表长度(推送三), 1, "推送-空不变")
+
+  # ===== 六、评审归一（review decision normalization）=====
+
+  # 28. APPROVED -> approved
+  断言相等(评审归一("APPROVED"), "approved", "评审-approved")
+
+  # 29. CHANGES_REQUESTED -> changes-requested
+  断言相等(评审归一("CHANGES_REQUESTED"), "changes-requested", "评审-changes")
+
+  # 30. REVIEW_REQUIRED -> review-required
+  断言相等(评审归一("REVIEW_REQUIRED"), "review-required", "评审-required")
+
+  # 31. 空/null -> none
+  断言相等(评审归一(空), "none", "评审-空none")
+  断言相等(评审归一("COMMENTED"), "none", "评审-其他none")
+
+  写 "--- 测试 变更请求 通过 ---"
+
+主程()
