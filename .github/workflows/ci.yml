@@ -16,24 +16,24 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: 前置：确认测试对 light 编译器的依赖是硬依赖
+        run: |
+          echo "本仓测试依赖 ../light-merge（语言本体编译器）。"
+          echo "克隆失败/编译器不可用 → 整批用例无意义 → 必须红，不得 skip。"
+
       - name: 检出 lightharness
         uses: actions/checkout@v4
 
-      - name: 检出 light-merge 编译器
+      - name: 检出 light 编译器（语言本体）
         run: |
           REPO="${{ vars.LIGHT_MERGE_REPO }}"
           if [ -z "$REPO" ]; then
-            echo "::warning::LIGHT_MERGE_REPO 未配置，尝试默认地址"
+            echo "::notice::LIGHT_MERGE_REPO 未配置，使用默认地址"
             REPO="https://gitcode.com/skywalk163/light.git"
           fi
-          git clone --depth 1 "$REPO" ../light-merge || echo "::warning::light-merge 检出失败，测试将跳过"
-          # 防御性校验：克隆的 light-merge 必须含 L-013/L-021 修复（预期 commit 5610f44a）；
-          # 否则回退 canonical gitcode main。背景：CI 曾因 gitea/gitcode main 滞后（修复未 push）而克隆到过期编译器。
-          EXPECT=5610f44a2b7d6970a9a185bccba578e13b9a7657
-          if ! git -C ../light-merge cat-file -e ${EXPECT}^{commit} 2>/dev/null; then
-            echo "::warning::克隆的 light-merge 不含 L-013/L-021 修复（缺 commit ${EXPECT}），回退 canonical gitcode main"
-            rm -rf ../light-merge
-            git clone --depth 1 https://gitcode.com/skywalk163/light.git ../light-merge
+          if ! git clone --depth 1 "$REPO" ../light-merge; then
+            echo "::error title=light 编译器检出失败::无法克隆 $REPO。lightharness 的测试依赖同级目录的 light 仓，缺它整批用例没有意义。请检查网络/仓库地址/vars.LIGHT_MERGE_REPO。"
+            exit 1
           fi
 
       - name: 设置 Python ${{ env.PYTHON_VERSION }}
@@ -44,6 +44,18 @@ jobs:
 
       - name: 安装依赖
         run: pip install -r requirements.txt
+
+      - name: 校验 light 编译器可用（能力探针，替代硬编码 commit）
+        run: |
+          set -e
+          cd ../light-merge
+          # 光明确认能跑起来
+          python -m cli.light_unified --version
+          # 能编一个最小程序（这是所有 .light 用例的前置能力）
+          cat > /tmp/_lh_hello.light <<'LIGHT'
+          打印("hello")
+          LIGHT
+          python -m cli.light_unified run /tmp/_lh_hello.light
 
       - name: 运行 CI 测试
         env:
