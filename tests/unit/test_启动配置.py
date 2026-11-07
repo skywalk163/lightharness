@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-# 注意：本模块经 主目录路径 → 字符串工具 这条传递导入链，会触发光明 stdlib
-# 引导按「入口 .light 所在目录」向上找 stdlib。基建 run_light_source 把入口写在
-# 系统临时目录，向上找不到 lightharness/stdlib，会回退到兄弟编译器仓库
-# light-merge/stdlib 的纯光明版 字符串工具.light（其 `从 re 导入 re_花括号`
-# 会报 No module named '_light_re'）。实测：只要入口 .light 落在 lightharness/
-# 根目录下，引导即命中自带 stdlib/字符串工具.py，一切正常。故本文件自写一个
-# run_in_repo：把片段写到 lightharness 根目录的临时 .light，跑完即删。
+# 注意：本模块经 主目录路径 → 字符串工具 这条传递导入链，会触发光明 stdlib 引导。
+# 运行.py 已显式传 `--stdlib-dir` 并把 lightharness 的 src/ROOT/stdlib 置于
+# sys.path 前部，入口 .light 放哪都不会回退到兄弟编译器仓库的纯光明 stdlib
+# （实测：入口落在系统临时目录同样命中自带 stdlib/字符串工具.py）。
+# 因此入口 .light 一律写进 pytest 的 tmp_path，不再污染仓库根目录（T-0266）。
 import os
 import subprocess
 import sys
 import uuid
+
+import pytest
 
 from test_support import (
     assert_success, assert_failure, out_contains, out_not_contains, LightResult,
@@ -18,26 +18,30 @@ from test_support import (
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RUNNER = os.path.join(ROOT, '运行.py')
 
+# 当前用例的 tmp_path，由 autouse fixture 注入；入口 .light 写在这里，
+# pytest 会自动清理，不再往仓库根目录丢 _unit_tmp_*.light（T-0266）。
+_ENTRY_DIR = None
+
+
+@pytest.fixture(autouse=True)
+def _entry_tmp(tmp_path):
+    global _ENTRY_DIR
+    _ENTRY_DIR = tmp_path
+
 
 def run_in_repo(source: str, timeout: int = 60) -> LightResult:
     name = f"_unit_tmp_{os.getpid()}_{uuid.uuid4().hex[:6]}.light"
-    path = os.path.join(ROOT, name)
+    path = os.path.join(str(_ENTRY_DIR), name)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(source)
-    try:
-        p = subprocess.run(
-            [sys.executable, RUNNER, path],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            cwd=ROOT, timeout=timeout,
-            env={**os.environ, "HARNESS_PY": sys.executable},
-        )
-        return LightResult(rc=p.returncode, stdout=p.stdout or "", stderr=p.stderr or "",
-                           workdir=ROOT, light_file=path)
-    finally:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+    p = subprocess.run(
+        [sys.executable, RUNNER, path],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        cwd=ROOT, timeout=timeout,
+        env={**os.environ, "HARNESS_PY": sys.executable},
+    )
+    return LightResult(rc=p.returncode, stdout=p.stdout or "", stderr=p.stderr or "",
+                       workdir=ROOT, light_file=path)
 
 
 def test_解析profile目录_合法():
