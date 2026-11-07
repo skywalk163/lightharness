@@ -8,6 +8,10 @@ __pycache__/
 tmp_persist/
 sessions/
 tmp_*
+# 测试临时文件：tests/unit/test_启动配置.py 会在仓库根目录生成
+# _unit_tmp_<pid>_<uuid6>.light，跑一次留一个（T-0266）。
+# 历史上有 75 个被误提交，清理后不许再进。
+_unit_tmp_*.light
 
 .env
 
