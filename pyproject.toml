@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lightharness"
+# 版本号真源：CHANGELOG.md 首条 `## [vX.Y.Z]`（当前 `## [v0.5.0-rc1] — 2026-10-28`）。
+# PEP 440 写法：去掉 `v` 和连字符 → 0.5.0rc1。本字段必须跟 CHANGELOG 首条一致。
+version = "0.5.0rc1"
+description = "用「光明」中文编程语言复刻 dsh（DeepSeek Harness）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Light Contributors" }]
+keywords = ["chinese", "programming-language", "light", "harness", "agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Interpreters",
+]
+# 光明编译器（light）与插件生态（lightplugin）是兄弟目录外部依赖，
+# 通过 LIGHT_MERGE / LIGHTPLUGIN 环境变量指定，不在此声明。
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/skywalk163/lightharness"
+Repository = "https://github.com/skywalk163/lightharness"
+Issues = "https://github.com/skywalk163/lightharness/issues"
+
+# 本仓是「.light 源码 + 一个 运行.py」的脚本布局，没有可导入的 Python 包目录。
+# 显式声明空 packages 清单：一是避免 setuptools 自动发现把 src/、stdlib/、docs/
+# 等误判成顶层包而直接报错（flat-layout 多包歧义），二是保持本卡范围
+# （不新增 __init__.py、不改 运行.py、不加 [project.scripts] —— 运行.py 没有 main()）。
+[tool.setuptools]
+packages = []
