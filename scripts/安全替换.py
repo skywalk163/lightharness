@@ -21,12 +21,22 @@
 #   python scripts/安全替换.py 输入.light "目标串" "替换串" --dry-run
 #   python scripts/安全替换.py --self-test        # 内置确定性自测（不依赖文件）
 #
+# 编辑日志（T-0336）：成功写盘后默认记一条「编辑前后」日志；加 --check 时编辑前后
+#   各跑一次 `light ai check --run --json --no-corpus`（--no-corpus 不污染报错归档），
+#   outcome 由两次 check 推导。不传 --check 时 check_* 写 null、outcome=unknown。
+#   python scripts/安全替换.py 输入.light "甲[9]" "甲[0]" --out 输出.light --check
+#   --no-edit-log 关闭日志；--edit-kind auto|FR|RW|PATCH 可显式声明编辑方式。
+#
 # 注意：替换串可含换行（CI/脚本里用 PowerShell 的 `n 或 Bash 的 $'...\n...' 传入），
 #       工具按字面串替换，不解释正则。
 # ==========================================================================
 import argparse
+import importlib.util
 import os
+import re
+import subprocess
 import sys
+from pathlib import Path
 
 # 词法状态：光明注释为行作用域（# 到行尾）；字符串可跨行（尤其三引号）。
 # 跨行时需在逐行扫描间保持「是否在字符串内」的状态。
@@ -177,6 +187,121 @@ def _print_stats(input_path, target, stats, out_mode):
                 print(f"    + {nl}")
 
 
+# --------------------------------------------------------------------------
+# 编辑日志钩子（T-0336）
+#   * 只在「成功写盘」后追加记录；干跑 / 输出到 stdout 不产生日志。
+#   * check 跑不出真实结果 → None → check_* 落 null、outcome=unknown，绝不猜。
+#   * 下面这些函数不参与替换语义，_self_test() 也完全不碰它们。
+# --------------------------------------------------------------------------
+_IDENT_RE = re.compile(r"^[^\W\d]\w*$", re.UNICODE)
+
+
+def _load_edit_log():
+    """动态加载同目录的 `编辑日志.py`（中文模块名，不动 sys.path）。"""
+    try:
+        path = Path(__file__).resolve().parent / "编辑日志.py"
+        spec = importlib.util.spec_from_file_location("_lh_edit_log", path)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except (OSError, ImportError, AttributeError, SyntaxError):
+        return None
+
+
+def _find_light_cli(explicit=None):
+    """定位 light CLI；找不到返回 None（check 结果不猜）。"""
+    cands = []
+    if explicit:
+        cands.append(Path(explicit))
+    if os.environ.get("LIGHT_CLI"):
+        cands.append(Path(os.environ["LIGHT_CLI"]))
+    for parent in Path(__file__).resolve().parents[:4]:
+        cands.append(parent / "light" / "cli" / "light.py")
+        cands.append(parent / "cli" / "light.py")
+    cands.append(Path("/home/skywalk/dswork/light/cli/light.py"))
+    for c in cands:
+        try:
+            if c.is_file():
+                return c
+        except OSError:
+            continue
+    return None
+
+
+def _run_check(mod, cli, path):
+    """跑一次 `light ai check --run --json --no-corpus`，返回 schema 的 check 对象。"""
+    cmd = [sys.executable, str(cli), "ai", "check", str(path),
+           "--run", "--json", "--no-corpus"]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=180)
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"警告: check 执行失败（check_* 记 null）: {exc}", file=sys.stderr)
+        return None
+    return mod.parse_check_json(r.stdout, r.returncode)
+
+
+def _light_meta(cli):
+    """复现所需的版本 / 后端；拿不到就留空字符串，不编造。"""
+    version = os.environ.get("LIGHT_VERSION", "")
+    backend = os.environ.get("LIGHT_BACKEND", "")
+    if not version and cli:
+        try:
+            r = subprocess.run([sys.executable, str(cli), "--version"],
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=30)
+            if r.returncode == 0 and r.stdout.strip():
+                version = r.stdout.strip().splitlines()[0][:80]
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return version, backend
+
+
+def _choose_edit_kind(target, repl, text, explicit=None):
+    """按**实际行为**选 FR / RW / PATCH，不许乱标。
+
+    RW    —— 目标串就是整份文件（整份内容被换掉，等价于全文件重写）；
+    FR    —— 目标串与替换串都是单个标识符（词法感知地逐个标识符替换）；
+    PATCH —— 其余：对文件里的目标子串做整串替换（本工具默认行为）。
+    """
+    if explicit and explicit != "auto":
+        return explicit
+    if target and text and target.strip() == text.strip():
+        return "RW"
+    if _IDENT_RE.match(target or "") and _IDENT_RE.match(repl or ""):
+        return "FR"
+    return "PATCH"
+
+
+def _emit_edit_log(mod, args, text, new_text, stats,
+                   check_before, check_after, cli):
+    """成功写盘后 append 一条记录；失败只告警，不改变替换本身的退出码。"""
+    repo_root = (Path(args.repo_root).resolve() if args.repo_root
+                 else Path(__file__).resolve().parents[1])
+    version, backend = _light_meta(cli)
+    kind = _choose_edit_kind(args.target, args.repl, text, args.edit_kind)
+    try:
+        rec = mod.build_record(
+            repo=args.repo, file=mod.relative_file(args.out, repo_root=repo_root),
+            edit_kind=kind, before_text=text, after_text=new_text,
+            check_before=check_before, check_after=check_after,
+            session_id=args.session_id or None, task_id=args.task_id or None,
+            agent=args.agent or None, light_version=version, backend=backend,
+            replaced=stats.get("replaced", 0),
+            target=mod.mask_paths(args.target))
+        written = mod.record(rec)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"警告: 编辑日志写入失败: {exc}", file=sys.stderr)
+        return
+    p = mod.log_path(rec["ts"])
+    if written is None:
+        print(f"编辑日志: 去重跳过（未重复写入）: {p}")
+    else:
+        print(f"编辑日志: {p}  ← edit_kind={kind} outcome={rec['outcome']}")
+
+
 def _self_test():
     """内置确定性自测：不依赖任何文件，覆盖注释/字符串/代码/三引号/行内注释。"""
     cases = [
@@ -225,7 +350,26 @@ def main(argv=None):
     p.add_argument("--out", help="写回路径（副本）。必须不同于输入，避免覆盖源码。")
     p.add_argument("--dry-run", action="store_true", help="只报告差异统计，不写任何文件")
     p.add_argument("--encoding", default="utf-8", help="文件编码（默认 utf-8）")
+    # --- 编辑日志钩子（T-0336）---
+    p.add_argument("--edit-log", dest="edit_log", action="store_true", default=True,
+                   help="成功写盘后记一条「编辑前后」日志（默认开）")
+    p.add_argument("--no-edit-log", dest="edit_log", action="store_false",
+                   help="关闭编辑日志")
+    p.add_argument("--check", action="store_true",
+                   help="编辑前后各跑一次 light ai check --run --json --no-corpus")
+    p.add_argument("--light-cli", help="light/cli/light.py 路径（默认自动探测）")
+    p.add_argument("--edit-kind", choices=["auto", "FR", "RW", "PATCH"], default="auto",
+                   help="edit_kind；auto 按实际替换行为判定（默认）")
+    p.add_argument("--repo", default="lightharness", help="日志里的 repo 名")
+    p.add_argument("--repo-root", help="repo 根目录，用于把 file 收敛成相对路径")
+    p.add_argument("--session-id", default="")
+    p.add_argument("--task-id", default="")
+    p.add_argument("--agent", default="")
     args = p.parse_args(argv)
+
+    if args.check and (not args.out or args.dry_run):
+        print("提示: --check 需要 --out 且非 --dry-run；本次不跑 check、不记日志",
+              file=sys.stderr)
 
     if not os.path.isfile(args.input):
         print(f"错误: 找不到输入文件 {args.input}", file=sys.stderr)
@@ -247,6 +391,16 @@ def main(argv=None):
              'total_lines': len(text.splitlines()), 'changed_lines': []}
     new_text = safe_replace(text, args.target, args.repl, stats)
 
+    # 编辑日志模块与 checker 都是可选的：缺任何一个都不伪造结果。
+    mod = _load_edit_log() if (args.edit_log or args.check) else None
+    cli = _find_light_cli(args.light_cli) if args.check else None
+    will_write = bool(args.out) and not args.dry_run
+    check_before = check_after = None
+    if args.check and will_write and mod and cli:
+        check_before = _run_check(mod, cli, args.input)  # 对「改之前」的文件跑
+    elif args.check and will_write and cli is None:
+        print("警告: 找不到 light CLI，check_* 记 null（outcome=unknown）", file=sys.stderr)
+
     if args.dry_run:
         out_mode = "dry-run（未写回）"
         _print_stats(args.input, args.target, stats, out_mode)
@@ -259,6 +413,13 @@ def main(argv=None):
         with open(args.out, 'w', encoding=args.encoding) as f:
             f.write(new_text)
         out_mode = args.out
+        if args.check and mod and cli:
+            check_after = _run_check(mod, cli, args.out)  # 对「改之后」的文件跑
+        if args.edit_log and mod:
+            _emit_edit_log(mod, args, text, new_text, stats,
+                           check_before, check_after, cli)
+        elif args.edit_log:
+            print("警告: 未找到 scripts/编辑日志.py，跳过编辑日志", file=sys.stderr)
     else:
         out_mode = "stdout（未写文件）"
         sys.stdout.write(new_text)
