@@ -4,6 +4,32 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号以轮次发布 tag 为准（如 `r95-dev`）。
 
+## [v0.6.0-rc1] — 2026-11-16
+
+> **R220 收口（0.2.2-rc.1 对齐）**：上游锚点 `dsh-v0.2.1-rc.3`（`1f81c047fc`）→ **`dsh-v0.2.2-rc.1`（`66491b05e3`，2026-11-04）**。
+> 七路并行（B1 主控先落地 + B2–B7 hive 卡 T-0254~T-0258）+ C/D/E 路登记与门禁。版本自 `v0.5.0-rc1` 走 minor 位升 **`v0.6.0-rc1`**（上游 0.2.2 特性移植）。
+
+### 新增
+
+- **B1（主控）apply_patch 全链路**：`src/应用补丁.light`（391 行）+ `examples/test_应用补丁.light`（61 断言）。Add/Delete/Update(+Move to)、`@@` 锚点、`+/-/空格` 行、`*** End of File`、三种 heredoc 包装、CRLF 归一、四遍规范化定位、锚点推进、末尾空行重试、纯插入/纯删除/EOF 语义、稳定排序逆序回放、失败形状（阶段/块行号/搜索起点）。反跑 A/B 双红后复绿。
+- **B2（T-0254）消息引用**：`src/消息引用.light`（对标 `session/message-quotes`）——引文解码（行尾归一、`≤3 空格 + >` 前缀只剥一层）、引文区间（连续显式引用行并段、原文偏移）、引文规则匹配（`引用` 节点 + `\n\n` 降级显示空格）、投影标记、引用准入/插入时序、八语文案表。判据 `examples/test_消息引用.light`。
+- **B3（T-0255）LiveShare 协议**：`src/共享协议.light`（对标 `experimental/liveshare-protocol`）——隧道协议 / viewer 状态机 / 承载语义纯逻辑层。判据 `examples/test_共享协议.light`。
+- **B4（T-0256）变更请求**：`src/变更请求.light`（对标 `experimental/forge` + `forge-session`）——CR 注册表 / key / 轮询调度 / CR↔Session 绑定投影。判据 `examples/test_变更请求.light`。
+- **B5（T-0257）推荐决策与行动卡**：`src/推荐决策.light`（对标 `plugin-recommendations` + `creation-recommendations` + `action-cards` + `plugin-detail` + `official-bundles`）——推荐决策 + 用户激活态 + 卡片状态机。判据 `examples/test_推荐决策.light`。
+- **B6（T-0258）apply_patch 呈现形状**：`src/补丁呈现.light`（对标 `tool-fs` 的 `apply-patch-output` + `apply-patch-presentation`）——调用前预览（不读盘投影 diff 卡）、结果后呈现（opaque meta 收窄已知差异）、终止文案（成功摘要 + 逐操作状态 + diff 摘要）。判据 `examples/test_补丁呈现.light`。
+- **B7（T-0258）llm-deepseek 增补**：模型列表/缓存增补对齐（续 #349/#350）。
+
+### 宿主面登记
+
+- LiveShare 宿主（relay + 全套 client UI）、CUA（macOS 原生）、Forge GitHub（gh CLI）、PTC runtime、client UI（203 tsx / 160 css）等 append 进 `docs/宿主面登记清单.md`。ui-deepseek-model-label-1017 上游删除（stale 壳），删除即正确。
+
+### 验证
+
+- R220 五张卡判据全绿（`test_消息引用` / `test_共享协议` / `test_变更请求` / `test_推荐决策` / `test_补丁呈现` 均 `--- 测试 … 通过 ---` rc=0）；B1 `test_应用补丁` 复核绿。
+- 反跑判据：各卡值反 + 抛反各 1 处必须红，还原后 sha256 校验一致并复绿（卡内留痕）。
+
+---
+
 ## [未发布]
 
 ### 2026-10-30 · T-0180 合流 + 编译器路径探测

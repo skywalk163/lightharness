@@ -16,9 +16,10 @@
     "【R105 2026-10-01 收口】任务书 §3 原定卡号 A=#255 / C=#256 / D=#257 —— 实测三卡均已被第8轮终轮收口占用（#255 CLI 外壳 / #256 远端 API 总线宿主出口 / #257 ACP 内容准入投影），故按「不可硬填已占编号」原则顺延取当前空号 #296/#297/#298，B 线（webui/settings.js + settings.css 设置对话框复刻）按任务书不占卡。",
     "【R105 2026-10-01 收口】合流点：src/设置页.light.渲染设置页() 的 模型/内置插件/Agent预设 三键已改调 src/设置页深化.light 导出；C 线 合并已存设置 已按 A 线 {配置文档, 行集} 形状复核通过，未启用临时校验器。",
     "【R111 2026-10-03】Day3 并行批 R4（轨道 B 上游纯逻辑面移植）：R110 暂缓 5 组收口——新增 #314~#318：#314 schedule 提醒框架渲染（定时提醒框架.light，framing 固定文本变更+紧凑JSON 逐字节对齐）/ #315 user-questions 折叠状态机（用户问题投影.light）/ #316 tool-ask-user timed 纯逻辑（审批.light 增补）/ #317 shell 提示词文案（工具_bash.light 描述增补）/ #318 llm 兼容门暂缓登记（无对应承载）。四组移植各有探针（test_r111*），对标源锚点 dsh-v0.2.0-rc.2（639ed01539）。",
-    "M路收口（T-0179）编号统一：B1 侧原 #329/#330/#331（模型列表解码/缓存/令牌计量折叠）与 gitcode 侧 B4 的 #329-#331（typert 簇）撞号，按「编号连续、不重复」原则重编为 #349/#350/#351；#328（B2 agent-instructions）两侧同源不冲突。"
+    "M路收口（T-0179）编号统一：B1 侧原 #329/#330/#331（模型列表解码/缓存/令牌计量折叠）与 gitcode 侧 B4 的 #329-#331（typert 簇）撞号，按「编号连续、不重复」原则重编为 #349/#350/#351；#328（B2 agent-instructions）两侧同源不冲突。",
+    "【R220 2026-11-16 收口】上游锚点 dsh-v0.2.1-rc.3（1f81c047fc）→ dsh-v0.2.2-rc.1（66491b05e3，2026-11-04）。纯逻辑可移植面 7 项全部落地：#352 消息引用（B2 T-0254）/ #353 LiveShare 协议（B3 T-0255）/ #354 变更请求（B4 T-0256）/ #355 推荐决策与行动卡（B5 T-0257）/ #356 apply_patch 呈现（B6 T-0258）/ #357 apply_patch 全链路（B1 主控）/ B7 llm-deepseek 增补并入 #349/#350。宿主面登记见 docs/宿主面登记清单.md。"
   ],
-  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）；R111（Day3 R4 上游 rc.2 纯逻辑面：#314 schedule framing / #315 user-questions 状态机 / #316 timed 工具 / #317 shell 提示词 / #318 llm 兼容门暂缓）",
+  "版本": "覆盖记录至 R103（0.2.0-rc.1 全量，上游锚点 e5b5ccbfcb；R85 原锚 ddefc45fbc 期间新增 #215-#241，R101 新增 #242 会话投影缓存 / #243 插件注册表选择与安装规格，R102 新增 #244 代码语言表 / #245 time-context elapsed+间隔门 / #246 authorization 补缺 / #247 command-compact / #248 compaction checkpoint+bracket 状态机；FreeBSD fork 已同步 v0.2.0-rc.1）；R103（0.2.0-rc.1 四模式预设组合：#249 四 preset 组合数据表 / #250 挂载层按预设过滤开关）；R104（0.2.0-rc.1 四缺口收口：#251 preset 会话切换与总入口分叉 / #252 invariants 不变量登记 / #253 ssh 连接配置校验 / #254 browser-use+computer-use 独占槽）；第8轮 终轮收口（C 线：跳号补卡扫描 + #197 lexer 销账 + #198–#200 标注「非对标条目（轮次报告）」，#263–#268 维持保留跳号未硬填；A 默认后端 #292 / B desktop #293–#295 见各线）；R105（0.2.0-rc.1 Web 设置对话框对齐：#296 通用设置九行行集模型 / #297 Web 设置读写路由与持久化 / #298 模型·内置插件·Agent预设 三页签深化；B 线 webui 设置对话框为前端复刻面不占卡）；R111（Day3 R4 上游 rc.2 纯逻辑面：#314 schedule framing / #315 user-questions 状态机 / #316 timed 工具 / #317 shell 提示词 / #318 llm 兼容门暂缓）；R220（0.2.2-rc.1 七项移植，#352~#357）",
   "对标对象": "deepseek-harness（原版，g:\\github\\deepseek-harness）",
   "建立于": "lightharness 第一版",
   "条目": [
@@ -4896,6 +4897,96 @@
       ],
       "本轮目标": "§1 plan/commit + §2 O(1) 折叠 + §3 语境拆解 共 3 组全绿",
       "反跑判据": "test_T0173_B1令牌折叠.light：§1 非法区间抛错 / §2 声明区间不符抛错 / §3 替换移除旧系统 任一改反必须红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 352,
+      "功能": "消息引用（引文解码 + 引文区间 + 引文规则匹配 + 投影标记 + 引用准入/插入）",
+      "原版包": "packages/session/message-quotes（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/消息引用.light（新建）",
+      "状态": "done（R220-B2 T-0254）：引文解码行尾归一（\\r\\n 与孤立 \\r 都变 \\n）、每行剥一层「≤3 空格 + > + 可选空白」；引文区间连续显式引用行并段、原文偏移不含末行换行、整段剥后空白不算；引文规则把区间变「引用」节点并把紧邻 \\n\\n 降级显示空格；投影标记被引用消息；引用准入/插入时序；八语文案表。宿主面（React 组件、CSS Modules、Slot、locale 运行时、会话绑定查询）登记不移植。",
+      "证据": [
+        "packages/session/message-quotes/src/{quote-text,quote-rule}.ts（git show dsh-v0.2.2-rc.1）",
+        "src/消息引用.light",
+        "examples/test_消息引用.light"
+      ],
+      "本轮目标": "判据全绿（解码/区间/规则匹配/投影标记/准入/插入/文案）",
+      "反跑判据": "把「只剥一层前缀」改成循环剥或把「剥后空白不算引文」删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 353,
+      "功能": "LiveShare 隧道协议与 viewer 状态机",
+      "原版包": "packages/experimental/liveshare-protocol（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/共享协议.light（新建）",
+      "状态": "done（R220-B3 T-0255）：隧道协议帧编解码、viewer 状态机迁移、承载语义纯逻辑层。宿主面（relay 服务、全套 client UI）登记不移植。",
+      "证据": [
+        "packages/experimental/liveshare-protocol/src/（git show dsh-v0.2.2-rc.1）",
+        "src/共享协议.light",
+        "examples/test_共享协议.light"
+      ],
+      "本轮目标": "判据全绿（帧编解码/状态迁移/承载）",
+      "反跑判据": "把 viewer 状态机任一非法迁移守卫删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 354,
+      "功能": "变更请求注册表、key、轮询调度与 CR↔Session 绑定投影",
+      "原版包": "packages/experimental/forge + forge-session（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/变更请求.light（新建）",
+      "状态": "done（R220-B4 T-0256）：CR 注册表/key/轮询调度纯逻辑、CR↔Session 绑定与投影引用。宿主面（forge-github gh CLI、client-ui-forge、worktree 服务）登记不移植。",
+      "证据": [
+        "packages/experimental/forge/src/、forge-session/src/（git show dsh-v0.2.2-rc.1）",
+        "src/变更请求.light",
+        "examples/test_变更请求.light"
+      ],
+      "本轮目标": "判据全绿（注册表/key/轮询/绑定投影）",
+      "反跑判据": "把轮询调度去重或绑定投影键校验改反即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 355,
+      "功能": "插件推荐决策 + 需求→插件建议 + 行动卡状态机 + plugin-detail 选择 + official-bundles 清单",
+      "原版包": "packages/experimental/{plugin-recommendations,creation-recommendations,action-cards} + util/{plugin-detail,official-bundles}（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/推荐决策.light（新建）",
+      "状态": "done（R220-B5 T-0257）：推荐决策 + 用户激活态 + 行动卡状态机 + meta.detail/README 选择 + 官方 bundle 清单与受保护包数据。宿主面（personalized-recommendations 壳、client UI 卡片呈现）登记不移植。",
+      "证据": [
+        "packages/experimental/plugin-recommendations/src/ 等（git show dsh-v0.2.2-rc.1）",
+        "src/推荐决策.light",
+        "examples/test_推荐决策.light"
+      ],
+      "本轮目标": "判据全绿（推荐决策/激活态/卡片状态机/detail 选择/bundle 清单）",
+      "反跑判据": "把行动卡状态机任一非法迁移或激活态幂等判定改反即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 356,
+      "功能": "apply_patch 模型面文案与呈现形状（调用前预览 + 结果后呈现 + 终止文案）",
+      "原版包": "packages/fs/tool-fs/src/{apply-patch-output,apply-patch-presentation}.ts（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/补丁呈现.light（新建，挂 src/应用补丁.light 的 解析补丁）",
+      "状态": "done（R220-B6 T-0258）：补丁预览调用（不读盘投影 diff 卡）、补丁预览结果（opaque meta 收窄已知差异）、补丁渲染/已停（成功摘要 + 逐操作状态 + diff 摘要）、有序去重按出现序。执行面（读盘/写盘/preflight/沙箱）在宿主登记不移植。",
+      "证据": [
+        "packages/fs/tool-fs/src/apply-patch-{output,presentation}.ts（git show dsh-v0.2.2-rc.1）",
+        "src/补丁呈现.light",
+        "examples/test_补丁呈现.light（对齐 apply-patch-presentation.spec.ts）"
+      ],
+      "本轮目标": "判据全绿（预览/结果/终止文案/去重）",
+      "反跑判据": "把有序去重改成无序去重或把终止文案任一状态行删掉即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 357,
+      "功能": "apply_patch 补丁解析与文本应用全链路（Add/Delete/Update+Move/锚点/规范化/heredoc/CRLF/回放）",
+      "原版包": "packages/fs/fs-patch + tool-fs/src/apply-patch.ts + patch/{types,plan,preflight,execute}.ts（dsh-v0.2.2-rc.1=66491b05e3）",
+      "光明模块": "src/应用补丁.light（新建）",
+      "状态": "done（R220-B1 主控）：Add/Delete/Update(+Move to)、@@ 锚点、+/-/空格 行、*** End of File、三种 heredoc 包装、CRLF 归一、行号口径、四遍规范化定位、锚点推进、末尾空行重试、纯插入/纯删除/EOF 语义、稳定排序逆序回放、失败形状（阶段/块行号/搜索起点）。沙箱/权限面登记不移植。",
+      "证据": [
+        "packages/fs/fs-patch/src/、tool-fs/src/apply-patch.ts（git show dsh-v0.2.2-rc.1）",
+        "src/应用补丁.light",
+        "examples/test_应用补丁.light（61 断言）"
+      ],
+      "本轮目标": "61 断言全绿",
+      "反跑判据": "锚点位或规范化遍数任一改反即红（反跑 A/B 已留痕）",
       "语言缺陷": []
     }
   ]
