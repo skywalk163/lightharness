@@ -17,11 +17,11 @@
 - **B4（T-0256）变更请求**：`src/变更请求.light`（对标 `experimental/forge` + `forge-session`）——CR 注册表 / key / 轮询调度 / CR↔Session 绑定投影。判据 `examples/test_变更请求.light`。
 - **B5（T-0257）推荐决策与行动卡**：`src/推荐决策.light`（对标 `plugin-recommendations` + `creation-recommendations` + `action-cards` + `plugin-detail` + `official-bundles`）——推荐决策 + 用户激活态 + 卡片状态机。判据 `examples/test_推荐决策.light`。
 - **B6（T-0258）apply_patch 呈现形状**：`src/补丁呈现.light`（对标 `tool-fs` 的 `apply-patch-output` + `apply-patch-presentation`）——调用前预览（不读盘投影 diff 卡）、结果后呈现（opaque meta 收窄已知差异）、终止文案（成功摘要 + 逐操作状态 + diff 摘要）。判据 `examples/test_补丁呈现.light`。
-- **B7（T-0258）llm-deepseek 增补**：模型列表/缓存增补对齐（续 #349/#350）。
+- **B7（T-0258 原计划）llm-deepseek 增补：未落地**。T-0258 分支实际只交了 B6（`git show --stat 072c841` 仅 `src/补丁呈现.light` + 其判据），B7 的 `llm-deepseek` 对增补（`0.2.1-rc.3..0.2.2-rc.3` 12 文件 / +280−32）转为 R221-B7 卡补做，不并入 #349/#350 记账。
 
 ### 宿主面登记
 
-- LiveShare 宿主（relay + 全套 client UI）、CUA（macOS 原生）、Forge GitHub（gh CLI）、PTC runtime、client UI（203 tsx / 160 css）等 append 进 `docs/宿主面登记清单.md`。ui-deepseek-model-label-1017 上游删除（stale 壳），删除即正确。
+- **R220-C 补登 §10**（`docs/宿主面登记清单.md`）：client 渲染层/统一右键菜单/桌面外壳/快照基线、LiveShare 宿主侧（relay+授权+UI）、CUA（macOS 原生）、Forge GitHub（gh CLI）、PTC 运行时内核、tool-executor-ptc、session-controller、plugin-manager 受保护清单、OAR 子代理桥、personalized-recommendations 壳、file-drag、tool-testkit、5 个实验性 client-ui 壳 —— 登记 113 → 126 条。ui-deepseek-model-label-1017 上游删除（stale 壳），删除即正确。
 
 ### 验证
 
