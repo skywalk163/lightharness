@@ -1,0 +1,291 @@
+# test_R221_Bf3更新与计费.light —— R221-Bf3 判据（插件更新方式 + 搜索按计费选凭据）
+# 运行：python 运行.py examples/test_R221_Bf3更新与计费.light
+# 上游：packages/boot/plugin-manager/src/index.ts（updateRefusal）
+#       packages/web/web-deepseek-api/src/transport.ts（有序凭据来源）
+#       dsh-v0.2.2-rc.3 = 38a6a5c965
+# 指南：docs/upgrade-guide/v0.2.2-rc.1/{plugin-update-method,web-search-billing}
+#
+# 覆盖上游用例（逐条标注）：
+#   [upd1] 只对「本 profile 装的第三方包」给 update：非安装/非 profile/官方/无来源 一律无字段
+#   [upd2] 承载插件管理的包不能被移除，也就不能更新
+#   [upd3] 版本必须是合法 semver（预发布合法，v 前缀/两段不合法）
+#   [upd4] 固定到完整提交的 Git 源 → 'git'；其余必须是「以自身名字从注册表装」→ 'registry'
+#   [upd5] npm: 别名（范围带协议）不算自身名字安装
+#   [upd6] expected 核对：装成别的包或别的版本 → unexpected-package
+#   [bill1] 三态计费方式；非法值响亮报错
+#   [bill2] auto：模型路由账号在前，其他会话密钥在前（无密钥时改用账号）
+#   [bill3] 有序来源：第一个「在场」者胜，后面的不再读
+#   [bill4] misconfigured 只有轮到它才失败
+#   [bill5] 读失败不换源；AbortError → WEB_ABORTED
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 插件更新方式 里「固定提交 → git」改成 → registry   -> upd4 git 用例红
+#   B. Web计费来源表 auto 非模型路由 的 [密钥,账号] 调换  -> bill2 用例红
+
+从 插件注册表 导入 插件更新方式, 安装结果核对, 归类安装失败
+从 网页搜索 导入 Web计费方式合法, Web计费来源表, Web选首来源, Web取消码
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言含(文, 片段, 标签):
+  如果 字符串包含(转字符串(文), 片段) == 假:
+    抛出 新建 错误("断言含失败: " + 标签 + " 文=" + 转字符串(文))
+
+段落 断言抛含(待测段落, 片段, 标签):
+  设 已抛 为 假
+  尝试:
+    待测段落()
+  捕获 异常 为 异常值:
+    设 已抛 为 真
+    如果 字符串包含(转字符串(异常值), 片段) == 假:
+      抛出 新建 错误("断言抛含失败: " + 标签 + " 报文=" + 转字符串(异常值))
+  如果 已抛 == 假:
+    抛出 新建 错误("应抛错未抛: " + 标签)
+
+# ---------- 造包项 ----------
+
+段落 造规格(种类, 名字, 范围):
+  返回 {"种类": 种类, "名字": 名字, "范围": 范围}
+
+段落 造包(名字, 版本, 固定提交, 规格):
+  返回 {"名字": 名字, "已安装": 真, "可用性": "profile", "官方": 假, "来源": "somewhere", "只读理由": 空, "版本": 版本, "固定提交": 固定提交, "规格": 规格}
+
+段落 造正常包():
+  返回 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+
+# ---------- 造来源 ----------
+
+段落 造账号来源():
+  返回 {"种类": "account", "标识": "acct", "baseURL": "https://api.example/account"}
+
+段落 造密钥来源():
+  返回 {"种类": "api-key", "标识": "key", "baseURL": "https://api.example/key"}
+
+段落 造坏来源():
+  返回 {"种类": "misconfigured", "文案": "searchBilling names an unknown account"}
+
+# 反跑包装：非法计费方式
+段落 查坏计费():
+  返回 Web计费来源表("weird", 假, 造账号来源(), 造密钥来源())
+
+段落 主程():
+  # ===== 一、插件更新方式（upd1..upd6）=====
+
+  # 1. 正常 registry 包 → registry
+  设 正常 为 插件更新方式(造正常包())
+  断言相等(正常["方式"], "registry", "upd-正常registry")
+  断言相等(正常["拒绝理由"], 空, "upd-正常无拒绝")
+
+  # 2. 未安装 → 无字段 + 上游文案
+  设 未装 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  未装["已安装"] 为 假
+  设 未装果 为 插件更新方式(未装)
+  断言相等(未装果["方式"], 空, "upd-未安装无方式")
+  断言含(未装果["拒绝理由"], "is not a third-party package installed in this profile", "upd-未安装文案")
+
+  # 3. 可用性不是 profile → 同拒绝
+  设 非档 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  非档["可用性"] 为 "installation"
+  断言含(插件更新方式(非档)["拒绝理由"], "is not a third-party package installed in this profile", "upd-非profile文案")
+
+  # 4. 官方包 → 同拒绝
+  设 官方 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  官方["官方"] 为 真
+  断言相等(插件更新方式(官方)["方式"], 空, "upd-官方无方式")
+
+  # 5. 来源缺失 → 同拒绝
+  设 无源 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  无源["来源"] 为 空
+  断言相等(插件更新方式(无源)["方式"], 空, "upd-无来源无方式")
+
+  # 6. 承载插件管理 → 不能被移除（upd2）
+  设 管理包 为 造包("manager", "1.2.3", 假, 造规格("registry", "manager", "^1.2.3"))
+  管理包["只读理由"] 为 "management-required"
+  设 管理果 为 插件更新方式(管理包)
+  断言相等(管理果["方式"], 空, "upd-管理包无方式")
+  断言含(管理果["拒绝理由"], "carries plugin management and cannot be removed", "upd-管理包文案")
+
+  # 7. 版本缺失 → semver 文案（upd3）
+  设 无版 为 造包("demo-plugin", 空, 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  断言含(插件更新方式(无版)["拒绝理由"], "declares no semver version", "upd-无版本文案")
+
+  # 8. 版本不是 semver（v 前缀 / 两段 / 一段）
+  设 坏版 为 造包("demo-plugin", "v1.2.3", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  断言含(插件更新方式(坏版)["拒绝理由"], "declares no semver version", "upd-v前缀文案")
+  设 两段 为 造包("demo-plugin", "1.2", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  断言含(插件更新方式(两段)["拒绝理由"], "declares no semver version", "upd-两段文案")
+
+  # 9. 预发布 semver 合法
+  设 预发 为 造包("demo-plugin", "1.2.3-rc.1", 假, 造规格("registry", "demo-plugin", "^1.2.3"))
+  断言相等(插件更新方式(预发)["方式"], "registry", "upd-预发布合法")
+
+  # 10. 固定到完整提交的 Git 源 → git（upd4）
+  设 git包 为 造包("demo-plugin", "1.2.3", 真, 造规格("git", "demo-plugin", ""))
+  断言相等(插件更新方式(git包)["方式"], "git", "upd-git固定提交")
+
+  # 11. 非 registry 种类 → 双重否定文案
+  设 压缩包 为 造包("demo-plugin", "1.2.3", 假, 造规格("tarball", "demo-plugin", ""))
+  断言含(插件更新方式(压缩包)["拒绝理由"], "is installed neither from a registry under its own name nor from a Git commit", "upd-tarball文案")
+
+  # 12. 规格名字与包名不符 → 同文案
+  设 改名 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "other-plugin", "^1.2.3"))
+  断言相等(插件更新方式(改名)["方式"], 空, "upd-名字不符无方式")
+
+  # 13. 范围带协议（npm: 别名）→ 同文案（upd5）
+  设 别名 为 造包("demo-plugin", "1.2.3", 假, 造规格("registry", "demo-plugin", "npm:other@^1"))
+  断言含(插件更新方式(别名)["拒绝理由"], "is installed neither", "upd-别名文案")
+
+  # 14. 规格缺失 → 同文案
+  设 无规格 为 造包("demo-plugin", "1.2.3", 假, 空)
+  断言相等(插件更新方式(无规格)["方式"], 空, "upd-无规格无方式")
+
+  # 15. expected 核对：完全一致 → 空（upd6）
+  断言相等(安装结果核对("demo-plugin", "1.2.3", "demo-plugin", "1.2.3"), 空, "upd-核对一致")
+
+  # 16. 装成别的包 → unexpected-package
+  断言相等(安装结果核对("demo-plugin", "1.2.3", "other-plugin", "1.2.3"), "unexpected-package", "upd-核对包名不符")
+
+  # 17. 装成别的版本 → unexpected-package
+  断言相等(安装结果核对("demo-plugin", "1.2.3", "demo-plugin", "1.2.4"), "unexpected-package", "upd-核对版本不符")
+
+  # 18. 未声明期望包名 → 不核对
+  断言相等(安装结果核对("", "", "whatever", "9.9.9"), 空, "upd-无期望不核对")
+
+  # 19. 归类新增码；旧码不回归
+  断言相等(归类安装失败({"种类": "unexpected-package", "文案": "x"})["类别"], "unexpected-package", "upd-归类unexpected")
+  断言相等(归类安装失败({"种类": "network", "文案": "x"})["类别"], "registry-unreachable", "upd-归类network不回归")
+
+  # ===== 二、计费方式（bill1/bill2）=====
+
+  # 20. 三态合法
+  断言真(Web计费方式合法("auto"), "bill-auto合法")
+  断言真(Web计费方式合法("account"), "bill-account合法")
+  断言真(Web计费方式合法("api-key"), "bill-apikey合法")
+  断言真(Web计费方式合法("weird") == 假, "bill-weird非法")
+
+  # 21. 非法方式响亮报错
+  断言抛含(查坏计费, "未知计费方式", "bill-非法报错")
+
+  # 22. api-key 只用密钥
+  设 仅钥 为 Web计费来源表("api-key", 假, 造账号来源(), 造密钥来源())
+  断言相等(列表长度(仅钥), 1, "bill-apikey单来源")
+  断言相等(仅钥[0]["种类"], "api-key", "bill-apikey是密钥")
+
+  # 23. account 只用账号
+  设 仅号 为 Web计费来源表("account", 假, 造账号来源(), 造密钥来源())
+  断言相等(列表长度(仅号), 1, "bill-account单来源")
+  断言相等(仅号[0]["种类"], "account", "bill-account是账号")
+
+  # 24. auto + 模型路由 → 账号在前（行为不变）
+  设 路由表 为 Web计费来源表("auto", 真, 造账号来源(), 造密钥来源())
+  断言相等(列表长度(路由表), 2, "bill-路由两来源")
+  断言相等(路由表[0]["种类"], "account", "bill-路由账号在前")
+  断言相等(路由表[1]["种类"], "api-key", "bill-路由密钥在后")
+
+  # 25. auto + 其他会话 → 密钥在前、账号兜底
+  设 其他表 为 Web计费来源表("auto", 假, 造账号来源(), 造密钥来源())
+  断言相等(其他表[0]["种类"], "api-key", "bill-其他密钥在前")
+  断言相等(其他表[1]["种类"], "account", "bill-其他账号兜底")
+
+  # ===== 三、选首来源（bill3/bill4/bill5）=====
+
+  # 26. 首位在场 → 用首位，且不再读后面的
+  设 调用记录 为 []
+  段落 读密钥优先(来源):
+    列表追加(调用记录, 来源["标识"])
+    如果 来源["标识"] == "key":
+      返回 {"已配置": 真, "值": "sk-xxx"}
+    返回 {"已配置": 假, "值": 空}
+  设 首果 为 Web选首来源(其他表, 读密钥优先, 空)
+  断言相等(首果["错误"], 空, "bill-选首无错")
+  断言相等(首果["来源"]["标识"], "key", "bill-选首首个在场者")
+  断言相等(列表长度(调用记录), 1, "bill-选首只读一次")
+  断言相等(调用记录[0], "key", "bill-选首先读密钥")
+
+  # 27. 首位缺失 → 落到账号
+  设 记录二 为 []
+  段落 读仅账号(来源):
+    列表追加(记录二, 来源["标识"])
+    如果 来源["标识"] == "acct":
+      返回 {"已配置": 真, "值": "token"}
+    返回 {"已配置": 假, "值": 空}
+  设 落果 为 Web选首来源(其他表, 读仅账号, 空)
+  断言相等(落果["来源"]["标识"], "acct", "bill-落到账号")
+  断言相等(列表长度(记录二), 2, "bill-读了两个来源")
+
+  # 28. 全都缺失 → 缺省缺凭据文案
+  段落 读都没有(来源):
+    返回 {"已配置": 假, "值": 空}
+  设 缺果 为 Web选首来源(其他表, 读都没有, 空)
+  断言相等(缺果["错误"], "WEB_PROVIDER_CREDENTIAL_MISSING", "bill-缺凭据码")
+  断言含(缺果["文案"], "No DeepSeek credential", "bill-缺省文案")
+
+  # 29. 自定义缺凭据文案优先
+  设 自定果 为 Web选首来源(其他表, 读都没有, "请先配置 DeepSeek API Key")
+  断言相等(自定果["文案"], "请先配置 DeepSeek API Key", "bill-自定义文案")
+
+  # 30. misconfigured 在首位 → 只有轮到它才失败，且后面不读（bill4）
+  设 记录三 为 []
+  段落 读探针三(来源):
+    列表追加(记录三, 来源["标识"])
+    返回 {"已配置": 真, "值": "token"}
+  设 坏首表 为 [造坏来源(), 造密钥来源()]
+  设 坏首果 为 Web选首来源(坏首表, 读探针三, 空)
+  断言相等(坏首果["错误"], "WEB_PROVIDER_MISCONFIGURED", "bill-配置错误码")
+  断言相等(列表长度(记录三), 0, "bill-配置错误不读")
+  断言含(坏首果["文案"], "searchBilling names an unknown account", "bill-配置错误文案")
+
+  # 31. misconfigured 在第二位、首位在场 → 不触发
+  设 记录四 为 []
+  段落 读探针四(来源):
+    列表追加(记录四, 来源["标识"])
+    返回 {"已配置": 真, "值": "token"}
+  设 好首表 为 [造密钥来源(), 造坏来源()]
+  设 好首果 为 Web选首来源(好首表, 读探针四, 空)
+  断言相等(好首果["错误"], 空, "bill-首位在场无错")
+  断言相等(好首果["来源"]["标识"], "key", "bill-首位在场用首位")
+  断言相等(列表长度(记录四), 1, "bill-不轮到位不读配置错误")
+
+  # 32. 读失败不换源（bill5）
+  设 记录五 为 []
+  段落 读就抛(来源):
+    列表追加(记录五, 来源["标识"])
+    抛出 新建 错误("store unavailable")
+  设 抛果 为 Web选首来源(其他表, 读就抛, 空)
+  断言相等(抛果["错误"], "WEB_PROVIDER_ERROR", "bill-读失败码")
+  断言相等(列表长度(记录五), 1, "bill-读失败不换源")
+
+  # 33. AbortError → WEB_ABORTED（即使 signal 未取消）
+  设 记录六 为 []
+  段落 读就取消(来源):
+    列表追加(记录六, 来源["标识"])
+    抛出 新建 错误("AbortError: credentials resolved aborted")
+  设 取消果 为 Web选首来源(其他表, 读就取消, 空)
+  断言相等(取消果["错误"], "WEB_ABORTED", "bill-取消码")
+  断言相等(列表长度(记录六), 1, "bill-取消不换源")
+
+  # 34. 取消码判定函数本身（用捕获拿异常对象：顶层不能直接 new）
+  设 取消异常 为 空
+  尝试:
+    抛出 新建 错误("AbortError: x")
+  捕获 异常 为 异常值:
+    设 取消异常 为 异常值
+  断言相等(Web取消码(取消异常), "WEB_ABORTED", "bill-取消码函数")
+
+  # 35. 非取消错误 → 提供方错误
+  设 普通异常 为 空
+  尝试:
+    抛出 新建 错误("boom")
+  捕获 异常 为 异常值:
+    设 普通异常 为 异常值
+  断言相等(Web取消码(普通异常), "WEB_PROVIDER_ERROR", "bill-普通错误码")
+
+  写 "--- 测试 R221_Bf3更新与计费 通过 ---"
+
+主程()
