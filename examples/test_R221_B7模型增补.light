@@ -1,0 +1,427 @@
+# test_R221_B7模型增补.light —— R221-B7 判据：llm-deepseek 增补（R220 漏做项）
+# 运行：python 运行.py examples/test_R221_B7模型增补.light   （lightharness 根目录）
+# 上游：packages/llm/llm-deepseek/src/{listing,listed-catalog,listing-config,model-info,listing-cache}.ts
+#       dsh-v0.2.2-rc.3 = 38a6a5c965（范围 dsh-v0.2.1-rc.3..dsh-v0.2.2-rc.3）
+#
+# 覆盖上游用例（逐条标注；名字取自上游 *.spec.ts 的 it(...) 原文）：
+#   [badge1..10]   listing.spec.ts `decodes badge %j`
+#                  文本裁剪 / 12 字素上限（含 🏽、ZWJ 家庭）/ 色调缺省与归一 / 多语言裁剪
+#   [nobadge1..7]  listing.spec.ts `declares no badge for client_metadata %j`
+#                  + `reads badges only from client_metadata`
+#   [meta1..6]     listing.spec.ts `rejects client_metadata %j without hiding the entry`
+#   [text1..20]    listing.spec.ts `rejects badge %j without hiding the entry`
+#   [proto]        listing.spec.ts `rejects an own "__proto__" translation key`
+#   [catalog]      listed-catalog.spec.ts `collects badges of offered models only and reports a dropped badge`
+#   [modelinfo]    model-info.spec.ts `advertises a listed badge beside the catalog entry`
+#   [timing]       listing-cache.spec.ts `keeps zero max age as access-only refresh without an automatic loop`
+#   [publish]      listing-cache.spec.ts `automatically publishes replacement badges and their removal without another read`
+#   [retain]       listing-cache.spec.ts `retains badges after refresh %s and replaces them after recovery`
+#   [identical]    listing-cache.spec.ts `does not notify for identical listings and stops its timer on disposal`
+#   [disabled]     listing-cache.spec.ts `uses current configuration and stops following a disabled listing`
+#   [signedout]    listing-cache.spec.ts `removes a signed-out listing and discovers a replacement credential automatically`
+#   [credlookup]   listing-cache.spec.ts `retains badges on credential lookup failures, reports the streak once, and retries`
+#   [dispose]      listing-cache.spec.ts `awaits an admitted automatic load on disposal and suppresses its late publication`
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 模型增补_徽章最长字素 12 → 13            -> [badge3]/[text4] 红
+#   B. 模型增补_选定色调 的兜底 neutral → info    -> [badge6] 红
+#   C. 模型增补缓存_自动刷新延迟 的 `间隔 == 0` 分支删掉 -> [timing2] 红
+#   D. 模型增补缓存_刷新结算 的「曾认证且观后不认证才通知」改成恒通知 -> [signedout] 红
+#   E. 解析列表时序 的负数年龄 抛出 → 返回 空                       -> [timing13] 红（抛反）
+#   F. 解码模型清单 的缺 data 抛出 → 返回 空条目                     -> [timing14] 红（抛反）
+#
+# 语言坑规避：L-151（「设 X 为」的 为 前必须有空格）；串内引号写 \"；
+#   不写含换行的字面量；特殊字符一律用 码转字符(码) 拼，避免源码里的不可见字符。
+
+从 模型目录 导入 客户端产品, 解码模型清单, 模型增补_徽章最长字素, 模型增补_徽章文本原因, 模型增补_产品元数据
+从 模型目录 导入 模型增补_徽章文本, 模型增补_本地化徽章文本, 模型增补_语言标识合法
+从 模型目录 导入 模型增补_字素簇数, 模型增补_收集徽章, 模型增补_目录模型信息
+从 模型列表缓存 导入 建模型列表缓存, 解析列表时序, 最大计时延迟_MS
+从 模型列表缓存 导入 模型增补缓存_视图刷新时机, 模型增补缓存_自动刷新延迟, 模型增补缓存_清单变化了, 模型增补缓存_作用域变了
+从 模型列表缓存 导入 模型增补缓存_通知, 模型增补缓存_通知失败文案, 模型增补缓存_刷新失败文案
+从 模型列表缓存 导入 模型增补缓存_刷新结算, 模型增补缓存_释放结算
+从 内置核心字典 导入 字典设置, 字典获取, 字典包含键
+从 内置核心列表 导入 列表长度, 列表追加, 列表包含
+从 内置核心字符串 导入 字符串重复
+从 字符串增强 导入 码转字符
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 拼串(码表):
+  设 结果 为 ""
+  遍历 码 之 码表:
+    设 结果 为 结果 + 码转字符(码)
+  返回 结果
+
+段落 文本声明(文本):
+  设 表 为 {}
+  字典设置(表, "text", 文本)
+  返回 表
+
+段落 文本色调声明(文本, 色调):
+  设 表 为 文本声明(文本)
+  字典设置(表, "tone", 色调)
+  返回 表
+
+段落 自元件(声明表):
+  设 自家 为 {}
+  字典设置(自家, "badge", 声明表)
+  设 元 为 {}
+  字典设置(元, 客户端产品, 自家)
+  返回 元
+
+段落 造条目(元数据):
+  设 条目 为 {}
+  字典设置(条目, "id", "m")
+  字典设置(条目, "name", "DeepSeek-V4.1-Flash")
+  字典设置(条目, "output_modalities", ["text"])
+  字典设置(条目, "input_modalities", ["text"])
+  字典设置(条目, "context_window", 1000)
+  字典设置(条目, "max_output_tokens", 100)
+  设 消息 为 {}
+  字典设置(消息, "system_prompt_update", "in-history")
+  字典设置(消息, "tool_update", "addition-only")
+  设 能力 为 {}
+  字典设置(能力, "anthropic_messages", 消息)
+  字典设置(条目, "api_capabilities", 能力)
+  如果 元数据 != 空:
+    字典设置(条目, "client_metadata", 元数据)
+  返回 条目
+
+# 解码一条清单：返回该条目（徽章键缺省时不补，与上游 ListingEntry 的 optional badge 一致）。
+段落 解码一条(元数据):
+  设 体 为 {"data": [造条目(元数据)]}
+  设 解 为 解码模型清单(体)
+  返回 解["条目"][0]
+
+段落 有徽章键(条目):
+  如果 字典包含键(条目, "badge"):
+    返回 真
+  返回 假
+
+段落 期望抛错(调用):
+  尝试:
+    调用()
+    返回 假
+  捕获 错误 为 e:
+    返回 真
+
+# 徽章非法时返回 reason（顺带钉死「条目不被隐藏、能力仍可用」）。
+段落 取非法原因(元数据):
+  设 条目 为 解码一条(元数据)
+  断言真(有徽章键(条目), "非法徽章仍要写 badge 键")
+  断言相等(条目["capabilities"]["usable"], 真, "非法徽章不隐藏条目")
+  返回 条目["badge"]["reason"]
+
+段落 主程:
+  # ================= §1 徽章解码（listing.spec.ts decodes badge） =================
+  断言相等(客户端产品, "deepseek-harness", "[badge0] APP_IDENTITY.product 索引键")
+  断言相等(模型增补_徽章最长字素, 12, "[badge0b] MAX_BADGE_TEXT_LENGTH=12")
+
+  设 条1 为 解码一条(自元件(文本色调声明("1017", "info")))
+  断言相等(条1["badge"], {"kind": "badge", "badge": {"text": "1017", "tone": "info"}}, "[badge1] decodes badge: text+tone")
+
+  设 条2 为 解码一条(自元件(文本色调声明("  1017 ", "success")))
+  断言相等(条2["badge"]["badge"]["text"], "1017", "[badge2] decodes badge: 裁剪周围空白")
+
+  设 最长 为 字符串重复("十", 模型增补_徽章最长字素)
+  设 条3 为 解码一条(自元件(文本色调声明(最长, "warning")))
+  断言相等(条3["badge"]["badge"]["text"], 最长, "[badge3] decodes badge: 12 个汉字（上限内）")
+
+  设 手势 为 拼串([128077, 127997])
+  设 手势串 为 字符串重复(手势, 12)
+  断言相等(模型增补_字素簇数(手势串), 12, "[badge4a] 👍🏽 两码位算一字素（12 组 → 12 字素）")
+  设 条4 为 解码一条(自元件(文本声明(手势串)))
+  断言相等(条4["badge"]["badge"]["text"], 手势串, "[badge4] decodes badge: 👍🏽×12 判为 12 字素")
+  断言相等(条4["badge"]["badge"]["tone"], "neutral", "[badge4b] 缺省色调 = neutral")
+
+  设 家庭 为 拼串([128104, 8205, 128105, 8205, 128103])
+  设 家庭串 为 字符串重复(家庭, 12)
+  断言相等(模型增补_字素簇数(家庭串), 12, "[badge5a] ZWJ 家庭序列算一字素（12 组 = 12）")
+  设 条5 为 解码一条(自元件(文本声明(家庭串)))
+  断言相等(条5["badge"]["badge"]["text"], 家庭串, "[badge5] decodes badge: 👨👩👧×12 判为 12 字素")
+
+  设 条6 为 解码一条(自元件(文本声明("Beta")))
+  断言相等(条6["badge"]["badge"]["tone"], "neutral", "[badge6] tone 缺省 → neutral")
+
+  设 空色调 为 文本色调声明("Beta", 空)
+  设 条7 为 解码一条(自元件(空色调))
+  断言相等(条7["badge"]["badge"]["tone"], "neutral", "[badge7] tone=null → neutral")
+
+  设 条8 为 解码一条(自元件(文本色调声明("Beta", "accent")))
+  断言相等(条8["badge"]["badge"]["tone"], "neutral", "[badge8] 未识别 tone='accent' → neutral")
+
+  设 条9 为 解码一条(自元件(文本色调声明("Beta", 1)))
+  断言相等(条9["badge"]["badge"]["tone"], "neutral", "[badge9] 非字符串 tone=1 → neutral")
+
+  设 译文 为 {}
+  字典设置(译文, "en", "New")
+  字典设置(译文, "zh", "新")
+  字典设置(译文, "zh-hant", " 新 ")
+  设 条10 为 解码一条(自元件(文本色调声明(译文, "info")))
+  断言相等(条10["badge"]["badge"]["text"]["en"], "New", "[badge10a] 多语言保留 en")
+  断言相等(条10["badge"]["badge"]["text"]["zh-hant"], "新", "[badge10] decodes badge: 逐语言裁剪")
+
+  # ================= §2 无徽章（declares no badge） =================
+  设 条11 为 解码一条(空)
+  断言相等(有徽章键(条11), 假, "[nobadge1] 无 client_metadata → 无 badge 键")
+
+  设 条12 为 解码一条({})
+  断言相等(有徽章键(条12), 假, "[nobadge2] client_metadata={} → 无 badge 键")
+
+  设 别家 为 {}
+  字典设置(别家, "badge", 文本声明("1017"))
+  设 别家元 为 {}
+  字典设置(别家元, "other", 别家)
+  设 条13 为 解码一条(别家元)
+  断言相等(有徽章键(条13), 假, "[nobadge3] 别家产品的 badge 不读")
+
+  设 空家元 为 {}
+  字典设置(空家元, 客户端产品, 空)
+  设 条14 为 解码一条(空家元)
+  断言相等(有徽章键(条14), 假, "[nobadge4] 自家=null → 无 badge 键")
+
+  设 别键家 为 {}
+  字典设置(别键家, "other_field", 1)
+  设 别键元 为 {}
+  字典设置(别键元, 客户端产品, 别键家)
+  设 条15 为 解码一条(别键元)
+  断言相等(有徽章键(条15), 假, "[nobadge5] 自家无 badge 字段 → 无 badge 键")
+
+  设 空徽家 为 {}
+  字典设置(空徽家, "badge", 空)
+  设 空徽元 为 {}
+  字典设置(空徽元, 客户端产品, 空徽家)
+  设 条16 为 解码一条(空徽元)
+  断言相等(有徽章键(条16), 假, "[nobadge6] badge=null → 无 badge 键")
+
+  设 别处 为 造条目(空)
+  字典设置(别处, "badge", 文本声明("1017"))
+  设 需求侧 为 {}
+  字典设置(需求侧, 客户端产品, 文本声明("1017"))
+  字典设置(别处, "client_requirements", 需求侧)
+  设 解17 为 解码模型清单({"data": [别处]})
+  设 条17 为 解17["条目"][0]
+  断言相等(有徽章键(条17), 假, "[nobadge7] 只认 client_metadata，不读顶层/client_requirements")
+
+  # ================= §3 非法元数据（rejects client_metadata … without hiding） =================
+  断言相等(取非法原因("1017"), "client_metadata is not an object", "[meta1] client_metadata 是串")
+  断言相等(取非法原因(["1017"]), "client_metadata is not an object", "[meta2] client_metadata 是数组")
+
+  设 串家 为 {}
+  字典设置(串家, 客户端产品, "1017")
+  断言相等(取非法原因(串家), 模型增补_产品元数据 + " is not an object", "[meta3] 自家是串")
+
+  设 组家 为 {}
+  字典设置(组家, 客户端产品, ["1017"])
+  断言相等(取非法原因(组家), 模型增补_产品元数据 + " is not an object", "[meta4] 自家是数组")
+
+  设 串徽 为 {}
+  字典设置(串徽, "badge", "1017")
+  设 串徽元 为 {}
+  字典设置(串徽元, 客户端产品, 串徽)
+  断言相等(取非法原因(串徽元), 模型增补_产品元数据 + ".badge is not an object", "[meta5] badge 是串")
+
+  设 组徽 为 {}
+  字典设置(组徽, "badge", ["1017"])
+  设 组徽元 为 {}
+  字典设置(组徽元, 客户端产品, 组徽)
+  断言相等(取非法原因(组徽元), 模型增补_产品元数据 + ".badge is not an object", "[meta6] badge 是数组")
+
+  # ================= §4 非法文本（rejects badge %j without hiding） =================
+  设 原因 为 模型增补_徽章文本原因()
+  设 行分隔 为 码转字符(8232)
+  设 段分隔 为 码转字符(8233)
+  设 双向覆盖 为 码转字符(8238)
+  设 双向隔离起 为 码转字符(8294)
+  设 双向隔离止 为 码转字符(8297)
+  设 零宽空格 为 码转字符(8203)
+  设 零宽连接 为 码转字符(8205)
+  设 变体选择 为 码转字符(65039)
+  设 软连字符 为 码转字符(173)
+
+  设 空声明 为 {}
+  字典设置(空声明, "tone", "info")
+  断言相等(取非法原因(自元件(空声明)), 原因, "[text1] 缺 text 字段")
+
+  断言相等(取非法原因(自元件(文本声明(空))), 原因, "[text2] text=null")
+  断言相等(取非法原因(自元件(文本声明("   "))), 原因, "[text3] text 全是空白")
+  断言相等(取非法原因(自元件(文本声明(最长 + "十"))), 原因, "[text4] 第 13 个字素")
+  断言相等(取非法原因(自元件(文本声明("line" + 码转字符(10) + "break"))), 原因, "[text5] 含换行（Cc）")
+  断言相等(取非法原因(自元件(文本声明(码转字符(10) + "New"))), 原因, "[text6] 前置换行：裁剪后仍判原文")
+  断言相等(取非法原因(自元件(文本声明("New" + 行分隔 + "Model"))), 原因, "[text7] U+2028 行分隔")
+  断言相等(取非法原因(自元件(文本声明("New" + 段分隔 + "Model"))), 原因, "[text8] U+2029 段分隔")
+  断言相等(取非法原因(自元件(文本声明("New" + 双向覆盖))), 原因, "[text9] U+202E 双向覆盖")
+  断言相等(取非法原因(自元件(文本声明(双向隔离起 + "New" + 双向隔离止))), 原因, "[text10] U+2066/U+2069 双向隔离")
+  断言相等(取非法原因(自元件(文本声明(零宽空格))), 原因, "[text11] 仅零宽空格（无可见字素）")
+  断言相等(取非法原因(自元件(文本声明(零宽连接))), 原因, "[text12] 仅 ZWJ（无可见字素）")
+  断言相等(取非法原因(自元件(文本声明(变体选择))), 原因, "[text13] 仅变体选择符（无可见字素）")
+  断言相等(取非法原因(自元件(文本声明(" " + 软连字符 + 零宽空格 + " "))), 原因, "[text14] 软连字符+零宽空格")
+  断言相等(取非法原因(自元件(文本声明(7))), 原因, "[text15] text 非字符串（数字）")
+
+  设 仅中文 为 {}
+  字典设置(仅中文, "zh", "新")
+  断言相等(取非法原因(自元件(文本声明(仅中文))), 原因, "[text16] 多语言缺 en")
+
+  设 大写语 为 {}
+  字典设置(大写语, "en", "New")
+  字典设置(大写语, "ZH", "新")
+  断言相等(取非法原因(自元件(文本声明(大写语))), 原因, "[text17] 语言标识大写 ZH")
+
+  设 空译文 为 {}
+  字典设置(空译文, "en", "New")
+  字典设置(空译文, "zh", "")
+  断言相等(取非法原因(自元件(文本声明(空译文))), 原因, "[text18] 某语言译文为空")
+
+  设 零宽译 为 {}
+  字典设置(零宽译, "en", "New")
+  字典设置(零宽译, "zh", 零宽空格)
+  断言相等(取非法原因(自元件(文本声明(零宽译))), 原因, "[text19] 某语言译文无可见字素")
+
+  设 数译 为 {}
+  字典设置(数译, "en", 1)
+  断言相等(取非法原因(自元件(文本声明(数译))), 原因, "[text20] 某语言译文非字符串")
+
+  设 原型译 为 {}
+  字典设置(原型译, "en", "New")
+  字典设置(原型译, "__proto__", "x")
+  断言相等(取非法原因(自元件(文本声明(原型译))), 原因, "[proto] __proto__ 语言键被拒")
+
+  # ================= §5 语言标识正则 =================
+  断言相等(模型增补_语言标识合法("en"), 真, "[lang1] en 合法")
+  断言相等(模型增补_语言标识合法("zh-hant"), 真, "[lang2] zh-hant 合法")
+  断言相等(模型增补_语言标识合法("zh-hans-cn"), 真, "[lang3] 三段式合法")
+  断言相等(模型增补_语言标识合法("ZH"), 假, "[lang4] 大写非法")
+  断言相等(模型增补_语言标识合法("e"), 假, "[lang5] 单字母主段非法")
+  断言相等(模型增补_语言标识合法("en-"), 假, "[lang6] 尾随短横线非法")
+  断言相等(模型增补_语言标识合法("en--us"), 假, "[lang7] 连续短横线非法")
+
+  # ================= §6 listed-catalog：只收已出模型 =================
+  设 徽1 为 自元件(文本色调声明("New", "info"))
+  设 条主张 为 解码一条(徽1)
+  设 条空文本 为 解码一条(自元件(文本声明("")))
+  设 未出 为 {}
+  字典设置(未出, "id", "v5")
+  设 条未出 为 解码一条(徽1)
+  字典设置(条未出, "id", "v5")
+  设 收集 为 模型增补_收集徽章([条主张, 条空文本, 条未出], ["m"])
+  断言相等(列表长度(收集["问题"]), 1, "[catalog1] 只报已出模型的问题")
+  断言相等(收集["徽章表"]["m"]["text"], "New", "[catalog2] 已出模型收徽章")
+  断言相等(字典包含键(收集["徽章表"], "v5"), 假, "[catalog3] 未出模型不收徽章")
+  断言相等(收集["问题"][0], "model \"m\" shows no badge: " + 原因, "[catalog4] 非法徽章降级为 problems 文案")
+
+  # ================= §7 model-info：徽章尾插 =================
+  设 信息有 为 模型增补_目录模型信息("deepseek-official", {"id": "deepseek-flash", "name": "DeepSeek-V4.1-Flash"}, 收集["徽章表"]["m"])
+  断言相等(信息有["provider"], "deepseek-official", "[modelinfo1] provider")
+  断言相等(信息有["name"], "DeepSeek-V4.1-Flash", "[modelinfo2] name")
+  断言相等(信息有["inputModalities"], ["text"], "[modelinfo3] 缺省 inputModalities=['text']")
+  断言相等(信息有["badge"]["tone"], "info", "[modelinfo4] 徽章尾插")
+
+  设 信息无 为 模型增补_目录模型信息("deepseek-official", {"id": "embedded-model"})
+  断言相等(信息无["name"], "embedded-model", "[modelinfo5] name 缺省取 id")
+  断言相等(字典包含键(信息无, "badge"), 假, "[modelinfo6] 无徽章不带键")
+
+  设 描述条 为 {"id": "x", "description": 空}
+  设 信息描述 为 模型增补_目录模型信息("p", 描述条)
+  断言相等(字典包含键(信息描述, "description"), 真, "[modelinfo7] description 显式 null 也带键")
+
+  # ================= §8 时序：maxAgeMs=0 语义（timing） =================
+  设 零龄设置 为 解析列表时序({"modelsMaxAgeMs": 0}, "plug")
+  断言相等(零龄设置["maxAgeMs"], 0, "[timing1] maxAgeMs=0 合法")
+  设 缓存1 为 建模型列表缓存()
+  断言相等(模型增补缓存_视图刷新时机(缓存1, 零龄设置, 1000, 真), "首次", "[timing2] 未结算 → 首次等待")
+  设 缓存1["settledAt"] 为 1000
+  断言相等(模型增补缓存_视图刷新时机(缓存1, 零龄设置, 1000, 真), "后台", "[timing3] maxAge=0 → 每次访问都刷新")
+  断言相等(模型增补缓存_自动刷新延迟(零龄设置, 1000, 1000, 假), 空, "[timing4] maxAge=0 → 不排自动刷新")
+  设 常龄设置 为 {"url": "u", "maxAgeMs": 600000, "timeoutMs": 5000}
+  断言相等(模型增补缓存_视图刷新时机(缓存1, 常龄设置, 1000, 真), "无", "[timing5] 新鲜 → 不刷新")
+  断言相等(模型增补缓存_视图刷新时机(缓存1, 常龄设置, 601000, 真), "后台", "[timing6] 超龄 → 后台刷新")
+  断言相等(模型增补缓存_视图刷新时机(缓存1, 常龄设置, 601000, 假), "无", "[timing7] 无凭据 → 不刷新")
+  设 缓存1["scope"] 为 "端点+凭据甲"
+  断言相等(模型增补缓存_作用域变了(缓存1, "端点+凭据甲"), 假, "[signedout4] 同作用域不重定域")
+  断言相等(模型增补缓存_作用域变了(缓存1, 空), 真, "[signedout5] 凭据消失 → 作用域变（重定域清清单）")
+  断言相等(模型增补缓存_自动刷新延迟(常龄设置, 空, 0, 假), 600000, "[timing8] 未结算年龄按 0")
+  断言相等(模型增补缓存_自动刷新延迟(常龄设置, 1000, 1300, 假), 599700, "[timing9] 延迟扣除已过年龄")
+  断言相等(模型增补缓存_自动刷新延迟(常龄设置, 0, 600000, 假), 1, "[timing10] 已超龄 → 下限 1ms")
+  断言相等(模型增补缓存_自动刷新延迟(常龄设置, 1000, 1000, 真), 空, "[timing11] 已释放 → 不排程")
+  设 超限设置 为 {"url": "u", "maxAgeMs": 9999999999, "timeoutMs": 5000}
+  断言相等(模型增补缓存_自动刷新延迟(超限设置, 空, 0, 假), 最大计时延迟_MS, "[timing12] 上限 MAX_TIMER_DELAY_MS")
+  段落 负龄时序():
+    返回 解析列表时序({"modelsMaxAgeMs": -1}, "plug")
+  断言相等(期望抛错(负龄时序), 真, "[timing13] maxAgeMs 负数必须抛错（抛反锚点）")
+  段落 缺数据体():
+    返回 解码模型清单({})
+  断言相等(期望抛错(缺数据体), 真, "[timing14] 清单缺 data 数组必须抛错（抛反锚点）")
+
+  # ================= §9 清单变化与通知（publish / identical） =================
+  设 清单新 为 {"条目": [{"id": "a", "badge": {"kind": "badge", "badge": {"text": "New", "tone": "info"}}}], "跳过": 0}
+  设 清单替 为 {"条目": [{"id": "a", "badge": {"kind": "badge", "badge": {"text": "Updated", "tone": "info"}}}], "跳过": 0}
+  设 清单去 为 {"条目": [{"id": "a"}], "跳过": 0}
+  断言相等(模型增补缓存_清单变化了(空, 清单新), 真, "[publish1] 首次清单算变化")
+  断言相等(模型增补缓存_清单变化了(清单新, 清单新), 假, "[identical1] 同内容不发通知")
+  断言相等(模型增补缓存_清单变化了(清单新, 清单替), 真, "[publish2] 徽章替换算变化")
+  断言相等(模型增补缓存_清单变化了(清单替, 清单去), 真, "[publish3] 徽章移除算变化")
+  设 通知桩 为 {"次数": 0}
+  设 告警桩 为 []
+  段落 好通知():
+    设 通知桩["次数"] 为 通知桩["次数"] + 1
+  段落 坏通知():
+    抛出 新建 错误("listener-down")
+  段落 记告警(消息):
+    列表追加(告警桩, 消息)
+  断言相等(模型增补缓存_通知(好通知, 记告警), 真, "[publish4] 通知正常送达")
+  断言相等(通知桩["次数"], 1, "[publish5] 只通知一次")
+  断言相等(模型增补缓存_通知(坏通知, 记告警), 假, "[identical2] 通知失败被包含")
+  断言相等(告警桩[0], 模型增补缓存_通知失败文案("listener-down"), "[identical3] 通知失败告警文案")
+
+  # ================= §10 刷新结算（retain / disabled / signedout / credlookup） =================
+  设 缓存2 为 建模型列表缓存()
+  设 结算失 为 模型增补缓存_刷新结算(缓存2, 空, 真, 假, 5000, 空)
+  断言相等(结算失["动作"], "失效", "[disabled1] settings()=undefined → 失效")
+  断言相等(结算失["通知"], 真, "[disabled2] 停止跟随后要通知")
+  断言相等(结算失["结算时刻"], 空, "[disabled3] 失效清掉结算时刻")
+  断言相等(结算失["重排程"], 假, "[disabled4] 不再排程")
+
+  设 结算败 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 真, 5000, "offline")
+  断言相等(结算败["动作"], "失败", "[retain1] 刷新失败")
+  断言相等(结算败["告警"], 模型增补缓存_刷新失败文案("offline"), "[retain2] 失败连首次告警")
+  断言相等(结算败["结算时刻"], 5000, "[retain3] 失败推进结算时刻")
+  断言相等(结算败["失败"], 真, "[retain4] 置失败标记")
+  断言相等(结算败["重排程"], 真, "[retain5] 在途为空再排程")
+  设 缓存2["failing"] 为 真
+  设 结算败2 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 真, 6000, "offline")
+  断言相等(结算败2["告警"], "", "[credlookup1] 同失败连不重复告警")
+
+  设 缓存2["failing"] 为 假
+  设 结算成 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 假, 7000, 空)
+  断言相等(结算成["动作"], "成功", "[signedout1] 刷新成功")
+  断言相等(结算成["通知"], 真, "[signedout2] 认证由有变无要补通知")
+  设 结算成2 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 真, 7000, 空)
+  断言相等(结算成2["通知"], 假, "[signedout3] 认证仍在不必通知")
+  设 缓存2["inflight"] 为 "在飞"
+  设 结算飞 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 假, 7000, 空)
+  断言相等(结算飞["重排程"], 假, "[dispose1] 有在途加载时不再排程")
+  设 缓存2["closed"] 为 真
+  设 结算停 为 模型增补缓存_刷新结算(缓存2, 常龄设置, 真, 假, 7000, 空)
+  断言相等(结算停["动作"], "停止", "[dispose2] 已释放 → 停止")
+  断言相等(结算停["重排程"], 假, "[dispose3] 已释放不排程")
+
+  # ================= §11 释放结算 =================
+  设 缓存3 为 建模型列表缓存()
+  设 释放果 为 模型增补缓存_释放结算(缓存3, 2)
+  断言相等(释放果["关闭"], 真, "[dispose4] 释放即关闭")
+  断言相等(释放果["代次"], 1, "[dispose5] 释放推进代次")
+  断言相等(释放果["需等待"], 真, "[dispose6] 有已放行加载要等")
+  断言相等(释放果["待结算"], 2, "[dispose7] 待结算数")
+  断言相等(模型增补缓存_自动刷新延迟(常龄设置, 1000, 1000, 真), 空, "[dispose8] 释放后不再自动刷新")
+
+  写 "R221-B7-BADGE-MARKER 徽章上限=12 / maxAge0=每次访问刷新"
+  写 "--- 测试 R221_B7模型增补 通过 ---"
+
+主程()
