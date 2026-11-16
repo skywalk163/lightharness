@@ -25,6 +25,7 @@
 # 绕法：内置裸名（L-090）、无 且/或 行内链（L-043）、标识符避关键字（L-084/L-092）、无花括号文案（L-089）。
 
 导出 需要文本 归一写域 校验成员名 折叠团队状态 任务就绪 断言任务图 检测依赖环 判动作门槛 造任务事件 改任务事件 造成员事件 找活跃成员 发消息事件 确认送达事件 未读数 消息接受判定 校验事件流 任务分页 近期活动 断言团队转移 清理终止任务 判内容块 列内容块。
+导出 会话提醒团队任务工具名表 会话提醒团队工具名表 会话提醒团队含中断 会话提醒中断后任务快照 会话提醒中断后未读数。
 
 # ---------------- validation.ts ----------------
 # requiredText（逐字）：trim 空抛 must be non-empty；超长抛 exceeds N characters
@@ -738,3 +739,63 @@
     如果 判内容块(块) == 假:
       返回 假
   返回 真
+
+# ---------------- 中断与 Team 模式（0.2.2-rc.1 #15 subagent-interrupt-default） ----------------
+#
+# 上游（dsh-v0.2.2-rc.3 = 38a6a5c965）：
+#   packages/bundle/base/README.zh.md:56
+#     「tool-subagent-control 行显式设置 interrupt: false，因此普通 subagent 和
+#       Team 模式均不提供 interrupt_agent。」
+#   packages/team/tool-agent-team/README.zh.md:55
+#     「teammate 通过标准 subagent、subagent_fork、send_message、list_agents 与
+#       interrupt_agent 工具创建和联系……本包不修改它们。」
+#   packages/team/agent-team/README.zh.md:83
+#     「当 subagent 控制插件启用 config.interrupt 时，祖先可通过 interrupt_agent 停止
+#       后代的当前轮次。内置配置默认关闭此工具。中断保留尚未认领的排队消息，
+#       也不改变任务归属。」
+#   packages/team/tool-agent-team/src/index.ts → TEAM_TOOLS 只有四个 team_task_*
+#     （create/get/list/update），Team 包**不自带**中断工具。
+# 结论：Team 模式与普通 subagent 走**同一套**控制工具与同一条中断默认规则；
+#   Team 侧额外要钉住的是「中断不改变任务归属、不丢未认领排队消息」。
+
+# 本包对工具面的固定贡献：四个任务板工具（上游 TEAM_TOOLS 逐字）
+段落 会话提醒团队任务工具名表():
+  返回 ["team_task_create", "team_task_get", "team_task_list", "team_task_update"]
+
+# Team 模式最终暴露的全部工具名：任务板四件 + 共享控制工具（含/不含中断）
+#   含中断 = 假 时中断工具缺失，其余共享工具与 wait_agent 仍在（与内置配置一致）。
+段落 会话提醒团队工具名表(含中断):
+  设 名表 为 []
+  遍历 名 之 会话提醒团队任务工具名表():
+    列表追加(名表, 名)
+  如果 含中断 == 真:
+    列表追加(名表, "interrupt_agent")
+  列表追加(名表, "send_message")
+  列表追加(名表, "list_agents")
+  列表追加(名表, "wait_agent")
+  返回 名表
+
+# Team 模式是否提供中断工具：与普通 subagent 同一条规则（内置组合 → 无）
+段落 会话提醒团队含中断(是否内置组合):
+  如果 是否内置组合 == 真:
+    返回 假
+  返回 真
+
+# 中断不改变任务归属：给定事件流与任务标识，中断前后的归属/状态/修订都不变。
+#   本段落是**纯投影**：它回读折叠后的任务快照，证明中断不写任务事件。
+段落 会话提醒中断后任务快照(事件表, 任务标识):
+  设 状态 为 折叠团队状态(事件表)
+  设 任务表 为 状态["任务表"]
+  如果 字典包含键(任务表, 任务标识) == 假:
+    抛出 新建 错误("team task \"" + 任务标识 + "\" not found")
+  设 任务 为 任务表[任务标识]
+  设 结果 为 {}
+  结果["标识"] 为 任务["标识"]
+  结果["状态"] 为 任务["状态"]
+  结果["归属"] 为 任务["归属"]
+  结果["修订"] 为 任务["修订"]
+  返回 结果
+
+# 中断保留尚未认领的排队消息：未读数在中断前后一致（中断不确认送达、不清队列）
+段落 会话提醒中断后未读数(事件表, 目标标识):
+  返回 未读数(事件表, 目标标识)
