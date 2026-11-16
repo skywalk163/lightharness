@@ -179,31 +179,108 @@
 # §6 子代理中断默认关（0.2.2-rc.1 #15 subagent-interrupt-default）
 # =====================================================================
 #
-# 上游：base 组合包与 Web 的 standard / cordis / ptc preset 给 tool-subagent-control 行
-# 设 config.interrupt: false —— 模型工具定义里**没有** interrupt_agent（Team 模式同样没有）；
-# 消息/发现/收件箱等待与 subagent 服务的中断 API 仍可用；
-# **插件自身默认值仍为 true**，省略该配置的独立组合仍提供中断工具。
-# 两个层次必须分开：内置组合默认 = 假；插件默认 = 真。
+# 上游（dsh-v0.2.2-rc.3 = 38a6a5c965）：
+#   packages/bundle/base/cordis.patch.yml:389            → tool-subagent-control 行
+#                                                          `config.interrupt: false`
+#   packages/bundle/web-app/presets/standard.patch.yml:98 → 同
+#   packages/bundle/web-app/presets/cordis.patch.yml:94   → 同
+#   packages/bundle/web-app/presets/ptc.patch.yml:95      → 同
+#   packages/subagent/tool-subagent-control/src/index.ts
+#     Config.interrupt?: boolean  默认 true
+#     apply(): `const interrupt = config.interrupt !== false`；`if (!interrupt) return`
+#              → 关掉时**不注册** interrupt_agent，其余三个工具与 ctx.subagents.interrupt() 照旧
+#   packages/bundle/base/README.zh.md:56
+#     「tool-subagent-control 行显式设置 interrupt: false，因此普通 subagent 和
+#       Team 模式均不提供 interrupt_agent。插件自身的默认值仍为 true。」
+#
+# 于是**两个层次必须分开**（这正是本条最容易做错的地方）：
+#   ① 插件默认 = 真（省略配置的独立组合仍提供中断工具）；
+#   ② 内置组合默认 = 假（base 及 Web 的 standard/cordis/ptc 都显式写 false）。
+# 关掉中断工具不等于关掉中断能力：消息/发现/收件箱等待三个工具仍在，
+# subagent 服务的中断 API（SubagentService.interrupt / Remote interruptByUser）仍在。
 
-# 6.1 内置组合里中断的默认值（真=内置组合；假=独立组合/插件默认）
+# 6.1 内置组合名表：base（headless/sdk/acp 等 profile 都基于它）+ Web 三个 preset。
+#     （上游 base 组合包与 web-app presets 是两处配置，这里合并成一张「内置组合」表，
+#      因为本仓只对「是不是内置组合」这一层做判定，不做 profile 装配。）
+段落 预选内置组合名表():
+  返回 ["base", "headless", "sdk", "acp", "standard", "cordis", "ptc"]
+
+# 6.2 某组合名是否为内置组合（大小写不敏感；非字符串一律视为独立组合）
+段落 预选是内置组合(名):
+  如果 是字符串(名) == 假:
+    返回 假
+  设 待查 为 转小写(去除空白(名))
+  遍历 候选 之 预选内置组合名表():
+    如果 转小写(候选) == 待查:
+      返回 真
+  返回 假
+
+# 6.3 层次①：插件自身默认值 —— 恒为真（上游 `z.boolean().default(true)`）
+段落 预选插件默认中断():
+  返回 真
+
+# 6.4 层次②：内置组合里中断的默认值（真=内置组合；假=独立组合/插件默认）
+#     保留既有签名与语义：入参是「是否内置组合」的布尔判定结果。
 段落 预选中断默认(是否内置组合):
   如果 是否内置组合 == 真:
     返回 假
   返回 真
 
-# 6.2 某份配置最终是否提供中断工具（显式配置优先，省略落回插件默认真）
+# 6.5 按组合名取该组合的 interrupt 配置值：内置组合 → 假；独立组合 → 空（= 省略，落回插件默认）
+段落 预选中断配置值(组合名):
+  如果 预选是内置组合(组合名) == 真:
+    返回 假
+  返回 空
+
+# 6.6 某份配置最终是否提供中断工具（显式配置优先，省略落回插件默认真）。
+#     键名同时接受上游线键 `interrupt` 与既有的中文键 `中断`。
 段落 预选含中断工具(配置):
   如果 是字典(配置) == 假:
     返回 真
   设 值 为 字典获取(配置, "中断", 空)
   如果 值 == 空:
-    返回 真
+    设 值 为 字典获取(配置, "interrupt", 空)
+  如果 值 == 空:
+    返回 预选插件默认中断()
   返回 值
 
-# 6.3 工具名清单：不含 interrupt_agent 时其余三个仍在（Team 模式同规则）
+# 6.7 组合名 + 覆盖配置 → 最终是否提供中断工具。
+#     覆盖配置留空/缺该键 = 沿用该组合的默认（内置组合 → 假）；显式给值则显式优先。
+段落 预选组合含中断(组合名, 覆盖配置 = 空):
+  设 覆盖值 为 空
+  如果 是字典(覆盖配置):
+    设 覆盖值 为 字典获取(覆盖配置, "中断", 空)
+    如果 覆盖值 == 空:
+      设 覆盖值 为 字典获取(覆盖配置, "interrupt", 空)
+  如果 覆盖值 != 空:
+    返回 覆盖值
+  设 组合值 为 预选中断配置值(组合名)
+  如果 组合值 == 空:
+    返回 预选插件默认中断()
+  返回 组合值
+
+# 6.8 工具名清单：不含 interrupt_agent 时其余三个仍在（Team 模式同规则）
 段落 预选工具名表(含中断):
   如果 含中断 == 真:
     返回 ["interrupt_agent", "send_message", "list_agents", "wait_agent"]
   返回 ["send_message", "list_agents", "wait_agent"]
 
+# 6.9 中断能力本身是否仍可用：关掉的只是**工具**，服务 API（含 Remote interruptByUser）仍在。
+段落 预选中断服务可用():
+  返回 真
+
+# 6.10 工具面总览：把「工具清单」「工具是否含中断」「服务是否可用」三者一次给出。
+#      上游 Team 模式同样落在这套控制工具上，所以本段落对 Team 不做分支——
+#      差异只在 Team 另有一套 team_task_* 工具（见 src/代理团队.light）。
+段落 预选控制工具面(组合名, 覆盖配置 = 空):
+  设 含中断 为 预选组合含中断(组合名, 覆盖配置)
+  设 面 为 {}
+  面["组合名"] 为 组合名
+  面["含中断"] 为 含中断
+  面["工具名表"] 为 预选工具名表(含中断)
+  面["中断服务可用"] 为 预选中断服务可用()
+  返回 面
+
+导出 预选新建, 预选已配置, 预选可选表, 预选描述, 预选解析, 预选断言提供方, 预选校验服务, 预选文档缺失
 导出 预选中断默认, 预选含中断工具, 预选工具名表
+导出 预选内置组合名表, 预选是内置组合, 预选插件默认中断, 预选中断配置值, 预选组合含中断, 预选中断服务可用, 预选控制工具面
