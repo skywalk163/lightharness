@@ -1,0 +1,214 @@
+# test_R221_Bf2错误与清理.light —— R221-Bf2 判据（工作树清理判定 / 终端清理失败 / 附件错误码）
+# 运行：python 运行.py examples/test_R221_Bf2错误与清理.light
+# 上游：packages/experimental/worktree/src/removal.ts::inspectRemoval（#3）
+#       packages/terminal/terminal/src（#16 TerminalBackendCleanupError）
+#       packages/attachment/attachment/src/error.ts（#4 17 个码）
+#       dsh-v0.2.2-rc.3 = 38a6a5c965
+#
+# 覆盖上游用例（逐条标注）：
+#   [wt1] 六条判定全满足才允许 git worktree remove（不带 force）
+#   [wt2] detached / locked / prunable / 分支不符 / HEAD 分离 一律拒绝
+#   [wt3] status 有任何字段即拒绝（--ignore-submodules=none：子模块改动算）
+#   [wt4] 模块目录（git-path modules）存在即拒绝（Git 会拒删）
+#   [wt5] 归档处置：retainOnArchive / 仍有未归档引用 / 只读策略 都保留
+#   [term1] CLEANUP_FAILED + errors 保持「先启动失败、后清理失败」原顺序
+#   [term2] 不再按 AggregateError 识别，只看名称/码
+#   [att1] 17 个码（9 图像准入 + 8 附件），顺序与上游常量一致
+#   [att2] 附件失败记具体码，不回落 UNKNOWN；旧 UNKNOWN 与新码同属一类
+#   [cls1] 失败归类：附件优先于通用 Harness（继承关系变了但捕获顺序不能变）
+#
+# 反跑判据（改反源码任一期望必须红）：
+#   A. 工区工作树可移除 里「模块目录存在」分支删掉        -> wt4 用例红
+#   B. 失败归类 里 AttachmentError 分支删掉（落到 harness）-> cls1 用例红
+
+从 工作区变更 导入 工区工作树可移除, 工区工作树归档处置
+从 终端 导入 终端清理失败错误, 终端错误码, 终端是清理失败
+从 附件准入 导入 附件图像准入码集, 附件其他码集, 附件错误码集, 附件码属于, 附件失败码, 附件失败记录, 附件旧码同属
+从 错误增强 导入 失败归类, 失败是附件, 失败是终端清理
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败: " + 标签 + " 实际=" + 序列化JSON(实际) + " 期望=" + 序列化JSON(期望))
+
+段落 断言真(条件, 标签):
+  如果 条件 != 真:
+    抛出 新建 错误("断言真失败: " + 标签)
+
+段落 断言含(文, 片段, 标签):
+  如果 字符串包含(转字符串(文), 片段) == 假:
+    抛出 新建 错误("断言含失败: " + 标签 + " 文=" + 转字符串(文))
+
+# ---------- 造检测快照 ----------
+
+段落 造检测():
+  返回 {"池内规范路径": 真, "是目录": 真, "注册字段": ["worktree /pool/wt1", "branch refs/heads/feat", ""], "符号引用头": "refs/heads/feat", "状态有输出": 假, "模块目录存在": 假}
+
+段落 主程():
+  # ===== 一、工作树可移除判定（wt1..wt4）=====
+
+  # 1. 全满足 → 可移除
+  设 好 为 工区工作树可移除("feat", 造检测())
+  断言相等(好["可移除"], 真, "wt-全满足可移除")
+  断言相等(好["原因"], 空, "wt-全满足无原因")
+
+  # 2. 身份不符 → 拒
+  设 坏身份 为 造检测()
+  坏身份["池内规范路径"] 为 假
+  设 身份果 为 工区工作树可移除("feat", 坏身份)
+  断言相等(身份果["可移除"], 假, "wt-身份不符拒绝")
+  断言含(身份果["原因"], "身份不符", "wt-身份不符原因")
+
+  # 3. 不是目录 → 拒
+  设 非目录 为 造检测()
+  非目录["是目录"] 为 假
+  断言含(工区工作树可移除("feat", 非目录)["原因"], "不是目录", "wt-非目录原因")
+
+  # 4. 未按该分支注册 → 拒
+  设 别的分支 为 造检测()
+  别的分支["注册字段"] 为 ["worktree /pool/wt1", "branch refs/heads/other", ""]
+  断言含(工区工作树可移除("feat", 别的分支)["原因"], "未按该分支注册", "wt-分支未注册原因")
+
+  # 5. detached → 拒（wt2）
+  设 分离 为 造检测()
+  分离["注册字段"] 为 ["worktree /pool/wt1", "branch refs/heads/feat", "detached", ""]
+  断言含(工区工作树可移除("feat", 分离)["原因"], "detached", "wt-detached原因")
+
+  # 6. locked → 拒
+  设 锁定 为 造检测()
+  锁定["注册字段"] 为 ["worktree /pool/wt1", "branch refs/heads/feat", "locked stale-lock", ""]
+  断言含(工区工作树可移除("feat", 锁定)["原因"], "locked", "wt-locked原因")
+
+  # 7. prunable → 拒
+  设 可剪 为 造检测()
+  可剪["注册字段"] 为 ["worktree /pool/wt1", "branch refs/heads/feat", "prunable gitdir file points to non-existent location", ""]
+  断言含(工区工作树可移除("feat", 可剪)["原因"], "prunable", "wt-prunable原因")
+
+  # 8. HEAD 不在该分支 → 拒
+  设 头偏 为 造检测()
+  头偏["符号引用头"] 为 "refs/heads/other"
+  断言含(工区工作树可移除("feat", 头偏)["原因"], "HEAD 不在该分支", "wt-head原因")
+
+  # 9. 状态有输出（含子模块改动）→ 拒（wt3）
+  设 脏 为 造检测()
+  脏["状态有输出"] 为 真
+  断言含(工区工作树可移除("feat", 脏)["原因"], "未提交改动", "wt-脏原因")
+
+  # 10. 模块目录存在 → 拒（wt4）
+  设 有模块 为 造检测()
+  有模块["模块目录存在"] 为 真
+  断言含(工区工作树可移除("feat", 有模块)["原因"], "子模块仓库", "wt-模块原因")
+
+  # ===== 二、归档处置（wt5）=====
+
+  # 11. 全通过 → 删
+  设 删 为 工区工作树归档处置(好, 假, 假, 假)
+  断言相等(删["删除"], 真, "wt-归档删除")
+
+  # 12. retainOnArchive → 保留
+  设 留 为 工区工作树归档处置(好, 真, 假, 假)
+  断言相等(留["删除"], 假, "wt-保留开关")
+  断言含(留["原因"], "retainOnArchive", "wt-保留开关原因")
+
+  # 13. 仍有未归档引用 → 保留
+  断言相等(工区工作树归档处置(好, 假, 真, 假)["删除"], 假, "wt-有引用保留")
+
+  # 14. 创建者策略只读 → 保留
+  断言含(工区工作树归档处置(好, 假, 假, 真)["原因"], "只读", "wt-只读原因")
+
+  # 15. 不可移除 → 保留并透传原因
+  设 模块判定 为 工区工作树可移除("feat", 有模块)
+  设 透传 为 工区工作树归档处置(模块判定, 假, 假, 假)
+  断言相等(透传["删除"], 假, "wt-不可移除不删")
+  断言含(透传["原因"], "子模块仓库", "wt-原因透传")
+
+  # ===== 三、终端清理失败错误（term1/term2）=====
+
+  # 16. 名称与码（#16）
+  设 清错 为 终端清理失败错误("spawn failed", "cleanup failed")
+  断言相等(清错["名称"], "TerminalBackendCleanupError", "term-名称")
+  断言相等(清错["码"], "CLEANUP_FAILED", "term-码")
+
+  # 17. errors 保持原顺序：先启动失败、后清理失败
+  断言相等(清错["错误表"][0], "spawn failed", "term-错误表首")
+  断言相等(清错["错误表"][1], "cleanup failed", "term-错误表次")
+  断言相等(列表长度(清错["错误表"]), 2, "term-错误表两条")
+
+  # 18. cause 是同两个失败组成的聚合
+  断言相等(清错["因果"][0], "spawn failed", "term-因果首")
+  断言相等(清错["因果"][1], "cleanup failed", "term-因果次")
+
+  # 19. 两个失败字段分别在
+  断言相等(清错["启动失败"], "spawn failed", "term-启动失败字段")
+  断言相等(清错["清理失败"], "cleanup failed", "term-清理失败字段")
+
+  # 20. 码表与识别（不再按 AggregateError）
+  断言相等(终端错误码("TerminalBackendCleanupError"), "CLEANUP_FAILED", "term-码表")
+  断言相等(终端错误码("TerminalError"), 空, "term-其他终端错误无清理码")
+  断言真(终端是清理失败("TerminalBackendCleanupError", 空), "term-按名识别")
+  断言真(终端是清理失败("", "CLEANUP_FAILED"), "term-按码识别")
+  断言真(终端是清理失败("AggregateError", "X") == 假, "term-不再认AggregateError")
+
+  # ===== 四、附件错误码（att1/att2）=====
+
+  # 21. 17 个码，9 + 8
+  断言相等(列表长度(附件图像准入码集()), 9, "att-图像准入9")
+  断言相等(列表长度(附件其他码集()), 8, "att-其他8")
+  断言相等(列表长度(附件错误码集()), 17, "att-合计17")
+
+  # 22. 顺序与上游常量一致（首/尾/交界）
+  设 全码 为 附件错误码集()
+  断言相等(全码[0], "TOO_MANY_IMAGES", "att-首码")
+  断言相等(全码[8], "IMAGE_DIMENSION_TOO_LARGE", "att-图像末位")
+  断言相等(全码[9], "INVALID_FILE_BASE64", "att-附件首位")
+  断言相等(全码[16], "ATTACHMENT_FILES_UNSUPPORTED", "att-尾码")
+
+  # 23. 归属判定
+  断言真(附件码属于("ATTACHMENT_NOT_FOUND"), "att-归属已知")
+  断言真(附件码属于("UNKNOWN") == 假, "att-UNKNOWN不属码集")
+  断言真(附件码属于("weird") == 假, "att-未知不属码集")
+
+  # 24. 失败码保真：附件码原样，未知回落 UNKNOWN
+  断言相等(附件失败码("ATTACHMENT_READ_FAILED"), "ATTACHMENT_READ_FAILED", "att-码保真")
+  断言相等(附件失败码("weird"), "UNKNOWN", "att-未知回落")
+
+  # 25. tool/result 记录形状
+  设 记录 为 附件失败记录("ATTACHMENT_CORRUPT")
+  断言相等(记录["名"], "AttachmentError", "att-记录名")
+  断言相等(记录["码"], "ATTACHMENT_CORRUPT", "att-记录码")
+
+  # 26. 新旧日志同属一类
+  断言真(附件旧码同属("UNKNOWN"), "att-旧UNKNOWN同属")
+  断言真(附件旧码同属("INVALID_IMAGE"), "att-图像码同属")
+  断言真(附件旧码同属("ATTACHMENT_WRITE_FAILED"), "att-附件码同属")
+  断言真(附件旧码同属("weird") == 假, "att-未知不同属")
+
+  # ===== 五、失败分类优先级（cls1）=====
+
+  # 27. 附件优先于通用 harness（继承变了，捕获顺序不能变）
+  设 归 为 失败归类("AttachmentError", "ATTACHMENT_NOT_FOUND")
+  断言相等(归["大类"], "attachment", "cls-附件大类")
+  断言相等(归["码"], "ATTACHMENT_NOT_FOUND", "cls-附件码不被吞")
+
+  # 28. 附件未知码也归附件，但码回落 UNKNOWN
+  设 归二 为 失败归类("AttachmentError", "weird")
+  断言相等(归二["大类"], "attachment", "cls-附件未知码仍归附件")
+  断言相等(归二["码"], "UNKNOWN", "cls-附件未知码回落")
+
+  # 29. 终端清理
+  设 归三 为 失败归类("TerminalBackendCleanupError", 空)
+  断言相等(归三["大类"], "terminal-cleanup", "cls-终端清理大类")
+  断言相等(归三["码"], "CLEANUP_FAILED", "cls-终端清理码")
+
+  # 30. 其他有名错误 → harness；无名 → unknown
+  断言相等(失败归类("LlmError", "rate-limited")["大类"], "harness", "cls-通用harness")
+  断言相等(失败归类(空, "UNKNOWN")["大类"], "unknown", "cls-无名unknown")
+
+  # 31. 两个专用判定入口
+  断言真(失败是附件("AttachmentError", 空), "cls-是附件")
+  断言真(失败是附件("HarnessError", 空) == 假, "cls-不是附件")
+  断言真(失败是终端清理("TerminalBackendCleanupError", 空), "cls-是终端清理")
+  断言真(失败是终端清理("Other", "X") == 假, "cls-不是终端清理")
+
+  写 "--- 测试 R221_Bf2错误与清理 通过 ---"
+
+主程()

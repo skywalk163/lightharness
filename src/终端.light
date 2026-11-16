@@ -667,3 +667,30 @@
     抛出 新建 错误("Invalid terminal cleanup request")
   字典设置(簿["表"], 请求["id"], 请求)
   返回 簿
+
+
+# ===== 终端清理失败错误（0.2.2-rc.1 #16 terminal-backend-cleanup-error）=====
+#
+# 上游 packages/terminal/terminal/src：`TerminalBackendCleanupError` 由 PTY 后端在
+# 「启动失败 且 清理部分资源也失败」时抛出。它原先继承 AggregateError，现在继承 TerminalError，
+# 即带 code `CLEANUP_FAILED` 的 HarnessError；`instanceof AggregateError` 现在为 false。
+# 构造参数、name、spawnError、cleanupError 与 errors（保持原顺序）不变；
+# errors 变为只读 unknown 列表；cause 是同样两个失败组成的 AggregateError。
+
+# 构造清理失败错误（纯形状，不抛）：errors 保持「先启动失败、后清理失败」的原顺序
+段落 终端清理失败错误(启动失败, 清理失败):
+  返回 {"名称": "TerminalBackendCleanupError", "码": "CLEANUP_FAILED", "启动失败": 启动失败, "清理失败": 清理失败, "错误表": [启动失败, 清理失败], "因果": [启动失败, 清理失败]}
+
+# 错误类型 → 稳定码（工具结果里记录 error.code）
+段落 终端错误码(名称):
+  如果 名称 == "TerminalBackendCleanupError":
+    返回 "CLEANUP_FAILED"
+  返回 空
+
+# 判定一个值是否该错误（跨投影只看名称，不看类身份）
+段落 终端是清理失败(名称, 码):
+  如果 名称 == "TerminalBackendCleanupError":
+    返回 真
+  如果 码 == "CLEANUP_FAILED":
+    返回 真
+  返回 假

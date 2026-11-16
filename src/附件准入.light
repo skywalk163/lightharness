@@ -272,3 +272,47 @@
   设 块["width"] 为 尺寸["width"]
   设 块["height"] 为 尺寸["height"]
   返回 块
+
+
+# ===== 附件错误码（0.2.2-rc.1 #4 attachment-error-codes）=====
+#
+# 上游 packages/attachment/attachment/src/error.ts（dsh-v0.2.2-rc.3）：
+#   IMAGE_ADMISSION_ERROR_CODES 9 个 + 附件码 8 个，共 17 个；
+#   `AttachmentError` 现在继承 HarnessError（name 与全部码不变）。
+#   两类持久化结果变了：
+#     ① 适配器读图失败导致模型请求失败时，turn/end 的 code 从 UNKNOWN 变成具体附件码；
+#     ② 工具主体让 AttachmentError 逸出时，tool/result 记 error:{name:'AttachmentError', code}。
+#   旧日志仍是 UNKNOWN：读新旧日志的消费方要把这两种记录视为同一类失败。
+
+段落 附件图像准入码集():
+  返回 ["TOO_MANY_IMAGES", "IMAGES_TOO_LARGE", "UNSUPPORTED_IMAGE_TYPE", "INVALID_IMAGE_BASE64", "INVALID_IMAGE", "IMAGE_TYPE_MISMATCH", "IMAGE_TOO_LARGE", "IMAGE_TOO_MANY_PIXELS", "IMAGE_DIMENSION_TOO_LARGE"]
+
+段落 附件其他码集():
+  返回 ["INVALID_FILE_BASE64", "INVALID_ATTACHMENT_REF", "ATTACHMENT_CORRUPT", "ATTACHMENT_WRITE_FAILED", "ATTACHMENT_NOT_FOUND", "ATTACHMENT_READ_FAILED", "ATTACHMENT_PROJECTION_UNSUPPORTED", "ATTACHMENT_FILES_UNSUPPORTED"]
+
+# 17 个码的完整集合（9 图像准入 + 8 其他），顺序与上游常量一致
+段落 附件错误码集():
+  返回 ["TOO_MANY_IMAGES", "IMAGES_TOO_LARGE", "UNSUPPORTED_IMAGE_TYPE", "INVALID_IMAGE_BASE64", "INVALID_IMAGE", "IMAGE_TYPE_MISMATCH", "IMAGE_TOO_LARGE", "IMAGE_TOO_MANY_PIXELS", "IMAGE_DIMENSION_TOO_LARGE", "INVALID_FILE_BASE64", "INVALID_ATTACHMENT_REF", "ATTACHMENT_CORRUPT", "ATTACHMENT_WRITE_FAILED", "ATTACHMENT_NOT_FOUND", "ATTACHMENT_READ_FAILED", "ATTACHMENT_PROJECTION_UNSUPPORTED", "ATTACHMENT_FILES_UNSUPPORTED"]
+
+段落 附件码属于(码):
+  设 全部 为 附件错误码集()
+  遍历 项 之 全部:
+    如果 项 == 码:
+      返回 真
+  返回 假
+
+# 附件失败必须记具体码，不得回落 UNKNOWN（上游：code 不再丢失）
+段落 附件失败码(码):
+  如果 附件码属于(码) == 真:
+    返回 码
+  返回 "UNKNOWN"
+
+# 生成 tool/result 的 error 形状（附件逸出时：此前没有 error 字段）
+段落 附件失败记录(码):
+  返回 {"名": "AttachmentError", "码": 附件失败码(码)}
+
+# 新旧日志同属一类：旧记录 UNKNOWN 与新附件码都算「附件读失败」
+段落 附件旧码同属(码):
+  如果 码 == "UNKNOWN":
+    返回 真
+  返回 附件码属于(码)
