@@ -38,6 +38,11 @@
 - `examples/test_R221_Bf4会话与子代理.light`（117 断言）
 - `examples/test_r221插件面板e2e.light`（10 断言）
 
+### 已知限制（M 收口记录）
+
+- **全量回归门禁（判据 2）**：本 Linux 沙箱环境无法复现 Windows 基线（`reports/本机lh基线_latest.json`：2103 total / 2080 passed / 6 failed）。根因是 `tests/test_回归.py::_run()` 在 `/tmp/lightharness_case_*` 建临时目录、结束 `shutil.rmtree` 清理时被运行时 retention 保护拦截（`PermissionError: CHAT_REFERENCE_PROTECTED`），619 个用例全为同一环境性红，**与本次改动无关**。本次 commit 仅改 3 个文档，未触碰任何 `.light` 源码或测试，不存在代码回归。回归门禁需在原始 Windows 主控环境复跑确认。
+- **三远端推送（判据 5）**：按主控指示暂缓，待确认后再推。
+
 ## [v0.6.0-rc1] — 2026-11-16
 
 > **R220 收口（0.2.2-rc.1 对齐）**：上游锚点 `dsh-v0.2.1-rc.3`（`1f81c047fc`）→ **`dsh-v0.2.2-rc.1`（`66491b05e3`，2026-11-04）**。

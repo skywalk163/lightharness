@@ -88,3 +88,6 @@ docs/功能对标/*.bak_*
 .tmp_*/
 # 光明编译器 --report 生成的编译性能 sidecar（历来不入库，对齐 LM 惯例）
 *_profile.json
+
+# 主控收口临时脚本
+_m*.py
