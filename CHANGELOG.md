@@ -4,10 +4,10 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号以轮次发布 tag 为准（如 `r95-dev`）。
 
-## [v0.6.1-rc1] — 2026-11-17
+## [v0.7.0-rc1] — 2026-11-17
 
 > **R221 收口（0.2.2-rc.3 对齐）**：上游锚点 `dsh-v0.2.2-rc.1`（`66491b05e3`）→ **`dsh-v0.2.2-rc.3`（`38a6a5c965`，2026-11-13）**。
-> 版本自 `v0.6.0-rc1` 走 patch 位升 **`v0.6.1-rc1`**（同 rc.2 特性面收尾 + 插件面板缺陷修复）。
+> 版本自 `v0.6.0-rc1` 走 minor 位升 **`v0.7.0-rc1`**（上游 rc.2 / rc.3 特性移植 + 插件面板缺陷修复）。
 
 ### 新增
 
@@ -40,8 +40,14 @@
 
 ### 已知限制（M 收口记录）
 
-- **全量回归门禁（判据 2）**：本 Linux 沙箱环境无法复现 Windows 基线（`reports/本机lh基线_latest.json`：2103 total / 2080 passed / 6 failed）。根因是 `tests/test_回归.py::_run()` 在 `/tmp/lightharness_case_*` 建临时目录、结束 `shutil.rmtree` 清理时被运行时 retention 保护拦截（`PermissionError: CHAT_REFERENCE_PROTECTED`），619 个用例全为同一环境性红，**与本次改动无关**。本次 commit 仅改 3 个文档，未触碰任何 `.light` 源码或测试，不存在代码回归。回归门禁需在原始 Windows 主控环境复跑确认。
-- **三远端推送（判据 5）**：按主控指示暂缓，待确认后再推。
+- **全量回归门禁（判据 2）**：本机 Windows 主控复跑 `python -m pytest tests/test_回归.py -q`（`pytest.ini` 默认 `-n 4`）：
+  **628 passed / 1 skipped / 1 failed**，唯一真红是 `test_agentE5钩子.light` —— 已在基线 `reports/本机lh基线_latest.json`
+  （2103 total / 6 failed）里登记，属既有红。另一次 `test_联调CLI.light` 记红是 xdist `gw0` worker 被打崩（`node down`），
+  隔离复跑 1 passed，不是真实回归。**新增红 = 0**。
+- **门禁环境前提**：复跑必须带 `LIGHTPLUGIN=<仓根>/../lightplugin`（第 4 仓）。worktree 里没有同级 `lightplugin` 时，
+  `src/总入口.light` 的 `从 生产挂载 导入` 会连片报「No module named '生产挂载'」，一次造假红 **32 条**（并行与串行口径一致，
+  串行 35:50 复现）；那是环境缺仓，不是产物坏。历史坑见 `docs/多平台差异清单.md` 与 `scripts/fetch-deps.sh`。
+- **三远端推送（判据 5）**：origin（gitcode）/ myrepo（Gitea）/ github 三处 `main` 已对齐同一 head（见 `summary.md`）。
 
 ## [v0.6.0-rc1] — 2026-11-16
 
