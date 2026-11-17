@@ -4,6 +4,40 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号以轮次发布 tag 为准（如 `r95-dev`）。
 
+## [v0.6.1-rc1] — 2026-11-17
+
+> **R221 收口（0.2.2-rc.3 对齐）**：上游锚点 `dsh-v0.2.2-rc.1`（`66491b05e3`）→ **`dsh-v0.2.2-rc.3`（`38a6a5c965`，2026-11-13）**。
+> 版本自 `v0.6.0-rc1` 走 patch 位升 **`v0.6.1-rc1`**（同 rc.2 特性面收尾 + 插件面板缺陷修复）。
+
+### 新增
+
+- **HarnessError 基类**（B-f2 T-0367）：稳定机器码 `code` 与人类消息分离、`cause` 链、`name` 取子类名；rc.2 起 20+ 包新错误类统一继承（`src/错误增强.light`）。
+- **forge 变更请求三条**（B-f1 T-0366）：#9 快照概览 / #10 diff 定 head / #11 评审读取码（`src/变更请求.light`）。
+- **插件更新方式**（B-f3 T-0368）：#12 registry/git 双通道 + 安装结果核对（`src/插件注册表.light`）。
+- **搜索按计费三态选凭据**（B-f3 T-0368）：#18 credential 来源 + 延迟失败语义（`src/网页搜索.light`）。
+- **会话批量追加 + 运行时上下文提醒**（B-f4 T-0369）：#14 批量追加去重、#13 提醒完整模型（`src/会话.light` / `src/会话日志深化.light`）。
+- **子代理中断默认关**（B-f4 T-0369）：#15 中断两层次语义（`src/子代理预设选择.light` / `src/代理团队.light`）。
+
+### 修复
+
+- **插件面板异常**（T-0385）：`造卡片` 透传 `工具表`、MCP 桥接补只读原因；修复启动后全部插件显示「异常 / 不包含任何组件」（`src/插件面板.light` / `src/web服务器.light`）。
+
+### 变更
+
+- **llm-deepseek 凭据与模型增补**（B7 T-0364）：新增 `credential.ts` + 模型/凭据增补，补 R220 漏项（`src/模型目录.light` / `src/模型列表缓存.light`）。
+- **工作树清理判定**（B-f2 T-0367）：retainOnArchive / 未归档引用 / 只读（`src/工作区变更.light`）。
+- **终端 CLEANUP_FAILED + 17 附件码**（B-f2 T-0367）：错误码归类（`src/终端.light` / `src/附件准入.light`）。
+- **宿主面登记**（C T-0365）：§11 append，登记 126 → 148。
+
+### 判据
+
+- `examples/test_R221_B7模型增补.light`（119 断言）
+- `examples/test_R221_Bf1变更请求快照.light`（76 断言）
+- `examples/test_R221_Bf2错误与清理.light`（69 断言）
+- `examples/test_R221_Bf3更新与计费.light`（67 断言）
+- `examples/test_R221_Bf4会话与子代理.light`（117 断言）
+- `examples/test_r221插件面板e2e.light`（10 断言）
+
 ## [v0.6.0-rc1] — 2026-11-16
 
 > **R220 收口（0.2.2-rc.1 对齐）**：上游锚点 `dsh-v0.2.1-rc.3`（`1f81c047fc`）→ **`dsh-v0.2.2-rc.1`（`66491b05e3`，2026-11-04）**。
