@@ -15,6 +15,9 @@ _unit_tmp_*.light
 
 .env
 
+# 本机 MCP 配置含 Bearer token，禁止入库；只提交 mcp.example.json
+mcp.json
+
 # 生成的宣传海报 / AI 生图产物（单张 ~2.4MB，体积大不入库）
 generated-images/
 *_assets/

@@ -1,0 +1,28 @@
+# 经 lightharness MCP 客户端读 hive 任务总线（只读）
+从 工具 导入 工具注册表
+从 mcp接线 导入 挂载MCP服务器
+从 JSON 导入 序列化JSON, 解析JSON
+
+设 注册表 为 新建 工具注册表()
+设 装配 为 挂载MCP服务器(注册表)
+如果 装配["服务器数"] != 1 或 装配["跳过数"] != 0:
+  抛出 "MCP 挂载失败: " + 转字符串(装配)
+
+段落 调用(名, 参数):
+  设 出 为 注册表.执行(名, 参数)
+  如果 出.包含("isError") == 真 且 出["isError"] == 真:
+    返回 "MCP 错误: " + 转字符串(出)
+  设 文本 为 ""
+  遍历 块 之 出["content"]:
+    如果 块.包含("text"):
+      文本 为 文本 + 块["text"]
+  返回 解析JSON(文本)
+
+设 我 为 调用("mcp__hive__hive_whoami", {})
+打印 "WHOAMI=" + 序列化JSON(我)
+
+设 待领 为 调用("mcp__hive__hive_list_pending", ["agent": "lightharness-fb98", "limit": 50])
+打印 "PENDING_FOR_ME=" + 序列化JSON(待领)
+
+设 全部待领 为 调用("mcp__hive__hive_list_pending", ["agent": "", "limit": 100])
+打印 "PENDING_ALL=" + 序列化JSON(全部待领)
