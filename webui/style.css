@@ -1032,6 +1032,56 @@ body {
 }
 .code-copy { font-size: 11px; padding: 1px 8px; }
 
+/* ---------- Markdown 渲染（消息内 .mtext）---------- */
+.mtext { line-height: 1.6; }
+.mtext .md-p { margin: 0; }
+.mtext .md-gap { height: 6px; }
+.mtext strong { font-weight: 650; }
+.mtext em { font-style: italic; opacity: .92; }
+.mtext del { opacity: .6; }
+.mtext a { color: var(--blue); text-decoration: none; border-bottom: 1px solid currentColor; }
+.mtext a:hover { opacity: .8; }
+/* 用户气泡（深蓝底）里的链接保持可读 */
+.mrow.user .mtext a { color: #cfe4ff; }
+
+.mtext .md-h { margin: .45em 0 .25em; line-height: 1.3; font-weight: 650; }
+.mtext .md-h:first-child { margin-top: 0; }
+.mtext .md-h1 { font-size: 1.28em; }
+.mtext .md-h2 { font-size: 1.16em; }
+.mtext .md-h3 { font-size: 1.06em; }
+
+.mtext .md-list { margin: .3em 0; padding-left: 1.4em; }
+.mtext .md-list li { margin: .12em 0; }
+.mtext .md-list li::marker { color: var(--text-muted); }
+
+.mtext .md-quote {
+  margin: .4em 0;
+  padding: .25em .7em;
+  border-left: 3px solid var(--text-muted);
+  color: var(--text-muted);
+  background: rgba(110, 118, 129, .1);
+  border-radius: 0 4px 4px 0;
+}
+
+.mtext .md-table {
+  border-collapse: collapse;
+  margin: .45em 0;
+  font-size: .92em;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+.mtext .md-table th, .mtext .md-table td {
+  border: 1px solid var(--border);
+  padding: 4px 9px;
+  text-align: left;
+  white-space: nowrap;
+}
+.mtext .md-table th { background: var(--bg-hover); font-weight: 600; }
+
+/* 代码块内 code 去掉行内 code 的背景，避免双重样式 */
+.mtext pre code { background: transparent; padding: 0; font-size: inherit; }
+
 /* ---------- 工具调用卡片 ---------- */
 .tool-wrap { flex: 1; min-width: 0; max-width: 640px; }
 

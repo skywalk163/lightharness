@@ -53,17 +53,139 @@
     } catch (e) { return false; }
   }
 
-  // ---------- 轻量 Markdown ----------
-  // 行内：`code`、**粗体**、换行 → <br>（其余一律 escape，防注入）
+  // ---------- 轻量 Markdown（零依赖，参考 DeepSeek/DSH 消息面）----------
+  // 设计：先整体 escape（防注入），再在转义后的文本上做行内/块级置换。
+  // 行内：`code`、**粗体**、*斜体*、~~删除线~~、[文本](http(s)://...)、换行。
   function inlineMarkdown(s) {
     var e = escapeHtml(s);
+    // 链接：仅允许 http/https/mailto，防 javascript: 注入。转义后的 &amp; 需还原到 URL。
+    e = e.replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+|mailto:[^)\s]+)\)/g,
+      function (_, label, url) {
+        var safe = url.replace(/&amp;/g, "&").replace(/"/g, "%22");
+        return '<a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + label + "</a>";
+      });
     e = e.replace(/`([^`\n]+)`/g, "<code>$1</code>");
     e = e.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-    e = e.replace(/\n/g, "<br>");
+    e = e.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    e = e.replace(/~~([^~\n]+)~~/g, "<del>$1</del>");
     return e;
   }
 
-  // 块级：``` 代码块（首行语言标记）→ 带头部（语言 + 复制按钮）的代码块
+  // 把一段“非代码块”纯文本按行渲染为块级 HTML（标题/列表/引用/表格/段落）。
+  function renderTextBlock(text) {
+    var lines = String(text == null ? "" : text).split("\n");
+    var out = [];
+    var para = [];               // 连续普通文本行合并为一段（段内 <br>，减少 DOM 碎片）
+    function flushPara() {
+      if (para.length) {
+        out.push('<div class="md-p">' + para.join("<br>") + "</div>");
+        para = [];
+      }
+    }
+    var i = 0;
+    function isTableSep(line) {
+      return /^\s*\|?[\s:\-|]+\|[\s:\-|]*$/.test(line) && line.indexOf("-") >= 0;
+    }
+    function tableCells(line) {
+      var t = line.trim();
+      if (t.charAt(0) === "|") t = t.slice(1);
+      if (t.charAt(t.length - 1) === "|") t = t.slice(0, -1);
+      return t.split("|").map(function (c) { return c.trim(); });
+    }
+    while (i < lines.length) {
+      var line = lines[i];
+
+      // 表格：表头行 + 分隔行 + 数据行
+      if (line.indexOf("|") >= 0 && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+        flushPara();
+        var head = tableCells(line);
+        var html = '<table class="md-table"><thead><tr>';
+        for (var h = 0; h < head.length; h++) html += "<th>" + inlineMarkdown(head[h]) + "</th>";
+        html += "</tr></thead><tbody>";
+        i += 2;
+        while (i < lines.length && lines[i].indexOf("|") >= 0 && lines[i].trim() !== "") {
+          var cells = tableCells(lines[i]);
+          html += "<tr>";
+          for (var c = 0; c < head.length; c++) html += "<td>" + inlineMarkdown(cells[c] || "") + "</td>";
+          html += "</tr>";
+          i++;
+        }
+        html += "</tbody></table>";
+        out.push(html);
+        continue;
+      }
+
+      // 标题：# / ## / ###（最多三级，避免大字号撑破气泡）
+      var hm = /^\s*(#{1,3})\s+(.*)$/.exec(line);
+      if (hm) {
+        flushPara();
+        var lv = hm[1].length;
+        out.push("<h" + lv + ' class="md-h">' + inlineMarkdown(hm[2]) + "</h" + lv + ">");
+        i++;
+        continue;
+      }
+
+      // 引用：> 文本
+      if (/^\s*>\s?/.test(line)) {
+        flushPara();
+        var q = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+          q.push(inlineMarkdown(lines[i].replace(/^\s*>\s?/, "")));
+          i++;
+        }
+        out.push('<blockquote class="md-quote">' + q.join("<br>") + "</blockquote>");
+        continue;
+      }
+
+      // 无序列表：- / * / + 开头
+      if (/^\s*[-*+]\s+/.test(line)) {
+        flushPara();
+        var ul = ['<ul class="md-list">'];
+        while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
+          ul.push("<li>" + inlineMarkdown(lines[i].replace(/^\s*[-*+]\s+/, "")) + "</li>");
+          i++;
+        }
+        ul.push("</ul>");
+        out.push(ul.join(""));
+        continue;
+      }
+
+      // 有序列表：1. 开头
+      if (/^\s*\d+\.\s+/.test(line)) {
+        flushPara();
+        var ol = ['<ol class="md-list">'];
+        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+          ol.push("<li>" + inlineMarkdown(lines[i].replace(/^\s*\d+\.\s+/, "")) + "</li>");
+          i++;
+        }
+        ol.push("</ol>");
+        out.push(ol.join(""));
+        continue;
+      }
+
+      // 空行：段落分隔（折叠连续空行）
+      if (line.trim() === "") {
+        flushPara();
+        if (out.length && out[out.length - 1] !== '<div class="md-gap"></div>') {
+          out.push('<div class="md-gap"></div>');
+        }
+        i++;
+        continue;
+      }
+
+      // 普通文本行：先攒着，遇到块级/空行/结束时一次性合成一段
+      para.push(inlineMarkdown(line));
+      i++;
+    }
+    flushPara();
+
+    // 收尾：去掉开头/结尾多余的段落间隔（流式输出时更干净）
+    while (out.length && out[0] === '<div class="md-gap"></div>') out.shift();
+    while (out.length && out[out.length - 1] === '<div class="md-gap"></div>') out.pop();
+    return out.join("");
+  }
+
+  // 块级：先按 ``` 切出代码块，非代码块走 renderTextBlock。
   function renderMarkdown(text) {
     var parts = String(text == null ? "" : text).split("```");
     var html = "";
@@ -85,10 +207,10 @@
           '<span class="codeblock-lang">' + escapeHtml(lang || "代码") + "</span>" +
           '<button type="button" class="btn btn-ghost code-copy">复制</button>' +
           "</div>" +
-          "<pre>" + escapeHtml(block.replace(/\n$/, "")) + "</pre>" +
+          "<pre><code>" + escapeHtml(block.replace(/\n$/, "")) + "</code></pre>" +
           "</div>";
       } else {
-        html += inlineMarkdown(parts[i]);
+        html += renderTextBlock(parts[i]);
       }
     }
     return html;

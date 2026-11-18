@@ -1,0 +1,81 @@
+# test_引导稍后配置.light —— 回归：Web 端「稍后配置」后浮层不再反复弹出（用户问题 3）
+# 运行：python 运行.py examples/test_引导稍后配置.light
+#
+# 背景：src/设置引导.完成步骤("deepseek-official") 对齐上游「无持久化键、完成性从凭据派生」。
+# 但本仓 Web 端没有桌面端的去重机制，前端点「稍后配置」→ POST onboarding → load() 重读，
+# 若不落盘任何标记，当前步骤仍为 deepseek-official，浮层反复弹出（点了没用）。
+# 修复：Web 服务端在处理保存引导时，为 deepseek-official 落 引导_deepseekOfficialSkipped 标记，
+#     引导已完成集 派生时纳入该标记。本测试锁定端到端语义。
+
+从 web服务器 导入 Web服务端, 全局服务, 路由处理器
+从 认证 导入 初始化认证
+从 总入口 导入 组装注册表
+从 JSON 导入 解析JSON
+从 文件系统 导入 创建目录, 删除目录, 目录存在, 路径连接, 写入文件, 文件存在, 删除文件, 读取文件
+从 随机 导入 安全随机令牌
+从 内置核心字符串 导入 截取
+
+设 通过盘 为 {"通过": 0}
+
+段落 断言相等(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 新建 错误("断言失败[" + 标签 + "]：实际=" + 转字符串(实际) + " 期望=" + 转字符串(期望))
+  通过盘["通过"] = 通过盘["通过"] + 1
+
+段落 造请求(方法, 路径, 体):
+  返回 ["方法": 方法, "路径": 路径, "头": {}, "体": 体]
+
+异步 段落 主测试:
+  初始化认证()
+  设 临时根 为 路径连接("/tmp", "lh_onboard_skip_" + 截取(安全随机令牌(), 0, 8))
+  创建目录(临时根)
+  # 凭据未就绪（has_key=0）：deepseek-official 不会因凭据被判完成，纯看跳过标记
+  设 元数据 为 ["configured": 0, "mock": 1, "model": "", "endpoint": "", "has_key": 0]
+  全局服务.配置(空, 组装注册表(), 临时根, 5.0, "", 元数据)
+
+  # ① 初始：welcome-notice 是首步（面板第一次弹出）
+  设 r1 为 等待 路由处理器(造请求("GET", "/api/settings/onboarding", b''))
+  断言相等(r1["状态"], 200, "1a 初始 GET 200")
+  设 b1 为 解析JSON(r1["体"])
+  断言相等(b1["当前步骤"], "welcome-notice", "1b 初始首步 welcome-notice")
+
+  # ② 完成欢迎步 → 推进到 deepseek-official
+  设 r2 为 等待 路由处理器(造请求("POST", "/api/settings/onboarding", b'{"步骤":"welcome-notice"}'))
+  断言相等(r2["状态"], 200, "2a POST welcome 200")
+  设 r2b 为 等待 路由处理器(造请求("GET", "/api/settings/onboarding", b''))
+  设 b2 为 解析JSON(r2b["体"])
+  断言相等(b2["当前步骤"], "deepseek-official", "2b 推进到 deepseek-official")
+
+  # ③ 点「稍后配置」：POST deepseek-official → 当前步骤应清空
+  设 r3 为 等待 路由处理器(造请求("POST", "/api/settings/onboarding", b'{"步骤":"deepseek-official"}'))
+  断言相等(r3["状态"], 200, "3a POST deepseek-official 200")
+  设 b3 为 解析JSON(r3["体"])
+  断言相等(b3["当前步骤"], 空, "3b 稍后配置后当前步骤清空（null）")
+
+  # ④ 关键回归：前端 load() 重读，浮层不应再弹（当前步骤仍为空）
+  设 r4 为 等待 路由处理器(造请求("GET", "/api/settings/onboarding", b''))
+  设 b4 为 解析JSON(r4["体"])
+  断言相等(b4["当前步骤"], 空, "4a 重读后当前步骤仍为null（浮层不再弹出）")
+
+  # ⑤ 落盘标记存在（settings.json）
+  设 cfg路径 为 路径连接(临时根, "settings.json")
+  断言相等(文件存在(cfg路径), 真, "5a settings.json 已落盘")
+  设 存值 为 解析JSON(读取文件(cfg路径))
+  断言相等(存值["引导_deepseekOfficialSkipped"], 真, "5b 跳过标记已持久化")
+
+  # ⑥ 显式重入仍可打开（用户主动要求配置时，显式请求绕过跳过标记）
+  设 r6 为 等待 路由处理器(造请求("GET", "/api/settings/onboarding?显式=deepseek-official", b''))
+  设 b6 为 解析JSON(r6["体"])
+  断言相等(b6["当前步骤"], "deepseek-official", "6a 显式重入可打开该步")
+
+  # 清理
+  如果 文件存在(cfg路径):
+    删除文件(cfg路径)
+  如果 目录存在(临时根):
+    删除目录(临时根)
+
+  打印 "test_引导稍后配置 通过 断言数=" + 转字符串(通过盘["通过"])
+  打印 "--- 测试引导稍后配置 通过 ---"
+  返回 真
+
+异步 运行 主测试()

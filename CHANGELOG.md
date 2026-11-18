@@ -6,6 +6,37 @@
 
 ## [未发布] — 2026-11-18
 
+> **Web 使用体验三修**：会话跨重启持久化到用户目录、消息 Markdown 渲染、「稍后配置」真正生效。
+
+### 修复（Web UI / 持久化）
+
+- **问题 1：会话不持久化**。会话历史统一落到用户主目录 `~/.lightharness/sessions/`
+  （`HARNESS_HOME` 可覆盖），与服务启动目录解耦，重启/换目录不丢历史。
+  新增 `src/会话持久化根.light`（解析根 + `~` 展开 + 旧 `<项目根>/data/sessions`
+  无损迁移到新目录，幂等不覆盖不删源）；`examples/运行Web服务器.light` 接线。
+  ⚠ 修复入口传参 bug：`会话存储.构造(根)` 内部会自行拼一层 `sessions`，入口曾误传
+  `持久化根/sessions` 导致历史落到 `sessions/sessions` 双层而分裂；现改传 `持久化根` 本身。
+- **问题 2：消息无 Markdown 渲染 / 输出不简洁**。`webui/messages.js` 零依赖轻量 Markdown：
+  标题、列表、引用、表格、代码块（语言标 + 复制）、行内 `代码`/**粗**/*斜*/~~删~~/链接；
+  连续文本行合并为一段（段内 `<br>`）减少 DOM 碎片，流式输出更干净；整体先转义再置换，
+  链接仅放行 http/https/mailto，`javascript:` 注入被挡。`webui/style.css` 配套样式。
+- **问题 3：首次引导「稍后配置」按钮无效**。根因：`设置引导.完成步骤("deepseek-official")`
+  对齐上游「无持久化键、完成性从凭据派生」，本仓 Web 端点不落盘任何标记，前端 `load()`
+  重读后当前步骤仍是该步，浮层反复弹出。现 Web 服务端落 `引导_deepseekOfficialSkipped`
+  跳过标记并由 `引导已完成集` 派生纳入；显式请求（`?显式=`）仍可重新打开供主动配置。
+
+### 判据（新增回归测试）
+
+- `examples/test_会话持久化用户目录.light`：默认根=`~/.lightharness`、`HARNESS_HOME` 覆盖
+  （含 `~` 展开）、旧数据无损幂等迁移，全绿。
+- `examples/test_会话存储单层目录.light`（新增）：锁定会话落 `根/sessions` 单层、无双层嵌套。
+- `examples/test_引导稍后配置.light`（新增）：稍后配置→当前步骤清空→重读不再弹→标记落盘→
+  显式重入仍可打开，10 断言全绿。
+- `webui/messages.js` Node 渲染验证：标题/段落合并/列表/引用/代码块/表格/粗斜体/代码/安全链接
+  全通过，`<script>` 转义、`javascript:` 链接不渲染。
+- 回归：`test_设置引导.light`（54 断言）、`test_r108新端点.light`（35 断言）全绿；
+  Web 服务重启后 `/api/sessions` 读到全部历史、新建会话落点正确（真机 HTTP 验证）。
+
 > **MCP 真链路打通**：像 deepseek-harness 一样用 MCP —— 修掉跨平台硬阻断，
 > stdio + streamable-http 真端到端在 FreeBSD 0.88 实测通过。
 
