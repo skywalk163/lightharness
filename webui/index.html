@@ -21,7 +21,12 @@
       <div class="sidebar-header">
         <span class="sidebar-logo" aria-hidden="true">L</span>
         <span class="sidebar-title">会话</span>
+        <button id="import-session-btn" class="btn btn-ghost sb-import" title="导入会话 JSON">⇧ 导入</button>
         <button id="new-session-btn" class="btn btn-new-session" title="新建会话">＋ 新会话</button>
+      </div>
+      <input type="file" id="import-session-input" accept="application/json,.json" hidden>
+      <div class="sidebar-search-wrap">
+        <input type="search" id="session-search" class="sidebar-search" placeholder="搜索会话标题…" autocomplete="off">
       </div>
       <div id="session-list" class="session-list"></div>
       <div class="sidebar-footer">

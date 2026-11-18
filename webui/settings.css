@@ -1087,3 +1087,18 @@ html[data-theme="light"] {
 .settings-jet-hub-pick { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .settings-jet-hub-pick select { flex: 1 1 240px; min-width: 220px; }
 .settings-jet-hub-msg { margin-top: 8px; color: var(--st-green, #1a7f37); font-size: 12px; }
+
+/* ---------- 工作目录卡片（通用设置页顶部）---------- */
+.settings-cwd-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  background: var(--bg-hover, rgba(110,118,129,.06));
+}
+.settings-cwd-card .settings-row-title { font-weight: 600; margin-bottom: 4px; }
+.settings-cwd-card .settings-row-desc { font-size: 12px; opacity: .8; line-height: 1.5; }
+.settings-cwd-row { display: flex; gap: 8px; margin-top: 10px; }
+.settings-cwd-input { flex: 1; min-width: 0; }
+.settings-cwd-save { flex: 0 0 auto; padding: 0 16px; }
+.settings-cwd-msg { margin-top: 8px; font-size: 12px; color: var(--blue); word-break: break-all; }

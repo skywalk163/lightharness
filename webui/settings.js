@@ -101,6 +101,9 @@
     obBusy: false,        // 引导「保存中…」
     obErr: "",            // 引导保存失败逐字回显
     pluginPanel: null,    // GET /api/settings/plugin-panel（F 线）
+    cwd: null,            // GET /api/cwd {工作目录, 来源}
+    cwdBusy: false,
+    cwdMsg: "",
     providers: null,      // GET /api/settings/providers（D 线目录）
     providersView: {      // provider 添加表单/发现候选的前端视图状态
       baseURL: "", 显示名: "", api: "", 协议选项: [], 地址空: false, 发现中: false,
@@ -264,8 +267,51 @@
     return h;
   }
 
+  // ---------- 工作目录卡片（独立于九行行集，走 /api/cwd）----------
+  function renderCwdCard() {
+    var c = ST.cwd || {};
+    var dir = c["工作目录"] || "";
+    var src = c["来源"] || "";
+    var h = '<div class="settings-cwd-card">' +
+      '<div class="settings-row-main">' +
+      '<div class="settings-row-title">工作目录</div>' +
+      '<div class="settings-row-desc">文件读写与 bash 工具将限制在此目录内；新会话默认使用此目录。' +
+      (src ? '（当前来源：' + esc(src === "设置" ? "用户设置" : "服务启动目录") + '）' : '') +
+      '</div></div>' +
+      '<div class="settings-cwd-row">' +
+      '<input type="text" class="settings-input settings-cwd-input" id="settings-cwd-input" ' +
+      'placeholder="输入绝对目录，如 /home/user/project" value="' + esc(dir) + '">' +
+      '<button type="button" class="btn settings-cwd-save"' + (ST.cwdBusy ? ' disabled' : '') + '>' +
+      (ST.cwdBusy ? '保存中…' : '应用') + '</button></div>';
+    if (ST.cwdMsg) h += '<div class="settings-cwd-msg">' + esc(ST.cwdMsg) + '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function onCwdSave(btn) {
+    if (ST.cwdBusy) return;
+    var card = btn && btn.closest ? btn.closest(".settings-cwd-card") : null;
+    var input = card ? card.querySelector(".settings-cwd-input") : document.getElementById("settings-cwd-input");
+    var dir = input ? String(input.value || "").trim() : "";
+    if (!dir) { ST.cwdMsg = "请输入工作目录路径"; renderContent(); return; }
+    ST.cwdBusy = true; ST.cwdMsg = ""; renderContent();
+    api("POST", "/api/cwd", { 工作目录: dir })
+      .then(function (d) {
+        ST.cwdBusy = false;
+        ST.cwd = { "工作目录": d && d["工作目录"] || dir, "来源": "设置" };
+        ST.cwdMsg = "已应用：" + (d && d["工作目录"] || dir);
+        renderContent();
+      })
+      .then(null, function (e) {
+        ST.cwdBusy = false;
+        ST.cwdMsg = "应用失败：" + (e && e.message ? e.message : "未知错误");
+        renderContent();
+      });
+  }
+
   // ---------- 纯渲染：四个页签内容 ----------
   function renderGeneralHtml(general) {
+    var cwdHtml = renderCwdCard();
     var rows = general && Array.isArray(general["行集"]) ? general["行集"] : [];
     if (!rows.length) {
       // 旧形状（A 线未合流）：不崩，给一行提示；顺带把已有只读数据显示出来
@@ -282,9 +328,9 @@
         }
         h += "</span></div></div>";
       }
-      return h;
+      return cwdHtml + h;
     }
-    return renderRowsHtml(rows);
+    return cwdHtml + renderRowsHtml(rows);
   }
 
   // §2.1 模型页（真实数据 + 可编辑；密钥永不回显，T-7）
@@ -1457,9 +1503,10 @@
   }
 
   // ---------- 打开 / 关闭 / 加载 ----------
-  function open() {
+  function open(tab) {
     buildDialog();
     if (!el.overlay) return;
+    if (tab) ST.tab = tab;   // 支持直接打开指定页签（如 models）
     ST.open = true;
     ST.loadError = "";
     ST.loading = true;
@@ -1491,7 +1538,8 @@
     var pOb = api("GET", "/api/settings/onboarding").then(null, function (e) { return { __err: e }; });
     var pPp = api("GET", "/api/settings/plugin-panel").then(null, function (e) { return { __err: e }; });
     var pPr = api("GET", "/api/settings/providers").then(null, function (e) { return { __err: e }; });
-    return Promise.all([pData, pDoc, pOb, pPp, pPr]).then(function (rs) {
+    var pCwd = api("GET", "/api/cwd").then(null, function (e) { return { __err: e }; });
+    return Promise.all([pData, pDoc, pOb, pPp, pPr, pCwd]).then(function (rs) {
       var d = rs[0], doc = rs[1];
       if (!d || d.__err || typeof d !== "object" || Array.isArray(d)) {
         ST.loadError = "连接异常，刷新重试";
@@ -1511,6 +1559,7 @@
       ST.onboarding = (rs[2] && !rs[2].__err && typeof rs[2] === "object" && !Array.isArray(rs[2])) ? rs[2] : null;
       ST.pluginPanel = (rs[3] && !rs[3].__err && typeof rs[3] === "object" && !Array.isArray(rs[3])) ? rs[3] : null;
       ST.providers = (rs[4] && !rs[4].__err && typeof rs[4] === "object" && !Array.isArray(rs[4])) ? rs[4] : null;
+      ST.cwd = (rs[5] && !rs[5].__err && typeof rs[5] === "object" && !Array.isArray(rs[5])) ? rs[5] : null;
       ST.jetHub = null;
       // jet-hub 探测是「附加信息」，不阻塞四页签渲染：后台拉，回来再刷模型页
       loadJetHub();
@@ -1753,6 +1802,8 @@
     var sd = t.closest(".settings-preset-setdefault");
     if (sd) { onPresetSetDefault(sd); return; }
 
+    // 工作目录保存
+    if (t.closest(".settings-cwd-save")) { onCwdSave(t.closest(".settings-cwd-save")); return; }
     // R108-G：引导浮层主/次按钮
     if (t.closest(".settings-onboarding-main")) { onOnboardingSave(t.closest(".settings-onboarding-main")); return; }
     if (t.closest(".settings-onboarding-skip")) { onOnboardingSkip(t.closest(".settings-onboarding-skip")); return; }

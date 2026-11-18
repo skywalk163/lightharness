@@ -1406,3 +1406,30 @@ body {
   .model-popover { left: 8px; width: calc(100vw - 16px); }
 }
 .model-chip.is-follow::before { content: "◇"; opacity: .65; }
+
+/* ---------- 会话搜索/导入/导出（侧栏）---------- */
+.sb-import { font-size: 11px; padding: 2px 8px; margin-right: 4px; }
+.sidebar-search-wrap { padding: 6px 10px; }
+.sidebar-search {
+  width: 100%; box-sizing: border-box; padding: 5px 9px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg, transparent); color: var(--text, inherit); font-size: 12px;
+}
+.sidebar-search:focus { outline: none; border-color: var(--blue); }
+.sitem-export { margin-right: 6px; opacity: .55; }
+.sitem-export:hover { opacity: 1; color: var(--blue); }
+
+/* ---------- 代码高亮（轻量）---------- */
+.mtext pre code .hl-kw { color: #c678dd; font-weight: 600; }
+.mtext pre code .hl-str { color: #98c379; }
+.mtext pre code .hl-com { color: #7f848e; font-style: italic; }
+.mtext pre code .hl-num { color: #d19a66; }
+
+/* ---------- 消息操作条（复制/重新生成）---------- */
+.msg-actions { display: flex; gap: 10px; margin-top: 6px; opacity: 0; transition: opacity .15s; }
+.mrow:hover .msg-actions { opacity: 1; }
+.msg-act {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 11px; color: var(--text-muted); padding: 2px 4px; border-radius: 4px;
+}
+.msg-act:hover { color: var(--blue); background: var(--bg-hover, rgba(110,118,129,.1)); }

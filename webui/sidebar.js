@@ -47,6 +47,8 @@
   // ---------- API ----------
   // token 从 URL ?token=... 读取（与 app.js 口径一致）；启用认证时必须带 X-Auth-Token
   var authToken = new URLSearchParams(location.search).get("token") || "";
+  var searchTerm = "";        // 会话标题过滤词
+  var importInputEl = null;   // 导入文件选择器
 
   function api(method, url, body) {
     var initObj = { method: method, headers: {} };
@@ -74,16 +76,67 @@
     });
   }
 
+  // ---------- 会话搜索过滤 + 导入导出 ----------
+  function filterItems(list) {
+    if (!searchTerm) return list;
+    var q = searchTerm.toLowerCase();
+    return list.filter(function (m) {
+      return String((m && (m.标题 || m.title)) || "").toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  function exportSession(id, title) {
+    api("GET", "/api/sessions/" + encodeURIComponent(id) + "/export")
+      .then(function (env) {
+        var blob = new Blob([JSON.stringify(env, null, 2)], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = (title || "session").replace(/[\\/:*?"<>|]/g, "_") + ".json";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      })
+      .catch(function (e) {
+        if (window.Messages) window.Messages.addSystem("导出失败：" + e.message, true);
+      });
+  }
+
+  function importSessions(files) {
+    if (!files || !files.length) return;
+    var file = files[0];
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var payload;
+      try { payload = JSON.parse(String(ev.target.result)); }
+      catch (e) {
+        if (window.Messages) window.Messages.addSystem("导入失败：文件不是合法 JSON", true);
+        return;
+      }
+      api("POST", "/api/sessions/import", payload)
+        .then(function (r) {
+          refresh();
+          if (typeof opts.onImported === "function") opts.onImported(r);
+          if (window.Messages) window.Messages.addSystem("已导入会话：" + (r["标题"] || r["id"] || ""));
+        })
+        .catch(function (e) {
+          if (window.Messages) window.Messages.addSystem("导入失败：" + e.message, true);
+        });
+    };
+    reader.readAsText(file);
+  }
+
   // ---------- 渲染 ----------
   function render() {
     if (!listEl) return;
     listEl.innerHTML = "";
-    if (!items.length) {
-      listEl.innerHTML = '<div class="sb-empty">暂无会话，点击上方按钮新建</div>';
+    var shown = filterItems(items);
+    if (!shown.length) {
+      listEl.innerHTML = '<div class="sb-empty">' +
+        (items.length ? '没有匹配的会话' : '暂无会话，点击上方按钮新建') + '</div>';
       return;
     }
-    for (var i = 0; i < items.length; i++) {
-      listEl.appendChild(mkItem(items[i]));
+    for (var i = 0; i < shown.length; i++) {
+      listEl.appendChild(mkItem(shown[i]));
     }
   }
 
@@ -108,8 +161,15 @@
     metaRow.className = "sitem-meta";
     metaRow.innerHTML =
       '<span class="sitem-time">' + escapeHtml(relativeTime(meta.最后更新)) + "</span>" +
+      '<button type="button" class="sitem-export" title="导出会话">⇩</button>' +
       '<button type="button" class="sitem-del" title="删除会话">×</button>';
     div.appendChild(metaRow);
+
+    // 导出按钮（阻止冒泡，避免触发切换会话）
+    var exportBtn = metaRow.querySelector(".sitem-export");
+    if (exportBtn) exportBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation(); exportSession(id, title);
+    });
 
     // 单击：切换会话
     div.addEventListener("click", function () {
@@ -251,6 +311,18 @@
     listEl = document.getElementById("session-list");
     newBtnEl = document.getElementById("new-session-btn");
     if (newBtnEl) newBtnEl.addEventListener("click", createSession);
+    var searchEl = document.getElementById("session-search");
+    if (searchEl) searchEl.addEventListener("input", function (e) {
+      searchTerm = String(e.target.value || ""); render(); syncActive();
+    });
+    var importBtn = document.getElementById("import-session-btn");
+    importInputEl = document.getElementById("import-session-input");
+    if (importBtn && importInputEl) {
+      importBtn.addEventListener("click", function () { importInputEl.click(); });
+      importInputEl.addEventListener("change", function (e) {
+        importSessions(e.target.files); e.target.value = "";
+      });
+    }
     refresh();
   }
 

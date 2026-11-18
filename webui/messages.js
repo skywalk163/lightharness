@@ -185,6 +185,55 @@
     return out.join("");
   }
 
+  // 轻量代码高亮（零依赖，输入已是 escapeHtml 后的安全串）：
+  //   字符串 → 注释 → 关键字 → 数字/内置量，着色用 span。按语言挑选关键字表。
+  var HL_KEYWORDS = {
+    py: "def class return if elif else for while in import from as try except finally with lambda None True False and or not pass break continue yield async await",
+    js: "function var let const return if else for while class new import from export async await try catch finally throw typeof null undefined true false this of in do switch case break continue",
+    ts: "function var let const return if else for while class new import from export async await try catch finally throw type interface enum null undefined true false this of in",
+    java: "public private protected class interface extends implements return if else for while new import package static final void int long double String boolean true false null try catch",
+    go: "func package import return if else for range var const type struct interface map chan go defer nil true false",
+    sh: "if then else elif fi for while do done case esac function return export local echo cd set",
+    sql: "SELECT FROM WHERE INSERT INTO UPDATE DELETE CREATE TABLE DROP ALTER JOIN ON GROUP BY ORDER LIMIT AS AND OR NOT NULL"
+  };
+  function highlightCode(escaped, lang) {
+    var key = String(lang || "").toLowerCase();
+    if (key === "python") key = "py";
+    if (key === "javascript") key = "js";
+    if (key === "typescript") key = "ts";
+    if (key === "bash" || key === "shell" || key === "zsh") key = "sh";
+    var kw = HL_KEYWORDS[key] || HL_KEYWORDS.js;
+    var words = kw.split(/\s+/).filter(Boolean);
+    // 逐行处理，避免跨行注释吞掉整段
+    var lines = escaped.split("\n");
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li];
+      // 已经含 span 的片段不再二次着色：用占位符保护字符串/注释
+      var slots = [];
+      function hold(html) { slots.push(html); return "\u0000k" + (slots.length - 1) + "k\u0000"; }
+      // 字符串（单/双/反引号，转义后引号仍为 &quot; / 实际字符）
+      line = line.replace(/(&quot;[^&]*?&quot;|'[^']*?'|`[^`]*?`)/g, function (m) {
+        return hold('<span class="hl-str">' + m + "</span>");
+      });
+      // 注释：# 或 //（行尾）——仅当不在占位符内（占位符是 \0n\0，不含 # //）
+      var ci = line.search(/(#|\/\/)/);
+      if (ci >= 0 && line.slice(ci).indexOf("\u0000") < 0) {
+        line = line.slice(0, ci) + hold('<span class="hl-com">' + line.slice(ci) + "</span>");
+      }
+      // 关键字（词边界）
+      if (words.length) {
+        var re = new RegExp("\\b(" + words.join("|") + ")\\b", "g");
+        line = line.replace(re, '<span class="hl-kw">$1</span>');
+      }
+      // 数字
+      line = line.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="hl-num">$1</span>');
+      // 还原占位符
+      line = line.replace(/\u0000k(\d+)k\u0000/g, function (_, idx) { return slots[Number(idx)]; });
+      lines[li] = line;
+    }
+    return lines.join("\n");
+  }
+
   // 块级：先按 ``` 切出代码块，非代码块走 renderTextBlock。
   function renderMarkdown(text) {
     var parts = String(text == null ? "" : text).split("```");
@@ -207,7 +256,7 @@
           '<span class="codeblock-lang">' + escapeHtml(lang || "代码") + "</span>" +
           '<button type="button" class="btn btn-ghost code-copy">复制</button>' +
           "</div>" +
-          "<pre><code>" + escapeHtml(block.replace(/\n$/, "")) + "</code></pre>" +
+          "<pre><code>" + highlightCode(escapeHtml(block.replace(/\n$/, "")), lang) + "</code></pre>" +
           "</div>";
       } else {
         html += renderTextBlock(parts[i]);
@@ -277,7 +326,18 @@
     if (cursor) cursor.remove();
     // 空回复不残留空泡
     var span = row.querySelector(".mtext");
-    if (span && !span.textContent && !row.querySelector(".codeblock")) row.remove();
+    if (span && !span.textContent && !row.querySelector(".codeblock")) { row.remove(); return; }
+    // 操作条：复制全文 + 重新生成（回放的静态消息不显示重生成）
+    if (span && !row.querySelector(".msg-actions")) {
+      var actions = document.createElement("div");
+      actions.className = "msg-actions";
+      actions.innerHTML =
+        '<button type="button" class="msg-act msg-copy" title="复制整条回复">复制</button>' +
+        (row.classList.contains("static") ? "" :
+         '<button type="button" class="msg-act msg-regen" title="重新生成这条回复">↻ 重新生成</button>');
+      var bubble = row.querySelector(".mbubble");
+      if (bubble) bubble.appendChild(actions);
+    }
   }
 
   // 3. 工具调用卡片行（依赖 window.ToolCard）
@@ -318,6 +378,10 @@
   }
 
   // ---------- 会话历史回放（E2 记录：{角色, 内容, ...}） ----------
+  function parseJsonSafe(v) {
+    if (v && typeof v === "object") return v;
+    try { return JSON.parse(String(v || "")); } catch (e) { return {}; }
+  }
   function renderHistory(list) {
     clear();
     if (!Array.isArray(list)) return;
@@ -326,14 +390,34 @@
       if (!m || typeof m !== "object") continue;
       var role = m.角色 || m.role || "";
       var content = m.内容 != null ? m.内容 : (m.content != null ? m.content : "");
-      if (role === "user") addUser(String(content));
-      else if (role === "assistant") {
+      if (role === "user") {
+        addUser(String(content));
+      } else if (role === "tool-call") {
+        // 工具调用：还原为工具卡片（旋转态）
+        var payload = parseJsonSafe(content);
+        if (window.Messages && window.Messages.addToolCard) {
+          window.Messages.addToolCard({
+            种类: "工具调用", 工具名: payload["工具名"] || "", 参数: payload["参数"] || "",
+            调用id: payload["调用id"] || "", 轮次: payload["轮次"] || 0, 序号: i
+          });
+        }
+      } else if (role === "tool-result") {
+        // 工具结果：合并进对应卡片（找不到调用卡时降级为系统行，避免丢失信息）
+        var rp = parseJsonSafe(content);
+        var data = { 种类: "工具结果", 工具名: rp["工具名"] || "", 结果: rp["结果"] || "",
+          错误: rp["错误"] || "", 是否错误: rp["是否错误"] === true,
+          调用id: rp["调用id"] || "", 序号: i };
+        if (window.Messages && window.Messages.applyToolResult && data["调用id"]) {
+          window.Messages.applyToolResult(data);
+        } else if (rp["结果"]) {
+          addSystem("[工具结果" + (data["工具名"] ? " " + data["工具名"] : "") + "] " + String(rp["结果"]).slice(0, 300));
+        }
+      } else if (role === "assistant") {
         var row = beginAssistant();
         setAssistant(row, String(content));
         endAssistant(row);
         row.classList.add("static");
       }
-      // 其余角色（tool 等）由事件流回放，历史接口不重复渲染
     }
   }
 
@@ -350,15 +434,36 @@
     el.dataset.copyBound = "1";
     el.addEventListener("click", function (ev) {
       var btn = ev.target;
-      if (!btn || !btn.classList || !btn.classList.contains("code-copy")) return;
-      var block = btn.closest(".codeblock");
-      var pre = block ? block.querySelector("pre") : null;
-      if (!pre) return;
-      copyText(pre.textContent, function (ok) {
-        var old = btn.textContent;
-        btn.textContent = ok ? "已复制" : "复制失败";
-        setTimeout(function () { btn.textContent = old; }, 1200);
-      });
+      if (!btn || !btn.classList) return;
+      // 复制整个代码块
+      if (btn.classList.contains("code-copy")) {
+        var block = btn.closest(".codeblock");
+        var pre = block ? block.querySelector("pre") : null;
+        if (!pre) return;
+        copyText(pre.textContent, function (ok) {
+          var old = btn.textContent;
+          btn.textContent = ok ? "已复制" : "复制失败";
+          setTimeout(function () { btn.textContent = old; }, 1200);
+        });
+        return;
+      }
+      // 复制整条助手回复（纯文本，去掉操作条文字）
+      if (btn.classList.contains("msg-copy")) {
+        var row = btn.closest(".mrow");
+        var textEl = row ? row.querySelector(".mtext") : null;
+        var raw = textEl ? textEl.innerText || textEl.textContent : "";
+        copyText(raw, function (ok) {
+          var old = btn.textContent;
+          btn.textContent = ok ? "已复制" : "复制失败";
+          setTimeout(function () { btn.textContent = old; }, 1200);
+        });
+        return;
+      }
+      // 重新生成：交给 app.js 注册的回调
+      if (btn.classList.contains("msg-regen")) {
+        if (typeof window.__regenerateLast === "function") window.__regenerateLast();
+        return;
+      }
     });
   }
 
@@ -374,6 +479,19 @@
     addSystem: addSystem,
     renderMarkdown: renderMarkdown,
     renderHistory: renderHistory,
+    clearTailForRegenerate: function () {
+      var el = root();
+      if (!el) return;
+      var rows = el.querySelectorAll(".mrow");
+      // 从末尾移除助手行与其用户行（最多各一条）
+      var removedAssistant = false;
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var r = rows[i];
+        if (r.classList.contains("assistant") && !removedAssistant) { r.remove(); removedAssistant = true; }
+        else if (r.classList.contains("user")) { r.remove(); break; }
+        else if (r.classList.contains("tool")) { r.remove(); }
+      }
+    },
     clear: clear,
     copyText: copyText,
     escapeHtml: escapeHtml

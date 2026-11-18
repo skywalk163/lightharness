@@ -603,7 +603,10 @@
         for (var i = 0; i < list.length; i++) {
           var m = list[i];
           if (!m || typeof m !== "object") continue;
-          var role = (m.角色 === "user" || m.role === "user") ? "user" : "assistant";
+          var rawRole = m.角色 || m.role || "";
+          // tool-call / tool-result 仅用于 UI 回放，不作为对话历史发给 API
+          if (rawRole === "tool-call" || rawRole === "tool-result") continue;
+          var role = (rawRole === "user" || m.role === "user") ? "user" : "assistant";
           var content = m.内容 != null ? m.内容 : (m.content != null ? m.content : "");
           history.push({ role: role, content: String(content) });
         }
@@ -926,7 +929,35 @@
 
   // R106-B：暴露打开函数——设置对话框「模型」页签的「配置大模型」按钮经 window.showConfigPanel 调起；
   // 旧大模型配置面板保留不删，saveConfig/热更新行为不变。
-  window.showConfigPanel = showConfigPanel;
+  // 收敛后：模型页「配置大模型」统一打开新设置对话框的「模型」页签（旧面板仅兜底）。
+  window.showConfigPanel = function () {
+    if (window.LightSettings && LightSettings.open) LightSettings.open("models");
+    else showConfigPanel(); // settings.js 未加载时兜底旧面板
+  };
+
+  // 重新生成最后一条助手回复：回退 history 到最后一个 user（含），把该 user 文本重发。
+  // UI 侧的旧助手/用户气泡由 sendMessage 重新追加；这里先清掉尾部消息行避免重复。
+  window.__regenerateLast = function () {
+    if (streaming) return;
+    var lastUserIdx = -1;
+    for (var i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === "user") { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx < 0) {
+      if (window.Messages) Messages.addSystem("没有可重新生成的消息。", true);
+      return;
+    }
+    var lastText = history[lastUserIdx].content;
+    // 保留到最后一个 user（不含其后的 assistant），重发时会再 push 一条 user
+    history.length = lastUserIdx;
+    turnStartIndex = history.length;
+    // 清掉消息区末尾的助手与用户气泡（从后往前移除 mrow，直到遇到早先内容——
+    // 简单策略：移除最后两个 mrow: 助手 + 用户）
+    if (window.Messages && Messages.clearTailForRegenerate) Messages.clearTailForRegenerate();
+    inputEl.value = lastText;
+    autoResize();
+    sendMessage();
+  };
 
   function checkConfig() {
     fetch("/api/config", { method: "GET", headers: apiHeaders() })
