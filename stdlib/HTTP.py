@@ -4,13 +4,16 @@
 
 提供 HTTP 客户端请求功能，包括 GET/POST/PUT/DELETE 方法，
 请求头设置、超时控制等。
+
+R-流式改造：新增 HTTPPost流式 —— 逐帧读 SSE 并回调调用方，供 web chat
+路径把模型增量实时推给浏览器。非流式 HTTPPost 行为零改动。
 """
 
 import urllib.request
 import urllib.parse
 import urllib.error
 import json
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, Callable
 
 
 def HTTP获取(url: str, 超时: int = 30, 请求头: Dict[str, str] = None) -> Dict[str, Any]:
@@ -149,6 +152,70 @@ def HTTPPost(url: str, 数据: Any = None, 超时: int = 30,
     return HTTP发送(url, 'POST', 数据, 超时=超时, 请求头=请求头)
 
 
+def HTTPPost流式(url: str, 数据: Any = None, 超时: int = 30,
+                 请求头: Dict[str, str] = None,
+                 每帧回调: Callable = None) -> Dict[str, Any]:
+    """发送 HTTP POST 请求并逐帧读取 SSE 响应。
+
+    与 HTTPPost 的差别：本函数不一次性 read() 整个响应体，而是按行读取，
+    遇到 SSE 帧边界（空行）就把该帧的 data 载荷交给 `每帧回调`。
+
+    参数:
+        每帧回调: 可调用对象，每帧调用一次，入参为 data 载荷字符串；
+                  返回假值可提前中止读取（用于用户点"停止"）。
+                  回调里抛出的异常会向上传递。
+
+    返回:
+        与 HTTPPost 同形状的字典，另外多一个 '帧数' 字段便于断言。
+    """
+    数据体 = json.dumps(数据, ensure_ascii=False).encode('utf-8') if isinstance(数据, (dict, list)) else (数据.encode('utf-8') if isinstance(数据, str) else str(数据).encode('utf-8'))
+    req = urllib.request.Request(url, data=数据体, method='POST')
+    req.add_header('Content-Type', 'application/json; charset=utf-8')
+    if 请求头:
+        for k, v in 请求头.items():
+            req.add_header(k, v)
+    try:
+        with urllib.request.urlopen(req, timeout=超时) as resp:
+            帧数 = 0
+            数据行 = []
+            with resp:
+                while True:
+                    原始行 = resp.readline()
+                    if not 原始行:
+                        break
+                    行 = 原始行.decode('utf-8', errors='replace').rstrip('\r\n')
+                    if 行 == '':
+                        # 空行 = 帧边界
+                        if 数据行 and 每帧回调 is not None:
+                            载荷 = '\n'.join(数据行)
+                            帧数 += 1
+                            if 每帧回调(载荷) is False:
+                                break
+                        数据行 = []
+                        continue
+                    if 行.startswith(':'):
+                        continue
+                    if 行.startswith('data:'):
+                        值 = 行[5:]
+                        if 值.startswith(' '):
+                            值 = 值[1:]
+                        数据行.append(值)
+            # 收尾：流结束前若还有未以空行收口的帧，也投递一次
+            if 数据行 and 每帧回调 is not None:
+                每帧回调('\n'.join(数据行))
+                帧数 += 1
+            return {
+                '状态码': resp.status,
+                '响应头': dict(resp.headers),
+                '响应体': '',
+                '帧数': 帧数,
+            }
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP 请求失败 [{e.code}]: {e.reason}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"URL 错误: {e.reason}")
+
+
 def HTTPPut(url: str, 数据: Any = None, 超时: int = 30,
             请求头: Dict[str, str] = None) -> Dict[str, Any]:
     """发送 HTTP PUT 请求（快捷方式）"""
@@ -262,7 +329,7 @@ def HTTP解码URL(字符串: str) -> str:
 
 __all__ = [
     'HTTP获取', 'HTTP获取JSON', 'HTTP发送', 'HTTP发送JSON',
-    'HTTPPost', 'HTTPPut', 'HTTPDelete',
+    'HTTPPost', 'HTTPPost流式', 'HTTPPut', 'HTTPDelete',
     'HTTP下载文件', 'HTTP检查状态码',
     'HTTP构建查询参数', 'HTTP拼接URL', 'HTTP解析URL',
     'HTTP编码URL', 'HTTP解码URL',
