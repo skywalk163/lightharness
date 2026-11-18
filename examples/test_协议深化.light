@@ -155,6 +155,16 @@
   检查抛含("MCP:缺网址", "must be an absolute HTTP(S) URL", 槽运算)
   设 槽 为 {"操作": "MCP配置", "表": [{"名": "x", "类型": "ws", "网址": "https://h/x"}], "目录": "/w"}
   检查抛含("MCP:不支持运输", "is not supported", 槽运算)
+   # DSH 标准英文键（name/command/args/env/url/headers/transport）等价接受
+   设 英配 为 解析MCP配置([{"name": "gh", "command": "/usr/bin/npx", "args": ["-y", "srv"], "env": {"TOKEN": "t"}}], "/w")
+   断言相等(英配[0]["服务器名"], "gh", "MCP英文键:标准名")
+   断言相等(英配[0]["传输"], "stdio", "MCP英文键:stdio")
+   断言相等(英配[0]["指令"], "/usr/bin/npx", "MCP英文键:绝对路径指令")
+   断言相等(英配[0]["环境"]["TOKEN"], "t", "MCP英文键:env对象投影")
+   设 英配2 为 解析MCP配置([{"name": "api2", "transport": "streamable-http", "url": "https://h/mcp", "headers": {"Authorization": "Bearer z"}}], "/w")
+   断言相等(英配2[0]["传输"], "streamable-http", "MCP英文键:http传输")
+   断言相等(英配2[0]["网址"], "https://h/mcp", "MCP英文键:url")
+   断言相等(英配2[0]["头表"]["Authorization"], "Bearer z", "MCP英文键:headers对象投影")
 
 # =====================================================================
 # 二、模型控制域（model-control.ts）

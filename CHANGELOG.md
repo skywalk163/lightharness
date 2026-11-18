@@ -6,6 +6,37 @@
 
 ## [未发布] — 2026-11-18
 
+> **MCP 真链路打通**：像 deepseek-harness 一样用 MCP —— 修掉跨平台硬阻断，
+> stdio + streamable-http 真端到端在 FreeBSD 0.88 实测通过。
+
+### 修复（MCP）
+
+- **跨平台硬阻断：握手方法名 `连接` 撞编译器保留字**（`src/mcp客户端.light`）。
+  光明编译器把类方法「段落 连接」映射成 Python `str.join`（`code_generator.py:239`），
+  但「`客户端.连接()`」这类**无参**调用因运行时特判（只接管单实参 `连接`，
+  `code_generator.py:4712`）原样发射 `.连接()` → 两个传输类握手一律
+  `AttributeError: 'MCP客户端' object has no attribute '连接'`。把 `MCP客户端` /
+  `MCPHttpClient` 的握手方法统一改名「**握手**」并同步全部调用点与测试桩；
+  `连接` 从此只作 stdlib 字符串方法，不再当 MCP 方法名。
+- **配置口径对齐 DSH**：`解析MCP配置`（`src/协议深化.light`）新增 `归一MCP条目`，
+  除本仓中文键（名/指令/参数/环境/网址/头表/类型）外，等价接受 DSH 标准英文键
+  `name/command/args/env/url/headers/transport`；`env`/`headers` 既接受
+  `[{名,值}]` 也接受 JSON 对象；`transport: streamable-http` 归一为 `http`。
+  于是 `mcp.json` 可直接用 deepseek-harness 的配置格式。
+- **跨平台路径**：`examples/test_mcp接线.light` 用 `文件系统.路径连接` 代替硬编码
+  `\\`，FreeBSD 上不再拼出 `...lightharness\_tmp_xxx.json` 写不进去。
+
+### 判据（0.88 FreeBSD 15.1 真机，非桩）
+
+- `examples/test_mcp接线.light`：真 stdio 起 `mcp_服务器.py`，发现并调用 2 工具
+  （`mcp__demo__echo` / `mcp__demo__add`），PASS。
+- `examples/test_mcp_http_real.light`（新增）：真 HTTP 起 `mcp_http服务器.py`，
+  握手/发现 3 工具/调用 echo/注册 3 工具，PASS。
+- `examples/test_mcp_prod.light`（新增）：无显式路径 → 读 cwd 的 DSH 格式 `mcp.json`
+  自动装配，PASS。
+- 回归：`test_mcp.light` / `test_mcp_http.light` / `test_R51_mcp资源.light` /
+  `test_交付.light` / `test_协议深化.light`（含新增英文键用例）本地全绿。
+
 > **jet hub 接入**：把 DSH 的 jet hub 插件（`dsh-providers-hub` / 旧名 `dsh-codearts-auth`）
 > 背后的**本地 OpenAI 兼容网关**当成 lightharness 的模型来源，模型 ID 与 DSH 完全一致。
 

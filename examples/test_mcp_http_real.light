@@ -1,0 +1,34 @@
+# test_mcp_http_real.light —— 真·streamable-http MCP 端到端（不打桩）
+# 起 examples/mcp_http服务器.py，走 MCPHttpClient.握手 → 列工具 → 调用工具。
+导入 subprocess
+导入 time
+从 工具 导入 工具注册表
+从 mcp客户端 导入 MCPHttpClient, 注册MCPHTTP服务器
+
+段落 断言真(条件, 标签):
+  如果 条件 == 假:
+    抛出 "断言失败: " 加上 标签
+
+段落 断言等于(实际, 期望, 标签):
+  如果 实际 != 期望:
+    抛出 "断言失败: " 加上 标签 + " 实际=" 加上 转字符串(实际) + " 期望=" 加上 转字符串(期望)
+
+设 服务器进程 为 subprocess.Popen([环境变量("HARNESS_PY", "python"), "examples/mcp_http服务器.py", "18769"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+time.sleep(1.5)
+尝试:
+  设 客户端 为 新建 MCPHttpClient("http://127.0.0.1:18769", "realhttp", 空)
+  设 握手 为 客户端.握手()
+  断言真(握手.包含("错误") == 假, "真HTTP握手应成功: " + 转字符串(握手))
+  设 工具表 为 客户端.列工具()
+  断言等于(长度(工具表), 3, "真HTTP应发现3个工具")
+  设 结果 为 客户端.调用工具("echo", ["text": "http-real-ok"])
+  断言等于(结果["内容"], "http-real-ok", "真HTTP echo 回显")
+  设 注册表 为 新建 工具注册表()
+  设 注册 为 注册MCPHTTP服务器(注册表, "http://127.0.0.1:18769", "srvreal", 空)
+  断言真(注册.包含("错误") == 假, "真HTTP注册应成功")
+  断言等于(长度(注册["已注册"]), 3, "真HTTP应注册3个工具")
+  打印 "test_mcp_http_real PASS"
+捕获 异常 e:
+  服务器进程.terminate()
+  抛出 e
+服务器进程.terminate()

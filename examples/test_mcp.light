@@ -12,8 +12,8 @@
 # 断言全部保留原样；只替换数据源（stdio 子进程 → 类方法桩）。
 # 0.88 上 PATH 无 `python`（只有 `python3`），真实 stdio 拉起 mcp_服务器.py 会
 # FileNotFoundError → tools/list / tools/call 返回空 → 断言失败。此处以桩规避环境依赖。
-# ⚠️ 光明编译器把方法名「连接」映射为 Python 的 join（code_generator 方法名映射表），
-#   类方法桩必须赋给映射后的名字 join；列工具/调用工具 无映射，直接赋原名。
+# ⚠️ 握手方法已从「连接」改名「握手」：编译器把「连接」映射为 Python str.join，
+#   无参调用点又原样发射 .连接()，跨平台 AttributeError。列工具/调用工具 无映射，直接赋原名。
 # 反跑判据不变：把 echo 或 add 的断言改反即红。
 段落 桩连接(客户):
   返回 ["protocolVersion": "2024-11-05"]
@@ -41,7 +41,7 @@
   返回 ["内容": "unknown tool: " 加上 名字, "是否错误": 真]
 
 段落 接桩MCP类:
-  设 MCP客户端.join 为 桩连接
+  设 MCP客户端.握手 为 桩连接
   设 MCP客户端.列工具 为 桩列工具
   设 MCP客户端.调用工具 为 桩调用工具
   返回 真

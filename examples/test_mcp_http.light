@@ -38,8 +38,8 @@
   返回 ["内容": "unknown tool: " 加上 名字, "是否错误": 真]
 
 段落 接桩MCPHttp类:
-  # 编译器把方法名「连接」映射为 Python 的 join，桩必须赋给映射后的名字 join
-  设 MCPHttpClient.join 为 桩http连接
+  # 握手方法已从「连接」改名「握手」，避开编译器 str.join 保留名；桩赋同名
+  设 MCPHttpClient.握手 为 桩http连接
   设 MCPHttpClient.列工具 为 桩http列工具
   设 MCPHttpClient.调用工具 为 桩http调用工具
   返回 真
@@ -57,7 +57,7 @@
 接桩MCPHttp类()
 
 设 客户端 为 新建 MCPHttpClient("http://127.0.0.1:18768", "httpdemo", 空)
-设 握手 为 客户端.连接()
+设 握手 为 客户端.握手()
 断言真(握手.包含("错误") == 假, "连接握手应成功")
 打印 "握手 OK"
 
