@@ -105,7 +105,13 @@
     providersView: {      // provider 添加表单/发现候选的前端视图状态
       baseURL: "", 显示名: "", api: "", 协议选项: [], 地址空: false, 发现中: false,
       候选: null, 搜索: "", 选中: [], 无匹配: false
-    }
+    },
+    // jet-hub（本地提供商枢纽）：GET /api/settings/providers/jet-hub 的探测结果 + 交互态
+    jetHub: null,          // {可用, 地址, 地址来源, 有密钥, 密钥来源, 模型, 推荐, 错误}
+    jetHubSel: "",         // 用户在下拉里选中的模型 id
+    jetHubBusy: false,     // 应用/刷新请求在途
+    jetHubMsg: "",         // 成功提示（只放文案）
+    jetHubErr: ""          // 失败提示（服务端逐字）
   };
 
   var el = {}; // DOM 缓存
@@ -357,6 +363,68 @@
     return h;
   }
 
+  // jet-hub 卡片：本地提供商枢纽（dsh-providers-hub）自动发现 + 一键切换模型来源。
+  //   数据源 GET /api/settings/providers/jet-hub；应用 POST .../jet-hub/apply。
+  //   ⛔ 卡片只显示「密钥已找到 / 未找到 + 来源」，永不显示密钥明文。
+  function 渲染枢纽卡片() {
+    var jh = ST.jetHub;
+    var h = '<div class="settings-jet-hub" id="settings-jet-hub">' +
+      '<div class="settings-jet-hub-head">' +
+      '<span class="settings-jet-hub-title">jet-hub</span>' +
+      '<span class="settings-jet-hub-sub">本地提供商枢纽</span>' +
+      '<button type="button" class="settings-sc-btn settings-jet-hub-refresh">刷新</button>' +
+      "</div>";
+    if (jh == null) {
+      h += '<div class="settings-note">尚未探测。点「刷新」连接本机 jet-hub 网关。</div></div>';
+      return h;
+    }
+    var ok = (jh["可用"] === true || jh["可用"] === "真");
+    var dot = ok ? "is-ok" : "is-missing";
+    var state = ok ? ("已连接 · " + (jh["总数"] || 0) + " 个模型") : "未连接";
+    h += '<div class="settings-jet-hub-state"><span class="settings-cred-dot ' + dot + '"></span>' +
+      esc(state) + '<span class="settings-jet-hub-addr">' + esc(jh["地址"] || "") + "</span></div>";
+    h += '<div class="settings-note">密钥：' + (jh["有密钥"] ? "已找到" : "未找到") +
+      "（" + esc(jh["密钥来源"] || "") + "）</div>";
+    if (!ok) {
+      h += '<div class="settings-provider-error">' + esc(jh["错误"] || "未连接") + "</div>" +
+        '<div class="settings-note">先在 DeepSeek Harness 里启用 jet-hub 插件（网关缺省 127.0.0.1:8326），' +
+        "或设 JET_HUB_BASE_URL / JET_HUB_API_KEY 指向已有网关。</div></div>";
+      return h;
+    }
+    var models = Array.isArray(jh["模型"]) ? jh["模型"] : [];
+    var sel = ST.jetHubSel || jh["推荐"] || "";
+    h += '<div class="settings-jet-hub-pick">' +
+      '<label class="settings-model-field-label" for="settings-jet-hub-model">模型</label>' +
+      '<select class="settings-select" id="settings-jet-hub-model">';
+    var groups = [];
+    var index = {};
+    for (var i = 0; i < models.length; i++) {
+      var m = models[i] || {};
+      var prov = m["提供商"] || "未知";
+      if (!index[prov]) { index[prov] = []; groups.push(prov); }
+      index[prov].push(m);
+    }
+    for (var g = 0; g < groups.length; g++) {
+      var p = groups[g];
+      h += '<optgroup label="' + esc(p) + '">';
+      var list = index[p];
+      for (var k = 0; k < list.length; k++) {
+        var mm = list[k] || {};
+        var id = mm["id"] || "";
+        var label = (mm["名称"] && mm["名称"] !== id) ? (mm["名称"] + "  ·  " + id) : id;
+        h += '<option value="' + esc(id) + '"' + (id === sel ? " selected" : "") + ">" + esc(label) + "</option>";
+      }
+      h += "</optgroup>";
+    }
+    h += "</select>" +
+      '<button type="button" class="settings-confirm-go settings-jet-hub-apply"' +
+      (ST.jetHubBusy ? " disabled" : "") + ">" + (ST.jetHubBusy ? "切换中…" : "使用此模型") + "</button></div>";
+    if (ST.jetHubMsg) h += '<div class="settings-jet-hub-msg">' + esc(ST.jetHubMsg) + "</div>";
+    if (ST.jetHubErr) h += '<div class="settings-provider-error">' + esc(ST.jetHubErr) + "</div>";
+    h += "</div>";
+    return h;
+  }
+
   function renderModelHtml(model, status) {
     if (status === "loading") return '<div class="settings-loading">正在加载设置…</div>';
     if (status === "unavailable" || model == null)
@@ -365,6 +433,8 @@
     var h = '<div class="settings-note">' + esc(txt) + "</div>";
     if (model["只读"] === true || model["只读"] === "真")
       h += '<div class="settings-note">当前部署的设置文档为只读。</div>';
+    // jet-hub：本地提供商枢纽（模型来源一键切换）
+    h += 渲染枢纽卡片();
     // R108-G：模型页签内接入 D 线「添加模型提供商」表单与候选弹窗（§2.2）
     if (ST.providers != null) {
       h += 渲染添加表单(
@@ -1441,6 +1511,9 @@
       ST.onboarding = (rs[2] && !rs[2].__err && typeof rs[2] === "object" && !Array.isArray(rs[2])) ? rs[2] : null;
       ST.pluginPanel = (rs[3] && !rs[3].__err && typeof rs[3] === "object" && !Array.isArray(rs[3])) ? rs[3] : null;
       ST.providers = (rs[4] && !rs[4].__err && typeof rs[4] === "object" && !Array.isArray(rs[4])) ? rs[4] : null;
+      ST.jetHub = null;
+      // jet-hub 探测是「附加信息」，不阻塞四页签渲染：后台拉，回来再刷模型页
+      loadJetHub();
       ST.loading = false;
       renderHeadDoc();
       renderNav();
@@ -1465,6 +1538,8 @@
     // R108-G：provider route 实时校验 / 候选弹窗搜索
     if (t.classList && t.classList.contains("settings-provider-route")) { onProviderRouteInput(e); return; }
     if (t.classList && t.classList.contains("settings-fetch-search")) { onFetchSearch(e); return; }
+    // jet-hub：记录下拉选中，供「使用此模型」按钮读取
+    if (t.id === "settings-jet-hub-model") { ST.jetHubSel = t.value; return; }
     var rowId = t.getAttribute && t.getAttribute("data-row-id");
     if (!rowId) return;
     var row = findRow(rowId);
@@ -1541,6 +1616,57 @@
     renderContent();
   }
 
+  // ---------- jet-hub：探测 / 一键切换模型来源 ----------
+  //   刷新：重新 GET 探测（不可用时端点自己回 可用=false，不抛错）。
+  //   应用：POST {模型} → 服务端写 .env + 热更新客户端 → load() 刷新全页状态。
+  //   探测走后台：load() 不 await 它，避免网关慢/不可达拖住整个设置页。
+  function loadJetHub() {
+    api("GET", "/api/settings/providers/jet-hub")
+      .then(function (res) {
+        ST.jetHub = (res && typeof res === "object" && !Array.isArray(res)) ? res : null;
+        if (ST.jetHub && !ST.jetHubSel) ST.jetHubSel = ST.jetHub["推荐"] || "";
+        if (ST.open && ST.tab === "models") renderContent();
+      })
+      .then(null, function () { /* 探测失败保持「尚未探测」，不打断设置页 */ });
+  }
+
+  function onJetHubRefresh() {
+    if (ST.jetHubBusy) return;
+    ST.jetHubBusy = true; ST.jetHubErr = ""; ST.jetHubMsg = "";
+    renderContent();
+    api("GET", "/api/settings/providers/jet-hub")
+      .then(function (res) {
+        ST.jetHubBusy = false;
+        ST.jetHub = res || null;
+        ST.jetHubSel = (res && res["推荐"]) || "";
+        renderContent();
+      })
+      .then(null, function (e) {
+        ST.jetHubBusy = false;
+        ST.jetHubErr = (e && e.message) ? e.message : "探测 jet-hub 失败";
+        renderContent();
+      });
+  }
+
+  function onJetHubApply() {
+    if (ST.jetHubBusy) return;
+    var selEl = document.getElementById("settings-jet-hub-model");
+    var model = selEl ? selEl.value : (ST.jetHubSel || "");
+    ST.jetHubBusy = true; ST.jetHubErr = ""; ST.jetHubMsg = "";
+    renderContent();
+    api("POST", "/api/settings/providers/jet-hub/apply", { 模型: model })
+      .then(function (res) {
+        ST.jetHubBusy = false;
+        ST.jetHubMsg = "已切换（" + ((res && res["模型"]) || model) + "）";
+        return load();
+      })
+      .then(null, function (e) {
+        ST.jetHubBusy = false;
+        ST.jetHubErr = (e && e.message) ? e.message : "切换 jet-hub 模型失败";
+        renderContent();
+      });
+  }
+
   // 设为新任务默认（C 线校验在服务端完成；非法 → 服务端回 400 {错误}）
   function onPresetSetDefault(btn) {
     var id = btn && btn.getAttribute ? btn.getAttribute("data-preset-id") || "" : "";
@@ -1605,6 +1731,9 @@
 
     // R107-D：模型页编辑卡内的动作（保存 / 取消 / 模型目录增删复位）
     if (t.closest(".settings-model-save")) { onModelSave(t.closest(".settings-model-save")); return; }
+    // jet-hub：刷新探测 / 应用所选模型
+    if (t.closest(".settings-jet-hub-refresh")) { onJetHubRefresh(); return; }
+    if (t.closest(".settings-jet-hub-apply")) { onJetHubApply(); return; }
     if (t.closest(".settings-model-cancel")) {
       var det = t.closest(".settings-model-edit");
       if (det) det.open = false;

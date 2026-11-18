@@ -114,6 +114,35 @@ OPENAI_MODEL=deepseek-chat
 
 ---
 
+## jet hub（本地提供商枢纽）
+
+DeepSeek Harness 的 **jet hub 插件**（`dsh-providers-hub`，旧名 `dsh-codearts-auth`）会把十几个 AI 编码
+提供商的账号池聚合成一个本地 OpenAI 兼容网关（缺省 `127.0.0.1:8326`，密钥在
+`~/.dsh/openai-gateway/api-key`）。lightharness 直接消费这个网关，模型 ID 与 DSH 完全一致
+（如 `codearts/GLM-5.2`、`deepseek-official/deepseek-flash`）：
+
+```bash
+# 1) 只看枢纽里有哪些模型
+$env:HARNESS_CMD='jet-hub'; python 运行.py examples/运行CLI.light
+
+# 2) 以枢纽为模型来源跑一轮（自动发现地址/密钥/模型）
+$env:HARNESS_PROVIDER='jet-hub'
+$env:HARNESS_MSG='你好'; python 运行.py examples/运行CLI.light
+
+# 3) Web 设置页：模型 → jet-hub 卡片 → 选模型 → 使用此模型（写 .env 并热更新）
+
+# 4) chat 框下方 ◈ 模型选择器：每个会话单独选模型（内置 + jet-hub 全部模型，互不影响）
+```
+
+> 会话级模型选择对齐 DSH：`GET /api/models?session=<id>` 给出目录与当前模型，
+> `POST /api/sessions/<id>/model` 写入该会话（存 `<会话根>/session-models.json`），
+> 每轮请求按「请求 model > 会话已存 > 全局 .env > 内置默认」解析。
+
+细则（发现顺序、环境变量、接口形状、联调记录、与 DSH 的差异）见
+**[docs/jet-hub接入.md](docs/jet-hub接入.md)**。
+
+---
+
 ## 插件
 
 侧栏"插件"面板里可以：

@@ -1066,3 +1066,24 @@ html[data-theme="light"] {
 .settings-fetch-item-ctx { font-size: 11px; color: var(--st-text-dim); }
 .settings-fetch-actions { padding: 10px 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--st-border, #d0d7de); }
 
+
+/* ---- jet-hub（本地提供商枢纽）卡片 ---- */
+.settings-jet-hub {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--st-border, #d0d7de);
+  border-radius: var(--st-radius-sm, 8px);
+  background: var(--st-bg-sub, #f6f8fa);
+}
+.settings-jet-hub-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.settings-jet-hub-title { font-weight: 600; font-size: 14px; }
+.settings-jet-hub-sub { color: var(--st-text-muted, #656d76); font-size: 12px; }
+.settings-jet-hub-head .settings-sc-btn { margin-left: auto; }
+.settings-jet-hub-state { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 4px 0; }
+.settings-jet-hub-addr {
+  margin-left: 8px; color: var(--st-text-muted, #656d76);
+  font-family: var(--st-font-mono, Consolas, monospace); font-size: 12px;
+}
+.settings-jet-hub-pick { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.settings-jet-hub-pick select { flex: 1 1 240px; min-width: 220px; }
+.settings-jet-hub-msg { margin-top: 8px; color: var(--st-green, #1a7f37); font-size: 12px; }

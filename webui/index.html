@@ -85,15 +85,21 @@
           <button id="send-btn" class="btn btn-send">发送</button>
         </div>
         <div class="composer-foot">
-          <select id="mode-select" class="mode-select" title="Agent 模式（随下一条消息生效）">
-            <option value="standard">标准</option>
-            <option value="cordis">创造</option>
-            <option value="ptc">PTC</option>
-            <option value="minimal">极简</option>
-          </select>
+          <span class="composer-left">
+            <button type="button" id="model-chip" class="model-chip" title="选择本会话使用的模型（每个会话可不同）">
+              <span id="model-chip-name">模型</span>
+            </button>
+            <select id="mode-select" class="mode-select" title="Agent 模式（随下一条消息生效）">
+              <option value="standard">标准</option>
+              <option value="cordis">创造</option>
+              <option value="ptc">PTC</option>
+              <option value="minimal">极简</option>
+            </select>
+          </span>
           <span class="shortcut-hint">Enter 发送 · Shift+Enter 换行</span>
           <span class="input-count" id="input-count"></span>
         </div>
+        <div id="model-popover" class="model-popover" hidden></div>
       </footer>
 
     </div>

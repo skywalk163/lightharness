@@ -4,6 +4,47 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号以轮次发布 tag 为准（如 `r95-dev`）。
 
+## [未发布] — 2026-11-18
+
+> **jet hub 接入**：把 DSH 的 jet hub 插件（`dsh-providers-hub` / 旧名 `dsh-codearts-auth`）
+> 背后的**本地 OpenAI 兼容网关**当成 lightharness 的模型来源，模型 ID 与 DSH 完全一致。
+
+### 新增
+
+- **`src/提供商枢纽.light`**：地址/密钥发现（`JET_HUB_BASE_URL` / `JET_HUB_API_KEY` /
+  `DSH_OPENAI_GATEWAY_*` / `<DSH_HOME>/openai-gateway/api-key`）、`/v1/models` 目录解析、
+  按提供商分组、挑选模型（全名/裸名/显示名/默认偏好）、接入配置（`.env` 三行 + 完整端点）、
+  真实探测（15s 超时，失败只降级不抛）。
+- **CLI 子命令 `HARNESS_CMD=jet-hub`**：打印网关地址/密钥来源（不回显明文）/按提供商分组的模型目录/推荐模型。
+- **`HARNESS_PROVIDER=jet-hub`**：CLI 与 Web 启动均可直接用枢纽当模型来源（优先级高于 `.env`；
+  Web 侧不可用时只警告并回落）。
+- **Web 端点**：`GET /api/settings/providers/jet-hub`（探测，永不含密钥明文）、
+  `POST /api/settings/providers/jet-hub/apply`（选模型 → 写 `.env` → 热更新客户端）。
+- **设置页 jet-hub 卡片**（`webui/settings.js` / `settings.css`）：模型页顶部显示连接状态、
+  密钥来源、按提供商分组的模型下拉与「使用此模型」按钮。
+- **chat 框下「每会话模型选择器」**（对齐 DSH）：内置 4 个 + jet-hub 全部模型按「来源 · 提供商」分组，
+  选中只影响当前会话；`GET /api/models[?session=]`、`POST /api/sessions/:id/model`，
+  存 `<会话根>/session-models.json`，`GET /api/sessions/:id` 回 `模型`；
+  每轮按「请求 model > 会话已存 > 全局 .env > 内置默认」解析，同端点/密钥只换 model 构造客户端。
+- **文档**：`docs/jet-hub接入.md`（含 Windows / FreeBSD 0.88 联调记录与 DSH 差异登记）。
+
+### 修复
+
+- **网关错误帧被吞成「空完成」**：`客户端.翻译流` 现在识别 jet-hub 网关的
+  `data: {"choices":[],"error":{"message","type","code","status"}}` 帧并抛出可读的
+  「上游错误: …」，不再退化成 `EMPTY_RESPONSE`（实测 opencode 账号 401 场景）。
+
+### 判据
+
+- `examples/test_提供商枢纽.light`（离线自测：地址/密钥形状/目录解析/挑选/分组/接入配置/缺省主目录，PASS）。
+- `examples/test_客户端_网关错误.light`（正常帧出块 / 对象与字符串两种 error 帧都抛可读错误，PASS）。
+- `examples/test_会话模型选择.light`（模型目录/会话模型读写/首轮落盘/清空跟随全局，PASS）。
+- 联调：Windows 本机 → 104 个模型 / 12 个提供商；FreeBSD 0.88 → 71 个模型 / 7 个提供商；
+  两边 `HARNESS_PROVIDER=jet-hub` 单轮回复正常；Web 应用 `codearts/GLM-5.2` 后 `/api/config` 热更新正确。
+- 会话级模型选择：Playwright 实拍（Chromium）——跟随全局 ◇ / 显式 ◈ / 真实回复 / 切回跟随 / 新建会话回默认，全通过。
+- 全量门禁 `pytest tests/test_回归.py`：**633 passed / 1 skipped / 1 既有红**
+  （`test_agentE5工具.light`，在干净 HEAD 上同样红，与本次改动无关）。
+
 ## [v0.7.0-rc1] — 2026-11-17
 
 > **R221 收口（0.2.2-rc.3 对齐）**：上游锚点 `dsh-v0.2.2-rc.1`（`66491b05e3`）→ **`dsh-v0.2.2-rc.3`（`38a6a5c965`，2026-11-13）**。

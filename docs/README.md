@@ -12,6 +12,7 @@
 |---|---|
 | [快速开始.md](快速开始.md) | 5分钟跑通第一个agent，安装/配置/运行 |
 | [配置参考.md](配置参考.md) | 环境变量、API Key、模型配置 |
+| [jet-hub接入.md](jet-hub接入.md) | 用 DSH 的 jet hub 插件（dsh-providers-hub）本地网关当模型来源：发现/模型目录/一键接入 |
 | [CI.md](CI.md) | 持续集成测试说明 |
 
 ### 架构与设计

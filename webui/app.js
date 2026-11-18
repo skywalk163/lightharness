@@ -23,6 +23,10 @@
   var messagesEl = document.getElementById("messages");
   var inputEl = document.getElementById("input");
   var modeSelectEl = document.getElementById("mode-select"); // 第5步：chat 框模式选择器
+  // 每会话模型选择器（对齐 DSH chat 框下的模型选择）
+  var modelChipEl = document.getElementById("model-chip");
+  var modelChipNameEl = document.getElementById("model-chip-name");
+  var modelPopoverEl = document.getElementById("model-popover");
   var sendBtn = document.getElementById("send-btn");
   var stopBtn = document.getElementById("stop-btn");
   var subtitleEl = document.getElementById("subtitle");
@@ -425,6 +429,111 @@
     }
   }
 
+  // ---------- 每会话模型选择（对齐 DSH chat 框下的模型选择器） ----------
+  //   服务端权威：GET /api/models（内置目录 + jet-hub 目录 + 该会话已存模型），
+  //   POST /api/sessions/:id/model 写入会话。请求体带 model → 服务端按它跑本轮。
+  var modelCatalog = [];   // [{id, 名称, 提供商, 上下文窗口, 来源}]
+  var currentModel = "";   // 本会话显式选择的模型（空 = 跟随全局 .env）
+  var globalModel = "";    // 全局默认模型（服务端 .env / 启动配置）
+
+  function modelEntry(id) {
+    for (var i = 0; i < modelCatalog.length; i++) {
+      if (modelCatalog[i] && modelCatalog[i].id === id) return modelCatalog[i];
+    }
+    return null;
+  }
+
+  function renderModelChip() {
+    if (!modelChipNameEl) return;
+    var shown = currentModel || globalModel;
+    var entry = modelEntry(shown);
+    var label = entry ? (entry.名称 || entry.id) : (shown || "跟随全局默认");
+    modelChipNameEl.textContent = label;
+    if (modelChipEl) {
+      modelChipEl.title = currentModel
+        ? "本会话模型：" + currentModel + "（点此切换）"
+        : "跟随全局默认" + (globalModel ? "（" + globalModel + "）" : "") + "；点此选择本会话模型";
+      modelChipEl.classList.toggle("is-follow", !currentModel);
+    }
+    updateModelBadge(shown);
+  }
+
+  function renderModelPopover() {
+    if (!modelPopoverEl) return;
+    var h = '<div class="model-popover-head">选择本会话模型</div>' +
+      '<div class="model-popover-list">';
+    // 「跟随全局默认」= 清空会话模型
+    h += '<button type="button" class="model-item' + (currentModel ? "" : " is-active") +
+      '" data-model-id=""><span class="model-item-name">跟随全局默认</span>' +
+      '<span class="model-item-id">' + escapeHtml(globalModel || ".env / 启动配置") + "</span></button>";
+    var groups = [];
+    var index = {};
+    for (var i = 0; i < modelCatalog.length; i++) {
+      var m = modelCatalog[i] || {};
+      var key = (m.来源 || "模型") + " · " + (m.提供商 || "");
+      if (!index[key]) { index[key] = []; groups.push(key); }
+      index[key].push(m);
+    }
+    for (var g = 0; g < groups.length; g++) {
+      h += '<div class="model-group">' + escapeHtml(groups[g]) + "</div>";
+      var list = index[groups[g]];
+      for (var k = 0; k < list.length; k++) {
+        var mm = list[k] || {};
+        var active = mm.id === currentModel ? " is-active" : "";
+        h += '<button type="button" class="model-item' + active + '" data-model-id="' + escapeHtml(mm.id || "") + '">' +
+          '<span class="model-item-name">' + escapeHtml(mm.名称 || mm.id || "") + "</span>" +
+          '<span class="model-item-id">' + escapeHtml(mm.id || "") +
+          (mm.上下文窗口 ? " · " + escapeHtml(String(mm.上下文窗口)) + " ctx" : "") + "</span></button>";
+      }
+    }
+    h += "</div>";
+    modelPopoverEl.innerHTML = h;
+  }
+
+  function loadModels(sessionOpt) {
+    var url = "/api/models";
+    if (sessionOpt) url += "?session=" + encodeURIComponent(sessionOpt);
+    return fetch(url, { headers: apiHeaders() })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !Array.isArray(data["模型"])) return;
+        modelCatalog = data["模型"];
+        currentModel = data["会话"] || "";
+        globalModel = data["全局"] || data["当前"] || "";
+        renderModelChip();
+        if (modelPopoverEl && !modelPopoverEl.hidden) renderModelPopover();
+      })
+      .catch(function () { /* 模型目录拉不到不阻塞聊天 */ });
+  }
+
+  function openModelPopover() {
+    if (!modelPopoverEl) return;
+    renderModelPopover();
+    modelPopoverEl.hidden = false;
+    if (modelChipEl) modelChipEl.classList.add("is-open");
+  }
+
+  function closeModelPopover() {
+    if (!modelPopoverEl) return;
+    modelPopoverEl.hidden = true;
+    if (modelChipEl) modelChipEl.classList.remove("is-open");
+  }
+
+  function chooseModel(id) {
+    currentModel = id || "";
+    renderModelChip();
+    closeModelPopover();
+    if (!sessionId) return; // 新会话：下一条消息的 model 字段会带上，服务端落盘
+    fetch("/api/sessions/" + encodeURIComponent(sessionId) + "/model", {
+      method: "POST",
+      headers: apiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ "模型": currentModel })
+    }).then(function () {
+      // 选「跟随全局默认」后回读一次，chip 显示全局模型名（而不是一串空）
+      if (!currentModel) loadModels(sessionId);
+    }).catch(function () { /* 落盘失败不阻塞本轮 */ });
+  }
+
   // 从服务端拉当前会话元数据（拿标题）；503/404 静默忽略
   function refreshSessionTitle(id) {
     if (!id) return;
@@ -446,6 +555,7 @@
       Sidebar.refresh(); // 更新角标/相对时间（首轮新建后列表新增一项）
     }
     refreshSessionTitle(id);
+    loadModels(id);
     if (isNew) closeSidebarOnMobile();
   }
 
@@ -460,6 +570,7 @@
     setSessionTitle("");
     if (window.Sidebar) Sidebar.setActive("");
     addSystem("新对话已就绪，输入内容开始。");
+    loadModels(""); // 新会话回到全局默认模型
   }
 
   // 切换会话：拉取完整历史并回放
@@ -500,6 +611,7 @@
         setSessionTitle("");
         refreshSessionTitle(id);
         closeSidebarOnMobile();
+        loadModels(id); // 切会话：恢复该会话自己的模型
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
       })
       .catch(function (e) {
@@ -675,7 +787,9 @@
       if (msgs[i].role === "assistant" && msgs[i].content === "") msgs.pop();
       else break;
     }
-    var body = { model: "deepseek-flash", messages: msgs, stream: true };
+    // 模型：空 = 跟随全局（不塞 model 字段，服务端按 .env/会话记录解析）
+    var body = { messages: msgs, stream: true };
+    if (currentModel) body.model = currentModel;
     if (sessionId) body.session_id = sessionId;       // 会话延续
     if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
     if (attachments.length) body.attachments = attachments.slice(); // 第6轮 D：附件 best-effort
@@ -944,6 +1058,7 @@
         setSessionTitle((meta && meta.标题) || "新会话");
         if (window.Sidebar && meta && meta.id) Sidebar.setActive(meta.id);
         closeSidebarOnMobile();
+        loadModels((meta && meta.id) || ""); // 新会话：模型回到该会话/全局默认
         inputEl.focus();
       },
       onDeleted: function (id) {
@@ -990,6 +1105,30 @@
   }
 
   // 初始提示 + 状态探测 + 配置检测 + E4 权限加载
+  // 每会话模型选择器：chip 点开/收起；popover 点选；点外面关闭
+  if (modelChipEl) {
+    modelChipEl.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (modelPopoverEl && !modelPopoverEl.hidden) closeModelPopover();
+      else openModelPopover();
+    });
+  }
+  if (modelPopoverEl) {
+    modelPopoverEl.addEventListener("click", function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var item = t.closest("[data-model-id]");
+      if (item) chooseModel(item.getAttribute("data-model-id") || "");
+    });
+  }
+  document.addEventListener("click", function (e) {
+    if (!modelPopoverEl || modelPopoverEl.hidden) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("#model-popover")) return;
+    if (t && t.closest && t.closest("#model-chip")) return;
+    closeModelPopover();
+  });
+  loadModels("");
   addSystem("输入内容后发送，agent 会逐字流式回复；工具调用可在右侧「工具」面板查看时间线。");
   checkStatus();
   checkConfig();
