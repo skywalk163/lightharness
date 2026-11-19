@@ -33,19 +33,36 @@ def _lp(p) -> str:
 def _find_sibling(name):
     """运行时依赖的兄弟仓定位（与 运行.py 的探测口径一致，但不依赖宿主环境）。
 
-    worker 的 worktree 常常没有 ../lightplugin，Web服务端 间接依赖它的 生产挂载，
+    worker 的 worktree 通常没有 ../lightplugin，而 Web服务端 间接依赖它的 生产挂载，
     不显式给路径时会集体假红（T-0395 已踩过这个坑）。
+
+    worktree 的深度不固定（`.worktrees/<agent>/T-XXXX`、`.hive/wt/T-XXXX`、直接 <repo>…），
+    所以**沿祖先逐级找**，而不是写死 `../..`——写死层数正是上一轮在我本机绿、在 worker 上红的原因。
+
+    判定标记按仓不同（踩过的坑）：
+      - `light`（编译器仓）有 `src/`；
+      - `lightplugin`（插件仓）**没有** `src/`，只有 `插件/` 等目录 —— 用 `src` 判它永远找不到。
     """
     key = 'lightplugin' if name == 'LIGHTPLUGIN' else 'light'
-    candidates = [
-        os.environ.get(name, ''),
-        os.path.join(ROOT, '..', key),
-        os.path.join(ROOT, '..', '..', key),
-        os.path.join(ROOT, '..', '..', 'duan-light-merge', key),
-        '/home/skywalk/dswork/' + key,
-    ]
+    marker = '插件' if name == 'LIGHTPLUGIN' else 'src'
+    # 编译器仓在不同机器上叫 light / light-merge 两种（本机是 light-merge）
+    names = [key] if name == 'LIGHTPLUGIN' else ['light', 'light-merge']
+    here = ROOT
+    candidates = []
+    explicit = os.environ.get(name, '')
+    if explicit:
+        candidates.append(explicit)
+    for _ in range(6):
+        here = os.path.dirname(here)
+        if not here or here == os.path.dirname(here):
+            break
+        for nm in names:
+            candidates.append(os.path.join(here, nm))
+            candidates.append(os.path.join(here, 'duan-light-merge', nm))
+    candidates.append('/home/skywalk/dswork/' + key)
+    candidates.append('/home/skywalk/dswork/light-merge')
     for c in candidates:
-        if c and os.path.isdir(c):
+        if c and os.path.isdir(os.path.join(c, marker)):
             return os.path.normpath(c)
     return ''
 
