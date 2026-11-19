@@ -8,15 +8,28 @@
 
 ### 对齐验收：新会话五件事整链（T-0399）
 
-- 新增 `tests/test_T0399_新会话对齐.py`（6 例，全走 `Web服务端` 处理器）：建会话带目录 →
-  首条消息带 `preset`/权限/`attachments` → 两会话不同目录+不同权限**并发**隔离（工具放行/拒绝各按会话）
-  → 压缩后续聊 → 切回旧会话恢复模式/权限/目录；另含文档与对标登记自检。
-- `docs/快速开始.md` 补「新会话落地页五件事」冒烟 checklist（目录/模式/权限/附件/压缩，含预期现象与排查）；
+- 新增 `tests/test_T0399_新会话对齐.py`：**真起服务进程、真走 HTTP**（不是直调处理器方法）——
+  脚本化 mock LLM（纯标准库 `ThreadingHTTPServer`，零新依赖）驱动工具调用，
+  一条链验完：建会话带目录 → 首条消息带 `preset`/权限/`attachments` → 两会话不同目录+不同权限
+  **并发**隔离（工具放行/拒绝各按会话）→ `/compact` 后续聊 → 切回旧会话恢复模式/权限/目录。
+  共 6 条正向用例 + 2 条 `strict xfail` 缺陷钉桩（见下）。中间态反证：只合入 T-0395 时 5/6 正向用例红。
+- `docs/快速开始.md` 补「新会话落地页五件事」冒烟 checklist（目录/模式/权限/附件/压缩，含预期现象与排查），
+  并修正三处与实测不符的说法：`自定义` 权限预设**会**落库；`cwd/check` 接受相对路径而**建会话**不接受；
+  `HARNESS_ROOT` 是「会话级设置根」，会话 JSONL 在 `$HARNESS_HOME/sessions`（原表把两者混为一谈）。
 - `docs/API参考.md` 补 `POST /api/sessions` 新字段、`GET /api/cwd/check`、`GET /api/sessions/current` 新键、
-  `POST /api/sessions/:id/模式权限`、`POST /v1/chat/completions` 的 `preset/权限预设/工作目录/attachments`；
+  `POST /api/sessions/:id/模式权限`、`POST /v1/chat/completions` 的 `preset/权限预设/工作目录/attachments`，
+  并新增「落库消息形状与已知缺口」「流式下的差异」两节。
 - `docs/功能对标/对标清单.json` 末尾追加 #366~#370（T-0395~T-0399，旧条目与旧编号未动）。
-- 本卡只改测试与文档，不改业务代码。已知边界另开卡：文件类工具仍按进程根取根（未按会话 cwd）、
-  `attachments` 未进模型消息、Web 层尚无压缩触发端点（`/compact` 只作为一条消息）。
+- 本卡只改测试与文档，**不改业务代码**。走这条整链新暴露的业务缺陷已按红线单独开卡，本卡只如实
+  文档化 + 用 `strict xfail` 钉住（修好后钉桩会变红，提醒改回正向断言）：
+  1. `GET /api/sessions/current` 带认证令牌时忽略 `?session=`，返回该令牌最后创建的那个会话
+     —— 受影响的是前端 `refreshSessionTitle()`（多会话会取到错标题）；
+  2. 落库的 `tool-result` 消息 `结果` 恒为空串（事件层 `tool/result` 里有正文，落库路径只扫顶层
+     `type=="text"`，扫不到嵌套的 `{type:"tool-result", content:[{type:"text"}]}`）—— 会话重放看不到工具输出；
+  3. `会话存储.保存索引()` 的临时文件名固定为 `<索引>.tmp`，同进程两轮对话并发落盘时互踩
+     → 偶发 500「会话持久化失败」；本卡改走「两个 HTTP 客户端并发」的真实形状绕开它。
+- 其它既有边界（未变，已在文档写明）：文件类工具仍按进程根取根（未按会话 cwd）；
+  `attachments` 未进模型消息；Web 层无独立压缩端点（`/compact` 只是一条消息）。
 
 > **`src/web服务器.light` 拆分（T-0393）Phase 1**：先交方案再保守迁移，本轮零行为回归。
 

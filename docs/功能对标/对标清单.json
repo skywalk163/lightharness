@@ -5187,15 +5187,15 @@
       "功能": "新会话五件事整链 E2E + 文档/对标登记",
       "原版包": "apps/web 新会话落地页（目录/模式/权限/附件/压缩作为一个整体）",
       "光明模块": "tests/test_T0399_新会话对齐.py / docs/快速开始.md / docs/API参考.md",
-      "状态": "done（T-0399）：建会话带目录 → 首条消息带 preset/权限/附件 → 两会话并发隔离 → 压缩后续聊 → 切回恢复，HTTP 层一条链验收；UI 冒烟 checklist 落快速开始；API 参考/对标/CHANGELOG 登记。已知边界（另开卡）：文件工具仍按进程根取根、attachments 未进模型消息、Web 层无压缩触发端点。",
+      "状态": "done（T-0399）：真起服务进程 + 真走 HTTP 的整链 E2E（脚本化 mock LLM 驱动工具调用，零新依赖），一条链验完建会话带目录 → 首条消息带 preset/权限/附件 → 两会话不同目录+不同权限并发隔离 → /compact 后续聊 → 切回旧会话恢复；UI 冒烟 checklist 落快速开始；API 参考/对标/CHANGELOG 登记。走这条链新暴露的 3 个业务缺陷已单独开卡，本卡用 strict xfail 钉住：current 带令牌忽略 ?session=、tool-result 落库正文恒空、保存索引 tmp 名固定致并发互踩。",
       "证据": [
         "tests/test_T0399_新会话对齐.py",
         "docs/快速开始.md",
         "docs/API参考.md",
         "CHANGELOG.md"
       ],
-      "本轮目标": "T-0399 6 例 + tests/test_回归.py + tests/unit/ 全绿",
-      "反跑判据": "把 详情/current 的 模式/权限预设 键删掉、或 处理对话 不写回四键，E2E 立红",
+      "本轮目标": "T-0399 6 例正向全绿 + 2 例缺陷钉桩（strict xfail）+ tests/test_回归.py + tests/unit/ 无新增红",
+      "反跑判据": "把 详情/current 的 模式/权限预设 键删掉、或 处理对话 不写回四键、或把 E2E 退回直调处理器，立红",
       "语言缺陷": []
     }
   ]
