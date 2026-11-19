@@ -1433,3 +1433,143 @@ body {
   font-size: 11px; color: var(--text-muted); padding: 2px 4px; border-radius: 4px;
 }
 .msg-act:hover { color: var(--blue); background: var(--bg-hover, rgba(110,118,129,.1)); }
+
+/* =====================================================================
+ * T-0396：新会话面板——目录 chip + 弹层 + 模式/权限预选
+ * ---------------------------------------------------------------------
+ * 样式口径：跟 style.css 既有聊天面 token 走（--bg-panel/--border/--text/--green/
+ *   --red/--radius），与 .model-chip / .model-popover 同家族；不引第三方 UI 库。
+ * 结构：.cwd-chip（输入区左下） + #cwd-popover（.cwd-popover > .ns-pop-*）
+ * ===================================================================== */
+
+/* ---------- 目录 chip ---------- */
+.cwd-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border: 1px solid var(--border, #333); border-radius: var(--radius-sm, 6px);
+  background: transparent; color: var(--text-dim, #888);
+  font-size: 11px; padding: 3px 8px; cursor: pointer;
+  font-family: var(--font-mono, monospace);
+}
+.cwd-chip:hover, .cwd-chip.is-open { color: var(--text, #ccc); border-color: var(--text-dim, #888); }
+/* 未选目录 = 跟随全局：空心标记，和模型的 is-follow 视觉同构 */
+.cwd-chip::before { content: "📁"; font-size: 10px; opacity: .8; }
+.cwd-chip.is-follow::before { content: "🗂"; opacity: .55; }
+.cwd-chip.is-follow { opacity: .85; }
+/* 本会话目录：实心 + 主色边框，一眼看出「这不是全局」 */
+.cwd-chip.is-session { color: var(--green); border-color: var(--green); }
+.cwd-chip.is-session::before { content: "📂"; opacity: 1; }
+/* 服务端拒了：标红（卡面要求「chip 标红并显示理由」），且不清空已选目录 */
+.cwd-chip.is-error { color: var(--red); border-color: var(--red); }
+.cwd-chip.is-error::before { content: "⚠"; opacity: 1; }
+.cwd-chip.is-busy { opacity: .6; }
+.cwd-chip-error {
+  display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 11px; color: var(--red);
+}
+
+/* ---------- 目录弹层 ---------- */
+.cwd-popover {
+  position: absolute; left: 16px; bottom: calc(100% + 4px);
+  width: 420px; max-width: calc(100vw - 32px);
+  background: var(--bg-panel, #161b22); color: var(--text, #e6edf3);
+  border: 1px solid var(--border, #30363d); border-radius: var(--radius, 10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .45); z-index: 145;
+  display: flex; flex-direction: column; overflow: hidden;
+  font-family: var(--font-sans, sans-serif);
+}
+.cwd-popover[hidden] { display: none; }
+.ns-pop-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; font-size: 12px; color: var(--text-muted, #8b949e);
+  border-bottom: 1px solid var(--border, #30363d);
+}
+.ns-pop-title { font-weight: 600; }
+.ns-pop-close {
+  background: none; border: none; color: var(--text-muted, #8b949e);
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.ns-pop-close:hover { color: var(--text, #e6edf3); }
+.ns-pop-body { padding: 10px 12px 6px; display: flex; flex-direction: column; gap: 6px; }
+.ns-field-label {
+  font-size: 11px; color: var(--text-dim, #6e7681); user-select: none;
+}
+.ns-cwd-row { display: flex; gap: 6px; align-items: center; }
+.ns-cwd-input {
+  flex: 1 1 auto; min-width: 0; box-sizing: border-box;
+  padding: 5px 9px; font-size: 12px; font-family: var(--font-mono, monospace);
+  border: 1px solid var(--border, #30363d); border-radius: var(--radius-sm, 6px);
+  background: var(--bg, transparent); color: var(--text, inherit);
+}
+.ns-cwd-input:focus { outline: none; border-color: var(--green); }
+.ns-cwd-check {
+  flex: 0 0 auto; font-size: 11px; padding: 4px 10px;
+}
+.ns-cwd-msg { font-size: 11px; min-height: 15px; word-break: break-all; }
+.ns-good { color: var(--green); }
+.ns-bad { color: var(--red); }
+.ns-dim { color: var(--text-dim, #6e7681); }
+
+.ns-recent-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 4px; font-size: 11px; color: var(--text-dim, #6e7681); user-select: none;
+}
+.ns-recent-clear {
+  background: none; border: none; color: var(--text-dim, #6e7681);
+  font-size: 11px; cursor: pointer; padding: 0 2px;
+}
+.ns-recent-clear:hover { color: var(--red); }
+.ns-recent-list { display: flex; flex-direction: column; gap: 2px; max-height: 132px; overflow-y: auto; }
+.ns-recent-item {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid transparent; border-radius: var(--radius-sm, 6px);
+  background: transparent; color: var(--text, #e6edf3);
+  padding: 4px 7px; font-size: 11px; font-family: var(--font-mono, monospace);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ns-recent-item:hover { background: var(--bg-hover, #30363d); border-color: var(--border, #30363d); }
+.ns-recent-empty { font-size: 11px; color: var(--text-dim, #6e7681); padding: 2px 0 4px; }
+
+.ns-global-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border, #30363d);
+}
+.ns-global-text {
+  font-size: 11px; color: var(--text-muted, #8b949e);
+  font-family: var(--font-mono, monospace);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.ns-cwd-global { flex: 0 0 auto; font-size: 11px; padding: 3px 9px; }
+.ns-global-warn {
+  font-size: 10px; line-height: 1.45; color: var(--yellow, #d29922);
+  background: rgba(210, 153, 34, .10);
+  border: 1px solid rgba(210, 153, 34, .35);
+  border-radius: var(--radius-sm, 6px); padding: 4px 7px; margin-top: 4px;
+}
+
+.ns-split { height: 1px; background: var(--border, #30363d); margin: 8px 0 6px; }
+.ns-two-col { display: flex; gap: 10px; }
+.ns-col { flex: 1 1 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ns-select {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--border, #30363d); border-radius: var(--radius-sm, 6px);
+  background: transparent; color: var(--text, #e6edf3);
+  font-size: 11px; padding: 4px 8px; cursor: pointer; width: 100%;
+}
+.ns-select:hover, .ns-select:focus { border-color: var(--text-dim, #888); outline: none; }
+.ns-hint {
+  font-size: 10px; line-height: 1.5; color: var(--text-dim, #6e7681); margin-top: 6px;
+}
+.ns-pop-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; border-top: 1px solid var(--border, #30363d);
+}
+.ns-cwd-reset { font-size: 11px; padding: 4px 10px; }
+.ns-cwd-apply { font-size: 11px; padding: 4px 12px; }
+
+@media (max-width: 768px) {
+  .cwd-popover { left: 8px; width: calc(100vw - 16px); }
+  .cwd-chip { max-width: 150px; }
+  .cwd-chip-error { max-width: 120px; }
+}
+

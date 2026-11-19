@@ -75,6 +75,7 @@
   var currentBubble = null;       // 当前渲染中的助手消息行 DOM（一轮可能有多个）
   var userBubble = null;          // 本轮用户消息行 DOM
   var attachments = [];           // 第6轮 D：待发送附件 [{name, type, dataUrl}]
+  var pendingCwdValue = "";       // T-0396：本轮请求携带的会话目录（400 时据此标红 chip）
 
   // ---------- 第6轮 D：附件上传（前端选文件读为 dataURL，随请求 best-effort 上送） ----------
   function renderChips() {
@@ -556,6 +557,8 @@
     }
     refreshSessionTitle(id);
     loadModels(id);
+    // T-0396：首轮成功后目录已落到会话属性，清掉「待建」标红态（chip 继续显示该目录）
+    if (window.NewSession && NewSession.clearSessionCwdError) NewSession.clearSessionCwdError();
     if (isNew) closeSidebarOnMobile();
   }
 
@@ -569,6 +572,10 @@
     Messages.clear(); // 同时 ToolCard.reset()（清空右面板时间线/统计）
     setSessionTitle("");
     if (window.Sidebar) Sidebar.setActive("");
+    // T-0396：新会话沿用面板里暂存的目录选择（不选 = 全局默认，与改造前一致）
+    if (window.NewSession && NewSession.bindSessionCwd) {
+      NewSession.bindSessionCwd(NewSession.getSessionCwd ? NewSession.getSessionCwd() : "");
+    }
     addSystem("新对话已就绪，输入内容开始。");
     loadModels(""); // 新会话回到全局默认模型
   }
@@ -613,6 +620,10 @@
         if (window.Sidebar) Sidebar.setActive(id);
         setSessionTitle("");
         refreshSessionTitle(id);
+        // T-0396：已建会话的目录是会话属性（服务端按会话解析），chip 显示它
+        if (window.NewSession && NewSession.bindSessionCwd) {
+          NewSession.bindSessionCwd(data && data["工作目录"] ? data["工作目录"] : "");
+        }
         closeSidebarOnMobile();
         loadModels(id); // 切会话：恢复该会话自己的模型
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
@@ -796,6 +807,13 @@
     if (sessionId) body.session_id = sessionId;       // 会话延续
     if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
     if (attachments.length) body.attachments = attachments.slice(); // 第6轮 D：附件 best-effort
+    // T-0396：会话级工作目录——只有用户显式选了目录才带字段；不带 = 全局默认（老行为不变）
+    var pendingCwd = (window.NewSession && NewSession.getSessionCwd) ? NewSession.getSessionCwd() : "";
+    if (pendingCwd && !sessionId) body["工作目录"] = pendingCwd;
+    // T-0396：权限预选——只随请求携带；空串 = 跟随全局（不塞字段，行为不变）
+    var pendingPerm = (window.NewSession && NewSession.getPermission) ? NewSession.getPermission() : "";
+    if (pendingPerm) body["权限预设"] = pendingPerm;
+    pendingCwdValue = pendingCwd;
 
     var headers = { "Content-Type": "application/json" };
     var started = false; // 是否已进入流式阶段（区分"连不上"和"中途断开"）
@@ -851,6 +869,13 @@
           } catch (e) { detail = t; }
         }
         detail = detail || (resp.statusText || "未知错误");
+        // T-0396：目录被服务端拒绝时 chip 标红并显示理由，**不清空已选目录**（不静默丢掉）
+        if (resp.status === 400 && pendingCwdValue && window.NewSession) {
+          NewSession.markSessionCwdError(detail);
+          addSystem("工作目录不可用：" + detail +
+            "\n已保留你选的目录，修正后再发送（或点目录 chip 改成默认）。", true);
+          return;
+        }
         addSystem("服务端错误 " + resp.status + "：" + detail, true);
       }).catch(function () {
         addSystem("服务端错误 " + resp.status + "（" + (resp.statusText || "未知") + "）", true);
@@ -1074,6 +1099,25 @@
   if (rpClose) rpClose.addEventListener("click", function () { toggleRightPanel(false); });
   if (sessionTitleEl) sessionTitleEl.addEventListener("click", renameCurrentSession);
 
+  // T-0396：「＋ 新会话」不再立刻 POST /api/sessions（避免每点一次就产出一个空会话）。
+  //   做法：在捕获阶段拦下点击并 stopPropagation，sidebar.js 的 createSession 收不到事件；
+  //   sidebar.js 源码不动（它的列表协议是红线），行为改由这里接管——只进空状态，
+  //   目录/模式沿用面板里暂存的选择，真正建会话发生在首条消息里（与刷新后新对话同一条路径）。
+  var newSessionBtn = document.getElementById("new-session-btn");
+  if (newSessionBtn) {
+    newSessionBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (streaming) {
+        addSystem("正在流式输出中，请稍后再新建会话。", true);
+        return;
+      }
+      newChatState();
+      closeSidebarOnMobile();
+      inputEl.focus();
+    }, true);
+  }
+
   // E3：会话侧边栏（回调里涉及状态切换）
   if (window.Sidebar) {
     Sidebar.init({
@@ -1123,6 +1167,8 @@
   if (permPreset) permPreset.addEventListener("change", savePermission);
 
   // 第5步：模式选择器——记忆上次选择 + 切换提示（随下一条消息生效）
+  // T-0396：模式状态收口到 new-session.js（面板里的下拉与这里必须是同一个值），
+  //   这里只做「把用户的改动同步给面板 + 提示」，不再自己当权威。
   var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
   if (modeSelectEl) {
     var savedMode = null;
@@ -1130,9 +1176,24 @@
     if (savedMode && MODE_NAMES[savedMode]) modeSelectEl.value = savedMode;
     modeSelectEl.addEventListener("change", function () {
       try { localStorage.setItem("lh.mode", modeSelectEl.value); } catch (e2) { /* 隐私模式忽略 */ }
+      if (window.NewSession && NewSession.setMode) NewSession.setMode(modeSelectEl.value);
       addSystem("已切换到「" + (MODE_NAMES[modeSelectEl.value] || modeSelectEl.value) +
         "」模式，下一条消息起按新模式挂载工具。", false);
     });
+  }
+
+  // T-0396：新会话面板（目录 chip + 弹层 + 模式/权限预选）
+  //   不选目录 = 全局默认：这里不给任何默认值，全部由用户显式选择。
+  if (window.NewSession) {
+    NewSession.init({
+      token: token,
+      onModeChange: function (next) {
+        // 面板里改了模式 → 输入区下拉跟上（两处必须一致，否则用户以为没生效）
+        if (modeSelectEl && modeSelectEl.value !== next) modeSelectEl.value = next;
+      }
+    });
+    // 面板里选的是「新会话」还是「当前会话」由发送路径决定；这里先把输入区模式同步进面板
+    if (modeSelectEl && modeSelectEl.value && NewSession.setMode) NewSession.setMode(modeSelectEl.value);
   }
 
   // 初始提示 + 状态探测 + 配置检测 + E4 权限加载
