@@ -91,6 +91,11 @@
         </div>
         <div class="composer-foot">
           <span class="composer-left">
+            <!-- T-0396：新会话面板的目录 chip（显示待建/当前会话 cwd；未选时「默认」） -->
+            <button type="button" id="cwd-chip" class="cwd-chip" title="选择工作目录（不选 = 全局默认）">
+              <span id="cwd-chip-name">默认</span>
+            </button>
+            <span id="cwd-chip-error" class="cwd-chip-error" hidden></span>
             <button type="button" id="model-chip" class="model-chip" title="选择本会话使用的模型（每个会话可不同）">
               <span id="model-chip-name">模型</span>
             </button>
@@ -105,6 +110,8 @@
           <span class="input-count" id="input-count"></span>
         </div>
         <div id="model-popover" class="model-popover" hidden></div>
+        <!-- T-0396：目录选择弹层（内容由 new-session.js 渲染） -->
+        <div id="cwd-popover" class="cwd-popover" hidden></div>
       </footer>
 
     </div>
@@ -172,12 +179,13 @@
     </div>
   </div>
 
-  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 设置对话框 → 斜杠命令面板 → 主应用 -->
+  <!-- 脚本按依赖顺序：工具卡片 → 消息渲染 → 会话侧边栏 → 设置对话框 → 斜杠命令面板 → 新会话面板 → 主应用 -->
   <script src="tool-card.js"></script>
   <script src="messages.js"></script>
   <script src="sidebar.js"></script>
   <script src="settings.js"></script>
   <script src="slash-palette.js"></script>
+  <script src="new-session.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
