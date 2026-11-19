@@ -17,18 +17,26 @@ tests/test_回归.py           # pytest 参数化回归套件（遍历 examples/
 ## CI 流程
 
 1. **检出代码**：lightharness 仓库
-2. **检出编译器**：light-merge（光明语言编译器），放到 `../light-merge`
-3. **设置 Python**：3.13
-4. **安装依赖**：`pip install -r requirements.txt`
-5. **运行测试**：`python scripts/ci_test.py`
-   - 检查 LIGHT_MERGE 环境变量
-   - 运行 pytest 全量回归（80 个参数化用例）
+2. **检出编译器**：light（光明语言编译器），放到 `../light`（本地 Gitea CI 沿用历史目录名 `../light-merge`）
+3. **检出插件生态**：lightplugin（含 `集成/生产挂载.light`），放到 `../lightplugin`，设 `LIGHTPLUGIN`
+4. **设置 Python**：3.13（GitHub CI；本地 Gitea CI 用系统 python3 建 venv）
+5. **安装依赖**：`pip install -r requirements.txt`
+   - 含 pytest / pytest-xdist / pytest-timeout（`pytest.ini` 的 `--timeout=60 -n 4` 硬依赖）
+   - 装完有「插件能力探针」：`pytest --help` 必须能识别 `--timeout` 与 `-n`，否则直接红
+6. **运行测试**：`python scripts/ci_test.py`
+   - 检查 LIGHT_MERGE / LIGHTPLUGIN 环境变量与标志物
+   - 运行 pytest 全量回归（用例数随 `examples/*.light` 增长，以 `pytest --collect-only -q | wc -l` 为准）
    - 运行核心模块冒烟测试（会话/代理/工具/消息/流）
-6. **上传日志**：失败时上传 tests/ 和 examples/ 为 artifact
+7. **上传日志**：失败时上传 tests/ 和 examples/ 为 artifact
 
-## 关键依赖：light-merge 编译器
+## 关键依赖：light 编译器 + lightplugin 插件生态
 
-lightharness 本身不包含光明语言编译器，依赖外部 `light-merge` 仓库。CI 通过以下方式获取：
+lightharness 本身不包含光明语言编译器与插件生态，二者都是外部仓，缺一不可：
+- **light**（编译器）：`运行.py` 通过 `LIGHT_MERGE` 定位；缺它所有 `.light` 用例无法解释执行。
+- **lightplugin**（插件生态）：`src/总入口.light` 的 `从 生产挂载 导入 挂载全部插件` 是硬依赖；
+  缺它 `test_r111_e2e.light` / `probe_r3_挂载对账.light` 等用例必红。CI 通过 `LIGHTPLUGIN` 定位。
+
+CI 通过以下方式获取：
 
 ### GitHub Actions / gitcode
 
@@ -36,7 +44,8 @@ lightharness 本身不包含光明语言编译器，依赖外部 `light-merge` �
 
 | 变量名 | 说明 | 示例 |
 |---|---|---|
-| `LIGHT_MERGE_REPO` | light-merge 仓库地址 | `https://gitcode.com/skywalk163/light.git` |
+| `LIGHT_MERGE_REPO` | light 编译器仓库地址 | `https://gitcode.com/skywalk163/light.git` |
+| `LIGHTPLUGIN_REPO` | lightplugin 插件生态仓库地址 | `https://gitcode.com/skywalk163/lightplugin.git` |
 
 如果未配置，默认尝试 `https://gitcode.com/skywalk163/light.git`。
 

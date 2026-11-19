@@ -16,13 +16,13 @@
 ```
 python -m pytest tests/unit/ -o addopts="" -q
 ```
-覆盖 33 个核心业务模块，574 个用例。失败必须修。
+覆盖核心业务模块（模块/用例数以 `pytest --collect-only -q tests/unit/ | tail -1` 为准，随开发增长）。失败必须修。
 
 ### 第二层：examples 回归（中，~5分钟）
 ```
 python -m pytest tests/test_回归.py -o addopts="" -q
 ```
-523 个 examples/*.light 端到端退出码门禁。失败必须修。
+全量 `examples/*.light` 端到端退出码门禁（用例数以实际文件为准）。失败必须修。
 
 ### 第三层：Playwright WebUI E2E（慢，~3分钟，需 .env 有真 key）
 ```

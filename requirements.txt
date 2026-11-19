@@ -1,3 +1,8 @@
 # lightharness 运行依赖
 # 光明编译器 light-merge 为外部依赖，通过 LIGHT_MERGE 环境变量指定路径，不在此声明
 pytest>=9.0
+# pytest.ini 的 addopts 使用 --timeout（pytest-timeout）与 -n（pytest-xdist）。
+# 这两个是门禁的硬依赖：缺任一个，pytest 启动即报 unrecognized arguments，
+# 所以必须随 requirements 一起安装，不能指望 CI runner 恰好预装。
+pytest-xdist>=3.0
+pytest-timeout>=2.3

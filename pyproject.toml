@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightharness"
-# 版本号真源：CHANGELOG.md 首条 `## [vX.Y.Z]`（当前 `## [v0.7.0-rc1] — 2026-11-17`）。
-# PEP 440 写法：去掉 `v` 和连字符 → 0.7.0rc1。本字段必须跟 CHANGELOG 首条一致。
+# 版本号真源：CHANGELOG.md 中首个 `## [vX.Y.Z] ...` 发布条目（跳过 `## [未发布]` 段）。
+# PEP 440 写法：去掉 `v` 和连字符 → 0.7.0rc1。本字段必须跟该发布条目一致。
 version = "0.7.0rc1"
 description = "用「光明」中文编程语言复刻 dsh（DeepSeek Harness）"
 readme = "README.md"

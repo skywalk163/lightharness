@@ -46,6 +46,40 @@
   `test_引导稍后配置` `test_会话模型选择`。
 - `tests/unit/`：**无新增红**（686 passed / 13 skipped，与拆分前基线一致）。
 
+## [v0.7.0-rc1] — 2026-11-19（发布收口）
+
+> **CI 可信度修复 + 三远端发布收口**：补齐 pytest 插件硬依赖 + 两仓 CI 接入 lightplugin，
+> 杜绝「假绿/假红」；合入 T-0393/T-0394 后按 `pyproject.toml` 的 `0.7.0rc1` 打正式 annotated tag。
+
+### 修复（CI / 依赖）
+
+- **`requirements.txt` 漏声明 pytest 插件**：`pytest.ini` 的 `addopts = --timeout=60 -n 4`
+  依赖 `pytest-timeout`（`--timeout`）与 `pytest-xdist`（`-n`），但 requirements 只有 pytest 本体。
+  GitHub Actions 用 `setup-python` 建干净环境，`pip install -r requirements.txt` 后跑 pytest 会直接报
+  `unrecognized arguments`——公开 CI 从根上跑不起来。现补两行为硬依赖，两套 CI 均加「插件能力探针」
+  （`pytest --help | grep -- --timeout` / `-n`），缺插件立即红，不再依赖 runner 恰好预装。
+- **两套 CI 未接入 lightplugin**：`.github/workflows/ci.yml` 与 `.gitea/workflows/ci.yml`
+  原先只检出编译器（light），但 `src/总入口.light` 的 `从 生产挂载 导入 挂载全部插件` 是硬依赖，
+  缺它 `test_r111_e2e.light` / `probe_r3_挂载对账.light` / `test_r111插件启停.light` 必红——
+  即 CI 此前显示的红有一部分是环境缺依赖的「假红」。现两仓均增加 lightplugin 检出步骤
+  （含 `集成/生产挂载.light` 标志物校验）并设 `LIGHTPLUGIN` 环境变量；本地 Gitea CI 的
+  venv 兜底安装改为 pytest / xdist / timeout 逐个装。
+
+### 文档 / 工程卫生
+
+- **文档失配修正**：`docs/CI.md` 更新为「light + lightplugin 双硬依赖 + 插件探针」流程，
+  变量表补 `LIGHTPLUGIN_REPO`，测试数改为「以 `pytest --collect-only` 为准」不再写死 80；
+  `docs/发布门禁E2E.md` 的 33 模块/574 用例、523 examples 等写死数字改为生成式描述；
+  `pyproject.toml` 版本号真源注释明确「跳过 `[未发布]` 段取首个 `[vX.Y.Z]`」。
+- **`.gitignore` 补规则**：忽略 `_push_github_*.py`（一次性推送脚本）、`G:/`（Windows 路径
+  在 POSIX 下的误建残留）；`_m*.py` 与 `.tmp_*/` 此前已忽略。不改磁盘文件、只防误提交。
+
+### 三远端发布
+
+- 本条对应发布 tag `v0.7.0-rc1`；代码基线为合入 T-0393/T-0394 后的 `main`，
+  `pyproject.toml` 版本字段 `version = "0.7.0rc1"`（PEP 440 写法）。
+- 推送目标：`origin`（内网 Gitea）、`github`、`gitcode`，三处 `main` 与 tag 对齐同一提交。
+
 ## [未发布] — 2026-11-18
 
 > **Web Chat 真流式推送**：服务端边跑边推 SSE，浏览器逐字渲染，不再等整轮跑完才出字。

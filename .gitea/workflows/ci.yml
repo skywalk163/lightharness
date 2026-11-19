@@ -74,17 +74,50 @@ jobs:
             git clone --depth 1 http://192.168.1.5:3000/skywalk/light.git ../light-merge
           fi
 
+      - name: 检出 lightplugin（生产挂载插件生态）
+        run: |
+          REPO="${{ vars.LIGHTPLUGIN_REPO }}"
+          if [ -z "$REPO" ]; then
+            REPO="http://192.168.1.5:3000/skywalk/lightplugin.git"
+          fi
+          git clone --depth 1 "$REPO" ../lightplugin || {
+            echo "[CI][错误] 无法克隆 LIGHTPLUGIN_REPO=$REPO"
+            exit 1
+          }
+          # 标志物校验：仅 clone 成功不够，必须含 集成/生产挂载.light
+          if [ ! -f ../lightplugin/集成/生产挂载.light ]; then
+            echo "[CI][错误] ../lightplugin 缺少 集成/生产挂载.light，插件生态不完整"
+            exit 1
+          fi
+
       - name: 建 venv 并安装测试依赖
         run: |
           python3 -m venv --system-site-packages .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
-          # requirements.txt 只声明 pytest>=9.0；本地 devpi 镜像不保证有该下界版本。
-          # 取不到时退回任意可用 pytest —— 缺依赖不该把 CI 卡死在装包这一步。
-          python -m pip install -r requirements.txt || python -m pip install pytest
+          # requirements.txt 已含 pytest / pytest-xdist / pytest-timeout 三个门禁硬依赖。
+          # 本地 devpi 镜像不保证有下界版本；整组取不到时退回「逐个装 + 任意可用版本」，
+          # 缺依赖不该把 CI 卡死在装包这一步（后续能力探针会判绿/判红）。
+          python -m pip install -r requirements.txt || {
+            python -m pip install pytest || true
+            python -m pip install pytest-xdist || true
+            python -m pip install pytest-timeout || true
+          }
           # 供后续步骤（以及测试内部起的 `python` 子进程）用上 venv：
           # FreeBSD 无系统级 python，tests/test_回归.py 里 subprocess 调的是裸 `python`。
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: 校验 pytest 插件能力（pytest.ini 的 addopts 硬依赖）
+        run: |
+          . .venv/bin/activate
+          python -m pytest --help | grep -q -- '--timeout=' || {
+            echo "[CI][错误] pytest-timeout 未安装：pytest.ini 的 --timeout=60 无法识别"
+            exit 1
+          }
+          python -m pytest --help | grep -qE '^  -n ' || {
+            echo "[CI][错误] pytest-xdist 未安装：pytest.ini 的 -n 4 无法识别"
+            exit 1
+          }
 
       - name: 环境盘点（只报告，不判绿）
         run: |
@@ -92,14 +125,20 @@ jobs:
           python --version
           python -m pytest --version
           echo "LIGHT_MERGE=${{ github.workspace }}/../light-merge"
+          echo "LIGHTPLUGIN=${{ github.workspace }}/../lightplugin"
           echo "light-merge commit: $(git -C ${{ github.workspace }}/../light-merge rev-parse HEAD 2>/dev/null || echo 未知)"
+          echo "lightplugin commit: $(git -C ${{ github.workspace }}/../lightplugin rev-parse HEAD 2>/dev/null || echo 未知)"
           ls "${{ github.workspace }}/../light-merge/src" | head -5 \
             || echo "[CI][警告] light-merge/src 不存在，后续用例必然全红"
+          ls "${{ github.workspace }}/../lightplugin/集成" | head -5 \
+            || echo "[CI][警告] lightplugin/集成 不存在，后续用例必然全红"
 
       - name: 运行 CI 测试
         env:
           # 运行.py 未设该变量时会退回 Windows 路径，FreeBSD 上必然 exit 1
           LIGHT_MERGE: ${{ github.workspace }}/../light-merge
+          # 生产挂载插件生态：缺它 test_r111_e2e / probe_r3_挂载对账 等用例必红
+          LIGHTPLUGIN: ${{ github.workspace }}/../lightplugin
         run: |
           . .venv/bin/activate
           python scripts/ci_test.py
