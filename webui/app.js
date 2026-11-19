@@ -58,6 +58,10 @@
   var approvalsStatus = document.getElementById("approvals-status");
   var approvalsCount = document.getElementById("approvals-count");
   var permPreset = document.getElementById("perm-preset");
+  // T-0397：会话级模式/权限——下拉值随会话走，localStorage 只作「无会话时」的兜底默认
+  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+  var globalDefaultMode = "standard"; // GET /api/permissions 或 localStorage 的全局兜底
+  var suppressModePersist = false;    // 切会话回填下拉时抑制「当成用户切换」
   // 第6轮 D：附件上传 + 斜杠命令面板
   var attachBtn = document.getElementById("attach-btn");
   var attachInput = document.getElementById("attach-input");
@@ -359,38 +363,75 @@
     }
   }
 
-  // 权限预设变更
+  // ---- T-0397：会话级模式/权限 --------------------------------------------
+  // 原则：有会话 → POST /api/sessions/:id/模式权限 只改该会话；
+  //       无会话（空状态）→ 模式写 localStorage 作待建会话默认，权限仍走全局默认。
+  function setPermLabel(v) {
+    if (!permPreset) return;
+    permPreset.value = v || "";
+    if (permPreset.firstChild) permPreset.firstChild.textContent = "权限：" + (v || "全局默认");
+  }
+
+  // GET /api/permissions：读全局默认（仅作为无会话级设置时的展示兜底）
   function loadPermissions() {
     return fetch("/api/permissions", { method: "GET", headers: apiHeaders() })
       .then(function (resp) { return resp.json(); })
       .then(function (data) {
-        if (permPreset) {
-          var v = data["预设"] || "";
-          permPreset.value = v;
-          permPreset.firstChild.textContent = "权限：" + v; // 更新提示
-        }
+        // 有会话时以会话详情为准（selectSession/newChat 会调 applySessionMode），这里只记全局默认
+        if (!sessionId && permPreset) setPermLabel(data["预设"] || "");
       })
       .catch(function () { /* 权限接口不可用不阻塞 */ });
   }
 
+  // 把「模式/权限预设」两个下拉回填为某会话的生效值（空串 = 全局默认）
+  function applySessionMode(mode, perm) {
+    var m = mode || globalDefaultMode;
+    if (modeSelectEl) {
+      suppressModePersist = true;
+      modeSelectEl.value = m;
+      suppressModePersist = false;
+    }
+    setPermLabel(perm || "");
+    // T-0396/T-0397 集成：面板与顶栏必须是同一个值，否则切会话后两个入口各显示各的
+    //   （面板里的模式/权限选择也要跟着会话走；面板改了由 onModeChange/onPermissionChange 反向同步）
+    if (window.NewSession) {
+      if (NewSession.setMode) NewSession.setMode(m);
+      if (NewSession.setPermission) NewSession.setPermission(perm || "");
+    }
+  }
+
+  // 会话内切换 → 只写该会话（不碰全局），空状态则写 localStorage 待建默认
+  function persistSessionMode(patch, label) {
+    if (sessionId) {
+      fetch("/api/sessions/" + encodeURIComponent(sessionId) + "/模式权限", {
+        method: "POST",
+        headers: apiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(patch)
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d) applySessionMode(d["模式"], d["权限预设"]);
+        })
+        .catch(function () { addSystem("会话模式/权限保存失败", true); });
+    } else {
+      // 空状态：模式记忆到 localStorage（待建会话默认）；权限不动全局
+      if (patch["模式"] && modeSelectEl) {
+        try { localStorage.setItem("lh.mode", patch["模式"]); } catch (e) { /* 隐私模式忽略 */ }
+      }
+    }
+    if (label) addSystem(label, false);
+  }
+
   function savePermission() {
-    var preset = permPreset.value;
-    if (!preset) return;
-    var headers = { "Content-Type": "application/json" };
-    fetch("/api/permissions", {
-      method: "POST",
-      headers: apiHeaders(headers),
-      body: JSON.stringify({ 预设: preset })
-    })
-      .then(function (resp) { return resp.json(); })
-      .then(function (data) {
-        if (data["预设"]) {
-          addSystem("权限预设已切换为：" + data["预设"]);
-        }
-      })
-      .catch(function () {
-        addSystem("权限预设保存失败", true);
-      });
+    var preset = permPreset ? permPreset.value : "";
+    // 空串 = 跟随全局默认：允许显式恢复（服务端把空串当「写空键」，切回/刷新仍显示全局默认）
+    var label = preset
+      ? "本会话权限已切换为：" + preset + "（只影响本会话）"
+      : "本会话权限已恢复全局默认";
+    if (!sessionId) {
+      label = preset ? "权限预设（新建会话默认）：" + preset
+                     : "权限预设（新建会话默认）：全局默认";
+    }
+    persistSessionMode({ 权限预设: preset }, label);
   }
 
   // ---------- E3：右侧工具面板 ----------
@@ -560,6 +601,10 @@
     // T-0396：首轮成功后目录已落到会话属性，清掉「待建」标红态（chip 继续显示该目录）
     if (window.NewSession && NewSession.clearSessionCwdError) NewSession.clearSessionCwdError();
     if (isNew) closeSidebarOnMobile();
+    // T-0397：本轮 preset/权限预设已随请求写回会话；回填确保顶栏与面板一致
+    //   （面板里改过权限时，这里把顶栏同步成刚发出去的值；首条消息则是绑定后回填）
+    var syncedPerm = (window.NewSession && NewSession.getPermission) ? NewSession.getPermission() : "";
+    applySessionMode(modeSelectEl ? modeSelectEl.value : "", syncedPerm || (permPreset ? permPreset.value : ""));
   }
 
   // 空状态：新对话
@@ -578,6 +623,10 @@
     }
     addSystem("新对话已就绪，输入内容开始。");
     loadModels(""); // 新会话回到全局默认模型
+    // T-0397：空状态恢复到「全局默认」——模式用 localStorage 兜底，权限空=全局默认
+    var fallbackMode = globalDefaultMode;
+    try { var lm = localStorage.getItem("lh.mode"); if (lm && MODE_NAMES[lm]) fallbackMode = lm; } catch (e) { /* ignore */ }
+    applySessionMode(fallbackMode, "");
   }
 
   // 切换会话：拉取完整历史并回放
@@ -626,6 +675,7 @@
         }
         closeSidebarOnMobile();
         loadModels(id); // 切会话：恢复该会话自己的模型
+        applySessionMode(data["模式"], data["权限预设"]); // T-0397：恢复该会话的模式/权限
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
       })
       .catch(function (e) {
@@ -810,9 +860,11 @@
     // T-0396：会话级工作目录——只有用户显式选了目录才带字段；不带 = 全局默认（老行为不变）
     var pendingCwd = (window.NewSession && NewSession.getSessionCwd) ? NewSession.getSessionCwd() : "";
     if (pendingCwd && !sessionId) body["工作目录"] = pendingCwd;
-    // T-0396：权限预选——只随请求携带；空串 = 跟随全局（不塞字段，行为不变）
+    // T-0396/T-0397：权限预设——面板里的显式选择优先，否则用顶栏上的会话生效值。
+    //   空串 = 跟随全局默认（不塞字段，旧行为不变）；服务端按会话记录隔离判定并落库。
     var pendingPerm = (window.NewSession && NewSession.getPermission) ? NewSession.getPermission() : "";
-    if (pendingPerm) body["权限预设"] = pendingPerm;
+    var activePerm = pendingPerm || (permPreset ? permPreset.value : "");
+    if (activePerm) body.权限预设 = activePerm;
     pendingCwdValue = pendingCwd;
 
     var headers = { "Content-Type": "application/json" };
@@ -1166,19 +1218,22 @@
   });
   if (permPreset) permPreset.addEventListener("change", savePermission);
 
-  // 第5步：模式选择器——记忆上次选择 + 切换提示（随下一条消息生效）
-  // T-0396：模式状态收口到 new-session.js（面板里的下拉与这里必须是同一个值），
-  //   这里只做「把用户的改动同步给面板 + 提示」，不再自己当权威。
-  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+// 第5步：模式选择器——有会话只改该会话（切回/刷新还原），空状态写 localStorage 作待建默认。
+  // T-0396：模式状态与新建会话面板共用同一个值（NewSession.setMode 双向同步）。
+  // MODE_NAMES 已上移到文件顶部（T-0397：applySessionMode 在初始化前就要用）。
   if (modeSelectEl) {
     var savedMode = null;
     try { savedMode = localStorage.getItem("lh.mode"); } catch (e) { savedMode = null; }
-    if (savedMode && MODE_NAMES[savedMode]) modeSelectEl.value = savedMode;
+    if (savedMode && MODE_NAMES[savedMode]) {
+      globalDefaultMode = savedMode;
+      modeSelectEl.value = savedMode;
+    }
     modeSelectEl.addEventListener("change", function () {
-      try { localStorage.setItem("lh.mode", modeSelectEl.value); } catch (e2) { /* 隐私模式忽略 */ }
-      if (window.NewSession && NewSession.setMode) NewSession.setMode(modeSelectEl.value);
-      addSystem("已切换到「" + (MODE_NAMES[modeSelectEl.value] || modeSelectEl.value) +
-        "」模式，下一条消息起按新模式挂载工具。", false);
+      if (suppressModePersist) return;
+      var m = modeSelectEl.value;
+      // T-0396：面板里的下拉必须跟着顶栏走（两个入口同一个值）
+      if (window.NewSession && NewSession.setMode) NewSession.setMode(m);
+      persistSessionMode({ 模式: m }, "已切换到「" + (MODE_NAMES[m] || m) + "」模式（本会话）。");
     });
   }
 
@@ -1190,6 +1245,10 @@
       onModeChange: function (next) {
         // 面板里改了模式 → 输入区下拉跟上（两处必须一致，否则用户以为没生效）
         if (modeSelectEl && modeSelectEl.value !== next) modeSelectEl.value = next;
+      },
+      onPermissionChange: function (next) {
+        // 面板里改了权限 → 顶栏标签跟上；真正落库由下一轮请求带 权限预设（T-0397）
+        setPermLabel(next || "");
       }
     });
     // 面板里选的是「新会话」还是「当前会话」由发送路径决定；这里先把输入区模式同步进面板

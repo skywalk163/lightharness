@@ -250,6 +250,8 @@
       permSel.addEventListener("change", function () {
         permPreset = permSel.value || "";
         renderChip();
+        // T-0397：面板与顶栏的权限标签共用同一个值（落库仍走下一轮请求，见 app.js）
+        if (typeof opts.onPermissionChange === "function") opts.onPermissionChange(permPreset);
       });
     }
   }
@@ -493,6 +495,14 @@
   // 权限："" = 跟随全局（不随请求携带）；否则带上暂存的预设
   function getPermission() { return permPreset || ""; }
 
+  // T-0397：切会话时把该会话的生效权限回填到面板（空串 = 全局默认），
+  //   否则面板会拿着上一个会话的选择去覆盖当前会话。
+  function setPermission(perm) {
+    permPreset = trimStr(perm);
+    renderChip();
+    if (popoverOpen) renderPopover();
+  }
+
   function init(userOpts) {
     opts = userOpts || {};
     token = opts.token || "";
@@ -561,6 +571,7 @@
     getMode: getMode,
     setMode: setMode,
     getPermission: getPermission,
+    setPermission: setPermission,
     open: openPopover,
     close: closePopover,
     // 诊断/测试用（浏览器手工冒烟时会用到）
