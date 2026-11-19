@@ -417,7 +417,14 @@
     }
     return checkPath(p).then(function (data) {
       var ok = !!(data && data["可读"]);
-      if (ok) pushRecent(p);
+      // T-0396 主控补丁：校验端点会把相对路径按服务进程 cwd 解析后回显绝对路径，
+      //   而建会话（T-0395）只收绝对路径。校验通过了就该用服务端解析出的绝对路径，
+      //   否则「校验通过 → 首条消息 400」自相矛盾；最近目录也只存绝对路径。
+      if (ok) {
+        var abs = trimStr(data["绝对路径"]);
+        if (abs) sessionCwd = abs;
+        pushRecent(sessionCwd || p);
+      }
       renderChip();
       if (popoverOpen) renderPopover();
       if (ok && !quiet) closePopover();
