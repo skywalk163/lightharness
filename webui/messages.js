@@ -467,6 +467,17 @@
     });
   }
 
+  // 6. 压缩提示（T-0398）：与系统行同一套渲染契约（祖先/对齐/插入点都不变），
+  //    只多一个 .compaction 样式钩子，供 style.css 画成"分隔感"的提示条。
+  function addCompaction(text) {
+    var div = document.createElement("div");
+    div.className = "sys compaction";
+    div.textContent = text;
+    root().appendChild(div);
+    stickToBottom();
+    return div;
+  }
+
   bindCopy();
 
   window.Messages = {
@@ -477,6 +488,7 @@
     addToolCard: addToolCard,
     applyToolResult: applyToolResult,
     addSystem: addSystem,
+    addCompaction: addCompaction,
     renderMarkdown: renderMarkdown,
     renderHistory: renderHistory,
     clearTailForRegenerate: function () {
