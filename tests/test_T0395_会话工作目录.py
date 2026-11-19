@@ -34,7 +34,17 @@ def _run(src: str, tmp_path, cwd=None):
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
-    return p.returncode, p.stdout + p.stderr, kv
+    combined = p.stdout + p.stderr
+    # T-0395 诊断留痕：写到 worktree 下（仅本地排查用，不参与 git 提交）
+    try:
+        debug = os.path.join(ROOT, '.hive', 'verify-debug')
+        os.makedirs(debug, exist_ok=True)
+        with open(os.path.join(debug, 'T0395-' + os.path.basename(str(f)) + '.log'),
+                  'w', encoding='utf-8') as fh:
+            fh.write('rc=' + str(p.returncode) + '\n' + combined)
+    except OSError:
+        pass
+    return p.returncode, combined, kv
 
 
 def _same(a: str, b: str) -> bool:
