@@ -106,8 +106,15 @@
               <option value="minimal">极简</option>
             </select>
           </span>
-          <span class="shortcut-hint">Enter 发送 · Shift+Enter 换行</span>
-          <span class="input-count" id="input-count"></span>
+          <span class="composer-right">
+            <!-- T-0398：上下文用量 + 一键压缩（与斜杠面板 /compact 同一通道） -->
+            <span id="ctx-usage" class="ctx-usage"
+                  title="本轮上下文占上下文窗口的比例（服务端统计帧回填）">上下文 0%</span>
+            <button type="button" id="compact-btn" class="compact-btn"
+                    title="压缩上下文：旧消息进摘要，保留最近消息（与 /compact 同一通道）">压缩</button>
+            <span class="shortcut-hint">Enter 发送 · Shift+Enter 换行</span>
+            <span class="input-count" id="input-count"></span>
+          </span>
         </div>
         <div id="model-popover" class="model-popover" hidden></div>
         <!-- T-0396：目录选择弹层（内容由 new-session.js 渲染） -->

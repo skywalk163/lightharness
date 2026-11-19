@@ -17,7 +17,8 @@
     { cmd: "/help",    desc: "显示可用命令与快捷键" },
     { cmd: "/clear",   desc: "清空当前会话上下文（新对话）" },
     { cmd: "/model",   desc: "切换当前模型" },
-    { cmd: "/compact", desc: "手动触发上下文压缩" },
+    // T-0398：/compact 与输入区「压缩」按钮同一条通道（文案保持一致）
+    { cmd: "/compact", desc: "压缩上下文：旧消息进摘要，保留最近消息" },
     { cmd: "/save",    desc: "立即保存当前会话" },
     { cmd: "/resume",  desc: "恢复历史会话" },
     { cmd: "/exit",    desc: "退出会话（关闭面板）" }

@@ -19,6 +19,11 @@
   // ---------- 常量 ----------
   var API_PATH = "/v1/chat/completions";
 
+  // T-0398：待发附件上限——前端守卫（服务端当前不校验 attachments 的数量/体积，
+  //   超限只在前端拦，避免把 20 张 10MB 图塞进一条请求）。红线：不改上送协议形状。
+  var MAX_ATTACHMENTS = 20;                     // 一次最多挂 20 个待发附件
+  var MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;  // 单个附件上限 10MB
+
   // ---------- DOM ----------
   var messagesEl = document.getElementById("messages");
   var inputEl = document.getElementById("input");
@@ -66,6 +71,9 @@
   var attachBtn = document.getElementById("attach-btn");
   var attachInput = document.getElementById("attach-input");
   var attachChips = document.getElementById("attach-chips");
+  // T-0398：上下文用量 + 一键压缩入口（输入区右下）
+  var ctxUsageEl = document.getElementById("ctx-usage");
+  var compactBtn = document.getElementById("compact-btn");
 
   // ---------- 状态 ----------
   var params = new URLSearchParams(location.search);
@@ -105,13 +113,54 @@
     }
   }
 
+  // T-0398：上送投影——只保留协议既有的三个键（红线：body.attachments 形状一个字都不变）
+  function projectAttachments(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      out.push({
+        name: list[i].name,
+        type: list[i].type,
+        dataUrl: list[i].dataUrl
+      });
+    }
+    return out;
+  }
+
+  function formatSize(bytes) {
+    if (!isFinite(bytes) || bytes <= 0) return "0 B";
+    if (bytes < 1024) return Math.round(bytes) + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function notifyAttach(msg) {
+    addSystem(msg, true);
+  }
+
   function onFiles(fileList) {
     var files = Array.prototype.slice.call(fileList || []);
     files.forEach(function (f) {
+      // 单文件体积超限：直接拒绝该文件，其余照常处理（数量上限在 onload 里按实到数量再判）
+      if (f.size > MAX_ATTACHMENT_BYTES) {
+        notifyAttach("「" + f.name + "」" + formatSize(f.size) + "，超过单文件上限 10MB，已跳过该文件。");
+        return;
+      }
       var reader = new FileReader();
       reader.onload = function (ev) {
-        attachments.push({ name: f.name, type: f.type || "application/octet-stream", dataUrl: String(ev.target.result) });
+        // 数量上限按"已读入"条数判定（多选时 onload 是异步的，不能只看进函数时的长度）
+        if (attachments.length >= MAX_ATTACHMENTS) {
+          notifyAttach("最多一次挂 " + MAX_ATTACHMENTS + " 个待发附件，「" + f.name + "」已跳过。");
+          return;
+        }
+        attachments.push({
+          name: f.name,
+          type: f.type || "application/octet-stream",
+          dataUrl: String(ev.target.result)
+        });
         renderChips();
+      };
+      reader.onerror = function () {
+        notifyAttach("「" + f.name + "」读取失败，已跳过该文件。");
       };
       reader.readAsDataURL(f);
     });
@@ -185,6 +234,18 @@
     return "$" + n.toFixed(5);
   }
 
+  // T-0398：输入区的「上下文 xx%」——数据源与顶栏统计同一个字段（上下文使用率）
+  function renderContextUsage(pct) {
+    if (!ctxUsageEl) return;
+    var n = isFinite(pct) ? Math.round(pct) : 0;
+    ctxUsageEl.textContent = "上下文 " + n + "%";
+    ctxUsageEl.title = "本轮上下文占上下文窗口 " + n +
+      "%（服务端统计帧回填）；点右侧「压缩」可手动把旧消息收进摘要";
+    ctxUsageEl.classList.remove("warn", "danger");
+    if (n > 95) ctxUsageEl.classList.add("danger");
+    else if (n > 80) ctxUsageEl.classList.add("warn");
+  }
+
   function renderStats(s) {
     if (!statsEl) return;
     if (!s || typeof s !== "object") return;
@@ -202,10 +263,25 @@
     statsEl.classList.remove("warn", "danger");
     if (pct > 95) statsEl.classList.add("danger");
     else if (pct > 80) statsEl.classList.add("warn");
+    renderContextUsage(pct);
   }
 
-  function showCompactionNotice() {
-    addSystem("已触发上下文压缩，旧消息可能被省略。");
+  function showCompactionNotice(text) {
+    var msg = text || "已触发上下文压缩，旧消息可能被省略。";
+    // T-0398：压缩提示走 messages.js 的专用样式钩子（不动既有消息渲染契约）
+    if (window.Messages && Messages.addCompaction) Messages.addCompaction(msg);
+    else addSystem(msg);
+  }
+
+  // 压缩事件帧：给系统提示 + 如果帧里带了使用率就顺手刷新输入区用量
+  function handleCompactionEvent(json) {
+    showCompactionNotice();
+    var pct = null;
+    if (json && typeof json === "object") {
+      if (typeof json["上下文使用率"] === "number") pct = json["上下文使用率"];
+      else if (typeof json["使用率"] === "number") pct = json["使用率"];
+    }
+    if (pct !== null) renderContextUsage(pct);
   }
 
   // ---------- E4：审批 UI ----------
@@ -608,6 +684,8 @@
   }
 
   // 空状态：新对话
+  // T-0398：空会话不丢待发附件——「先挂文件再开聊」是 DSH 的既有姿势，
+  //   这里**不清空** attachments（只有首条消息发送成功、或切到别的会话才清）。
   function newChatState() {
     sessionId = null;
     history = [];
@@ -616,12 +694,18 @@
     userBubble = null;
     Messages.clear(); // 同时 ToolCard.reset()（清空右面板时间线/统计）
     setSessionTitle("");
+    renderContextUsage(0); // 新会话：用量归零
     if (window.Sidebar) Sidebar.setActive("");
     // T-0396：新会话沿用面板里暂存的目录选择（不选 = 全局默认，与改造前一致）
     if (window.NewSession && NewSession.bindSessionCwd) {
       NewSession.bindSessionCwd(NewSession.getSessionCwd ? NewSession.getSessionCwd() : "");
     }
     addSystem("新对话已就绪，输入内容开始。");
+    // T-0398：把"附件还在"明说一次，避免用户以为刚选的文件被新会话丢了
+    if (attachments.length) {
+      addSystem("已新建空会话，保留 " + attachments.length +
+        " 个待发附件（首条消息发送成功后才会清空）。");
+    }
     loadModels(""); // 新会话回到全局默认模型
     // T-0397：空状态恢复到「全局默认」——模式用 localStorage 兜底，权限空=全局默认
     var fallbackMode = globalDefaultMode;
@@ -674,6 +758,15 @@
           NewSession.bindSessionCwd(data && data["工作目录"] ? data["工作目录"] : "");
         }
         closeSidebarOnMobile();
+        // T-0398：切到另一个已有会话 → 清空待发附件（避免把 A 会话的文件带进 B），
+        //   并给一次中文提示；同会话（id === sessionId）在上面就早返回了，不会走到这里。
+        if (attachments.length) {
+          var droppedAttach = attachments.length;
+          clearAttachments();
+          addSystem("已切换到别的会话，清空了 " + droppedAttach +
+            " 个未发送的附件（避免把附件带进另一个会话）。");
+        }
+        renderContextUsage(0); // 用量是本会话的：换会话先归零，等统计帧回填
         loadModels(id); // 切会话：恢复该会话自己的模型
         applySessionMode(data["模式"], data["权限预设"]); // T-0397：恢复该会话的模式/权限
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
@@ -784,9 +877,9 @@
             renderStats(json);
             continue;
           }
-          // E5：压缩事件（服务端可选推送）
+          // E5：压缩事件（服务端可选推送）——T-0398：顺手刷新输入区用量
           if (json && json.种类 === "压缩") {
-            showCompactionNotice();
+            handleCompactionEvent(json);
             continue;
           }
           // E4：审批请求事件（SSE 推送新的审批项）
@@ -829,9 +922,32 @@
     return pump();
   }
 
+  // ---------- T-0398：一键压缩（走既有 /compact 通道） ----------
+  //   红线：前端不自造压缩算法、不新增端点——就是把 "/compact" 当一条消息，走同一条
+  //   POST /v1/chat/completions（与斜杠面板的 /compact 完全同一个入口）。
+  var COMPACT_CONFIRM_TEXT =
+    "压缩会把较早的旧消息收进摘要，只保留最近 N 条对话（N 由服务端压缩配置决定），" +
+    "原始记录仍留在会话里。确定现在压缩吗？";
+
+  function requestCompaction() {
+    if (streaming) {
+      addSystem("正在流式输出中，请稍后再压缩。", true);
+      return;
+    }
+    if (!sessionId) {
+      addSystem("还没有进行中的会话：先发一条消息建立会话，再压缩上下文。", true);
+      return;
+    }
+    if (!window.confirm(COMPACT_CONFIRM_TEXT)) return;
+    sendMessage("/compact");
+  }
+
   // ---------- 发送 ----------
-  function sendMessage() {
-    var text = inputEl.value.trim();
+  // T-0398：overrideText 用于命令式发送（/compact）：走的是**同一条**发送通道，
+  //   只是不清输入框草稿、也不带附件（命令不消费用户正在挂的文件）。
+  function sendMessage(overrideText) {
+    var isCommand = (typeof overrideText === "string");
+    var text = isCommand ? overrideText : inputEl.value.trim();
     if (!text || streaming) return;
 
     // 追加本轮 UI 与历史（必须在组装消息体之前，否则 msgs 缺本轮用户消息）
@@ -839,11 +955,16 @@
     history.push({ role: "user", content: text });
     userBubble = Messages.addUser(text);
     currentBubble = null; // 首个文本增量到达时再创建助手行
-    inputEl.value = "";
-    clearAttachments();
-    autoResize();
-    updateCharCount();
+    if (!isCommand) {
+      inputEl.value = "";
+      autoResize();
+      updateCharCount();
+    }
     setStreaming(true);
+
+    // T-0398：附件先快照（上送的就是这份），发送成功后才清 chips——
+    //   400 / 网络失败时 chips 必须留着，用户能原样重试。
+    var sentAttachments = (!isCommand && attachments.length) ? projectAttachments(attachments) : null;
 
     // 组装消息体：去掉尾部尚未写入内容的空助手条目
     var msgs = history.slice();
@@ -856,7 +977,7 @@
     if (currentModel) body.model = currentModel;
     if (sessionId) body.session_id = sessionId;       // 会话延续
     if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
-    if (attachments.length) body.attachments = attachments.slice(); // 第6轮 D：附件 best-effort
+    if (sentAttachments) body.attachments = sentAttachments; // 第6轮 D：附件 best-effort（形状不变）
     // T-0396：会话级工作目录——只有用户显式选了目录才带字段；不带 = 全局默认（老行为不变）
     var pendingCwd = (window.NewSession && NewSession.getSessionCwd) ? NewSession.getSessionCwd() : "";
     if (pendingCwd && !sessionId) body["工作目录"] = pendingCwd;
@@ -878,11 +999,13 @@
       signal: controller.signal
     }).then(function (resp) {
       if (!resp.ok) {
-        handleHttpError(resp, text);
+        handleHttpError(resp, isCommand ? "" : text);
         return null;
       }
       started = true;
       setStatus("ok");
+      // T-0398：上送成功才清 chips（这里的"成功"= 服务端已受理本条消息）
+      if (sentAttachments) clearAttachments();
       return readStream(resp);
     }).then(function () {
       if (started) finalizeTurn();
@@ -895,7 +1018,7 @@
         addSystem("连接中断：已保留已接收的内容，请重试。", true);
       } else {
         setStatus("down");
-        rollbackTurn(text);
+        rollbackTurn(isCommand ? "" : text); // 命令失败不把 "/compact" 塞回输入框
         addSystem("服务不可达：无法连接服务端（" +
           (err && err.message ? err.message : "网络错误") +
           "），请确认服务已启动、地址与端口正确。", true);
@@ -1112,14 +1235,25 @@
     attachInput.addEventListener("change", function () { onFiles(attachInput.files); });
   }
   // 第6轮 D：斜杠命令面板（命令集对齐 src/cli外壳.light 斜杠命令表）
+  // T-0398：/compact 与「压缩」按钮共用 requestCompaction（双入口、同一通道）
   if (window.SlashPalette) {
     SlashPalette.init({
       input: inputEl,
       onPick: function (cmd) {
-        if (cmd === "/clear") { newChatState(); }
+        if (cmd === "/clear") {
+          clearAttachments(); // /clear 是显式清空：附件一并不留（新会话按钮才保留）
+          newChatState();
+        } else if (cmd === "/compact") {
+          inputEl.value = "";
+          autoResize();
+          updateCharCount();
+          requestCompaction();
+        }
       }
     });
   }
+  // T-0398：「压缩」按钮（输入区右下）
+  if (compactBtn) compactBtn.addEventListener("click", requestCompaction);
   // R106-B：入口统一——顶栏齿轮改开新设置对话框；旧「大模型配置」面板不删除，
   // 由设置对话框模型页签的「配置大模型」按钮经 window.showConfigPanel 调起。
   settingsBtn.addEventListener("click", function () {
@@ -1280,6 +1414,7 @@
     closeModelPopover();
   });
   loadModels("");
+  renderContextUsage(0); // T-0398：初始「上下文 0%」（等统计帧回填真实值）
   addSystem("输入内容后发送，agent 会逐字流式回复；工具调用可在右侧「工具」面板查看时间线。");
   checkStatus();
   checkConfig();
