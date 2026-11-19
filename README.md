@@ -19,12 +19,19 @@
 ```bash
 # 在任意目录执行；默认克隆到 ./lightharness-deps，克隆完自动跑冒烟
 bash scripts/fetch-deps.sh
+```
 
-# Windows 的 cmd / PowerShell 没有 sh，用 Git Bash：
-& "C:\Program Files\Git\bin\bash.exe" scripts/fetch-deps.sh
+Windows 上直接用原生 PowerShell（**不需要装 Git Bash**）：
+
+```powershell
+# Windows PowerShell 5.1+ 与 PowerShell 7 均可
+powershell -File scripts\fetch-deps.ps1
+
+# 已装 PowerShell 7 时也可以直接：
+pwsh -File scripts\fetch-deps.ps1
 
 # 拉完进 lightharness 验证：
-cd lightharness-deps/lightharness
+cd lightharness-deps\lightharness
 python 运行.py examples/冒烟.light     # 有输出即环境已通
 ```
 
@@ -40,19 +47,27 @@ lightharness-deps/
 它还会校验三仓的标志物（`light/src`、`lightplugin/集成`、`lightharness/运行.py`）并冒烟一次；
 **退出码 0 = 三仓到位且 `python 运行.py examples/冒烟.light` 有输出**。
 
-常用选项：
+常用选项（两个脚本语义一一对应，只是前缀写法不同）：
 
-| 选项 | 作用 |
-|------|------|
-| `--dir DIR` | 目标目录（默认 `./lightharness-deps`，也可用环境变量 `LIGHTHARNESS_DEPS_DIR`） |
-| `--mirror gitcode\|github` | 仓库基址（默认 `gitcode`，国内直连；也接受 `--mirror <基址URL>`） |
-| `--depth 1` | 浅克隆，只取最新一版（快，CI 推荐） |
-| `--branch NAME` | 指定分支（三仓共用） |
-| `--no-pull` / `--no-run` | 已存在的仓不更新 / 只拉仓不冒烟 |
-| `--dry-run` | 只打印将要执行的命令，不动磁盘 |
+| `fetch-deps.sh` | `fetch-deps.ps1` | 作用 |
+|------|------|------|
+| `--dir DIR` | `-Dir DIR` | 目标目录（默认 `./lightharness-deps`，也可用环境变量 `LIGHTHARNESS_DEPS_DIR`） |
+| `--mirror gitcode\|github` | `-Mirror gitcode\|github` | 仓库基址（默认 `gitcode`，国内直连；也接受自定义基址 URL） |
+| `--depth 1` | `-Depth 1` | 浅克隆，只取最新一版（快，CI 推荐） |
+| `--branch NAME` | `-Branch NAME` | 指定分支（三仓共用） |
+| `--no-pull` / `--no-run` | `-NoPull` / `-NoRun` | 已存在的仓不更新 / 只拉仓不冒烟 |
+| `--dry-run` | `-DryRun` | 只打印将要执行的命令，不动磁盘 |
 
-某个仓要从别处拉（内网 Gitea、私有镜像）时单独覆盖 URL：
-`LIGHT_REPO=<url> LIGHTPLUGIN_REPO=<url> LIGHTHARNESS_REPO=<url> bash scripts/fetch-deps.sh`。
+某个仓要从别处拉（内网 Gitea、私有镜像）时单独覆盖 URL（环境变量两种脚本通用）：
+
+```bash
+LIGHT_REPO=<url> LIGHTPLUGIN_REPO=<url> LIGHTHARNESS_REPO=<url> bash scripts/fetch-deps.sh
+```
+
+```powershell
+$env:LIGHT_REPO='<url>'; $env:LIGHTPLUGIN_REPO='<url>'; $env:LIGHTHARNESS_REPO='<url>'
+powershell -File scripts\fetch-deps.ps1
+```
 脚本可重复执行：已存在的仓走 `git pull --ff-only`，不会重复克隆；克隆失败会清掉半成品目录。
 
 ### 一个容易踩的坑：缺 `lightplugin` 时报 `No module named '生产挂载'`
@@ -62,10 +77,10 @@ lightharness-deps/
 其实只是依赖仓没并排放。反过来，`运行.py` 对缺 `lightplugin` 是静默容忍的（路径表返回空），
 所以它不会主动告诉你「缺的是哪个仓」。
 
-所以症状出现时**先跑 `scripts/fetch-deps.sh`，再怀疑代码**。
+所以症状出现时**先跑一次拉依赖脚本（`fetch-deps.sh` / `fetch-deps.ps1`），再怀疑代码**。
 
 部署到别的路径时用两个环境变量覆盖：`LIGHT_MERGE=<编译器根>`、`LIGHTPLUGIN=<插件根>`
-（`fetch-deps.sh` 冒烟时会自动把这两个变量指向它刚拉下来的目录）。
+（`fetch-deps.sh` / `fetch-deps.ps1` 冒烟时会自动把这两个变量指向它刚拉下来的目录）。
 
 ---
 
@@ -74,7 +89,7 @@ lightharness-deps/
 ### 1. 启动 Web 服务
 
 ```bash
-cd lightharness-deps/lightharness     # fetch-deps.sh 拉下来的目录；也可换成你自己的克隆路径
+cd lightharness-deps/lightharness     # 拉依赖脚本拉下来的目录；也可换成你自己的克隆路径
 python 运行.py examples/运行Web服务器.light
 ```
 

@@ -8,6 +8,19 @@
 
 > **Web Chat 真流式推送**：服务端边跑边推 SSE，浏览器逐字渲染，不再等整轮跑完才出字。
 
+### 新增（Windows 原生拉依赖）
+
+- **`scripts/fetch-deps.ps1`**：`fetch-deps.sh` 的 Windows 原生 PowerShell 版，一键把
+  `light` / `lightplugin` / `lightharness` 三仓拉到同一层并冒烟，**不再需要安装 Git Bash**。
+  参数一一对应：`-Dir` / `-Mirror` / `-Depth` / `-Branch` / `-NoPull` / `-NoRun` / `-DryRun`；
+  环境变量 `LIGHTHARNESS_DEPS_DIR`、`LIGHT_REPO` / `LIGHTPLUGIN_REPO` / `LIGHTHARNESS_REPO`
+  同样生效。已存在仓走 `git pull --ff-only`，克隆失败清理半成品目录，退出码
+  `0` 成功 / `1` 依赖或冒烟失败 / `2` 用法错误。
+- **`README.md`**：环境准备段补 PowerShell 用法与双脚本参数对照表，删掉「Windows 必须用
+  Git Bash」的说法。
+- **`tests/unit/test_fetch_deps_ps1.py`**：静态契约测试钉住脚本参数、行为约定与 README 文案；
+  本机有 `pwsh` / `powershell` 时实跑 `-DryRun` 断言 rc=0、打印三条 clone 命令、不落盘。
+
 ### 新增（实时推流链路）
 
 - **上游增量**：`stdlib/HTTP.py` 新增 `HTTPPost流式` —— 逐行读 SSE、遇帧边界即回调，
