@@ -6,6 +6,18 @@
 
 ## [未发布] — 2026-11-19
 
+### 对齐验收：新会话五件事整链（T-0399）
+
+- 新增 `tests/test_T0399_新会话对齐.py`（6 例，全走 `Web服务端` 处理器）：建会话带目录 →
+  首条消息带 `preset`/权限/`attachments` → 两会话不同目录+不同权限**并发**隔离（工具放行/拒绝各按会话）
+  → 压缩后续聊 → 切回旧会话恢复模式/权限/目录；另含文档与对标登记自检。
+- `docs/快速开始.md` 补「新会话落地页五件事」冒烟 checklist（目录/模式/权限/附件/压缩，含预期现象与排查）；
+- `docs/API参考.md` 补 `POST /api/sessions` 新字段、`GET /api/cwd/check`、`GET /api/sessions/current` 新键、
+  `POST /api/sessions/:id/模式权限`、`POST /v1/chat/completions` 的 `preset/权限预设/工作目录/attachments`；
+- `docs/功能对标/对标清单.json` 末尾追加 #366~#370（T-0395~T-0399，旧条目与旧编号未动）。
+- 本卡只改测试与文档，不改业务代码。已知边界另开卡：文件类工具仍按进程根取根（未按会话 cwd）、
+  `attachments` 未进模型消息、Web 层尚无压缩触发端点（`/compact` 只作为一条消息）。
+
 > **`src/web服务器.light` 拆分（T-0393）Phase 1**：先交方案再保守迁移，本轮零行为回归。
 
 ### 新增

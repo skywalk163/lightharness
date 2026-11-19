@@ -5112,6 +5112,91 @@
       "本轮目标": "Bf4 117 + 面板 e2e 10 断言全绿",
       "反跑判据": "中断默认值或工具表透传改反即红",
       "语言缺陷": []
+    },
+    {
+      "编号": 366,
+      "功能": "会话级工作目录（后端）",
+      "原版包": "packages/core/session/src + apps/web（会话带 cwd）",
+      "光明模块": "src/web服务器.light / src/会话.light / src/会话存储.light / src/工作目录.light",
+      "状态": "done（T-0395）：POST /api/sessions 收 工作目录（缺/文件/相对 → 400 且不建会话）、索引与会话头落盘、GET 详情/current 回 cwd、重启可恢复；不传目录回退全局（旧行为不变）。",
+      "证据": [
+        "src/web服务器.light",
+        "src/会话.light",
+        "src/会话存储.light",
+        "src/工作目录.light",
+        "tests/test_T0395_会话工作目录.py",
+        "tests/test_T0399_新会话对齐.py"
+      ],
+      "本轮目标": "T-0395 6 例 + T-0399 第 1/2/5 组全绿",
+      "反跑判据": "把 处理新建会话 的 工作目录 传参改空、或 详情/current 的 cwd 改反即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 367,
+      "功能": "新会话面板目录选择 + 目录只读校验端点",
+      "原版包": "apps/web（新会话落地页 cwd 选择器）",
+      "光明模块": "webui/new-session.js / webui/index.html / src/web服务器.light（GET /api/cwd/check）",
+      "状态": "done（T-0396）：GET /api/cwd/check 四态（存在/是文件/不存在/相对路径回显绝对），只读无副作用（不 chdir、不写 settings.json）；chip/弹层/最近目录（lh.recentCwd）接线；模式/权限下拉预选。",
+      "证据": [
+        "webui/new-session.js",
+        "webui/index.html",
+        "src/web服务器.light",
+        "tests/test_T0396_新建会话目录选择.py",
+        "tests/test_T0399_新会话对齐.py"
+      ],
+      "本轮目标": "T-0396 5 例 + T-0399 第 1 组 cwd/check 全绿",
+      "反跑判据": "把 check 端点改成复用 POST /api/cwd（写盘/切进程 cwd）即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 368,
+      "功能": "会话级模式与权限预设",
+      "原版包": "packages/agent-preset + packages/permissions",
+      "光明模块": "src/web服务器.light / src/agent.light（会话权限闸门）/ webui/app.js",
+      "状态": "done（T-0397）：模式/权限预设按会话落 session-modes.json；详情/current 回两键；审批按会话预设判定且两会话并发隔离；POST /api/sessions/<id>/模式权限 只改本会话；续轮不互抹。",
+      "证据": [
+        "src/web服务器.light",
+        "src/agent.light",
+        "webui/app.js",
+        "tests/test_T0397_会话模式权限.py",
+        "tests/test_T0399_新会话对齐.py"
+      ],
+      "本轮目标": "T-0397 8 例 + T-0399 第 2/3/5 组全绿",
+      "反跑判据": "把 检查会话权限 的第三参（会话预设）去掉、或改回全局单例即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 369,
+      "功能": "输入区附件暂存 + 上下文用量/一键压缩入口",
+      "原版包": "apps/web（composer attachments + compaction 入口）",
+      "光明模块": "webui/app.js / webui/messages.js / webui/index.html / webui/style.css",
+      "状态": "done（T-0398，待合入）：空会话保留待发附件（首条成功后清 chips、切会话清空并提示）；单文件 10MB / 最多 20 个前端守卫；输入区「上下文 xx%」+「压缩」按钮复用 /compact 同一发送通道，发送形状不变。",
+      "证据": [
+        "webui/app.js",
+        "webui/messages.js",
+        "webui/index.html",
+        "tests/test_T0398_附件暂存契约.py（T-0398 分支）",
+        "tests/test_T0399_新会话对齐.py（附件在场不打断首条消息）"
+      ],
+      "本轮目标": "T-0398 契约 + T-0399 第 1/4 组全绿",
+      "反跑判据": "attachments 上送投影改形状、或清 chips 时机挪到发送前即红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 370,
+      "功能": "新会话五件事整链 E2E + 文档/对标登记",
+      "原版包": "apps/web 新会话落地页（目录/模式/权限/附件/压缩作为一个整体）",
+      "光明模块": "tests/test_T0399_新会话对齐.py / docs/快速开始.md / docs/API参考.md",
+      "状态": "done（T-0399）：建会话带目录 → 首条消息带 preset/权限/附件 → 两会话并发隔离 → 压缩后续聊 → 切回恢复，HTTP 层一条链验收；UI 冒烟 checklist 落快速开始；API 参考/对标/CHANGELOG 登记。已知边界（另开卡）：文件工具仍按进程根取根、attachments 未进模型消息、Web 层无压缩触发端点。",
+      "证据": [
+        "tests/test_T0399_新会话对齐.py",
+        "docs/快速开始.md",
+        "docs/API参考.md",
+        "CHANGELOG.md"
+      ],
+      "本轮目标": "T-0399 6 例 + tests/test_回归.py + tests/unit/ 全绿",
+      "反跑判据": "把 详情/current 的 模式/权限预设 键删掉、或 处理对话 不写回四键，E2E 立红",
+      "语言缺陷": []
     }
   ]
 }
