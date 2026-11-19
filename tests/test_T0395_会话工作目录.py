@@ -20,10 +20,33 @@ def _lp(p) -> str:
     return str(p).replace('\\', '/')
 
 
+def _find_sibling(name):
+    """运行时依赖的兄弟仓定位（与 运行.py 的探测口径一致，但不依赖宿主环境）。"""
+    candidates = [
+        os.environ.get(name, ''),
+        os.path.join(ROOT, '..', 'lightplugin' if name == 'LIGHTPLUGIN' else 'light'),
+        os.path.join(ROOT, '..', '..', 'lightplugin' if name == 'LIGHTPLUGIN' else 'light'),
+        '/home/skywalk/dswork/' + ('lightplugin' if name == 'LIGHTPLUGIN' else 'light'),
+    ]
+    for c in candidates:
+        if c and os.path.isdir(c):
+            return os.path.normpath(c)
+    return ''
+
+
 def _run(src: str, tmp_path, cwd=None):
     f = tmp_path / 'driver.light'
     f.write_text(src, encoding='utf-8')
     env = {k: v for k, v in os.environ.items() if k not in ('HARNESS_ROOT', 'HARNESS_CWD')}
+    # 本卡只碰后端会话目录，但 Web服务端 间接依赖 lightplugin 的 生产挂载；
+    # worker 的 worktree 在 .hive/wt（无 ../lightplugin），必须显式给路径，
+    # 否则 Light 报 “No module named 生产挂载”，5 条用例会集体假红。
+    for key in ('LIGHTPLUGIN', 'LIGHT_MERGE'):
+        found = _find_sibling(key)
+        if found:
+            env[key] = found
+        else:
+            env.pop(key, None)
     p = subprocess.run(
         [sys.executable, RUNNER, str(f)],
         capture_output=True, text=True, encoding='utf-8', errors='replace',
