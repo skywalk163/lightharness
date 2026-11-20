@@ -61,6 +61,8 @@
         </div>
         <span class="session-title-chip" id="session-title" hidden title="点击重命名会话"></span>
         <span class="model-badge" id="model-badge" hidden></span>
+        <!-- T-0420：plan 模式角标（点开看已提交计划） -->
+        <span class="plan-chip" id="plan-chip" hidden title="计划模式：只规划不执行">📋 计划中</span>
         <!-- T-0407：本轮耗时/速率（服务端统计帧回填，流式中本地计时） -->
         <span class="turn-timer" id="turn-timer" hidden>0.0s</span>
         <span class="turn-tps" id="turn-tps" hidden></span>
@@ -80,6 +82,16 @@
 
       <!-- 中部：消息列表 -->
       <main id="messages" aria-live="polite"></main>
+
+      <!-- T-0420：plan 面板（提交后的计划正文；默认收起） -->
+      <aside id="plan-panel" class="plan-panel" hidden>
+        <div class="plan-panel-head">
+          <span class="plan-panel-title">计划</span>
+          <span id="plan-state" class="plan-state"></span>
+          <button id="plan-panel-close" class="plan-panel-close" title="收起">×</button>
+        </div>
+        <pre id="plan-text"></pre>
+      </aside>
 
       <!-- 底部：输入区 + 按钮 -->
       <footer id="composer">

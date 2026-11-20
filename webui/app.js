@@ -47,6 +47,12 @@
   var statsEl = document.getElementById("stats");   // E5：顶栏统计展示
   var sessionTitleEl = document.getElementById("session-title"); // 会话标题（点击重命名）
   var modelBadgeEl = document.getElementById("model-badge");     // 模型徽标
+  // T-0420：plan 角标/面板
+  var planChipEl = document.getElementById("plan-chip");
+  var planPanelEl = document.getElementById("plan-panel");
+  var planTextEl = document.getElementById("plan-text");
+  var planStateEl = document.getElementById("plan-state");
+  var planPanelCloseEl = document.getElementById("plan-panel-close");
   // E3：三栏骨架
   var appShell = document.getElementById("app-shell");
   var sidebarToggle = document.getElementById("sidebar-toggle");
@@ -116,6 +122,7 @@
   var token = params.get("token") || "";
   var history = [];               // [{role, content}]，发给 API 的会话历史
   var sessionId = null;           // 会话延续（来自服务端 session_id / 会话绑定帧）
+  var planState = { active: false, pending: false, text: "", title: "" }; // T-0420：plan 投影
   var controller = null;          // 当前请求的 AbortController
   var streaming = false;          // 是否正在流式输出
   var turnStartIndex = -1;        // 本轮开始前 history.length
@@ -709,12 +716,41 @@
   }
 
   // 从服务端拉当前会话元数据（拿标题）；503/404 静默忽略
+  // T-0420：plan 状态投影（服务端 /api/sessions* 的「计划」键或 SSE 计划帧）
+  function applyPlanState(plan) {
+    var wasActive = !!(planState && planState.active);
+    planState = (plan && typeof plan === "object") ? plan : { active: false, pending: false, text: "", title: "" };
+    var active = !!planState.active;
+    if (planChipEl) planChipEl.hidden = !active;
+    if (planTextEl) planTextEl.textContent = planState.text || "（还没有提交计划）";
+    if (planStateEl) {
+      planStateEl.textContent = active
+        ? "规划中…（退出后会提交计划）"
+        : (planState.text ? "已提交" + (planState.title ? "：" + planState.title : "") : "未启用");
+    }
+    if (planPanelEl) {
+      if (!active && !planState.text) planPanelEl.hidden = true;
+      // 本轮刚退出并提交了计划 → 自动铺开一次，让用户看见落下来的计划
+      else if (wasActive && !active) planPanelEl.hidden = false;
+    }
+  }
+
+  if (planChipEl && planPanelEl) {
+    planChipEl.addEventListener("click", function () {
+      planPanelEl.hidden = !planPanelEl.hidden;
+    });
+  }
+  if (planPanelCloseEl && planPanelEl) {
+    planPanelCloseEl.addEventListener("click", function () { planPanelEl.hidden = true; });
+  }
+
   function refreshSessionTitle(id) {
     if (!id) return;
     fetch("/api/sessions/current?session=" + encodeURIComponent(id), { headers: apiHeaders() })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (meta) {
         if (meta && meta.标题) setSessionTitle(meta.标题);
+        if (meta && meta["计划"]) applyPlanState(meta["计划"]);
       })
       .catch(function () { /* 标题拉不到不阻塞 */ });
   }
@@ -750,6 +786,7 @@
     userBubble = null;
     Messages.clear(); // 同时 ToolCard.reset()（清空右面板时间线/统计）
     setSessionTitle("");
+    applyPlanState(null); // T-0420：新会话不带上一会话的计划态
     renderContextUsage(0); // 新会话：用量归零
     if (window.Sidebar) Sidebar.setActive("");
     // T-0396：新会话沿用面板里暂存的目录选择（不选 = 全局默认，与改造前一致）
@@ -809,6 +846,7 @@
         if (window.Sidebar) Sidebar.setActive(id);
         setSessionTitle("");
         refreshSessionTitle(id);
+        applyPlanState(data && data["计划"] ? data["计划"] : null);
         // T-0396：已建会话的目录是会话属性（服务端按会话解析），chip 显示它
         if (window.NewSession && NewSession.bindSessionCwd) {
           NewSession.bindSessionCwd(data && data["工作目录"] ? data["工作目录"] : "");
@@ -981,6 +1019,11 @@
           // E5：压缩事件（服务端可选推送）——T-0398：顺手刷新输入区用量
           if (json && json.种类 === "压缩") {
             handleCompactionEvent(json);
+            continue;
+          }
+          // T-0420：plan 模式状态帧（/plan、/plan off 的即时回执）
+          if (json && json.种类 === "计划") {
+            applyPlanState(json.plan || json["计划"]);
             continue;
           }
           // E4：审批请求事件（SSE 推送新的审批项）

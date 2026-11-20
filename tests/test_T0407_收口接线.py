@@ -458,9 +458,10 @@ def test_静态钉住关键接线点():
     assert '目标规格' in web and '记录目标执行' in web and '造工具定义' in web
     assert 'goal/change' in web, '目标变更必须由本会话闭包落事件（工具注册表会裁掉 变更）'
     assert 'tool-goal' in entry
-    # 计划模式每轮重设
+    # 计划模式每轮重设（T-0420：只认会话事件折出的 active，不再由 topdown 自动触发）
     assert '代理.设计划模式' in entry
-    assert '会话模式 == "topdown"' in web
+    assert '己.取计划状态(实际会话标识)' in web
+    assert '计划模式提示' in web and '计划提示文本()' in web
     # goal 变更落事件 + 台账（续跑决策的输入）
     assert 'goal/change' in web and '挂目标台账' in web
     # 完成时间落库

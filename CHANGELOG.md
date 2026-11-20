@@ -6,6 +6,35 @@
 
 ## [未发布] — 2026-11-20
 
+### plan 模式闭环：/plan · exit_plan_mode · 投影（T-0420）
+
+- 新增 `src/计划工具.light`：`exit_plan_mode` 工具规格 + 参数校验（空/非字典/空白计划 fail-loud，
+  `title` 缺省取首个 markdown 标题、再回「计划」），回包 `concludesTurn:true`。
+- `src/计划模式.light` 新增 `折叠计划状态`：把 `plan/mode` 与最后一次 `plan/submitted` 折成
+  `{active,pending,text,title}`，供 HTTP 投影与前端共用。
+- `src/web服务器.light`：新增 `/plan`、`/plan on`、`/plan off` 命令（不调模型、不走轮次；忙时 409），
+  落 `command/run`/`command/done`/`plan/mode`；`active` 时只额外注册 `exit_plan_mode`，成功后落
+  `plan/mode(false)` + `plan/submitted`；`GET /api/sessions/current` 与 `GET /api/sessions/:id` 新增 `计划` 键。
+- **与 `topdown` 解耦**：计划模式不再由 `会话模式 == "topdown"` 自动打开，只认会话事件；
+  `src/代理.light` 的计划模式拦写对 `exit_plan_mode` 放行。
+- 提示注入：`src/预设组合.light` 的 `计划提示文本()` 取规划组 `plan-mode` section，
+  `src/总入口.light` 在系统提示前置注入（人格与默认契约仍在其后）。
+- 前端：`webui` 顶栏「📋 计划中」角标 + 计划面板（`applyPlanState`），SSE `种类:"计划"` 帧即时刷新；
+  重启/切会话按 `计划` 键回填。
+- 文档：API 参考补 `/plan` 命令面与 409；《模式规格》plan 段翻为「T-0420 已接线」并逐条列入口/出口/投影。
+- 新增 `tests/test_T0420_计划模式闭环.py`（纯逻辑 + 真起服务的命令闭环 + 接线静态），
+  `examples/test_计划模式.light` 补投影与出口工具判据。
+
+### brainstorm 装配层写文件收口（T-0419）
+
+- `src/总入口.light` 工具叶子映射：`读文件→tool-fs-read`、`写文件→tool-fs-write`。
+- `src/预设组合.light`：standard / 编码(`ptc`) / 组装(`cordis`) 三张基底表把单行 `tool-fs` 拆成
+  `tool-fs-read` + `tool-fs-write`；`brainstorm` 去掉写文件（只留读/搜索）。
+- 判据同步：`test_T0403` 的期望行数/叶子数与断言改用新叶子名，
+  `test_已知粒度缺口_写文件仍挂在tool_fs` 改名 `test_brainstorm装配层没有写文件` 并正向断言；
+  `examples/test_预设组合`、`test_预设挂载过滤`、`test_设置预设页` 行数同步。
+- 新增 `tests/test_T0419_工具叶子拆分.py`（映射层 + brainstorm 无写文件 + 读写落点不同）。
+
 ### 文档收口：T-0399 判据修正 + 对标台账 + 用户面文档（T-0418）
 
 - 修 `tests/test_T0399_新会话对齐.py::test_文档与对标登记到位`：不再断言「尾部 5 条正好 #366~#370」，

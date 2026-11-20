@@ -34,6 +34,7 @@
 
 从 内置核心字典 导入 字典包含键, 字典获取, 字典设置, 字典键列表
 从 内置核心列表 导入 列表追加, 列表包含
+从 内置核心判型 导入 是列表
 
 # =====================================================================
 # §1 共享组行（standard / ptc / cordis 三份 patch.yml 中逐字相同的部分）
@@ -45,6 +46,17 @@
   设 子表 为 [
     {"id": "plan-mode", "name": "@deepseek-ai/dsh-plan-mode", "group": 假, "config": {"section": "You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode."}, "disabled": 假, "已截断": ["section"]}]
   返回 {"id": "planning", "name": "cordis:group", "group": 真, "config": 子表, "disabled": 假}
+
+# T-0420：plan 模式的提示段（唯一数据权威仍是 plan-mode 行的 config.section）。
+#   缺行/缺键一律回空串，调用方自己决定是否跳过注入。
+段落 计划提示文本():
+  设 组 为 规划组行()
+  设 子表 为 字典获取(组, "config", [])
+  如果 是列表(子表) == 假 或 长度(子表) == 0:
+    返回 ""
+  设 行 为 子表[0]
+  设 配置 为 字典获取(行, "config", {})
+  返回 转字符串(字典获取(配置, "section", ""))
 
 # compaction：cordis:group（isolate.compaction + isolate.toolResultPruner）+ 三子项
 段落 压缩组行():

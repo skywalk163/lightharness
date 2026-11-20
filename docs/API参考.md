@@ -553,6 +553,23 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 - 会话正忙 → `409`，体为压缩不可用原因 + 排队提示文案；
 - 普通回包与 SSE 都会带压缩帧；前端「上下文 xx% / 压缩」按钮复用的就是这条通道。
 
+### 命令面：`/plan`（T-0420）
+
+`/plan` 与 `/goal`、`/compact` 一样是正文前缀命令，**不调模型、不消耗轮次**：
+
+- `/plan`、`/plan on` → 开计划模式；`/plan off` → 关；其它参数 → `400`，体为 `用法：/plan 或 /plan off`；
+- 会话正忙 → `409`，体为 `会话运行中：等本轮结束再切换计划模式`；
+- 开关会落三类事件：`command/run`（`name:"plan"`、`commandId`、`args`）、
+  `command/done`（`kind:"success"`）、`plan/mode`（`active`），重启后按事件折出状态；
+- 回执：流式先发一帧 `data: {"种类":"计划","plan":{...}}` 再 `data: [DONE]`；
+  非流式回 `{"状态":"ok","会话":"<id>","plan":{...}}`（首轮没带 `session_id` 时用 `会话` 绑定）。
+  `plan` 对象为 `{active,pending,text,title}`；
+- 开启后本轮多挂一个 `exit_plan_mode` 工具（`plan` 必填、`title` 可选）。
+  调用成功 → 落 `plan/mode(active=false)` + `plan/submitted{plan,title}`，
+  回包 `concludesTurn:true` 结束本轮；计划正文在后续对话里仍可作为上文继续讨论；
+- `GET /api/sessions/current` 与 `GET /api/sessions/:id` 新增 `计划` 键（同一 `plan` 形状）；
+- 与 `topdown` 模式**不再耦合**：`topdown` 只是提示词人格，计划模式只认会话事件。
+
 ### 忙时排队与插话（202 / 429 / 409）
 
 同一会话已有请求在跑时，`POST /v1/chat/completions` 按下面分流（判定键 = 实际会话 id）：
@@ -564,6 +581,7 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 | 带 `X-LH-Interrupt: 1` | `202` | `{"状态":"插话","位置":N,"会话":"<id>"}` |
 | 插话满（默认 4） | `429` | `{"状态":"拒绝","理由":"插话已满"}` |
 | `/compact` | `409` | 压缩不可用原因 + 排队提示文案 |
+| `/plan` | `409` | `会话运行中：等本轮结束再切换计划模式` |
 
 - 队列与插话由「持锁的那一轮」在轮末消费：**先续跑，再插话，最后出队**，共用一个 `当` 循环，
   不另起线程；
