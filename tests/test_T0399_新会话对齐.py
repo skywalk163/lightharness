@@ -35,8 +35,9 @@ T-0398（附件暂存 / 用量+压缩入口）单卡 verify 各自的绿，只�
     `<索引>.tmp`，两个请求同时落盘时后到者 rename 到已被前者 rename 掉的文件
     → `No such file or directory` → 该轮 500「会话持久化失败」。因此本文件第 3 组
     的「并发」用**两个 HTTP 客户端同时发**（浏览器里两个标签页的真实形状），
-    而不是在同一个进程里开两个线程直调 处理对话 —— 后者会稳定复现上述业务缺陷
-    （已按卡面红线「发现 T-0395~T-0398 的 bug 开新卡」登记，不在本卡里修）。
+    而不是在同一个进程里开两个线程直调 处理对话 —— 后者会稳定复现上述业务缺陷。
+    → **T-0408 已修**（临时名带 `<pid>.<随机>` 唯一后缀 + 进程内可重入锁），
+    该缺陷的正向判据在 `tests/test_T0410_会话读取三个缺陷.py`。
   - 文件类工具仍按**进程根**取根（`HARNESS_ROOT`/服务进程 cwd），不按会话 cwd；
     故第 3 组断言的是「同一份进程根文件，全放行会话读得到、全拒绝会话被挡」，
     不是「工具读到了该会话目录下的文件」。
@@ -370,13 +371,12 @@ def _detail(srv, sid):
     return data
 
 
-def _current(srv, sid, token=None):
-    """GET /api/sessions/current?session=<id>。
+def _current(srv, sid, token=SERVER_TOKEN):
+    """GET /api/sessions/current?session=<id>（带认证令牌 = 前端真实形状）。
 
-    ⚠️ 这里**故意不带认证令牌**：带令牌时服务端按「令牌→会话」绑定优先解析，
-    会忽略 `?session=`，返回该令牌最后创建的那个会话（见下方
-    `test_已知缺陷_current忽略session参数` 与另开的新卡）。本卡不动业务代码，
-    故正链用例走不带令牌的读法把链路本身验干净，缺陷单独钉在一条用例里。
+    T-0408 起 `?session=` 优先于「令牌→会话」绑定（令牌绑定只在没写 session 时兜底），
+    所以这里按真实客户端（webui/app.js 的 refreshSessionTitle）带令牌读，
+    并断言读回来的就是 <id> 这个会话。
     """
     status, data = srv.get('/api/sessions/current?' + _q(session=sid), token=token)
     assert status == 200, f'GET /api/sessions/current 失败 {status}: {data}'
@@ -530,8 +530,8 @@ def test_两会话不同目录不同权限并发隔离(server, work):
         f'两会话权限串了：甲={da["权限预设"]} 乙={db["权限预设"]}'
 
     # 全放行：工具真的执行了（有 tool-call 也有 tool-result）
-    # 注：这里只判「执行了没有」，不判结果文本 —— 落库的 tool-result 正文当前恒为空
-    # （见 test_已知缺陷_tool_result消息正文丢失 与另开的新卡），属既有业务缺陷。
+    # 注：这里只判「执行了没有」，不判结果文本 —— 正文提取的判据在
+    # test_tool_result消息正文落库 与 tests/test_T0410_会话读取三个缺陷.py（T-0408）。
     assert _count_role(da, 'tool-call') >= 1, '全放行会话连工具调用都没发起（工具表没接上？）'
     assert _count_role(da, 'tool-result') >= 1, '全放行会话的工具没执行'
 
@@ -628,32 +628,36 @@ def test_切回旧会话恢复模式权限目录(server, work):
 
 
 # --------------------------------------------------------------------------- #
-# 5.5 已知缺陷钉桩（本卡不动业务代码，缺陷另开卡；修好后这里的 strict xfail 会变红，
-#     提醒把钉桩改成正向断言）
+# 5.5 曾经踩过的两个缺陷（T-0399 用 strict xfail 钉住，T-0408 修好后转正向断言）
+#     详细判据在 tests/test_T0410_会话读取三个缺陷.py；这里只保留「整链上还成立」的最小检查。
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(strict=True, reason=(
-    '已知缺陷（另开卡）：GET /api/sessions/current 带认证令牌时忽略 ?session=，'
-    '返回该令牌最后创建的那个会话。前端 refreshSessionTitle(id) 正是带令牌取标题，'
-    '多会话下会拿到别的会话的标题。修好后请把本条改成正向断言。'))
-def test_已知缺陷_current忽略session参数(server, work):
+def test_current带令牌尊重session参数(server, work):
+    """GET /api/sessions/current 带认证令牌时，显式 ?session= 必须优先。
+
+    T-0408 之前：令牌→会话 绑定每次新建会话都被覆盖，于是带令牌问旧会话恒回最新那个，
+    前端 refreshSessionTitle(id) 会把标题刷成别的会话的。
+    """
     a = _new_session(server, '缺陷甲')
     b = _new_session(server, '缺陷乙')
     assert a['id'] != b['id']
 
-    # 带令牌问 A，应当回 A
+    # 带令牌问 A，必须回 A
     got = _current(server, a['id'], token=SERVER_TOKEN)
     assert got['id'] == a['id'], (
         f'带令牌 current?session={a["id"]} 回的是 {got["id"]}（应为 {a["id"]}）；'
         f'令牌绑定的会话是 {b["id"]}'
     )
+    # 没写 session 时令牌绑定仍作兜底（W2 契约不破）
+    status, bound = server.get('/api/sessions/current')
+    assert status == 200 and bound['id'] == b['id'], f'令牌兜底读法退化：{status} {bound}'
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    '已知缺陷（另开卡）：处理对话 落库的 tool-result 消息正文恒为空。'
-    '事件层 tool/result 的 content 是嵌套块（{type:tool-result, content:[{type:text,...}]}），'
-    '而落库路径只扫顶层 type=="text"，于是「结果」被写成空串，会话重放看不到工具输出。'
-    '修好后请把本条改成正向断言。'))
-def test_已知缺陷_tool_result消息正文丢失(server, work):
+def test_tool_result消息正文落库(server, work):
+    """落库的 tool-result 消息必须带工具输出正文（不是空串）。
+
+    T-0408 之前：事件层 content 是嵌套块（{type:tool-result, content:[{type:text,...}]}），
+    落库路径只扫顶层 type=="text"，「结果」恒为空串，会话重放看不到工具输出。
+    """
     sid = _new_session(server, '缺陷工具', 权限预设='全放行')['id']
     status, resp = _chat(server, sid, '读文件')
     assert status == 200, resp

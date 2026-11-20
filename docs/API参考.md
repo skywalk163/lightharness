@@ -460,18 +460,15 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 
 `400` 未指定会话（不带 `?session=` 且该令牌没绑定过会话）；`404` 会话不存在。
 
-**选会话的优先级（实测）**：先看认证令牌的「令牌 → 会话」绑定，**再**看 `?session=`。
-也就是说，**同一个令牌只要创建过会话**，带令牌调用本端点时 `?session=` 会被忽略，
-返回该令牌最后创建的那个会话。多会话场景请二选一：
+**选会话的优先级**：显式 `?session=` **优先**；只有在没写 `?session=` 时，才回落到
+认证令牌的「令牌 → 会话」绑定（该绑定 = 这个令牌**最近一次**新建的会话）。
+所以带令牌 + `?session=<id>` 拿到的就是 `<id>` 那个会话；指到不存在的会话返回 `404`，
+不会悄悄换成令牌绑定的那个。
 
-- 不带 `X-Auth-Token` 头、只用 `?session=`（本仓库 E2E 正链用例走这条）；
-- 或每次都新建令牌（令牌与会话一一对应时才无歧义）。
-
-> 这条优先级已按红线「发现 T-0395~T-0398 的 bug → 开新卡」单独登记；本卡只如实文档化，
-> 并在 `tests/test_T0399_新会话对齐.py::test_已知缺陷_current忽略session参数` 里用
-> `strict xfail` 钉住。缺陷修好后那条 xfail 会变红，提醒把文档与用例一起改回来。
-> 受影响的现有调用方：`webui/app.js` 的 `refreshSessionTitle()` 用带令牌的
-> `?session=<id>` 取标题，多会话时会拿到别的会话的标题。
+> T-0408 修掉了此前的反序（曾先看令牌绑定、忽略 `?session=`，导致多会话下
+> 带令牌问旧会话恒回最新那个，前端 `refreshSessionTitle()` 把标题刷成别的会话的）。
+> 正向判据：`tests/test_T0410_会话读取三个缺陷.py::test_带令牌_current优先用session参数`
+> 与 `tests/test_T0399_新会话对齐.py::test_current带令牌尊重session参数`。
 
 > 注：**切回会话的 cwd/模式/权限并不读这个端点**。前端 `selectSession()` 走的是
 > `GET /api/sessions/<id>`（见下节），那是「切回恢复」的真正数据通路。
@@ -518,16 +515,15 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 
 ```json
 {"角色": "tool-call",   "内容": "{\"工具名\": \"读文件\", \"参数\": \"{...}\", \"调用id\": \"c1\", \"轮次\": 1}"}
-{"角色": "tool-result", "内容": "{\"工具名\": \"\", \"结果\": \"\", \"错误\": \"\", \"是否错误\": false, \"调用id\": \"\"}"}
+{"角色": "tool-result", "内容": "{\"工具名\": \"读文件\", \"结果\": \"{\\\"内容\\\":\\\"...\\\"}\", \"错误\": \"\", \"是否错误\": false, \"调用id\": \"c1\"}"}
 ```
 
-⚠️ **已知缺口**：`tool-result` 的 `结果` 当前恒为空串。事件层
-（`<根>/legacy/<项目键>/<会话id>/session.jsonl` 的 `tool/result`）里结果正文是**在的**，
-但落库路径只扫顶层 `type == "text"` 的块，而实际结构是
-`{type:"tool-result", content:[{type:"text", text:...}]}`，于是取不到。
-影响：会话重放（`selectSession` → `Messages.renderHistory`）看不到工具输出。
-本卡按红线未改业务代码，已单独登记；用例见
-`tests/test_T0399_新会话对齐.py::test_已知缺陷_tool_result消息正文丢失`（`strict xfail`）。
+`tool-result` 的 `结果` 是工具输出的可读正文：落库路径与 SSE 同口径，会下钻
+`{type:"tool-result", content:[{type:"text", text:...}]}` 取子块 `text`，
+并按 `源序号` 关联 `tool/call` 回填 `工具名`、从块的 `toolCallId` 回填 `调用id`
+（T-0408 修复前这里恒为空串，会话重放看不到工具输出）。
+判据：`tests/test_T0410_会话读取三个缺陷.py::test_工具结果正文落库且有工具名`
+与 `tests/test_T0399_新会话对齐.py::test_tool_result消息正文落库`。
 
 #### 流式（`stream: true`）下的差异
 
