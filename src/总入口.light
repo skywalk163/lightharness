@@ -164,8 +164,10 @@
 段落 工具名到叶子(名字):
   如果 名字 == "bash":
     返回 ["tool-bash", "terminal-bash", "persistent-bash", "pty", "tool-pwsh", "terminal-pwsh", "persistent-pwsh"]
-  如果 名字 == "读文件" 或 名字 == "写文件":
-    返回 ["tool-fs"]
+  如果 名字 == "读文件":
+    返回 ["tool-fs-read"]
+  如果 名字 == "写文件":
+    返回 ["tool-fs-write"]
   如果 名字 == "搜索文件":
     返回 ["tool-fs-search"]
   # T-0407 需求一：goal 工具必须登记叶子，否则 预设保留工具 会把「目标」注销（T-0401 踩过的坑）

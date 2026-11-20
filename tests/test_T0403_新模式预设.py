@@ -13,11 +13,10 @@
      用 组装注册表(预设) 实际装配后看工具名集合；--preset 帮助与报错文案从 预设清单 拼出。
      这两组在本机缺 lightplugin 时 pytest.skip，不伪装成通过。
 
-已知粒度缺口（登记给 T-0407，本卡按契约不动 src/总入口.light）：
-  src/总入口.light 的 工具名到叶子 把「读文件」与「写文件」同映到 tool-fs 一个叶子，
-  因此 brainstorm 在**注册表装配层**仍会挂出「写文件」—— 只读约束目前由叶子集
-  （去掉 tool-bash / tool-pwsh / tool-goal / delegation）与提示共同保证。
-  拆叶子（tool-fs-read / tool-fs-write）后，test_已知粒度缺口 这条应改为断言「写文件」不在。
+已知粒度缺口（T-0419 已拆，保留本段作历史）：
+  T-0419 之前 总入口 把「读文件」与「写文件」同映到 tool-fs 一个叶子，brainstorm 装配层仍挂
+  「写文件」。T-0419 拆成 tool-fs-read / tool-fs-write 后，本文件改为正向断言
+  「brainstorm 装配层没有写文件」；反证见 tests/test_T0419_工具叶子拆分.py。
 
 反证（贴见 .hive/summary.md）：把 头脑风暴组合行表 改成「基底原样返回」（= 全 4 工具），
   叶子集与装配两组判据必须立红。
@@ -38,19 +37,19 @@ SHIPPED = ['standard', 'ptc', 'minimal', 'cordis']
 
 # 组合行数（插件行 = 行树递归计数含组行；展平后 = 插件行 + 1 条声明行）
 EXPECTED_ROWS = {
-    'standard': (32, 33),
-    'ptc': (33, 34),
+    'standard': (33, 34),
+    'ptc': (34, 35),
     'minimal': (7, 8),
-    'cordis': (33, 34),
-    'topdown': (32, 33),   # 与 standard 同构：全 4 工具 + 目标工具
-    'bottomup': (30, 31),  # 删 tool-goal / tool-ask-user
-    'brainstorm': (19, 20),  # 再删 tool-bash / tool-pwsh / delegation 组（1+9）
-    'lazy': (31, 32),      # 删 tool-ask-user
+    'cordis': (34, 35),
+    'topdown': (33, 34),   # 与 standard 同构：全 4 工具 + 目标工具
+    'bottomup': (31, 32),  # 删 tool-goal / tool-ask-user
+    'brainstorm': (19, 20),  # 基底拆 fs 两行后再删 write / bash / pwsh / delegation 组（1+1+1+9+1）
+    'lazy': (32, 33),      # 删 tool-ask-user
 }
 
 EXPECTED_LEAF_COUNT = {
-    'standard': 29, 'ptc': 30, 'minimal': 6, 'cordis': 30,
-    'topdown': 29, 'bottomup': 27, 'brainstorm': 17, 'lazy': 28,
+    'standard': 30, 'ptc': 31, 'minimal': 6, 'cordis': 31,
+    'topdown': 30, 'bottomup': 28, 'brainstorm': 17, 'lazy': 29,
 }
 
 
@@ -206,31 +205,32 @@ def test_工具集按规格表_叶子层(tmp_path):
     for pid, n in EXPECTED_LEAF_COUNT.items():
         assert kv.get('叶数_' + pid) == str(n), (pid, kv.get('叶数_' + pid), out)
 
-    # topdown：全 4 工具 + 目标工具
+    # topdown：全 4 工具 + 目标工具（T-0419 后 fs 拆成读/写两个叶子）
     top = leaves('topdown')
-    for need in ('tool-bash', 'tool-fs', 'tool-fs-search', 'tool-goal'):
+    for need in ('tool-bash', 'tool-fs-read', 'tool-fs-write', 'tool-fs-search', 'tool-goal'):
         assert need in top, (need, out)
 
     # bottomup：全 4 工具，**不给**目标工具；也不给提问工具
     bot = leaves('bottomup')
-    for need in ('tool-bash', 'tool-fs', 'tool-fs-search'):
+    for need in ('tool-bash', 'tool-fs-read', 'tool-fs-write', 'tool-fs-search'):
         assert need in bot, (need, out)
     assert 'tool-goal' not in bot, out
     assert 'tool-ask-user' not in bot, out
 
-    # brainstorm：只读 —— 没有 shell、没有目标工具、没有委派组（子 Agent 能绕过只读）
+    # brainstorm：只读 —— 没有 shell、没有写叶子、没有目标工具、没有委派组（子 Agent 能绕过只读）
     brain = leaves('brainstorm')
     assert 'tool-bash' not in brain, out
     assert 'tool-pwsh' not in brain, out
+    assert 'tool-fs-write' not in brain, out
     assert 'tool-goal' not in brain, out
     assert 'tool-subagent' not in brain, out
     assert 'workflow-ptc' not in brain, out
-    for need in ('tool-fs', 'tool-fs-search'):
+    for need in ('tool-fs-read', 'tool-fs-search'):
         assert need in brain, (need, out)
 
     # lazy：全 4 工具（只砍掉提问工具）
     laz = leaves('lazy')
-    for need in ('tool-bash', 'tool-fs', 'tool-fs-search'):
+    for need in ('tool-bash', 'tool-fs-read', 'tool-fs-write', 'tool-fs-search'):
         assert need in laz, (need, out)
     assert 'tool-ask-user' not in laz, out
 
@@ -308,21 +308,21 @@ def test_工具集按规格表_装配层(tmp_path):
     # brainstorm：bash 不在（这是「只给只读工具」在装配层能验到的部分）
     assert 'bash' not in tools('brainstorm'), out
     assert '搜索文件' in tools('brainstorm'), out
-    assert set(tools('brainstorm')) <= {'读文件', '写文件', '搜索文件'}, out
+    assert set(tools('brainstorm')) <= {'读文件', '搜索文件'}, out
+    assert '写文件' not in tools('brainstorm'), out
 
 
-def test_已知粒度缺口_写文件仍挂在tool_fs(tmp_path):
-    """钉住当前行为：tool-fs 一叶同时承载读/写，故 brainstorm 装配层仍出「写文件」。
-
-    T-0407 把叶子拆成 tool-fs-read / tool-fs-write 之后，本条应改成断言「写文件」不在。
-    """
+def test_brainstorm装配层没有写文件(tmp_path):
+    """T-0419 拆叶子后，brainstorm 在**装配层**就不该出现「写文件」（不只是提示词约束）。"""
     rc, out, kv = _run(REG_DRIVER, tmp_path, 'reg')
     if rc != 0 and _missing_module(out):
         import pytest
         pytest.skip('本机缺 lightplugin 兄弟仓：装配层用例请在 192.168.0.88 上跑')
     assert rc == 0, out
     brain = [x for x in kv.get('装配_brainstorm', '').split(',') if x]
-    assert '写文件' in brain, ('粒度缺口已变化，请同步本条断言（见 T-0407 拆叶子）', out)
+    assert '写文件' not in brain, ('brainstorm 装配层仍挂写文件（叶子没拆干净）', out)
+    assert '读文件' in brain, ('brainstorm 装配层丢了读文件（删过头）', out)
+    assert '搜索文件' in brain, out
 
 
 # ---------------------------------------------------------------------------
