@@ -1,0 +1,11 @@
+{
+  "hosts": {
+    "fb98": {
+      "lightmem": {
+        "path": "/home/skywalk/dswork/lightmem",
+        "updated": "2026-11-20T17:45:35+08:00",
+        "by": "controller"
+      }
+    }
+  }
+}
