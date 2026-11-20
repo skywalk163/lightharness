@@ -450,6 +450,9 @@
 
   # 计划模式写拦截：分类非放行（审批/拒绝 = 写/修改操作）即记 tool/error 并跳过
   段落 计划模式拦写(轮次, 步骤, 块):
+    # T-0420：plan 的出口工具必须能在 plan 模式下执行，否则「进得去、出不来」。
+    如果 块["name"] == "exit_plan_mode":
+      返回 假
     设 分类 为 己.权限管理器.分类工具(块["name"], 块["arguments"])
     如果 分类 != 分类放行:
       己.会话对象.记录事件("tool/error", ["turn": 轮次, "step": 步骤, "callId": 块["id"], "name": 块["name"], "错误": "plan-mode blocks write operation: " + 分类])

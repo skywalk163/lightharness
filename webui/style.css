@@ -930,6 +930,58 @@ body {
   white-space: nowrap;
 }
 
+/* T-0420：计划模式角标与计划面板 */
+.plan-chip {
+  font-size: 11px;
+  color: #d29922;
+  background: rgba(210, 153, 34, .12);
+  border: 1px solid rgba(210, 153, 34, .45);
+  border-radius: 999px;
+  padding: 2px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plan-chip:hover { background: rgba(210, 153, 34, .22); }
+.plan-chip[hidden] { display: none; }
+
+.plan-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 92px;
+  width: min(460px, calc(100vw - 36px));
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg, #161b22);
+  border: 1px solid rgba(210, 153, 34, .45);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  z-index: 40;
+  overflow: hidden;
+}
+.plan-panel[hidden] { display: none; }
+.plan-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(210, 153, 34, .28);
+  font-size: 12px;
+}
+.plan-state { color: var(--muted, #8b949e); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-panel-close { background: none; border: none; color: var(--muted, #8b949e); cursor: pointer; font-size: 16px; line-height: 1; }
+.plan-panel-close:hover { color: #f0f6fc; }
+.plan-panel pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text, #c9d1d9);
+}
+
 .rp-toggle.active {
   color: var(--green);
   border-color: rgba(63, 185, 80, .4);
