@@ -79,6 +79,11 @@
   var turnStartedAt = 0;    // 本地计时起点（毫秒）；统计帧到达后以服务端 耗时秒 为准
   var turnTimerHandle = null;
   var lastStats = null;
+  // T-0422：一轮请求的「世代号」。流式中切换会话要中止老流，而 abort 引发的
+  //   AbortError 是异步到达的；老请求的收口只能改**它自己那一轮**的 UI。
+  //   切走时 turnEpoch 自增，老请求的 then/catch/finally 与 SSE 帧处理先比对
+  //   epoch，对不上就静默放弃（见 isTurnAlive）。
+  var turnEpoch = 0;
   // T-0407 需求三：下拉里要出现四种组合型模式（自上而下/自下而上/头脑风暴/懒人）。
   var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
   //   标识在运行时注册；源码级用拼接常量，避免 T-0403 的「热点文件不得含模式标识」
@@ -806,18 +811,61 @@
     applySessionMode(fallbackMode, "");
   }
 
-  // 切换会话：拉取完整历史并回放
-  function selectSession(id) {
-    if (streaming) {
-      addSystem("正在流式输出中，请稍后再切换会话。", true);
-      return;
+  // ---------- T-0422：流式中切换会话 = 先中止当前流，再切换 ----------
+  //   语义与「停止」按钮一致：abort 后保留已渲染内容（finalizeTurn），不丢已收到的文本。
+  //   竞态处理用「世代号」：切走时 turnEpoch 自增，老请求的
+  //   then/catch/finally 及 SSE 残留帧在动手前先比对 epoch，对不上就静默放弃——
+  //   abort 的 AbortError 即使晚到，也不会 finalize/污染已经切过去的新会话。
+  function isTurnAlive(epoch) { return epoch === turnEpoch; }
+
+  // 返回被摘下的排队条数；-1 表示本来就没在流式输出（调用方据此跳过提示）。
+  //   提示由调用方在**新会话渲染完成之后**再发（renderHistory/newChatState 会清屏，
+  //   在这里发会被清掉，用户看不到）。
+  function abortActiveTurnForSwitch() {
+    if (!streaming) return -1;
+    // 1) 老轮次作废：之后的异步回调（AbortError → finalizeTurn / setStreaming(false) /
+    //    controller 置空）都因 epoch 不符而跳过，不会打到新会话的 history 与气泡上。
+    turnEpoch += 1;
+    // 2) 老会话里排队的消息不能发到新会话：整队摘下（这是本卡的队列取舍：
+    //    丢弃「自动发送」语义，但把文本放回输入框，不静默吞掉用户写下的字）。
+    var droppedQueue = localQueue.slice();
+    localQueue.length = 0;
+    renderQueueChip();
+    if (droppedQueue.length && inputEl) {
+      var lost = [];
+      for (var q = 0; q < droppedQueue.length; q++) lost.push(droppedQueue[q].text);
+      if (!inputEl.value.trim()) {
+        inputEl.value = lost.join("\n");
+        autoResize();
+        updateCharCount();
+      }
     }
+    // 3) 同步收口这一轮：结束气泡的 streaming 态与本地计时，再 abort 底层请求
+    finalizeTurn();
+    setStreaming(false);
+    if (controller) { controller.abort(); controller = null; }
+    return droppedQueue.length;
+  }
+
+  // 切换后给一句中文交代（按是否丢弃过排队消息分两种文案）
+  function announceStreamAborted(dropped) {
+    if (dropped == null || dropped < 0) return;
+    addSystem(dropped
+      ? "已停止当前输出并切换会话（" + dropped + " 条排队消息已放回输入框）。"
+      : "已停止当前输出并切换会话。");
+  }
+
+  // 切换会话：拉取完整历史并回放
+  // T-0422：流式输出中不再拦人——先停掉当前流，再进目标会话（老会话内容保留）。
+  function selectSession(id) {
     if (!id) return;
     if (id === sessionId) {
       if (window.Sidebar) Sidebar.setActive(id);
       closeSidebarOnMobile();
       return;
     }
+    var abortedQueue = -1;                                  // T-0422：-1 = 原本没在流式
+    if (streaming) abortedQueue = abortActiveTurnForSwitch();
     fetch("/api/sessions/" + encodeURIComponent(id), { headers: apiHeaders() })
       .then(function (resp) {
         if (!resp.ok) throw new Error("HTTP " + resp.status);
@@ -832,6 +880,7 @@
         userBubble = null;
         // 回放到 UI（同时重置工具卡片注册表/时间线）
         Messages.renderHistory(list);
+        announceStreamAborted(abortedQueue); // T-0422：切会话的交代放在渲染之后，不会被清屏带走
         // 同步本地 history，保证后续请求带上文
         for (var i = 0; i < list.length; i++) {
           var m = list[i];
@@ -866,6 +915,7 @@
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
       })
       .catch(function (e) {
+        announceStreamAborted(abortedQueue);
         addSystem("加载会话失败：" + (e && e.message ? e.message : "网络错误"), true);
       });
   }
@@ -989,13 +1039,15 @@
   }
 
   // ---------- SSE 流式解析 ----------
-  function readStream(resp) {
+  //   T-0422：带上发起这一轮的 epoch；切会话后残留帧一律丢弃，不往新会话里追加文本。
+  function readStream(resp, epoch) {
     var reader = resp.body.getReader();
     var decoder = new TextDecoder();
     var buf = "";
     var finished = false;
 
     function handleFrame(frame) {
+      if (!isTurnAlive(epoch)) { finished = true; return; }
       var lines = frame.split("\n");
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i].trim();
@@ -1051,10 +1103,11 @@
 
     function pump() {
       return reader.read().then(function (res) {
+        if (!isTurnAlive(epoch)) { finished = true; return; }   // T-0422：老轮次已作废，停止消费
         if (res.done) return;
         buf += decoder.decode(res.value, { stream: true }).replace(/\r\n/g, "\n");
         var idx;
-        while ((idx = buf.indexOf("\n\n")) !== -1 && !finished) {
+        while ((idx = buf.indexOf("\n\n")) !== -1 && !finished && isTurnAlive(epoch)) {
           var frame = buf.slice(0, idx);
           buf = buf.slice(idx + 2);
           handleFrame(frame);
@@ -1167,6 +1220,8 @@
 
     var headers = { "Content-Type": "application/json" };
     var started = false; // 是否已进入流式阶段（区分"连不上"和"中途断开"）
+    // T-0422：记下本轮世代号；切会话会让 turnEpoch 自增，之后的回调都先比对它。
+    var myEpoch = turnEpoch;
     controller = new AbortController();
 
     return fetch(API_PATH, {
@@ -1175,6 +1230,7 @@
       body: JSON.stringify(body),
       signal: controller.signal
     }).then(function (resp) {
+      if (!isTurnAlive(myEpoch)) return null;   // T-0422：已切走，老响应不再改任何 UI/附件
       if (!resp.ok) {
         handleHttpError(resp, isCommand ? "" : text);
         return null;
@@ -1191,10 +1247,11 @@
           return null;
         });
       }
-      return readStream(resp);
+      return readStream(resp, myEpoch);
     }).then(function () {
-      if (started) finalizeTurn();
+      if (started && isTurnAlive(myEpoch)) finalizeTurn();
     }).catch(function (err) {
+      if (!isTurnAlive(myEpoch)) return;   // T-0422：切会话后老请求的失败不落到新会话
       if (err && err.name === "AbortError") {
         finalizeTurn();               // 用户主动停止：保留已渲染内容
       } else if (started) {
@@ -1209,6 +1266,9 @@
           "），请确认服务已启动、地址与端口正确。", true);
       }
     }).finally(function () {
+      // T-0422：老轮次的收尾不能关掉新会话正在跑的流（setStreaming(false) 会放开
+      //   发送键、停计时、触发队列 flush），所以同样按 epoch 判定。
+      if (!isTurnAlive(myEpoch)) return;
       setStreaming(false);
       controller = null;
     });
@@ -1481,11 +1541,11 @@
     newSessionBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      if (streaming) {
-        addSystem("正在流式输出中，请稍后再新建会话。", true);
-        return;
-      }
+      // T-0422：流式中允许新建会话——先停掉当前流（老会话内容保留），再进空状态
+      var abortedQueue = -1;
+      if (streaming) abortedQueue = abortActiveTurnForSwitch();
       newChatState();
+      announceStreamAborted(abortedQueue);
       closeSidebarOnMobile();
       inputEl.focus();
     }, true);
