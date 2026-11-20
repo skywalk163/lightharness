@@ -12,7 +12,7 @@
  *      · 「设为全局默认」按钮 → 既有 POST /api/cwd（会 chdir + 落 settings.json，明确提示）
  *  - 空会话（还没有 session_id）选目录后，chip 显示「本会话：/x」，首条消息 body 带 工作目录；
  *    服务端 400 时由宿主（app.js）调用 markSessionCwdError() 把 chip 标红并显示理由，**不丢目录**。
- *  - 模式（standard/cordis/ptc/minimal）与权限（全放行/按类别/全拒绝/自定义）下拉：
+ *  - 模式（standard/cordis/ptc/minimal/topdown/bottomup/brainstorm/lazy）与权限（全放行/按类别/全拒绝/自定义）下拉：
  *    本卡只做 UI 暂存 + 随请求携带；权限真正按会话生效是 T-0397，所以这里必须有
  *    「全局默认 / 未落库」态，不得假装已生效。
  *  - 「＋ 新会话」不再立刻 POST /api/sessions（避免生产空会话）：只进空状态，
@@ -34,7 +34,12 @@
   // 上次真正用过的会话目录：只用于「刷新后 chip 仍显示该目录」。
   //   键不存在（老用户/没选过）→ 什么都不做，行为与改造前完全一致。
   var LAST_CWD_KEY = "lh.lastCwd";
-  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+  // T-0403：新增四个组合型模式（自上而下 / 自下而上 / 头脑风暴 / 懒人）。
+  //   只在本文件登记；app.js:67 的 MODE_NAMES 与 index.html 的 <option> 是 T-0407 的热点，未在此改。
+  var MODE_NAMES = {
+    standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简",
+    topdown: "自上而下", bottomup: "自下而上", brainstorm: "头脑风暴", lazy: "懒人"
+  };
   var PERM_NAMES = ["全放行", "按类别", "全拒绝", "自定义"];
 
   var el = {};              // DOM 句柄
@@ -188,7 +193,7 @@
     h += '<div class="ns-two-col">';
     h += '<div class="ns-col"><label class="ns-field-label" for="ns-mode-select">模式</label>' +
       '<select id="ns-mode-select" class="ns-select">';
-    var modeOrder = ["standard", "cordis", "ptc", "minimal"];
+    var modeOrder = ["standard", "cordis", "ptc", "minimal", "topdown", "bottomup", "brainstorm", "lazy"];
     for (var m = 0; m < modeOrder.length; m++) {
       var mv = modeOrder[m];
       h += '<option value="' + escapeAttr(mv) + '"' + (mode === mv ? " selected" : "") + ">" +
