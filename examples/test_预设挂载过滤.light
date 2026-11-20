@@ -7,7 +7,7 @@
 #   展平行 **不产出组行自身**（组行只递归），故「扁平 id 集」= 叶子行 id 集：
 #     minimal 6（persona / pty / terminal-bash / persistent-bash / terminal-pwsh / persistent-pwsh，
 #               组行 persistent-shell 不在集内）
-#     standard 29、ptc 30、cordis 30（三个组行 planning / compaction / delegation 均不在集内）
+#     standard 30、ptc 31、cordis 31（三个组行 planning / compaction / delegation 均不在集内；T-0419 拆 fs 后 +1）
 #   对照：src/预设组合.light 的 组合统计（插件行 7 / 展平后 8）是**含组行与 preset-* 声明行**
 #   的计数口径 —— 与本模块的「可挂载 id 数」不是同一口径，故本用例挂载数以 6 为上限，不凑 7/8。
 #
@@ -123,10 +123,10 @@
   断言真(列表包含(极简扁平, "persona"), "1b 扁平集含 persona")
   断言真(列表包含(极简扁平, "terminal-bash"), "1c 扁平集含组内行 terminal-bash")
   断言真(列表包含(极简扁平, "persistent-shell") == 假, "1d 组行 persistent-shell 不在扁平集")
-  断言相等(长度(挂扁平标识表("standard", 空)), 29, "1e standard 扁平 id 数")
+  断言相等(长度(挂扁平标识表("standard", 空)), 30, "1e standard 扁平 id 数")
   断言真(列表包含(挂扁平标识表("standard", 空), "planning") == 假, "1f standard 组行 planning 不在扁平集")
-  断言相等(长度(挂扁平标识表("ptc", 空)), 30, "1g ptc 扁平 id 数")
-  断言相等(长度(挂扁平标识表("cordis", 空)), 30, "1h cordis 扁平 id 数")
+  断言相等(长度(挂扁平标识表("ptc", 空)), 31, "1g ptc 扁平 id 数")
+  断言相等(长度(挂扁平标识表("cordis", 空)), 31, "1h cordis 扁平 id 数")
   断言相等(组合统计("minimal"), {"声明": 1, "插件行": 7, "展平后": 8}, "1i 对照：组合统计口径含组行与声明行")
 
   # ---- §2 恒假求值（无表达式判真）→ 组合内全挂载 ----

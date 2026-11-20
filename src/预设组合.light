@@ -74,7 +74,7 @@
 # §2 四预设的插件行表（逐行对齐各自 patch.yml 的 config.plugins）
 # =====================================================================
 
-# standard（order 1）：19 个顶层行，其中 3 个组行共 13 个子项 → 递归 32 行
+# standard（order 1）：20 个顶层行，其中 3 个组行共 13 个子项 → 递归 33 行
 段落 标准组合行表():
   设 规划 为 规划组行()
   设 压缩 为 压缩组行()
@@ -84,7 +84,8 @@
     {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
     {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
     {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
-    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-read", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-write", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
     {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
     {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
     {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem", "group": 假, "config": {}, "disabled": 假},
@@ -103,7 +104,7 @@
 
 # ptc（order 2）：standard 全部 + tool-presentation（mode: ptc）；
 #   且 delegation 组内的 workflow-ptc / tool-workflow 置 disabled: true。
-#   20 个顶层行 + 13 个子项 → 递归 33 行
+#   21 个顶层行 + 13 个子项 → 递归 34 行
 段落 编码组合行表():
   设 规划 为 规划组行()
   设 压缩 为 压缩组行()
@@ -113,7 +114,8 @@
     {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
     {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
     {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
-    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-read", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-write", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
     {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
     {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
     {"id": "skill-filesystem", "name": "@deepseek-ai/dsh-skill-filesystem", "group": 假, "config": {}, "disabled": 假},
@@ -151,7 +153,7 @@
 # cordis（order 4）：standard 去掉 tool-presentation，改为 tool-cordis；
 #   skill-filesystem 多一项 customSkillDirs（含 !!js 的单元素列表，非标量 → 不登记，记 已截断）；
 #   tool-plugin-manager 的 disabled 是 !!js "!ctx.get('profileContext')"（而非字面 true）。
-#   20 个顶层行 + 13 个子项 → 递归 33 行
+#   21 个顶层行 + 13 个子项 → 递归 34 行
 段落 组装组合行表():
   设 规划 为 规划组行()
   设 压缩 为 压缩组行()
@@ -161,7 +163,8 @@
     {"id": "agent-instructions", "name": "@deepseek-ai/dsh-agent-instructions", "group": 假, "config": {"maxBytes": 65536}, "disabled": 假},
     {"id": "tool-bash", "name": "@deepseek-ai/dsh-tool-bash", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform === 'win32'"}},
     {"id": "tool-pwsh", "name": "@deepseek-ai/dsh-tool-pwsh", "group": 假, "config": {}, "disabled": {"js表达式": "process.platform !== 'win32'"}},
-    {"id": "tool-fs", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-read", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
+    {"id": "tool-fs-write", "name": "@deepseek-ai/dsh-tool-fs", "group": 假, "config": {}, "disabled": 假},
     {"id": "tool-fs-search", "name": "@deepseek-ai/dsh-tool-fs-search", "group": 假, "config": {"sampleOverCapGlobResults": 假}, "disabled": 假},
     {"id": "tool-jobs", "name": "@deepseek-ai/dsh-tool-jobs", "group": 假, "config": {}, "disabled": 假},
     {"id": "command-goal", "name": "@deepseek-ai/dsh-command-goal", "group": 假, "config": {}, "disabled": 假},
@@ -189,20 +192,20 @@
 #   「这个模式能碰到哪些工具」，因此各表一律以 标准组合行表 为基底增删，不整份复制。
 #
 #   增删依据（逐条对得上任务规格表，改动都要能指回某一行理由）：
-#     topdown    —— 全 4 工具 + 目标工具：基底已含 tool-bash/tool-fs/tool-fs-search
+#     topdown    —— 全 4 工具 + 目标工具：基底已含 tool-bash/tool-fs-read/tool-fs-write
 #                   与 tool-goal，故不删不加（差异全在提示：计划树是一等产物）。
 #     bottomup   —— 全 4 工具，**不给**目标工具 → 删 tool-goal；
 #                   且「不主动请求确认」→ 删 tool-ask-user（人机介入点在数据层的投影）。
 #     brainstorm —— **只给只读工具** → 删 tool-bash / tool-pwsh（写盘与执行入口），
-#                   删 tool-goal（会推进改动），删 delegation 组（子 Agent 能绕过只读约束）；
-#                   保留 tool-fs / tool-fs-search（读文件 / 搜索文件）与压缩、规划。
+#                   删 tool-fs-write（写文件叶子），删 tool-goal（会推进改动），
+#                   删 delegation 组（子 Agent 能绕过只读约束）；
+#                   保留 tool-fs-read / tool-fs-search（读文件 / 搜索文件）与压缩、规划。
 #     lazy       —— 全 4 工具；「不追问细节、选默认值继续」→ 删 tool-ask-user。
 #
-#   ⚠ 已知粒度缺口（登记给 T-0407，本卡不改总入口）：src/总入口.light 的 工具名到叶子
-#   把「读文件」与「写文件」同映到 tool-fs 一个叶子上，所以注册表装配层面 brainstorm
-#   仍会出现「写文件」；只读约束在数据层由叶子集表达，注册表层等 T-0407 拆叶子
-#   （tool-fs-read / tool-fs-write）后才落得下去。同理「目标工具」本仓尚无运行时实现，
-#   tool-goal 只是声明行。
+#   T-0419 已拆叶子：总入口 把「读文件」映射到 tool-fs-read、「写文件」映射到 tool-fs-write，
+#   基底行表也随之拆成两行；brainstorm 删 tool-fs-write 后，**装配层**真的没有「写文件」了，
+#   不再只靠数据层叶子集兜底。反证见 tests/test_T0419_工具叶子拆分.py。
+#   「目标工具」本仓仍只是声明行（运行时实现见 T-0401/T-0407）。
 # =====================================================================
 
 # 增删组合行(基底行表, 删除标识表, 增补行表) -> 新行表
@@ -232,7 +235,7 @@
 
 # 头脑风暴（order 7）：只给只读工具（读文件 / 搜索文件），不给写文件与 bash
 段落 头脑风暴组合行表():
-  设 删表 为 ["tool-bash", "tool-pwsh", "tool-goal", "delegation"]
+  设 删表 为 ["tool-bash", "tool-pwsh", "tool-fs-write", "tool-goal", "delegation"]
   设 空增表 为 []
   返回 增删组合行(标准组合行表(), 删表, 空增表)
 
