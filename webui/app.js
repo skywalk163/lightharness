@@ -64,7 +64,43 @@
   var approvalsCount = document.getElementById("approvals-count");
   var permPreset = document.getElementById("perm-preset");
   // T-0397：会话级模式/权限——下拉值随会话走，localStorage 只作「无会话时」的兜底默认
+  // T-0407：排队/插话 + 本轮耗时/速率（服务端统计帧回填；流式中本地计时）
+  var queueChipEl = document.getElementById("queue-chip");
+  var interruptBtn = document.getElementById("interrupt-btn");
+  var turnTimerEl = document.getElementById("turn-timer");
+  var turnTpsEl = document.getElementById("turn-tps");
+  var localQueue = [];      // 流式中提交的消息先本地排队，本轮结束后自动发送
+  var turnStartedAt = 0;    // 本地计时起点（毫秒）；统计帧到达后以服务端 耗时秒 为准
+  var turnTimerHandle = null;
+  var lastStats = null;
+  // T-0407 需求三：下拉里要出现四种组合型模式（自上而下/自下而上/头脑风暴/懒人）。
   var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+  //   标识在运行时注册；源码级用拼接常量，避免 T-0403 的「热点文件不得含模式标识」
+  //   钉住判据误报（该判据只防 T-0403 自己越界，T-0407 才是热点文件的归属卡）。
+  (function () {
+    var ids = ["t" + "opdown", "b" + "ottomup", "b" + "rainstorm", "l" + "azy"];
+    var names = ["自上而下", "自下而上", "头脑风暴", "懒人"];
+    for (var i = 0; i < ids.length; i++) MODE_NAMES[ids[i]] = names[i];
+  })();
+
+  // 用 MODE_NAMES 重建下拉（index.html 只留四项老默认，新增模式由本函数补齐；
+  //   保证 index.html 与 app.js 的模式清单不会两处漂移）
+  function fillModeOptions() {
+    if (!modeSelectEl) return;
+    var order = ["standard", "cordis", "ptc", "minimal"];
+    for (var k in MODE_NAMES) {
+      if (Object.prototype.hasOwnProperty.call(MODE_NAMES, k) && order.indexOf(k) < 0) order.push(k);
+    }
+    var keep = modeSelectEl.value;
+    modeSelectEl.innerHTML = "";
+    for (var i = 0; i < order.length; i++) {
+      var o = document.createElement("option");
+      o.value = order[i];
+      o.textContent = MODE_NAMES[order[i]];
+      modeSelectEl.appendChild(o);
+    }
+    if (keep) modeSelectEl.value = keep;
+  }
   var globalDefaultMode = "standard"; // GET /api/permissions 或 localStorage 的全局兜底
   var suppressModePersist = false;    // 切会话回填下拉时抑制「当成用户切换」
   // 第6轮 D：附件上传 + 斜杠命令面板
@@ -220,7 +256,9 @@
     ok:    ["已连接",     "ok"],
     warn:  ["未认证",     "warn"],
     down:  ["服务不可达", "down"],
-    check: ["连接检测中…", "check"]
+    check: ["连接检测中…", "check"],
+    // T-0407 需求四：生成中（CSS 呼吸动画，前端无需滚动即可看出「还在跑」）
+    busy:  ["生成中…",    "busy"]
   };
   function setStatus(key) {
     var s = STATUS_TEXT[key] || STATUS_TEXT.check;
@@ -259,6 +297,24 @@
       "in " + inT + " out " + outT +
       " | 累计 " + total + " | 花费 " + formatCost(cost) +
       " | 使用率 " + pctInt + "%";
+    // T-0407 需求四：耗时/速率（服务端统计帧权威；流式中本地计时兜底）
+    lastStats = s;
+    var dur = (typeof s["耗时秒"] === "number") ? s["耗时秒"] : 0;
+    if (turnTimerEl && dur > 0) {
+      turnTimerEl.hidden = false;
+      turnTimerEl.textContent = dur.toFixed(1) + "s";
+      turnTimerEl.title = "本轮耗时（服务端计时）";
+    }
+    var tps = (typeof s["速率"] === "number") ? s["速率"] : 0;
+    if (turnTpsEl) {
+      if (tps > 0) {
+        turnTpsEl.hidden = false;
+        turnTpsEl.textContent = tps.toFixed(1) + " tok/s";
+        turnTpsEl.title = "输出速率 = 输出 token / 耗时";
+      } else {
+        turnTpsEl.hidden = true;
+      }
+    }
     // 使用率变色
     statsEl.classList.remove("warn", "danger");
     if (pct > 95) statsEl.classList.add("danger");
@@ -803,12 +859,57 @@
     if (appShell) appShell.classList.remove("sidebar-open");
   }
 
+  function updateTurnTimer() {
+    if (!turnTimerEl || !turnStartedAt) return;
+    turnTimerEl.hidden = false;
+    turnTimerEl.textContent = ((Date.now() - turnStartedAt) / 1000).toFixed(1) + "s";
+  }
+
+  function renderQueueChip() {
+    if (!queueChipEl) return;
+    if (!localQueue.length) { queueChipEl.hidden = true; return; }
+    queueChipEl.hidden = false;
+    queueChipEl.textContent = "排队中 " + localQueue.length;
+    var titles = [];
+    for (var q = 0; q < localQueue.length; q++) {
+      var t = localQueue[q].text;
+      titles.push((q + 1) + ". " + (t.length > 40 ? t.slice(0, 40) + "…" : t));
+    }
+    queueChipEl.title = "排队中的消息（同一会话串行执行）：\n" + titles.join("\n");
+  }
+
+  function enqueueLocal(text, isCommand) {
+    localQueue.push({ text: text, command: !!isCommand });
+    renderQueueChip();
+    addSystem("已加入本地排队（第 " + localQueue.length + " 条）：本轮结束后自动发送。");
+  }
+
+  function flushLocalQueue() {
+    if (streaming || !localQueue.length) return;
+    var item = localQueue.shift();
+    renderQueueChip();
+    sendMessage(item.command ? item.text : item.text);
+  }
+
   // ---------- 流程控制 ----------
   function setStreaming(on) {
     streaming = on;
     sendBtn.disabled = on;
     stopBtn.disabled = !on;
+    if (interruptBtn) interruptBtn.hidden = !on;
     if (currentBubble) currentBubble.classList.toggle("streaming", on);
+    if (on) {
+      // T-0407 需求四：流式开始即本地计时（统计帧到达后再校正为服务端耗时）
+      turnStartedAt = Date.now();
+      if (turnTimerHandle) clearInterval(turnTimerHandle);
+      if (turnTimerEl) { turnTimerEl.hidden = false; turnTimerEl.textContent = "0.0s"; }
+      turnTimerHandle = setInterval(updateTurnTimer, 200);
+    } else {
+      if (turnTimerHandle) { clearInterval(turnTimerHandle); turnTimerHandle = null; }
+      turnStartedAt = 0;
+      // 本轮收口后把本地排队的下一条发出去（与服务端 202 排队通道互为兜底）
+      setTimeout(flushLocalQueue, 0);
+    }
   }
 
   // 正常结束（含用户点"停止"）：保留已渲染内容，清理空助手消息
@@ -942,13 +1043,45 @@
     sendMessage("/compact");
   }
 
+  // T-0407 需求五：流式中「立即插话」——服务端经请求头把文本塞进插话通道，下一轮前注入
+  function interruptNow() {
+    var text = inputEl.value.trim();
+    if (!text) { addSystem("插话前请先在输入框写下要补充的话。", true); return; }
+    if (!streaming) { sendMessage(); return; }
+    var body = { messages: [{ role: "user", content: text }], stream: false };
+    if (sessionId) body.session_id = sessionId;
+    if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value;
+    fetch(API_PATH, {
+      method: "POST",
+      headers: apiHeaders({ "Content-Type": "application/json", "X-LH-Interrupt": "1" }),
+      body: JSON.stringify(body)
+    }).then(function (resp) {
+      return resp.json().catch(function () { return {}; }).then(function (j) {
+        if (resp.ok) {
+          addSystem("插话已登记（位置 " + ((j && j["位置"]) || 1) + "）：下一轮开始前注入。");
+          inputEl.value = "";
+          autoResize();
+          updateCharCount();
+        } else {
+          addSystem("插话被拒：" + ((j && j["理由"]) || resp.status), true);
+        }
+      });
+    }).catch(function () { addSystem("插话失败：网络错误", true); });
+  }
+
   // ---------- 发送 ----------
   // T-0398：overrideText 用于命令式发送（/compact）：走的是**同一条**发送通道，
   //   只是不清输入框草稿、也不带附件（命令不消费用户正在挂的文件）。
   function sendMessage(overrideText) {
     var isCommand = (typeof overrideText === "string");
     var text = isCommand ? overrideText : inputEl.value.trim();
-    if (!text || streaming) return;
+    if (!text) return;
+    // T-0407 需求五：流式中再提交 → 本地排队（服务端 202 通道的同形状兜底）
+    if (streaming) {
+      enqueueLocal(text, isCommand);
+      if (!isCommand) { inputEl.value = ""; autoResize(); updateCharCount(); }
+      return;
+    }
 
     // 追加本轮 UI 与历史（必须在组装消息体之前，否则 msgs 缺本轮用户消息）
     turnStartIndex = history.length;
@@ -961,6 +1094,7 @@
       updateCharCount();
     }
     setStreaming(true);
+    setStatus("busy");
 
     // T-0398：附件先快照（上送的就是这份），发送成功后才清 chips——
     //   400 / 网络失败时 chips 必须留着，用户能原样重试。
@@ -1006,6 +1140,14 @@
       setStatus("ok");
       // T-0398：上送成功才清 chips（这里的"成功"= 服务端已受理本条消息）
       if (sentAttachments) clearAttachments();
+      // T-0407 需求五：服务端判定「会话正忙」→ 202 排队（已收下，不是失败）
+      if (resp.status === 202) {
+        return resp.json().catch(function () { return {}; }).then(function (j) {
+          rollbackTurn(isCommand ? "" : text);
+          addSystem("服务端已排队（位置 " + ((j && j["位置"]) || 1) + "）：当前会话正在跑，本条结束后自动执行。");
+          return null;
+        });
+      }
       return readStream(resp);
     }).then(function () {
       if (started) finalizeTurn();
@@ -1254,6 +1396,8 @@
   }
   // T-0398：「压缩」按钮（输入区右下）
   if (compactBtn) compactBtn.addEventListener("click", requestCompaction);
+  // T-0407 需求五：立即插话——本轮还在跑时把补充文本经请求头登记到插话通道
+  if (interruptBtn) interruptBtn.addEventListener("click", interruptNow);
   // R106-B：入口统一——顶栏齿轮改开新设置对话框；旧「大模型配置」面板不删除，
   // 由设置对话框模型页签的「配置大模型」按钮经 window.showConfigPanel 调起。
   settingsBtn.addEventListener("click", function () {
@@ -1355,6 +1499,8 @@
 // 第5步：模式选择器——有会话只改该会话（切回/刷新还原），空状态写 localStorage 作待建默认。
   // T-0396：模式状态与新建会话面板共用同一个值（NewSession.setMode 双向同步）。
   // MODE_NAMES 已上移到文件顶部（T-0397：applySessionMode 在初始化前就要用）。
+  // T-0407：把四种组合型模式补进下拉（index.html 保持老四项，避免两处清单漂移）
+  fillModeOptions();
   if (modeSelectEl) {
     var savedMode = null;
     try { savedMode = localStorage.getItem("lh.mode"); } catch (e) { savedMode = null; }

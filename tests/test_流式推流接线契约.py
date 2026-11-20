@@ -75,3 +75,37 @@ def test_增量回调链贯通():
     assert '增量回调' in PROXY and '对话响应' in PROXY, '代理 未透传 增量回调'
     assert re.search(r'从\s+HTTP\s+导入[^\n]*HTTPPost流式', CLIENT), '客户端 未导入 HTTPPost流式'
     assert 'HTTPPost流式' in CLIENT, '客户端 未使用 HTTPPost流式'
+
+# =====================================================================
+# T-0407 收口接线后的契约（2026-11-20）
+#   流式路径从「跑一轮」升级为「当 循环（续跑决策 → 队列/插话）」，但三条老契约
+#   必须原样成立：仍在 web服务器 内、载具/响应带 服务、推流实现 3 必填形参。
+#   这里把新接线也钉住：轮末才关队列、续跑/出队都在这条循环里。
+# =====================================================================
+
+def test_后台跑一轮仍是单参且含续跑与出队():
+    m = re.search(r'段落\s+后台跑一轮\(([^)]*)\)', WEB)
+    assert m, '后台跑一轮 必须留在 web服务器（类体不能放线程目标）'
+    params = [p.strip() for p in m.group(1).split(',') if p.strip()]
+    assert params == ['载具'], f'后台跑一轮 应只收 载具，实际 {params}'
+
+    body_start = WEB.index('段落 后台跑一轮(')
+    body_end = WEB.index('# 推流实现：HTTP 协程侧边取边发', body_start)
+    body = WEB[body_start:body_end]
+    assert '续续跑决策' in body, '流式路径必须与同步路径共用续跑决策'
+    assert '队出队' in body and '队取插话' in body, '轮末必须出队/取插话（同一条循环）'
+    assert body.count('队列.关闭()') >= 2, '失败与成功路径都要关闭队列'
+    # 关闭必须发生在循环之后：最后一个 队列.关闭 之前不能出现「跳出」之外的退出
+    assert body.rindex('队列.关闭()') > body.index('跳出'), '循环未结束就关队列会截断续跑帧'
+
+
+def test_本轮选项携带压缩配置与计划模式():
+    assert '字典设置(本轮选项, "压缩配置"' in WEB, '压缩配置未进入代理选项（自动压缩仍是死代码）'
+    assert '"计划模式"' in WEB, '计划模式未从会话模式表接线'
+    assert re.search(r'段落\s+造压缩配置[\(:]', WEB), '缺少统一压缩配置构造'
+
+
+def test_SSE收尾带压缩帧():
+    assert '生成压缩事件' in WEB
+    # 生成SSE 与 推流实现 各推一帧
+    assert WEB.count('生成压缩事件(') >= 3, '生成SSE/推流实现/命令入口 都应能发压缩帧'

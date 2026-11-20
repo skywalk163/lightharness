@@ -1596,3 +1596,45 @@ body {
   .cwd-chip-error { max-width: 120px; }
 }
 
+
+/* ---- T-0407：会话细节 + 排队/插话 ---- */
+/* 生成中：状态点呼吸动画（前端不用滚到底也能看出「还在跑」） */
+@keyframes lh-busy-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(90, 160, 255, 0.45); }
+  50% { opacity: 0.72; box-shadow: 0 0 0 5px rgba(90, 160, 255, 0); }
+}
+.status.busy { color: #5aa0ff; }
+.status.busy::before { animation: lh-busy-pulse 1.6s ease-in-out infinite; }
+/* 本轮耗时 / 速率 */
+.turn-timer, .turn-tps {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #888);
+  font-size: 12px;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.turn-tps { color: #5aa0ff; }
+/* 排队角标：同会话串行执行的待跑条数 */
+.queue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(90, 160, 255, 0.55);
+  color: #5aa0ff;
+  font-size: 12px;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 立即插话 */
+.interrupt-btn {
+  border: 1px solid rgba(90, 160, 255, 0.55);
+  color: #5aa0ff;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.interrupt-btn:hover { background: rgba(90, 160, 255, 0.12); }
