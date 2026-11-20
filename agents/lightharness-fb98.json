@@ -1,0 +1,33 @@
+{
+  "name": "lightharness-fb98",
+  "host": "fb98",
+  "command": "",
+  "mode": "manual",
+  "manual": true,
+  "abilities": [
+    "code",
+    "docs",
+    "verify",
+    "python",
+    "pytest"
+  ],
+  "capabilities": [
+    "freebsd",
+    "python",
+    "pytest",
+    "compiler"
+  ],
+  "repos": {
+    "hive": "/home/skywalk/dswork/hive",
+    "light": "/home/skywalk/dswork/light",
+    "lightharness": "/home/skywalk/dswork/lightharness",
+    "lighthive": "/home/skywalk/dswork/lighthive",
+    "lightmem": "/home/skywalk/dswork/lightmem",
+    "lightplugin": "/home/skywalk/dswork/lightplugin",
+    "lightprism": "/home/skywalk/dswork/lightprism"
+  },
+  "launch": "",
+  "worktrees": "/home/skywalk/.hive/wt",
+  "max_concurrency": 1,
+  "created": "2026-11-20T17:46:08+08:00"
+}
