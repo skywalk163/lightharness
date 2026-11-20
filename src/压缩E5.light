@@ -104,25 +104,43 @@
 # ============================================================
 # 压缩配置管理器（E5 版：读环境变量）
 # ============================================================
+# T-0402：单一配置解析入口 压缩配置解析() —— 压缩.light 的 压缩管理器 与本模块 压缩配置
+#   的阈值口径统一从这里取默认（两边再不许各读一套）：
+#     HARNESS_MODEL_CONTEXT_WINDOW        上下文窗口（默认 32768）
+#     HARNESS_COMPACTION_THRESHOLD_RATIO  阈值比例（默认 0.75）
+#     HARNESS_COMPACTION_KEEP_COUNT       保留条数（默认 10）
+#   旧键 阈值token（绝对数，HARNESS_COMPACTION_THRESHOLD）/ 保留轮数（HARNESS_COMPACTION_KEEP_ROUNDS）
+#   属性保留：agent.light:87 滑动窗口压缩 与 总入口.light dump-config 是锁定消费者，不能改。
+段落 压缩配置解析:
+  设 窗口串 为 os.environ.get("HARNESS_MODEL_CONTEXT_WINDOW", "32768")
+  设 比例串 为 os.environ.get("HARNESS_COMPACTION_THRESHOLD_RATIO", "0.75")
+  设 条数串 为 os.environ.get("HARNESS_COMPACTION_KEEP_COUNT", "10")
+  返回 ["上下文窗口": 转整数(窗口串), "阈值比例": 转浮点(比例串), "保留条数": 转整数(条数串)]
+
 类 压缩配置:
   属性 阈值token 等于 8000
   属性 保留轮数 等于 6
   属性 上下文窗口 等于 32768
+  属性 阈值比例 等于 0.75
+  属性 保留条数 等于 10
 
   段落 构造:
+    设 统一配置 为 压缩配置解析()
+    设 己.上下文窗口 为 统一配置["上下文窗口"]
+    设 己.阈值比例 为 统一配置["阈值比例"]
+    设 己.保留条数 为 统一配置["保留条数"]
     设 阈值串 为 os.environ.get("HARNESS_COMPACTION_THRESHOLD", "8000")
     设 保留串 为 os.environ.get("HARNESS_COMPACTION_KEEP_ROUNDS", "6")
-    设 窗口串 为 os.environ.get("HARNESS_MODEL_CONTEXT_WINDOW", "32768")
     设 己.阈值token 为 转整数(阈值串)
     设 己.保留轮数 为 转整数(保留串)
-    设 己.上下文窗口 为 转整数(窗口串)
 
   段落 状态:
-    返回 ["阈值token": 己.阈值token, "保留轮数": 己.保留轮数, "上下文窗口": 己.上下文窗口]
+    返回 ["阈值token": 己.阈值token, "保留轮数": 己.保留轮数, "上下文窗口": 己.上下文窗口, "阈值比例": 己.阈值比例, "保留条数": 己.保留条数]
 
 导出 修剪工具结果
 导出 生成省略提示
 导出 生成摘要
 导出 滑动窗口压缩
 导出 压缩配置
+导出 压缩配置解析
 导出 取工具上限
