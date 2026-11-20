@@ -689,7 +689,8 @@ def test_文档与对标登记到位():
     # CHANGELOG 有一条本卡的记录
     assert 'T-0399' in change, 'CHANGELOG.md 没有 T-0399 条目'
 
-    # 对标清单：只在末尾追加（编号升序、无重复、旧编号一个不删）
+    # 对标清单：只增不改（编号升序、无重复、旧编号一个不删）。
+    # 不再断言"尾部 5 条"——后续卡追加会把窗口挤走，判据会假红（T-0418）。
     path = os.path.join(ROOT, 'docs', '功能对标', '对标清单.json')
     with open(path, encoding='utf-8') as f:
         data = json.load(f)
@@ -697,12 +698,10 @@ def test_文档与对标登记到位():
     nums = [e['编号'] for e in entries]
     assert nums == sorted(nums), '对标清单编号乱序（旧条目被重排）'
     assert len(nums) == len(set(nums)), '对标清单编号重复'
-    # 本卡新增的是尾部连续 5 条（#366~#370，对应 T-0395~T-0399），
-    # 用「尾部连续 5 个递增整数」判，避免把编号写死成某次运行的快照。
-    tail = nums[-5:]
-    assert tail == list(range(tail[0], tail[0] + 5)), f'尾部 5 条编号不连续：{tail}'
-    assert tail[0] >= 366, f'本卡应在旧末号之后追加，实际尾部：{tail}'
     assert 365 in nums, '旧末号 365 被删了（只增不改）'
-    tail_text = json.dumps(entries[-5:], ensure_ascii=False)
+    # 本卡新增的 #366~#370 必须按编号存在，且各自登记了对应卡号。
+    own = {e['编号']: e for e in entries if 366 <= e['编号'] <= 370}
+    assert sorted(own) == [366, 367, 368, 369, 370], f'对标清单缺 #366~#370：{sorted(own)}'
+    own_text = json.dumps([own[n] for n in sorted(own)], ensure_ascii=False)
     for num in ('T-0395', 'T-0396', 'T-0397', 'T-0398', 'T-0399'):
-        assert num in tail_text, f'对标清单新增条目没登记 {num}'
+        assert num in own_text, f'对标清单 #366~#370 没登记 {num}'
