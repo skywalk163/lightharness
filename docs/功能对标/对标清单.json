@@ -5318,10 +5318,10 @@
       "证据": [
         "src/web服务器.light",
         "src/会话存储.light",
-        "tests/test_T0410_会话读取三个缺陷.py",
+        "tests/test_T0408_会话读取三个缺陷.py",
         "docs/API参考.md"
       ],
-      "本轮目标": "tests/test_T0410_会话读取三个缺陷.py 3 passed（base f698095 上 3 failed 反证）",
+      "本轮目标": "tests/test_T0408_会话读取三个缺陷.py 3 passed（base f698095 上 3 failed 反证）",
       "反跑判据": "把 ?session= 分支移回令牌之后、或落库只扫顶层 text、或 tmp 名改回固定，对应用例立红",
       "语言缺陷": []
     }
