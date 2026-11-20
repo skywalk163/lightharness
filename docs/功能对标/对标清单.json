@@ -5324,6 +5324,21 @@
       "本轮目标": "tests/test_T0408_会话读取三个缺陷.py 3 passed（base f698095 上 3 failed 反证）",
       "反跑判据": "把 ?session= 分支移回令牌之后、或落库只扫顶层 text、或 tmp 名改回固定，对应用例立红",
       "语言缺陷": []
+    },
+    {
+      "编号": 379,
+      "功能": "流式输出时允许切换会话：先中止当前流再切换（含 abort 竞态与队列清理）",
+      "原版包": "apps/web（webui 流式输出 + 会话切换）",
+      "光明模块": "webui/app.js",
+      "状态": "done（T-0422）：selectSession 与 new-session-btn 的 streaming 分支改为先 abortActiveTurnForSwitch() 收口再切换；世代号 epoch 处理 abort 竞态；切会话清空本地队列（文本放回输入框）；用户主动中止走 AbortError→finalizeTurn 不碰 rollbackTurn。",
+      "证据": [
+        "webui/app.js",
+        "tests/test_T0421_流式切换会话.py",
+        "CHANGELOG.md"
+      ],
+      "本轮目标": "tests/test_T0421_流式切换会话.py 7 passed + node --check webui/app.js / messages.js",
+      "反跑判据": "把 selectSession 的 streaming 分支改回弹提示 return、或去掉 epoch 校验、或切会话不清队列，对应用例立红",
+      "语言缺陷": []
     }
   ]
 }

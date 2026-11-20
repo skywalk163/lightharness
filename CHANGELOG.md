@@ -6,6 +6,23 @@
 
 ## [未发布] — 2026-11-20
 
+### 流式输出时允许切换会话：先中止当前流再切换（T-0422）
+
+- `webui/app.js`：`selectSession` 与 `new-session-btn` 的 streaming 分支不再「弹提示 return」，
+  改为先 `abortActiveTurnForSwitch()` 收口本轮再走「拉历史 + 回放」；同会话仍早返回不误伤。
+- 新增 `abortActiveTurnForSwitch()`：`turnEpoch += 1` → 摘除并清空 `localQueue`（文本放回输入框，
+  不静默吞字）→ `finalizeTurn()`（保留已渲染内容）+ `setStreaming(false)`（去 streaming class、
+  停本地计时、放开按钮）→ `controller.abort()`。
+- **abort 竞态（世代号 epoch）**：`sendMessage` 发起时快照 `myEpoch`，`resp.ok` 判定、`then`、
+  `catch`（含 AbortError）、`finally` 全部先比对 `isTurnAlive(myEpoch)`，对不上就静默放弃；
+  `readStream(resp, epoch)` 在 `handleFrame`/`pump` 同样校验，切走后残留 SSE 帧一律丢弃。
+- **队列取舍**：切走时整队清空——老会话的排队消息不发到新会话；文本拼回输入框（输入框为空时），
+  提示「N 条排队消息已放回输入框」。用户主动中止仍走 `AbortError → finalizeTurn`，不碰 `rollbackTurn`。
+- 提示「已停止当前输出并切换会话。」由 `announceStreamAborted()` 在渲染完成之后发出
+  （`renderHistory`/`newChatState` 会清屏，提前发会被吃掉）。
+- 新增 `tests/test_T0421_流式切换会话.py`（7 passed）；`node --check webui/app.js` / `messages.js` 通过。
+- 未动 `src/*.light`、`sidebar.js`、`messages.js`、`index.html`。
+
 ### 判据文件号对齐：T-0408 测试改名（T-0421）
 
 `tests/test_T0410_会话读取三个缺陷.py` 更名为 `tests/test_T0408_会话读取三个缺陷.py`

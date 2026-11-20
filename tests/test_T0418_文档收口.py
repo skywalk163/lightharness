@@ -67,7 +67,7 @@ def test_快速开始与README无陈旧口径():
     读我 = _读('docs/README.md')
     assert '模式规格.md' in 读我, 'docs/README 索引没加《模式规格》'
     assert '161 条' not in 读我 and '#1~#161' not in 读我, 'docs/README 仍写 161 条'
-    assert '372' in 读我, 'docs/README 没更新对标条数'
+    assert '373' in 读我, 'docs/README 没更新对标条数'
 
 
 def test_模式规格接线口径已翻正():
