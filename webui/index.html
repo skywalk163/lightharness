@@ -61,6 +61,9 @@
         </div>
         <span class="session-title-chip" id="session-title" hidden title="点击重命名会话"></span>
         <span class="model-badge" id="model-badge" hidden></span>
+        <!-- T-0407：本轮耗时/速率（服务端统计帧回填，流式中本地计时） -->
+        <span class="turn-timer" id="turn-timer" hidden>0.0s</span>
+        <span class="turn-tps" id="turn-tps" hidden></span>
         <span class="status check" id="status">连接检测中…</span>
         <span class="stats" id="stats" title="E5：本轮/累计 token 与花费"></span>
         <select id="perm-preset" class="perm-select" title="E4：权限预设">
@@ -112,6 +115,11 @@
                   title="本轮上下文占上下文窗口的比例（服务端统计帧回填）">上下文 0%</span>
             <button type="button" id="compact-btn" class="compact-btn"
                     title="压缩上下文：旧消息进摘要，保留最近消息（与 /compact 同一通道）">压缩</button>
+            <!-- T-0407 需求五：排队角标 + 立即插话（插话走 X-LH-Interrupt 请求头，下一轮前注入） -->
+            <span id="queue-chip" class="queue-chip" hidden
+                  title="排队中的消息：同一会话串行执行，会在此轮结束后依次跑">排队中 0</span>
+            <button type="button" id="interrupt-btn" class="interrupt-btn" hidden
+                    title="立即插话：在本轮结束后、下一轮开始前注入">立即插话</button>
             <span class="shortcut-hint">Enter 发送 · Shift+Enter 换行</span>
             <span class="input-count" id="input-count"></span>
           </span>
