@@ -467,7 +467,7 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 
 > T-0408 修掉了此前的反序（曾先看令牌绑定、忽略 `?session=`，导致多会话下
 > 带令牌问旧会话恒回最新那个，前端 `refreshSessionTitle()` 把标题刷成别的会话的）。
-> 正向判据：`tests/test_T0410_会话读取三个缺陷.py::test_带令牌_current优先用session参数`
+> 正向判据：`tests/test_T0408_会话读取三个缺陷.py::test_带令牌_current优先用session参数`
 > 与 `tests/test_T0399_新会话对齐.py::test_current带令牌尊重session参数`。
 
 > 注：**切回会话的 cwd/模式/权限并不读这个端点**。前端 `selectSession()` 走的是
@@ -522,7 +522,7 @@ curl "http://127.0.0.1:8787/api/cwd/check?工作目录=%2Fhome%2Fme%2Fproj"
 `{type:"tool-result", content:[{type:"text", text:...}]}` 取子块 `text`，
 并按 `源序号` 关联 `tool/call` 回填 `工具名`、从块的 `toolCallId` 回填 `调用id`
 （T-0408 修复前这里恒为空串，会话重放看不到工具输出）。
-判据：`tests/test_T0410_会话读取三个缺陷.py::test_工具结果正文落库且有工具名`
+判据：`tests/test_T0408_会话读取三个缺陷.py::test_工具结果正文落库且有工具名`
 与 `tests/test_T0399_新会话对齐.py::test_tool_result消息正文落库`。
 
 #### 流式（`stream: true`）下的差异

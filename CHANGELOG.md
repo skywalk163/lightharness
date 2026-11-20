@@ -6,6 +6,13 @@
 
 ## [未发布] — 2026-11-20
 
+### 判据文件号对齐：T-0408 测试改名（T-0421）
+
+`tests/test_T0410_会话读取三个缺陷.py` 更名为 `tests/test_T0408_会话读取三个缺陷.py`
+（判据文件号与卡号对齐；T-0410 是 lightmem 的另一张卡）。用例、断言与 fixture 未变。
+同步修正引用：`docs/API参考.md`、`tests/test_T0399_新会话对齐.py`、
+`docs/功能对标/对标清单.json` 中 T-0408 证据路径。下文 T-0408 历史条目保留旧名作为当时记录。
+
 ### plan 模式闭环：/plan · exit_plan_mode · 投影（T-0420）
 
 - 新增 `src/计划工具.light`：`exit_plan_mode` 工具规格 + 参数校验（空/非字典/空白计划 fail-loud，
