@@ -71,11 +71,14 @@
   设 终止原因 等于 ""
 
 
-  段落 构造(处理器, 超时值, 绑定地址="127.0.0.1"):
+  # T-0426：端口可固定（默认 0 = 内核分配）。
+  #   默认仍为 0：本仓有 600+ 个 example 会起临时服务，写死端口会在并行门禁里互相踩。
+  #   需要长期可用的固定地址（比如给人用的 Web GUI）时，显式传 端口（或 HARNESS_WEB_PORT）。
+  段落 构造(处理器, 超时值, 绑定地址="127.0.0.1", 端口=0):
     设 己.绑定地址 为 绑定地址
     设 己.监听套接字 为 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     己.监听套接字.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    己.监听套接字.bind((绑定地址, 0))
+    己.监听套接字.bind((绑定地址, 端口))
     己.监听套接字.listen(64)
     己.监听套接字.setblocking(假)
     己.处理器 为 处理器

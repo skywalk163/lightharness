@@ -196,6 +196,7 @@ python 运行.py examples/运行Web服务器.light
 | `HARNESS_WEB_UI_DIR` | `webui/` | 前端静态文件目录 |
 | `HARNESS_WEB_CORS` | 开 | CORS 跨域（默认 `Access-Control-Allow-Origin: *`） |
 | `HARNESS_PORT_FILE` | — | 端口写入文件（供脚本读取） |
+| `HARNESS_WEB_PORT` | 内核分配 | 固定 Web 端口（`1–65535`）。缺省由内核分配，**每次重启地址都会变**；给人长期用的 GUI 请设成固定值（如 `7788`，本项目自用即此值）。端口被占用或值非法时**不阻断启动**：回退内核分配，并在启动日志打印「端口回退: …」说明原因。也可写在 `.env` 里 |
 | `HARNESS_API_KEY` | — | 大模型密钥（优先级高于 `.env`） |
 | `HARNESS_ENDPOINT` | — | API 端点（优先级高于 `.env`） |
 | `HARNESS_MODEL` | — | 模型名（优先级高于 `.env`） |
