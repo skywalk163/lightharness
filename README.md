@@ -199,6 +199,10 @@ python 运行.py examples/运行Web服务器.light
 | `HARNESS_API_KEY` | — | 大模型密钥（优先级高于 `.env`） |
 | `HARNESS_ENDPOINT` | — | API 端点（优先级高于 `.env`） |
 | `HARNESS_MODEL` | — | 模型名（优先级高于 `.env`） |
+| `HARNESS_MAX_STEPS` | `25` | 单轮最大步数（1–1000）。长任务被 `max-steps` 提前截断时调大；也可在请求体里传 `最大步数` 覆盖（请求优先于环境变量）。生效值与来源会出现在 SSE 统计帧的 `步数上限` / `步数上限来源` 字段 |
+| `HARNESS_MODEL_CONTEXT_WINDOW` | `32768` | 上下文窗口（用于压缩阈值与使用率计算） |
+| `HARNESS_COMPACTION_THRESHOLD_RATIO` | `0.75` | 压缩触发比例（占窗口） |
+| `HARNESS_COMPACTION_KEEP_COUNT` | `10` | 压缩后保留条数 |
 
 示例：用真实模型启动且不自动开浏览器
 

@@ -340,6 +340,63 @@
     }
   }
 
+  // 2b. 思考过程行（模型推理流）。
+  //   为什么需要它：模型在真正动手前常长时间只产推理（实测单步推理 ≈1.9 万字/10 分钟，
+  //   正文才 1 千字）。只转发正文的话，浏览器整段时间收不到任何字节，
+  //   用户看到的就是「卡住」。这里把推理实时铺开，并用 <details> 默认折叠细节，
+  //   只留一行「思考中…（n 字）」的标题，既不刷屏也让人知道它在动。
+  var thinkRow = null;      // 当前思考行的容器
+  var thinkBody = null;     // 正文 <div>
+  var thinkSummary = null;  // 标题 <summary>
+  var thinkChars = 0;
+
+  function beginThinking() {
+    var row = mkRow("thinking", "…");
+    var wrap = document.createElement("div");
+    wrap.className = "think-wrap";
+    var det = document.createElement("details");
+    det.className = "think-box";
+    det.open = true;
+    var sum = document.createElement("summary");
+    sum.className = "think-summary";
+    sum.textContent = "思考中…";
+    var body = document.createElement("div");
+    body.className = "think-body";
+    det.appendChild(sum);
+    det.appendChild(body);
+    wrap.appendChild(det);
+    row.appendChild(wrap);
+    thinkRow = row;
+    thinkBody = body;
+    thinkSummary = sum;
+    thinkChars = 0;
+    stickToBottom();
+    return row;
+  }
+
+  // 追加一段推理文本（流式逐块调用）
+  function appendThinking(text) {
+    if (!text) return;
+    if (!thinkRow) beginThinking();
+    thinkChars += String(text).length;
+    thinkBody.textContent += text;
+    thinkSummary.textContent = "思考中…（" + thinkChars + " 字，点击折叠）";
+    stickToBottom();
+  }
+
+  // 思考收口：改成「已思考（n 字）」并自动折叠，把版面还给正文
+  function endThinking() {
+    if (!thinkRow) return;
+    if (thinkSummary) thinkSummary.textContent = "已思考（" + thinkChars + " 字，点击展开）";
+    var det = thinkRow.querySelector(".think-box");
+    if (det) det.open = false;
+    thinkRow.classList.remove("streaming");
+    thinkRow = null;
+    thinkBody = null;
+    thinkSummary = null;
+    thinkChars = 0;
+  }
+
   // 3. 工具调用卡片行（依赖 window.ToolCard）
   function addToolCard(数据) {
     var row = mkRow("tool", "🔧");
@@ -485,6 +542,9 @@
     beginAssistant: beginAssistant,
     setAssistant: setAssistant,
     endAssistant: endAssistant,
+    beginThinking: beginThinking,
+    appendThinking: appendThinking,
+    endThinking: endThinking,
     addToolCard: addToolCard,
     applyToolResult: applyToolResult,
     addSystem: addSystem,

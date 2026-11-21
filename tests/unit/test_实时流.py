@@ -207,8 +207,16 @@ def test_流块转增量帧_只翻译非空text增量():
     抛出 新建 错误("空文本 text-delta 应翻译出 0 帧")
   如果 长(流块转增量帧(["type": "tool-call-delta", "id": "t1", "name": "工具"])) != 0:
     抛出 新建 错误("tool-call-delta 应翻译出 0 帧（工具卡片走事件回调，不走文本增量）")
-  如果 长(流块转增量帧(["type": "reasoning-delta", "text": "思考"])) != 0:
-    抛出 新建 错误("reasoning-delta 应翻译出 0 帧")
+  # T-0423：reasoning-delta 必须翻译成帧（旧实现丢弃它 → 长任务整段黑屏）。
+  #   反跑：把本断言改回「应翻译出 0 帧」，即在旧实现下通过、修好后变红。
+  设 推理帧表 为 流块转增量帧(["type": "reasoning-delta", "text": "思考"])
+  如果 长(推理帧表) != 1:
+    抛出 新建 错误("reasoning-delta 应翻译出 1 帧，实际 " + 转字符串(长(推理帧表)))
+  设 推理增量 为 推理帧表[0]["choices"][0]["delta"]
+  如果 推理增量["reasoning_content"] != "思考":
+    抛出 新建 错误("推理帧应放 reasoning_content")
+  如果 长(流块转增量帧(["type": "reasoning-delta", "text": ""])) != 0:
+    抛出 新建 错误("空推理 reasoning-delta 应翻译出 0 帧")
   如果 长(流块转增量帧(["type": "block-end", "index": 0])) != 0:
     抛出 新建 错误("block-end 应翻译出 0 帧")
   打印 "PASS 流块转增量帧翻译规则"

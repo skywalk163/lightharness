@@ -999,7 +999,66 @@ body {
   max-width: 88%;
 }
 .mrow.user { align-self: flex-end; flex-direction: row-reverse; }
-.mrow.assistant, .mrow.tool { align-self: flex-start; }
+.mrow.assistant, .mrow.tool, .mrow.thinking { align-self: flex-start; }
+
+/* 当前动作指示器（思考中 / 正在执行工具 / 等待响应）。
+ * 存在的意义：大任务里可能连续几分钟没有任何正文输出，
+ * 这个 chip 始终带着秒数在走，用户就不会以为「卡死了」。*/
+.phase-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg-bubble);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 同一阶段静默超过 60s：变告警色，提示「确实慢，但在跑」 */
+.phase-chip.stale {
+  border-color: #d29922;
+  color: #d29922;
+}
+
+/* ---------- 思考过程块（模型推理流）----------
+ * 长任务里模型常常长时间只产推理；把这段实时铺出来，
+ * 用户就能看到「它在想」而不是「卡住了」。默认展开跟随，
+ * 正文一到即自动折叠，版面还给答案。 */
+.mrow.thinking .avatar {
+  background: var(--bg-bubble);
+  color: var(--text-muted);
+  animation: thinkPulse 1.6s ease-in-out infinite;
+}
+.think-wrap { flex: 1; min-width: 0; max-width: 640px; }
+.think-box {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.think-summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  opacity: .9;
+}
+.think-summary::-webkit-details-marker { display: none; }
+.think-summary::before { content: "💭 "; }
+.think-body {
+  margin-top: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+  line-height: 1.5;
+  opacity: .85;
+}
+@keyframes thinkPulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
 
 .avatar {
   width: 26px;

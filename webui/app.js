@@ -74,6 +74,7 @@
   var queueChipEl = document.getElementById("queue-chip");
   var interruptBtn = document.getElementById("interrupt-btn");
   var turnTimerEl = document.getElementById("turn-timer");
+  var phaseChipEl = document.getElementById("phase-chip");   // 当前动作（思考/工具/静默）
   var turnTpsEl = document.getElementById("turn-tps");
   var localQueue = [];      // 流式中提交的消息先本地排队，本轮结束后自动发送
   var turnStartedAt = 0;    // 本地计时起点（毫秒）；统计帧到达后以服务端 耗时秒 为准
@@ -255,6 +256,14 @@
     currentAssistantIndex = history.push({ role: "assistant", content: "" }) - 1;
     currentBubble = Messages.beginAssistant();
     if (streaming) currentBubble.classList.add("streaming");
+  }
+
+  // 思考块（推理流）委托给 Messages；endThinking 在正文首次到达时收口
+  function appendThinking(text) {
+    if (window.Messages && Messages.appendThinking) Messages.appendThinking(text);
+  }
+  function endThinking() {
+    if (window.Messages && Messages.endThinking) Messages.endThinking();
   }
 
   function appendToAssistant(delta) {
@@ -947,6 +956,55 @@
     if (appShell) appShell.classList.remove("sidebar-open");
   }
 
+  // ---------- 当前动作指示器（解决「大任务长时间没输出 = 像卡住」）----------
+  //   三种阶段：思考中 / 正在执行 <工具名> / 已静默 n 秒。
+  //   即使服务端这一帧什么文本都没给，用户也能看见「它还活着、在干什么」。
+  var phaseState = { kind: "", label: "", since: 0 };
+  var phaseTimerHandle = null;
+
+  function setPhase(kind, label) {
+    phaseState.kind = kind;
+    phaseState.label = label || "";
+    phaseState.since = Date.now();
+    renderPhase();
+  }
+
+  function clearPhase() {
+    phaseState.kind = "";
+    phaseState.label = "";
+    if (phaseChipEl) { phaseChipEl.hidden = true; phaseChipEl.textContent = ""; }
+  }
+
+  function renderPhase() {
+    if (!phaseChipEl) return;
+    if (!streaming || !phaseState.kind) { phaseChipEl.hidden = true; return; }
+    var secs = Math.round((Date.now() - phaseState.since) / 1000);
+    var text = "";
+    if (phaseState.kind === "thinking") {
+      text = "💭 思考中 " + secs + "s";
+    } else if (phaseState.kind === "tool") {
+      text = "🔧 正在执行 " + phaseState.label + " " + secs + "s";
+    } else if (phaseState.kind === "wait") {
+      text = "⏳ 等待模型响应 " + secs + "s";
+    } else {
+      text = phaseState.label;
+    }
+    phaseChipEl.hidden = false;
+    phaseChipEl.textContent = text;
+    // 长静默变红：超过 60 秒还是同一阶段，提醒用户「是真的慢，不是死了」
+    phaseChipEl.classList.toggle("stale", secs > 60);
+  }
+
+  function startPhaseTimer() {
+    if (phaseTimerHandle) return;
+    phaseTimerHandle = setInterval(renderPhase, 1000);
+  }
+
+  function stopPhaseTimer() {
+    if (phaseTimerHandle) { clearInterval(phaseTimerHandle); phaseTimerHandle = null; }
+    clearPhase();
+  }
+
   function updateTurnTimer() {
     if (!turnTimerEl || !turnStartedAt) return;
     turnTimerEl.hidden = false;
@@ -992,7 +1050,11 @@
       if (turnTimerHandle) clearInterval(turnTimerHandle);
       if (turnTimerEl) { turnTimerEl.hidden = false; turnTimerEl.textContent = "0.0s"; }
       turnTimerHandle = setInterval(updateTurnTimer, 200);
+      // 阶段指示器：流一开就显示「等待模型响应」，之后被思考/工具事件接管
+      setPhase("wait", "等待模型响应");
+      startPhaseTimer();
     } else {
+      stopPhaseTimer();
       if (turnTimerHandle) { clearInterval(turnTimerHandle); turnTimerHandle = null; }
       turnStartedAt = 0;
       // 本轮收口后把本地排队的下一条发出去（与服务端 202 排队通道互为兜底）
@@ -1002,6 +1064,8 @@
 
   // 正常结束（含用户点"停止"）：保留已渲染内容，清理空助手消息
   function finalizeTurn() {
+    // 思考块收口（用户点停止 / 流中途断开时也要收，否则一直显示「思考中」）
+    endThinking();
     if (currentBubble) {
       Messages.endAssistant(currentBubble);
       currentBubble = null;
@@ -1016,6 +1080,7 @@
 
   // 请求失败：撤掉本轮的 user/assistant 气泡与历史，恢复输入框
   function rollbackTurn(text) {
+    endThinking();
     history.length = turnStartIndex;
     if (currentBubble) { currentBubble.remove(); currentBubble = null; }
     if (userBubble) { userBubble.remove(); userBubble = null; }
@@ -1024,6 +1089,8 @@
 
   // ---------- E3：工具事件帧 ----------
   function handleToolCall(json) {
+    // 工具执行期间界面是静的（可能几分钟），这里把「正在执行什么」显式说出来
+    setPhase("tool", json && json["工具名"] ? json["工具名"] : "工具");
     // 文本与工具混排：工具帧到达时先把当前文本行收口，后续文本另起一行
     if (currentBubble) {
       Messages.endAssistant(currentBubble);
@@ -1034,6 +1101,7 @@
   }
 
   function handleToolResult(json) {
+    setPhase("wait", "等待模型响应");
     Messages.applyToolResult(json);
     autoOpenPanel();
   }
@@ -1094,7 +1162,15 @@
           }
           var choice = json && json.choices && json.choices[0];
           var delta = choice && choice.delta;
+          // 思考流（reasoning_content）：先铺进「思考中」块，正文一到就收口。
+          //   长任务里模型常长时间只产推理，不显示这一段就是「界面卡死」。
+          if (delta && typeof delta.reasoning_content === "string" && delta.reasoning_content) {
+            setPhase("thinking", "思考中");
+            appendThinking(delta.reasoning_content);
+          }
           if (delta && typeof delta.content === "string" && delta.content) {
+            endThinking();
+            setPhase("wait", "输出正文");
             appendToAssistant(delta.content);
           }
         } catch (e) { /* 忽略无法解析的分帧，保证容错 */ }

@@ -66,6 +66,8 @@
         <!-- T-0407：本轮耗时/速率（服务端统计帧回填，流式中本地计时） -->
         <span class="turn-timer" id="turn-timer" hidden>0.0s</span>
         <span class="turn-tps" id="turn-tps" hidden></span>
+        <!-- 当前动作（正在思考 / 正在执行工具名 / 静默 n 秒）：解决「大任务像卡住」 -->
+        <span class="phase-chip" id="phase-chip" hidden></span>
         <span class="status check" id="status">连接检测中…</span>
         <span class="stats" id="stats" title="E5：本轮/累计 token 与花费"></span>
         <select id="perm-preset" class="perm-select" title="E4：权限预设">
