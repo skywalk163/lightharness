@@ -333,15 +333,17 @@ def test_目标续跑两轮后由目标工具收口(srv):
 # --------------------------------------------------------------------------- #
 # 2. 自动压缩：小窗口 + 长消息 → compact-checkpoint 真的进会话
 # --------------------------------------------------------------------------- #
-def test_小窗口下自动压缩写出检查点(srv):
+def test_小窗口下自动压缩写出检查点(srv, llm):
     sid = 't0407-compact'
+    # 触发条件（T-0402 校准后的口径）：超阈值 + **有可折叠的旧区**。
+    #   只发一条超长消息时，保留预算(窗口×0.16≈32 token)连那一条都装不下，
+    #   折叠区为空 → 压缩无收益，管理器如实拒绝（对齐上游「压不动就报错/不压」，
+    #   旧断言依赖的是「把一条大消息也硬折成摘要」的旧行为，会造成上下文反复被重写）。
+    #   这里改为堆多条同量级消息，让旧区真的可以折叠。
     for i in range(3):
-        st, _ = srv.post({'messages': [{'role': 'user', 'content': f'第{i}条普通消息，填充上下文。' * 3}],
+        st, _ = srv.post({'messages': [{'role': 'user', 'content': 'T0407-LONG ' + '长文本填充。' * 900}],
                           'stream': False, 'session_id': sid})
         assert st == 200
-    st, raw = srv.post({'messages': [{'role': 'user', 'content': 'T0407-LONG ' + '长文本填充。' * 900}],
-                        'stream': False, 'session_id': sid})
-    assert st == 200, raw
     文本 = _session_file(srv.work, sid).read_text(encoding='utf-8', errors='replace')
     assert '<compacted-summary>' in 文本, '压缩配置没生效：会话里没有 compact-checkpoint 检查点'
 
