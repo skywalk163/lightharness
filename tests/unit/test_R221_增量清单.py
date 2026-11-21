@@ -10,6 +10,8 @@ import io
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 DOC = ROOT / "docs" / "功能对标" / "0.2.2-rc.3增量清单.md"
 
@@ -41,6 +43,18 @@ def _subsection(section: str, heading: str) -> str:
     assert marker in section, f"缺小节 {marker}"
     body = section.split(marker, 1)[1]
     return body.split("\n### ", 1)[0]
+
+
+def _candidate_table(section: str) -> str:
+    """§4 主候选表：整节里第一个 `### ` 之前的部分。
+
+    T-0432：§4.2「B1~B8 逐项判定」是对**同一批候选**的复核表，编号与主表
+    一一对应（B1~B8 各出现两次，主表 6 列、复核表 4 列）。早先把整节都算成
+    候选行，于是 8 条候选被重复计成 16 行，触发「>10 行=凑数」误报。
+    候选行只认主表；复核表另由
+    `test_第四节复核表与候选表一一对应且不重复计数` 守住。
+    """
+    return section.split("\n### ", 1)[0]
 
 
 def _table_rows(section: str) -> list:
@@ -100,11 +114,22 @@ def test_第二节真有新增包和删除包():
         assert cells[3], f"§2 行缺处置/归属：{row[:60]}"
 
 
-def test_第四节候选表每行指到真实上游路径():
-    sec = _section("4. 纯逻辑候选表（B 路直接输入）")
-    rows = _table_rows(sec)
+def _assert_row_count(rows: list) -> None:
+    """候选行数上限：5~10 行（太少=没认真盘点，太多=大概率凑数）。
+
+    单独成函数，反跑可以直接喂 11 行验证「上限仍是 10」，不被编号断言先拦住。
+    """
     assert len(rows) >= 5, f"候选表只有 {len(rows)} 行，低于实测面（应 5~10 行）"
     assert len(rows) <= 10, f"候选表 {len(rows)} 行，超过 10 行大概率是凑数"
+
+
+def _assert_candidate_rows(sec: str) -> list:
+    """§4 主候选表的全部判据（行数 5~10 + 每行指到真实上游 + B1~B8 齐全）。
+
+    抽成函数是为了让反跑能对**同一套判据**喂构造过的文本，而不是另写一份。
+    """
+    rows = _table_rows(_candidate_table(sec))
+    _assert_row_count(rows)
     ids = []
     for row in rows:
         cells = [c.strip() for c in row.strip("|").split("|")]
@@ -119,6 +144,58 @@ def test_第四节候选表每行指到真实上游路径():
     assert len(set(ids)) == len(ids), f"候选编号重复：{ids}"
     # 本轮 §4 结论是 8 项：B1~B8 必须都在
     assert set(ids) == {f"**B{i}**" for i in range(1, 9)}, f"候选编号不是 B1~B8：{ids}"
+    return rows
+
+
+def test_第四节候选表每行指到真实上游路径():
+    _assert_candidate_rows(_section("4. 纯逻辑候选表（B 路直接输入）"))
+
+
+def test_第四节复核表与候选表一一对应且不重复计数():
+    """§4.2 只做判定复核，不能变成第二条候选通道，也不能把候选行数翻倍。
+
+    T-0432：§4.2 复核表与主表编号一一对应（B1~B8 各出现两次），早先把整节
+    都当候选行才数出 16 行。这里钉住两件事：
+    1) 复核表条目与候选表编号完全相同（既不多出候选，也不漏判）；
+    2) 整节表格行 = 候选行 + 复核行，证明 16 是「8 候选 × 2 张表」而非凑数。
+    """
+    sec = _section("4. 纯逻辑候选表（B 路直接输入）")
+    cand = _table_rows(_candidate_table(sec))
+    review = _table_rows(_subsection(sec, "4.2 B1~B8 逐项判定（T-0384 M 收口复核，2026-11-17）"))
+
+    def _id_of(row: str) -> str:
+        first = row.strip("|").split("|")[0].strip()
+        m = re.match(r"\*\*B\d+\*\*", first)
+        assert m, f"复核表首列不是候选编号：{first[:40]}"
+        return m.group(0)
+
+    cand_ids = [_id_of(r) for r in cand]
+    review_ids = [_id_of(r) for r in review]
+    assert review_ids == cand_ids, f"复核表编号与候选表不对应：{review_ids} vs {cand_ids}"
+    assert len(_table_rows(sec)) == len(cand) + len(review), \
+        "§4 除候选表与复核表外还有别的表格行，需确认是否凑数"
+    assert len(cand) <= 10, f"候选表 {len(cand)} 行，超过 10 行大概率是凑数"
+
+
+def test_反跑_候选表真凑数到11行必须红():
+    """往候选表塞 3 行凑到 11 行，同一套判据必须变红。
+
+    用不重复的编号（B9~B11，借 B8 的行改编号），这样**只有行数上限**会触发，
+    能精确证明上限仍钉在 10：修的是「两批各自 8 行的表被加在一起」这个统计范围，
+    不是把 10 放宽成 20。同时证明 §4.2 复核表不再参与计数。
+    """
+    text = _text()
+    marker = "\n### 4.1"
+    assert marker in text, "找不到 §4.1 分隔，反跑无法定位候选表末尾"
+    b8 = [line for line in text.splitlines() if line.strip().startswith("| **B8** |")]
+    assert b8, "找不到 B8 候选行，反跑无法构造凑数行"
+    extra = "".join("\n" + b8[0].replace("**B8**", f"**B{n}**", 1) for n in (9, 10, 11))
+    padded = text.replace(marker, extra + marker, 1)
+    sec = padded.split("## 4. ", 1)[1].split("\n## ", 1)[0]
+    rows = _table_rows(_candidate_table(sec))
+    assert len(rows) == 11, f"构造后候选行应为 11，实际 {len(rows)}"
+    with pytest.raises(AssertionError, match="超过 10 行"):
+        _assert_row_count(rows)
 
 
 def test_第四节有不移植登记且不占编号():
