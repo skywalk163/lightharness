@@ -94,22 +94,31 @@
     var names = ["自上而下", "自下而上", "头脑风暴", "懒人"];
     for (var i = 0; i < ids.length; i++) MODE_NAMES[ids[i]] = names[i];
   })();
+  // T-0439：把 8 项切成两段呈现，与数据层 预设分组() 的 agent/method 一一对应。
+  //   Agent 模式 = 工具组合（对齐 DSH 四份 preset）；工作方法 = 方法论（对齐 trae 工作流）。
+  var MODE_GROUPS = [
+    { label: "Agent 模式", ids: ["standard", "cordis", "ptc", "minimal"] },
+    { label: "工作方法", ids: ["t" + "opdown", "b" + "ottomup", "b" + "rainstorm", "l" + "azy"] }
+  ];
 
-  // 用 MODE_NAMES 重建下拉（index.html 只留四项老默认，新增模式由本函数补齐；
-  //   保证 index.html 与 app.js 的模式清单不会两处漂移）
+  // 用 MODE_GROUPS 重建下拉（index.html 只留四项老默认 + Agent 模式组头；
+  //   工作方法组由本函数补齐——两个文件因此仍不会各抄一份清单）
   function fillModeOptions() {
     if (!modeSelectEl) return;
-    var order = ["standard", "cordis", "ptc", "minimal"];
-    for (var k in MODE_NAMES) {
-      if (Object.prototype.hasOwnProperty.call(MODE_NAMES, k) && order.indexOf(k) < 0) order.push(k);
-    }
     var keep = modeSelectEl.value;
     modeSelectEl.innerHTML = "";
-    for (var i = 0; i < order.length; i++) {
-      var o = document.createElement("option");
-      o.value = order[i];
-      o.textContent = MODE_NAMES[order[i]];
-      modeSelectEl.appendChild(o);
+    for (var g = 0; g < MODE_GROUPS.length; g++) {
+      var grp = MODE_GROUPS[g];
+      var og = document.createElement("optgroup");
+      og.label = grp.label;
+      for (var i = 0; i < grp.ids.length; i++) {
+        var mid = grp.ids[i];
+        var o = document.createElement("option");
+        o.value = mid;
+        o.textContent = MODE_NAMES[mid] || mid;
+        og.appendChild(o);
+      }
+      modeSelectEl.appendChild(og);
     }
     if (keep) modeSelectEl.value = keep;
   }

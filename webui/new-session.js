@@ -194,10 +194,21 @@
     h += '<div class="ns-col"><label class="ns-field-label" for="ns-mode-select">模式</label>' +
       '<select id="ns-mode-select" class="ns-select">';
     var modeOrder = ["standard", "cordis", "ptc", "minimal", "topdown", "bottomup", "brainstorm", "lazy"];
-    for (var m = 0; m < modeOrder.length; m++) {
-      var mv = modeOrder[m];
-      h += '<option value="' + escapeAttr(mv) + '"' + (mode === mv ? " selected" : "") + ">" +
-        escapeHtml(MODE_NAMES[mv] || mv) + "</option>";
+    // T-0439：同一份 modeOrder 切成两段渲染，避免再抄一份清单：
+    //   [0,4) = Agent 模式（工具组合，对齐 DSH 四份 preset）；[4,8) = 工作方法（方法论）。
+    var modeGroups = [
+      { label: "Agent 模式", from: 0, to: 4 },
+      { label: "工作方法", from: 4, to: 8 }
+    ];
+    for (var g = 0; g < modeGroups.length; g++) {
+      var grp = modeGroups[g];
+      h += '<optgroup label="' + escapeAttr(grp.label) + '">';
+      for (var m = grp.from; m < grp.to; m++) {
+        var mv = modeOrder[m];
+        h += '<option value="' + escapeAttr(mv) + '"' + (mode === mv ? " selected" : "") + ">" +
+          escapeHtml(MODE_NAMES[mv] || mv) + "</option>";
+      }
+      h += "</optgroup>";
     }
     h += "</select></div>";
     h += '<div class="ns-col"><label class="ns-field-label" for="ns-perm-select">权限</label>' +

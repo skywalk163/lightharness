@@ -116,11 +116,13 @@
             <button type="button" id="model-chip" class="model-chip" title="选择本会话使用的模型（每个会话可不同）">
               <span id="model-chip-name">模型</span>
             </button>
-            <select id="mode-select" class="mode-select" title="Agent 模式（随下一条消息生效）">
-              <option value="standard">标准</option>
-              <option value="cordis">创造</option>
-              <option value="ptc">PTC</option>
-              <option value="minimal">极简</option>
+            <select id="mode-select" class="mode-select" title="Agent 模式 / 工作方法（随下一条消息生效）">
+              <optgroup label="Agent 模式">
+                <option value="standard">标准</option>
+                <option value="cordis">创造</option>
+                <option value="ptc">PTC</option>
+                <option value="minimal">极简</option>
+              </optgroup>
             </select>
           </span>
           <span class="composer-right">

@@ -7,7 +7,7 @@
 2026-11-21 的真实长任务里，连续两轮都恰好停在 25 步。
 
 设计（与 /goal --max-rounds 的会话级选项同口径）：
-  优先级 请求体「最大步数」> 环境变量 HARNESS_MAX_STEPS > 内置默认 25。
+  优先级 请求体「最大步数」> 环境变量 HARNESS_MAX_STEPS > 内置默认（T-0439 起 96）。
   非法值不中断对话，只回落并把理由带出来（部署不该因一个环境变量拼错就起不来）。
 
 判据：
@@ -25,6 +25,8 @@ import json
 import os
 import subprocess
 import sys
+
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
@@ -93,7 +95,7 @@ def test_步数优先级请求优先于环境(tmp_path):
 '''
     rc, out, kv = _run(src, tmp_path)
     assert rc == 0, f'驱动失败 rc={rc}\n{out}'
-    assert kv['缺省值'] == '25', f'缺省应为 25（旧行为不变）\n{out}'
+    assert kv['缺省值'] == '96', f'缺省应为 96（T-0439 上调）\n{out}'
     assert kv['缺省来源'] == '缺省', out
     assert kv['请求值'] == '80' and kv['请求来源'] == '请求', out
     assert kv['环境值'] == '60' and kv['环境来源'] == '环境', out
@@ -135,9 +137,9 @@ def test_非法步数回落且给理由(tmp_path):
     assert kv['超合法'] == 'False', out
     assert kv['好合法'] == 'True', out
     # 非法环境值必须回落缺省，并保留可读理由（不是静默吞掉）
-    assert kv['环境乱值'] == '25', f'非法环境值应回落缺省，实际 {kv["环境乱值"]}\n{out}'
+    assert kv['环境乱值'] == '96', f'非法环境值应回落缺省，实际 {kv["环境乱值"]}\n{out}'
     assert '纯数字' in kv['环境乱理由'], f'环境值非法要给理由：{kv["环境乱理由"]}\n{out}'
-    assert kv['环境负值'] == '25', out
+    assert kv['环境负值'] == '96', out
     # 负号不是数字，所以在「纯数字」这一关就被挡住了——理由必须非空且点名变量
     assert kv['环境负理由'] != '', f'非法环境值必须给理由，不能静默回落\n{out}'
     assert 'HARNESS_MAX_STEPS' in kv['环境负理由'], out
@@ -194,6 +196,7 @@ def test_代理按选项改变步数上限(tmp_path):
 # --------------------------------------------------------------------------- #
 # 4. 端到端：请求体 / 环境变量都能改掉实际生效步数，统计帧回报来源
 # --------------------------------------------------------------------------- #
+@pytest.mark.timeout(240)
 def test_端到端步数上限生效且统计帧回报(tmp_path):
     import http.server
     import socketserver
@@ -305,8 +308,8 @@ def test_端到端步数上限生效且统计帧回报(tmp_path):
             f'环境变量=4 应真的只跑 4 步，实际 {s2["_实际步数"]} 次')
 
         s3 = chat({}, {})
-        assert s3 is not None and s3.get('步数上限') == 25, f'缺省应仍为 25，统计帧={s3}'
+        assert s3 is not None and s3.get('步数上限') == 96, f'缺省应仍为 96，统计帧={s3}'
         assert s3.get('步数上限来源') == '缺省', s3
-        assert s3['_实际步数'] == 25, f'缺省应跑 25 步，实际 {s3["_实际步数"]} 次' 
+        assert s3['_实际步数'] == 96, f'缺省应跑 96 步，实际 {s3["_实际步数"]} 次' 
     finally:
         srv_shutdown()
