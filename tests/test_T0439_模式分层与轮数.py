@@ -24,8 +24,8 @@ RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 180
 
 AGENT = ['standard', 'ptc', 'minimal', 'cordis']
-METHOD = ['topdown', 'bottomup', 'brainstorm', 'lazy']
-ALL8 = ['standard', 'ptc', 'minimal', 'cordis', 'topdown', 'bottomup', 'brainstorm', 'lazy']
+METHOD = ['default', 'topdown', 'bottomup', 'brainstorm', 'lazy']
+ALL9 = ['standard', 'ptc', 'minimal', 'cordis', 'default', 'topdown', 'bottomup', 'brainstorm', 'lazy']
 
 DRIVER = '''
 从 预设组合 导入 预设分组, 预设清单, 预设类别, 组合清单, 是代理模式, 是工作方法
@@ -170,21 +170,21 @@ def test_第1组_预设分组两组且顺序正确(tmp_path):
     kv = _ok(tmp_path, 'base')
     assert kv['agent'].split(',') == AGENT, kv['agent']
     assert kv['method'].split(',') == METHOD, kv['method']
-    assert kv['全部'].split(',') == ALL8, kv['全部']
+    assert kv['全部'].split(',') == ALL9, kv['全部']
 
 
 def test_第1组_预设清单按类别过滤且向后兼容(tmp_path):
     kv = _ok(tmp_path, 'base')
-    assert kv['代理数'] == '4' and kv['方法数'] == '4', kv
+    assert kv['代理数'] == '4' and kv['方法数'] == '5', kv
     assert kv['未知数'] == '0', '未知类别必须返回空列表，实为 %s' % kv['未知数']
-    assert kv['空串数'] == '8' and kv['空值数'] == '8', '空串/空值都必须 = 全部 8 项'
+    assert kv['空串数'] == '9' and kv['空值数'] == '9', '空串/空值都必须 = 全部 9 项'
     assert kv['标代理'] == 'True' and kv['标方法'] == 'False'
     assert kv['懒方法'] == 'True'
 
 
 def test_第1组_类别字段单一真相(tmp_path):
     kv = _ok(tmp_path, 'base')
-    assert kv['组合键数'] == '8'
+    assert kv['组合键数'] == '9'
     assert kv['缺类别'] == '0', '有 %s 个组合条目缺 类别' % kv['缺类别']
     assert kv['错类别'] == '0', '类别与 预设类别() 不一致的条目数：%s' % kv['错类别']
     assert kv['creat类别'] == 'agent' and kv['懒类别'] == 'method'
@@ -202,12 +202,12 @@ def test_第2组_设置页元数据带类别与分组名(tmp_path):
     assert kv['造组空'] == ''
 
 
-def test_第2组_预设分组按序是两组四加四(tmp_path):
+def test_第2组_预设分组按序是两组四加五(tmp_path):
     kv = _ok(tmp_path, 'base')
     assert kv['组序数'] == '2', kv['组序数']
     assert kv['组0名'] == 'Agent 模式' and kv['组1名'] == '工作方法', kv
-    assert kv['组0数'] == '4' and kv['组1数'] == '4', kv
-    assert kv['组0首'] == 'standard' and kv['组1首'] == 'topdown', kv
+    assert kv['组0数'] == '4' and kv['组1数'] == '5', kv
+    assert kv['组0首'] == 'standard' and kv['组1首'] == 'default', kv
 
 
 # ---------------------------------------------------------------- 第 3 组：轮数
@@ -241,7 +241,8 @@ def _read(*parts):
 def test_第4组_三处前端都按两组渲染():
     index = _read('webui', 'index.html')
     assert '<optgroup label="Agent 模式">' in index
-    assert '工作方法（随下一条消息生效）' in index
+    assert '<optgroup label="工作方法">' in index
+    assert 'method-select' in index, 'T-0441：工作方法必须是独立下拉'
 
     app = _read('webui', 'app.js')
     assert 'MODE_GROUPS' in app
@@ -251,9 +252,10 @@ def test_第4组_三处前端都按两组渲染():
     assert 'topdown' not in app and 'brainstorm' not in app
 
     ns = _read('webui', 'new-session.js')
-    assert 'modeGroups' in ns and '"Agent 模式"' in ns and '"工作方法"' in ns
-    assert ('["standard", "cordis", "ptc", "minimal", "topdown", "bottomup", '
-            '"brainstorm", "lazy"]') in ns, 'T-0403 的模式顺序判据被破坏'
+    assert '"Agent 模式"' in ns and '"工作方法"' in ns
+    # T-0441：两维下拉各自一份顺序表（方法维 default 排第一）
+    assert '["standard", "cordis", "ptc", "minimal"]' in ns
+    assert ('["default", "topdown", "bottomup", "brainstorm", "lazy"]') in ns, '工作方法顺序判据被破坏'
 
 
 def test_第4组_文档章节齐全():

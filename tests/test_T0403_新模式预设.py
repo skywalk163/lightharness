@@ -29,9 +29,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 180
 
-# 8 个预设在 预设清单() 里的次序 = order 升序（1..8）
+# 9 个预设在 预设清单() 里的次序 = order 升序（1..9；T-0441 起 default 为方法维第一项）
 EXPECTED_ORDER = ['standard', 'ptc', 'minimal', 'cordis',
-                  'topdown', 'bottomup', 'brainstorm', 'lazy']
+                  'default', 'topdown', 'bottomup', 'brainstorm', 'lazy']
 NEW_MODES = ['topdown', 'bottomup', 'brainstorm', 'lazy']
 SHIPPED = ['standard', 'ptc', 'minimal', 'cordis']
 
@@ -41,6 +41,7 @@ EXPECTED_ROWS = {
     'ptc': (34, 35),
     'minimal': (7, 8),
     'cordis': (34, 35),
+    'default': (33, 34),   # T-0441：不删任何工具，与 standard 同构
     'topdown': (33, 34),   # 与 standard 同构：全 4 工具 + 目标工具
     'bottomup': (31, 32),  # 删 tool-goal / tool-ask-user
     'brainstorm': (19, 20),  # 基底拆 fs 两行后再删 write / bash / pwsh / delegation 组（1+1+1+9+1）
@@ -49,7 +50,7 @@ EXPECTED_ROWS = {
 
 EXPECTED_LEAF_COUNT = {
     'standard': 30, 'ptc': 31, 'minimal': 6, 'cordis': 31,
-    'topdown': 30, 'bottomup': 28, 'brainstorm': 17, 'lazy': 29,
+    'default': 30, 'topdown': 30, 'bottomup': 28, 'brainstorm': 17, 'lazy': 29,
 }
 
 
@@ -161,11 +162,11 @@ CORE_DRIVER = '''
 '''
 
 
-def test_预设清单八项且按_order_升序(tmp_path):
+def test_预设清单九项且按_order_升序(tmp_path):
     rc, out, kv = _run(CORE_DRIVER, tmp_path, 'core')
     assert rc == 0, out
-    assert kv.get('预设数') == '8', out
-    assert kv.get('组合键数') == '8', out
+    assert kv.get('预设数') == '9', out
+    assert kv.get('组合键数') == '9', out
     assert kv.get('清单', '').split(',') == EXPECTED_ORDER, kv.get('清单')
     # 每个预设都已知、order 就是它在清单里的位次
     for i, pid in enumerate(EXPECTED_ORDER, start=1):
@@ -183,6 +184,7 @@ def test_八个预设的组合行数(tmp_path):
 def test_四个新模式有名称与描述(tmp_path):
     rc, out, kv = _run(CORE_DRIVER, tmp_path, 'core')
     assert rc == 0, out
+    assert kv.get('名称_default') == '默认', out   # T-0441：方法维「不干预」档
     assert kv.get('名称_topdown') == '自上而下', out
     assert kv.get('名称_bottomup') == '自下而上', out
     assert kv.get('名称_brainstorm') == '头脑风暴', out
@@ -244,6 +246,9 @@ def test_提示契约齐全(tmp_path):
         assert int(kv.get('终止数_' + pid, '0')) >= 2, (pid, out)
     # shipped 四预设不注入额外提示段；未知 / 空 / 非串一律空串（注入点要防御）
     assert kv.get('标准提示长') == '0', out
+    # T-0441：default 也不注入提示（零改动档）
+    assert kv.get('提示长_default') == '0', out
+    assert kv.get('终止数_default') == '0', out
     assert kv.get('未知提示长') == '0', out
     assert kv.get('空值提示长') == '0', out
     assert kv.get('非串提示长') == '0', out
@@ -373,9 +378,9 @@ def test_前端模式名与顺序():
     for pid, name in (('topdown', '自上而下'), ('bottomup', '自下而上'),
                       ('brainstorm', '头脑风暴'), ('lazy', '懒人')):
         assert '%s: "%s"' % (pid, name) in src, (pid, name)
-    # 下拉顺序：四个新模式接在原有四项之后
-    assert ('["standard", "cordis", "ptc", "minimal", "topdown", "bottomup", '
-            '"brainstorm", "lazy"]') in src
+    # T-0441：两维下拉 —— Agent 模式 4 项 + 工作方法 5 项（默认排第一）
+    assert '["standard", "cordis", "ptc", "minimal"]' in src
+    assert '["default", "topdown", "bottomup", "brainstorm", "lazy"]' in src
     # 热点文件不归本卡：只在它们里没被本卡改动过（此处仅确认本卡没往里塞新模式）
     for hot in ('app.js', 'index.html'):
         hot_src = open(os.path.join(ROOT, 'webui', hot), encoding='utf-8').read()

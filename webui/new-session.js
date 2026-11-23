@@ -37,9 +37,24 @@
   // T-0403：新增四个组合型模式（自上而下 / 自下而上 / 头脑风暴 / 懒人）。
   //   只在本文件登记；app.js:67 的 MODE_NAMES 与 index.html 的 <option> 是 T-0407 的热点，未在此改。
   var MODE_NAMES = {
-    standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简",
+    standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简", "default": "默认",
     topdown: "自上而下", bottomup: "自下而上", brainstorm: "头脑风暴", lazy: "懒人"
   };
+  var AGENT_ORDER = ["standard", "cordis", "ptc", "minimal"];
+  var METHOD_ORDER = ["default", "topdown", "bottomup", "brainstorm", "lazy"];
+  // T-0441：面板状态仍是组合串；渲染/同步时拆成两维（兼容旧单值 lh.mode）
+  function splitMode(v) {
+    var s = String(v || "");
+    var plus = s.indexOf("+");
+    if (plus >= 0) return { agent: s.slice(0, plus), method: s.slice(plus + 1) };
+    if (AGENT_ORDER.indexOf(s) >= 0) return { agent: s, method: "default" };
+    if (METHOD_ORDER.indexOf(s) >= 0) return { agent: "standard", method: s };
+    return { agent: "standard", method: "default" };
+  }
+  function joinMode(agent, method) {
+    return (AGENT_ORDER.indexOf(agent) >= 0 ? agent : "standard") + "+" +
+      (METHOD_ORDER.indexOf(method) >= 0 ? method : "default");
+  }
   var PERM_NAMES = ["全放行", "按类别", "全拒绝", "自定义"];
 
   var el = {};              // DOM 句柄
@@ -53,7 +68,7 @@
   var globalCwd = "";       // 全局默认目录（GET /api/cwd）
   var globalCwdSource = ""; // "设置" | "启动"
   var pendingCheck = 0;     // 校验请求序号（防旧响应覆盖新输入）
-  var mode = "standard";    // 当前模式
+  var mode = "standard+default";    // 当前模式（T-0441：代理+方法组合串；默认 标准×默认）
   var permPreset = "";      // "" = 跟随全局（未落库）；否则 全放行/按类别/全拒绝/自定义
   var globalPermPreset = ""; // 顶栏已有权限管理器的当前值（GET /api/permissions）
   var popoverOpen = false;
@@ -189,28 +204,33 @@
     h += '<div class="ns-global-warn">⚠ 「设为全局默认」是**全局生效**：会切换服务进程的工作目录并写入设置，影响所有新会话，不只是这一个。</div>';
 
     // 模式 / 权限
+    // T-0441：模式拆成两个正交下拉 —— Agent 模式（工具组合） × 工作方法（推进方式），
+    //   mode 状态始终是组合串（standard+default 为默认）。
+    var pair = splitMode(mode);
     h += '<div class="ns-split"></div>';
     h += '<div class="ns-two-col">';
-    h += '<div class="ns-col"><label class="ns-field-label" for="ns-mode-select">模式</label>' +
+    h += '<div class="ns-col"><label class="ns-field-label" for="ns-mode-select">Agent 模式</label>' +
       '<select id="ns-mode-select" class="ns-select">';
-    var modeOrder = ["standard", "cordis", "ptc", "minimal", "topdown", "bottomup", "brainstorm", "lazy"];
-    // T-0439：同一份 modeOrder 切成两段渲染，避免再抄一份清单：
-    //   [0,4) = Agent 模式（工具组合，对齐 DSH 四份 preset）；[4,8) = 工作方法（方法论）。
-    var modeGroups = [
-      { label: "Agent 模式", from: 0, to: 4 },
-      { label: "工作方法", from: 4, to: 8 }
-    ];
-    for (var g = 0; g < modeGroups.length; g++) {
-      var grp = modeGroups[g];
-      h += '<optgroup label="' + escapeAttr(grp.label) + '">';
-      for (var m = grp.from; m < grp.to; m++) {
-        var mv = modeOrder[m];
-        h += '<option value="' + escapeAttr(mv) + '"' + (mode === mv ? " selected" : "") + ">" +
-          escapeHtml(MODE_NAMES[mv] || mv) + "</option>";
-      }
-      h += "</optgroup>";
+    var modeOrder = ["standard", "cordis", "ptc", "minimal"];
+    h += '<optgroup label="Agent 模式">';
+    for (var m = 0; m < modeOrder.length; m++) {
+      var mv = modeOrder[m];
+      h += '<option value="' + escapeAttr(mv) + '"' + (pair.agent === mv ? " selected" : "") + ">" +
+        escapeHtml(MODE_NAMES[mv] || mv) + "</option>";
     }
-    h += "</select></div>";
+    h += "</optgroup></select></div>";
+    h += '<div class="ns-col"><label class="ns-field-label" for="ns-method-select">工作方法</label>' +
+      '<select id="ns-method-select" class="ns-select">';
+    var methodOrder = ["default", "topdown", "bottomup", "brainstorm", "lazy"];
+    h += '<optgroup label="工作方法">';
+    for (var mm = 0; mm < methodOrder.length; mm++) {
+      var mvv = methodOrder[mm];
+      h += '<option value="' + escapeAttr(mvv) + '"' + (pair.method === mvv ? " selected" : "") + ">" +
+        escapeHtml(MODE_NAMES[mvv] || mvv) + "</option>";
+    }
+    h += "</optgroup></select></div>";
+    h += "</div>";
+    h += '<div class="ns-two-col" style="margin-top:8px">';
     h += '<div class="ns-col"><label class="ns-field-label" for="ns-perm-select">权限</label>' +
       '<select id="ns-perm-select" class="ns-select">';
     h += '<option value=""' + (permPreset === "" ? " selected" : "") + ">全局默认" +
@@ -258,8 +278,18 @@
       });
     }
     var modeSel = el.popover.querySelector("#ns-mode-select");
+    var methodSel = el.popover.querySelector("#ns-method-select");
     if (modeSel) {
-      modeSel.addEventListener("change", function () { setMode(modeSel.value); });
+      modeSel.addEventListener("change", function () {
+        var cur = splitMode(mode);
+        setMode(joinMode(modeSel.value, methodSel ? methodSel.value : cur.method));
+      });
+    }
+    if (methodSel) {
+      methodSel.addEventListener("change", function () {
+        var cur = splitMode(mode);
+        setMode(joinMode(modeSel ? modeSel.value : cur.agent, methodSel.value));
+      });
     }
     var permSel = el.popover.querySelector("#ns-perm-select");
     if (permSel) {
@@ -569,7 +599,7 @@
     });
     // 恢复上次模式（沿用既有 lh.mode）
     var saved = lsGet(MODE_KEY);
-    if (saved && MODE_NAMES[saved]) mode = saved;
+    if (saved && (MODE_NAMES[saved] || saved.indexOf("+") >= 0)) mode = saved;
     // 恢复上次用过的会话目录（刷新后 chip 不退回「默认」；没选过的老用户无此键 → 不变）
     var lastCwd = lsGet(LAST_CWD_KEY);
     if (lastCwd && trimStr(lastCwd)) sessionCwd = trimStr(lastCwd);

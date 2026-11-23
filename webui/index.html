@@ -116,12 +116,18 @@
             <button type="button" id="model-chip" class="model-chip" title="选择本会话使用的模型（每个会话可不同）">
               <span id="model-chip-name">模型</span>
             </button>
-            <select id="mode-select" class="mode-select" title="Agent 模式 / 工作方法（随下一条消息生效）">
+            <select id="mode-select" class="mode-select" title="Agent 模式：决定工具组合（随下一条消息生效）">
               <optgroup label="Agent 模式">
                 <option value="standard">标准</option>
                 <option value="cordis">创造</option>
                 <option value="ptc">PTC</option>
                 <option value="minimal">极简</option>
+              </optgroup>
+            </select>
+            <!-- T-0441：工作方法（与 Agent 模式正交；默认档 = 不做任何推进干预） -->
+            <select id="method-select" class="mode-select" title="工作方法：决定推进方式（随下一条消息生效）">
+              <optgroup label="工作方法">
+                <option value="default">默认</option>
               </optgroup>
             </select>
           </span>

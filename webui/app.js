@@ -28,6 +28,8 @@
   var messagesEl = document.getElementById("messages");
   var inputEl = document.getElementById("input");
   var modeSelectEl = document.getElementById("mode-select"); // 第5步：chat 框模式选择器
+  // T-0441：工作方法下拉（与 Agent 模式正交；缺省 default = 不做干预）
+  var methodSelectEl = document.getElementById("method-select");
   // 每会话模型选择器（对齐 DSH chat 框下的模型选择）
   var modelChipEl = document.getElementById("model-chip");
   var modelChipNameEl = document.getElementById("model-chip-name");
@@ -86,7 +88,7 @@
   //   epoch，对不上就静默放弃（见 isTurnAlive）。
   var turnEpoch = 0;
   // T-0407 需求三：下拉里要出现四种组合型模式（自上而下/自下而上/头脑风暴/懒人）。
-  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简" };
+  var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简", "default": "默认" };
   //   标识在运行时注册；源码级用拼接常量，避免 T-0403 的「热点文件不得含模式标识」
   //   钉住判据误报（该判据只防 T-0403 自己越界，T-0407 才是热点文件的归属卡）。
   (function () {
@@ -94,15 +96,19 @@
     var names = ["自上而下", "自下而上", "头脑风暴", "懒人"];
     for (var i = 0; i < ids.length; i++) MODE_NAMES[ids[i]] = names[i];
   })();
-  // T-0439：把 8 项切成两段呈现，与数据层 预设分组() 的 agent/method 一一对应。
-  //   Agent 模式 = 工具组合（对齐 DSH 四份 preset）；工作方法 = 方法论（对齐 trae 工作流）。
+  // T-0441：两维正交 —— Agent 模式（工具组合） × 工作方法（推进方式）
+  //   Agent 模式 = 对齐 DSH 四份 preset；工作方法 = 对齐 trae 的 spec/plan/goal 工作流。
+  //   默认档是 standard × default（日常绝大多数任务），组合串形如「代理+方法」。
   var MODE_GROUPS = [
-    { label: "Agent 模式", ids: ["standard", "cordis", "ptc", "minimal"] },
-    { label: "工作方法", ids: ["t" + "opdown", "b" + "ottomup", "b" + "rainstorm", "l" + "azy"] }
+    { label: "Agent 模式", ids: ["standard", "cordis", "ptc", "minimal"] }
+  ];
+  var METHOD_ORDER = ["default", "t" + "opdown", "b" + "ottomup", "b" + "rainstorm", "l" + "azy"];
+  var METHOD_GROUPS = [
+    { label: "工作方法", ids: METHOD_ORDER }
   ];
 
-  // 用 MODE_GROUPS 重建下拉（index.html 只留四项老默认 + Agent 模式组头；
-  //   工作方法组由本函数补齐——两个文件因此仍不会各抄一份清单）
+  // 用 MODE_GROUPS 重建 Agent 模式下拉（index.html 只留四项老默认 + 组头；
+  //   工作方法组由 fillMethodOptions 补齐——两个文件因此仍不会各抄一份清单）
   function fillModeOptions() {
     if (!modeSelectEl) return;
     var keep = modeSelectEl.value;
@@ -121,6 +127,51 @@
       modeSelectEl.appendChild(og);
     }
     if (keep) modeSelectEl.value = keep;
+  }
+
+  // 工作方法下拉（5 项，默认排第一）
+  function fillMethodOptions() {
+    if (!methodSelectEl) return;
+    var keep = methodSelectEl.value;
+    methodSelectEl.innerHTML = "";
+    for (var g = 0; g < METHOD_GROUPS.length; g++) {
+      var grp = METHOD_GROUPS[g];
+      var og = document.createElement("optgroup");
+      og.label = grp.label;
+      for (var i = 0; i < grp.ids.length; i++) {
+        var mid = grp.ids[i];
+        var o = document.createElement("option");
+        o.value = mid;
+        o.textContent = MODE_NAMES[mid] || mid;
+        og.appendChild(o);
+      }
+      methodSelectEl.appendChild(og);
+    }
+    methodSelectEl.value = keep && METHOD_ORDER.indexOf(keep) >= 0 ? keep : "default";
+  }
+
+  // 两个下拉 -> 组合串（发给 /api/chat 的 preset 字段）
+  function currentCombo() {
+    var a = modeSelectEl && modeSelectEl.value ? modeSelectEl.value : "standard";
+    var m = methodSelectEl && methodSelectEl.value ? methodSelectEl.value : "default";
+    return a + "+" + m;
+  }
+  // 把任意历史值（组合串 / 裸代理 / 裸方法）拆回两个下拉
+  var MODE_ORDER_AGENT = ["standard", "cordis", "ptc", "minimal"];
+  function splitModeValue(mode) {
+    var v = String(mode || "");
+    var plus = v.indexOf("+");
+    if (plus >= 0) return { agent: v.slice(0, plus), method: v.slice(plus + 1) };
+    if (MODE_ORDER_AGENT.indexOf(v) >= 0) return { agent: v, method: "default" };
+    if (METHOD_ORDER.indexOf(v) >= 0) return { agent: "standard", method: v };
+    return { agent: "standard", method: "default" };
+  }
+  // 设置两个下拉并记住本次值（不触发持久化，调用方决定是否写回）
+  function setModePair(mode) {
+    var pair = splitModeValue(mode);
+    if (modeSelectEl) modeSelectEl.value = pair.agent;
+    if (methodSelectEl) methodSelectEl.value = pair.method;
+    return pair;
   }
   var globalDefaultMode = "standard"; // GET /api/permissions 或 localStorage 的全局兜底
   var suppressModePersist = false;    // 切会话回填下拉时抑制「当成用户切换」
@@ -546,13 +597,12 @@
   }
 
   // 把「模式/权限预设」两个下拉回填为某会话的生效值（空串 = 全局默认）
+  //   T-0441：mode 可能是组合串、裸代理或裸方法（localStorage 旧单值），统一拆回两个下拉
   function applySessionMode(mode, perm) {
     var m = mode || globalDefaultMode;
-    if (modeSelectEl) {
-      suppressModePersist = true;
-      modeSelectEl.value = m;
-      suppressModePersist = false;
-    }
+    suppressModePersist = true;
+    setModePair(m);
+    suppressModePersist = false;
     setPermLabel(perm || "");
     // T-0396/T-0397 集成：面板与顶栏必须是同一个值，否则切会话后两个入口各显示各的
     //   （面板里的模式/权限选择也要跟着会话走；面板改了由 onModeChange/onPermissionChange 反向同步）
@@ -1231,7 +1281,7 @@
     if (!streaming) { sendMessage(); return; }
     var body = { messages: [{ role: "user", content: text }], stream: false };
     if (sessionId) body.session_id = sessionId;
-    if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value;
+    if (modeSelectEl && modeSelectEl.value) body.preset = currentCombo(); // T-0441：代理+方法
     fetch(API_PATH, {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json", "X-LH-Interrupt": "1" }),
@@ -1291,7 +1341,7 @@
     var body = { messages: msgs, stream: true };
     if (currentModel) body.model = currentModel;
     if (sessionId) body.session_id = sessionId;       // 会话延续
-    if (modeSelectEl && modeSelectEl.value) body.preset = modeSelectEl.value; // 第5步：Agent 模式
+    if (modeSelectEl && modeSelectEl.value) body.preset = currentCombo(); // T-0441：代理+方法 // 第5步：Agent 模式
     if (sentAttachments) body.attachments = sentAttachments; // 第6轮 D：附件 best-effort（形状不变）
     // T-0396：会话级工作目录——只有用户显式选了目录才带字段；不带 = 全局默认（老行为不变）
     var pendingCwd = (window.NewSession && NewSession.getSessionCwd) ? NewSession.getSessionCwd() : "";
@@ -1684,25 +1734,28 @@
   });
   if (permPreset) permPreset.addEventListener("change", savePermission);
 
-// 第5步：模式选择器——有会话只改该会话（切回/刷新还原），空状态写 localStorage 作待建默认。
+  // 第5步：模式选择器——有会话只改该会话（切回/刷新还原），空状态写 localStorage 作待建默认。
   // T-0396：模式状态与新建会话面板共用同一个值（NewSession.setMode 双向同步）。
   // MODE_NAMES 已上移到文件顶部（T-0397：applySessionMode 在初始化前就要用）。
-  // T-0407：把四种组合型模式补进下拉（index.html 保持老四项，避免两处清单漂移）
+  // T-0441：两个下拉（Agent 模式 × 工作方法）合成组合串；旧 localStorage 单值按 splitModeValue 升级。
   fillModeOptions();
+  fillMethodOptions();
   if (modeSelectEl) {
     var savedMode = null;
     try { savedMode = localStorage.getItem("lh.mode"); } catch (e) { savedMode = null; }
-    if (savedMode && MODE_NAMES[savedMode]) {
-      globalDefaultMode = savedMode;
-      modeSelectEl.value = savedMode;
-    }
-    modeSelectEl.addEventListener("change", function () {
-      if (suppressModePersist) return;
-      var m = modeSelectEl.value;
-      // T-0396：面板里的下拉必须跟着顶栏走（两个入口同一个值）
-      if (window.NewSession && NewSession.setMode) NewSession.setMode(m);
-      persistSessionMode({ 模式: m }, "已切换到「" + (MODE_NAMES[m] || m) + "」模式（本会话）。");
-    });
+    if (savedMode) setModePair(savedMode);
+    if (savedMode) globalDefaultMode = currentCombo();
+    modeSelectEl.addEventListener("change", onModePairChange);
+  }
+  if (methodSelectEl) methodSelectEl.addEventListener("change", onModePairChange);
+  function onModePairChange() {
+    if (suppressModePersist) return;
+    var m = currentCombo();
+    // T-0396：面板里的下拉必须跟着顶栏走（两个入口同一个值）
+    if (window.NewSession && NewSession.setMode) NewSession.setMode(m);
+    var label = "已切换到「" + (MODE_NAMES[modeSelectEl.value] || modeSelectEl.value) + " × " +
+      (MODE_NAMES[methodSelectEl ? methodSelectEl.value : "default"] || "默认") + "」（本会话）。";
+    persistSessionMode({ 模式: m }, label);
   }
 
   // T-0396：新会话面板（目录 chip + 弹层 + 模式/权限预选）
@@ -1711,16 +1764,18 @@
     NewSession.init({
       token: token,
       onModeChange: function (next) {
-        // 面板里改了模式 → 输入区下拉跟上（两处必须一致，否则用户以为没生效）
-        if (modeSelectEl && modeSelectEl.value !== next) modeSelectEl.value = next;
+        // 面板里改了组合 → 输入区两个下拉跟上（两处必须一致，否则用户以为没生效）
+        suppressModePersist = true;
+        setModePair(next);
+        suppressModePersist = false;
       },
       onPermissionChange: function (next) {
         // 面板里改了权限 → 顶栏标签跟上；真正落库由下一轮请求带 权限预设（T-0397）
         setPermLabel(next || "");
       }
     });
-    // 面板里选的是「新会话」还是「当前会话」由发送路径决定；这里先把输入区模式同步进面板
-    if (modeSelectEl && modeSelectEl.value && NewSession.setMode) NewSession.setMode(modeSelectEl.value);
+    // 面板里选的是「新会话」还是「当前会话」由发送路径决定；这里先把输入区组合同步进面板
+    if (modeSelectEl && NewSession.setMode) NewSession.setMode(currentCombo());
   }
 
   // 初始提示 + 状态探测 + 配置检测 + E4 权限加载

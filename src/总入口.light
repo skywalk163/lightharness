@@ -55,7 +55,7 @@
 从 内置核心转换 导入 转字符串
 导入 re
 从 预设切换 导入 装配挂载集, 重建预设
-从 预设组合 导入 是已知预设, 预设清单
+从 预设组合 导入 是已知预设, 预设清单, 解析组合, 组合串
 # T-0407：新模式系统提示（数据权威在 预设，本层只调用）
 从 预设 导入 模式系统提示
 # 续工具名 由 目标续跑 持有（叶子映射用同一常量，防两处手写漂移）
@@ -565,6 +565,14 @@
       打印 "错误: 未知 agent preset \"" + 预设标识 + "\""
       打印 "可用 preset: " + 预设清单文案()
       抛出 "未知 agent preset: " + 预设标识 + "（可用: " + 预设清单文案() + "）"
+    # T-0441：HARNESS_METHOD 与 HARNESS_PRESET 正交组合（显式方法覆盖方法维）
+    设 方法标识 为 环境变量("HARNESS_METHOD", "")
+    如果 方法标识 != 空 且 方法标识 != "":
+      设 解 为 解析组合(预设标识)
+      如果 解["ok"] == 真:
+        设 合成 为 组合串(解["代理"], 方法标识)
+        如果 合成 != "":
+          设 预设标识 为 合成
     设 装配 为 解析预设装配(预设标识, 组装注册表())
     打印 "--- agent preset: " + 预设标识 + " ---"
     打印 "挂载条目数: " + 转字符串(长度(装配[0])) + "  跳过条目数: " + 转字符串(长度(装配[1]))
@@ -733,7 +741,8 @@
   行表.追加("  HARNESS_MSG / HARNESS_PROMPT_FILE  用户消息与提示文件")
   行表.追加("  HARNESS_RESUME / HARNESS_SESSION / HARNESS_ROOT  续写会话与持久化根（缺省 sessions）")
   行表.追加("  HARNESS_REPL=1 / HARNESS_LIST=1  交互模式与会话列表")
-  行表.追加("  HARNESS_PRESET=standard|ptc|minimal|cordis  会话内切换 agent preset（空串不指定；未知值报错退出并打印可用四键）")
+  行表.追加("  HARNESS_PRESET=standard|ptc|minimal|cordis|default|topdown|bottomup|brainstorm|lazy  或 代理+方法 组合串（如 ptc+lazy）")
+  行表.追加("  HARNESS_METHOD=default|topdown|bottomup|brainstorm|lazy  与 HARNESS_PRESET 正交组合（空串不指定）")
   行表.追加("  HARNESS_ENDPOINT  端点（缺省 https://api.deepseek.com/chat/completions）")
   行表.追加("  HARNESS_MODEL  模型（缺省 取默认模型()，0.1.5 为 deepseek-flash）")
   行表.追加("  HARNESS_PROVIDER=jet-hub  以 jet-hub 本地网关为模型来源（自动发现地址/密钥/模型目录）")
