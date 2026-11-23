@@ -61,6 +61,48 @@ def _智能解码(数据, 编码: str = None) -> str:
     return 数据.decode('utf-8', errors='replace')
 
 
+def _终止进程树(进程) -> None:
+    """超时终止：把**整棵进程树**停掉，而不是只 kill 宿主 shell。
+
+    为什么必须收树（T-0442 缺陷 3 实测）：`python -c "...time.sleep(8)"` 配 2 秒
+    超时，旧实现只 kill 掉 cmd.exe/sh，孙进程还活着并继续占着 stdout/stderr 管道，
+    紧接着的 communicate() 就要一直等到孙进程自己退出 —— 超时形同虚设。
+
+    手段：Windows 用 taskkill /F /T；POSIX 先 SIGTERM 整个进程组，留 1 秒宽限，
+    仍活着再 SIGKILL。任何一步失败都不外抛（超时语义优先）。
+    """
+    import signal as _signal
+
+    if os.name == "nt":
+        try:
+            subprocess.run(["taskkill", "/F", "/T", "/PID", str(进程.pid)],
+                           capture_output=True, timeout=5)
+        except Exception:  # noqa: BLE001
+            pass
+    else:
+        try:
+            os.killpg(os.getpgid(进程.pid), _signal.SIGTERM)
+        except Exception:  # noqa: BLE001
+            pass
+        # 轮询而不是 wait()：进程组还活着时 wait() 可能卡住，且会与随后的
+        # communicate() 抢同一条管道（死锁）。这里只给 1 秒宽限。
+        import time as _time
+        宽限截止 = _time.time() + 1.0
+        while _time.time() < 宽限截止:
+            if 进程.poll() is not None:
+                break
+            _time.sleep(0.05)
+        if 进程.poll() is None:
+            try:
+                os.killpg(os.getpgid(进程.pid), _signal.SIGKILL)
+            except Exception:  # noqa: BLE001
+                pass
+    try:
+        进程.kill()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def 执行命令(
     命令: Union[str, List[str]],
     捕获输出: bool = True,
@@ -100,41 +142,73 @@ def 执行命令(
         环境.update(环境变量)
 
     try:
+        弹出参数 = {
+            "shell": shell,
+            # T-0442 缺陷 4：子进程 stdin 置 DEVNULL。此前不传即**继承父进程 stdin**，
+            # git 的 `Username for 'http://...': ` 之类交互式提示会静默挂到超时。
+            "stdin": subprocess.DEVNULL,
+            "cwd": 工作目录,
+            "env": 环境,
+        }
         if 捕获输出:
-            结果 = subprocess.run(
-                命令列表,
-                shell=shell,
-                capture_output=True,
-                cwd=工作目录,
-                env=环境,
-                timeout=超时,
-            )
-            return 命令结果(
-                返回码=结果.returncode,
-                标准输出=_智能解码(结果.stdout, 编码),
-                标准错误=_智能解码(结果.stderr, 编码),
-            )
+            弹出参数["stdout"] = subprocess.PIPE
+            弹出参数["stderr"] = subprocess.PIPE
+        if os.name == "nt":
+            # 新进程组：超时可用 taskkill /T 收整棵进程树（cmd.exe 不会 exec 子命令）
+            弹出参数["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
         else:
-            结果 = subprocess.run(
-                命令列表,
-                shell=shell,
-                cwd=工作目录,
-                env=环境,
-                timeout=超时,
-            )
-            return 命令结果(返回码=结果.returncode)
-    except subprocess.TimeoutExpired as e:
-        return 命令结果(
-            返回码=-1,
-            标准输出=_智能解码(e.stdout, 编码),
-            标准错误=f"命令超时（{超时}秒）",
-        )
+            # 新会话/进程组：超时可 killpg 收整组，不留孤儿占着管道
+            弹出参数["start_new_session"] = True
+        进程 = subprocess.Popen(命令列表, **弹出参数)
     except FileNotFoundError:
         return 命令结果(
             返回码=-1,
             标准错误="命令未找到",
         )
     except Exception as e:
+        return 命令结果(
+            返回码=-1,
+            标准错误=str(e),
+        )
+
+    try:
+        标准输出, 标准错误 = 进程.communicate(timeout=超时)
+        if not 捕获输出:
+            return 命令结果(返回码=进程.returncode)
+        return 命令结果(
+            返回码=进程.returncode,
+            标准输出=_智能解码(标准输出, 编码),
+            标准错误=_智能解码(标准错误, 编码),
+        )
+    except subprocess.TimeoutExpired:
+        # T-0442 缺陷 3：超时必须让调用方「看得懂」，且**真的把命令停下来**。
+        #   旧行为：run() 的 timeout 只 kill 宿主 shell（Windows 上 cmd.exe 不 exec
+        #   子命令），孙进程继续占着 stdout 管道，communicate() 要等它们自己结束
+        #   —— 实测「2 秒超时 + sleep 8」实际耗了 8 秒以上；返回的又只有一句
+        #   「命令超时（30秒）」、partial 输出全丢。
+        #   现行为：先收整棵进程树，再回收管道拿回被杀前的部分输出，并在错误字段
+        #   写明「命令超时被终止」+ 秒数 + 终止语义。
+        _终止进程树(进程)
+        try:
+            部分输出, 部分错误 = 进程.communicate()
+        except Exception:  # noqa: BLE001 —— 回收失败不影响超时语义
+            部分输出, 部分错误 = None, None
+        说明 = (f"命令超时被终止：执行超过 {超时} 秒仍未结束，已强制终止子进程"
+                f"（退出码 -1，POSIX 下等价于收到 SIGTERM/SIGKILL 被杀）")
+        错误文本 = 说明
+        部分错误文本 = _智能解码(部分错误, 编码)
+        if 部分错误文本:
+            错误文本 = 错误文本 + "\n[超时前 stderr]\n" + 部分错误文本
+        return 命令结果(
+            返回码=-1,
+            标准输出=_智能解码(部分输出, 编码),
+            标准错误=错误文本,
+        )
+    except Exception as e:  # noqa: BLE001 —— 读取/回收异常不外抛，转成命令结果
+        try:
+            进程.kill()
+        except Exception:  # noqa: BLE001
+            pass
         return 命令结果(
             返回码=-1,
             标准错误=str(e),
