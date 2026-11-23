@@ -1,13 +1,16 @@
 # 工具_bash.light —— bash 核心工具（在 shell 中执行命令）
 #
 # 工具名：bash
-# 参数：  {"命令": "要执行的 shell 命令"}
+# 参数：  {"命令": "要执行的 shell 命令", "超时": 可选秒数（默认 30，1~600）}
 # 返回：  {"输出":"...", "错误":"...", "退出码":N}
 #
 # 安全：
 #   - 工作目录固定在 HARNESS_ROOT（缺省当前工作目录），命令在此目录下执行。
 #   - 拒绝 `cd` 到上级目录 / 绝对路径 / 盘符 / ~（防止逃逸项目根）。
-#   - 超时 30 秒；超时返回 {"退出码":-1, "错误":"命令超时（30秒）"}。
+#   - 超时默认 30 秒（可被参数 超时 覆盖）；超时返回非 0 退出码并在 错误 里注明
+#     「命令超时被终止」+ 终止前已产生的部分输出。
+#   - 子进程 stdin 关闭（stdlib/外部命令 传 DEVNULL）：交互式提示（Username/Password）
+#     立刻失败而不是静默挂到超时，错误里附「等待终端输入」提示。
 
 导入 re
 导入 外部命令
@@ -20,10 +23,55 @@
 从 bash渲染 导入 沙箱拒绝标记, 升级提示标记
 
 # bash 参数模式（JSON Schema，供 OpenAI/tools 校验）
+# T-0442 缺陷 4：新增可选 "超时"（秒）——长命令（git push/构建）不再被 30 秒一刀切，
+#   调用方按需放宽；缺省 30 保持既有行为。
 段落 bash模式:
   返回 ["type": "object",
-          "properties": ["命令": ["type": "string", "description": "要执行的 shell 命令"]],
+          "properties": ["命令": ["type": "string", "description": "要执行的 shell 命令"],
+                         "超时": ["type": "integer", "description": "超时秒数（可选，默认 30，取值 1~600）"]],
           "required": ["命令"]]
+
+# 默认超时秒数（与既有 30 秒契约一致）
+默认超时秒 等于 30
+最小超时秒 等于 1
+最大超时秒 等于 600
+
+# ---- 解析调用方超时：缺省/非法一律回落默认，越界钳到 [1, 600] ----
+段落 取超时秒(参数):
+  如果 参数.包含("超时") == 假:
+    返回 默认超时秒
+  设 请求 为 参数["超时"]
+  如果 是整数(请求) == 假:
+    返回 默认超时秒
+  如果 请求 < 最小超时秒:
+    返回 最小超时秒
+  如果 请求 > 最大超时秒:
+    返回 最大超时秒
+  返回 请求
+
+# ---- 文本含任一词（stderr 诊断用）----
+段落 含任一词(文本, 词表):
+  如果 文本 == "":
+    返回 假
+  遍历 词 之 词表:
+    如果 文本.包含(词):
+      返回 真
+  返回 假
+
+# 缺陷 2：shell 层错误只在 stderr 露头，退出码却可能是 0（重定向被拒、管道写失败等）。
+#   这些诊断词来自 shell 自身（sh/bash/cmd 与 os 权限报文），不是普通命令告警，
+#   故只在「退出码为 0 且 stderr 命中」时判失败，正常带告警的成功命令不受影响。
+段落 是shell层错误(错误文本):
+  返回 含任一词(错误文本, ["cannot create", "cannot open", "Permission denied",
+                        "拒绝访问", "Access is denied", "Read-only file system"])
+
+# 缺陷 4：交互式提示（git 的 Username/Password、ssh 的 yes/no、python input() 的 EOF）
+#   命中时给出可操作建议，别让代理对着空输出猜。
+段落 是等待输入(错误文本):
+  返回 含任一词(错误文本, ["Username for", "Password for", "terminal prompts disabled",
+                        "could not read Username", "could not read Password",
+                        "EOF when reading a line", "Are you sure you want to continue connecting",
+                        "standard in must be a tty"])
 
 # cd 越界正则：行首/空白后跟 `cd` + 空白，再跟 ../ 或 ..\ 或 ..(空白) 或 / 或 \ 或 ~ 或 盘符:
 越界正则 等于 "(?:^|\\s)cd\\s+\\.\\.(?:\\s|/|\\\\)|(?:^|\\s)cd\\s+(?:/|\\\\|~|[A-Za-z]:)"
@@ -39,13 +87,23 @@
     返回 ["输出": "", "错误": "禁止切换到项目根目录之外（不允许 cd 到上级目录）", "退出码": -1]
   # 固定工作目录
   设 根 为 取根目录()
-  设 结果 为 外部命令.执行命令(命令, 真, 根, 空, 30)
+  设 超时 为 取超时秒(参数)
+  设 结果 为 外部命令.执行命令(命令, 真, 根, 空, 超时)
   # 输出换行归一（Windows 的 \r\n → \n，避免爆上下文）
   设 输出 为 替换字符串(结果.标准输出, "\r\n", "\n")
   设 输出 为 替换字符串(输出, "\r", "\n")
   设 错误 为 替换字符串(结果.标准错误, "\r\n", "\n")
   设 错误 为 替换字符串(错误, "\r", "\n")
-  返回 ["输出": 输出, "错误": 错误, "退出码": 结果.返回码]
+  设 退出码 为 结果.返回码
+  # 缺陷 4：交互式命令（等 stdin）立刻失败并给建议，而不是让代理对着空输出猜
+  如果 是等待输入(错误):
+    设 错误 为 错误 + "\n[工具层提示] 命令看起来在等待终端输入（交互式提示）；本工具已关闭子进程 stdin，" +
+      "请改用非交互参数（如 -y / --batch / GIT_TERMINAL_PROMPT=0）或先补好凭证。"
+  # 缺陷 2：stderr 有 shell 层错误而退出码为 0 —— 按失败上报，别让代理以为写成功了
+  如果 退出码 == 0 且 是shell层错误(错误):
+    设 错误 为 "[工具层判定] 命令未成功：shell 报错但退出码为 0，已按失败上报。\n" + 错误
+    设 退出码 为 -1
+  返回 ["输出": 输出, "错误": 错误, "退出码": 退出码]
 
 # ---- 构造工具定义（供注册表注册）----
 # R111-R4 组4：shell 提示词文案（对齐原版 packages/shell/tool-bash/src/index.ts + tool-pwsh/src/index.ts
@@ -53,7 +111,7 @@
 #   工具描述新增两句——① 删除/移动前必须核对解析后的绝对路径；② 未设变量展开为空串、用 ${VAR:?} 防护。
 #   上游逐字跟随（提示词契约文案=逻辑面）；tool-pwsh 同构，本定义即为两侧共用根。
 段落 造bash工具定义():
-  返回 造工具定义("bash", "在 shell 中执行命令，返回 stdout、stderr 与退出码（工作目录限于项目根，超时 30 秒）。Before any delete or move, verify that the resolved absolute target path is the intended one; never run it against a computed path you have not checked. An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`.", bash模式(), bash处理)
+  返回 造工具定义("bash", "在 shell 中执行命令，返回 stdout、stderr 与退出码（工作目录限于项目根，超时默认 30 秒，可用 超时 参数调整，子进程 stdin 已关闭）。Before any delete or move, verify that the resolved absolute target path is the intended one; never run it against a computed path you have not checked. An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`.", bash模式(), bash处理)
 
 # ---- 便捷注册（对齐 工具执行 的 dict 注册表）----
 # L-163：原实现 注册表.注册(...) 对 工具执行.建注册表() 的 dict 会抛
