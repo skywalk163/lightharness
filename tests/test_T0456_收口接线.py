@@ -30,6 +30,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 import pytest
 
@@ -342,7 +343,10 @@ class _Server:
     def __init__(self, home, cwd, llm):
         self.home = home
         self.cwd = cwd
-        self.port_file = home / 'port.txt'
+        # 每个服务实例独占端口文件：本文件里 srv 与「向后兼容」用例先后各起一次服务，
+        # 共用 home/port.txt 会让后起的那个 _port() 读到**仍在运行的前一个服务**的端口，
+        # 于是请求打到旧服务（旧服务 cwd 带 AGENTS.md 哨兵），兼容性断言假红。
+        self.port_file = home / ('port-%s.txt' % uuid.uuid4().hex[:8])
         self.log_path = home / 'server.log'
         env = _env(home)
         env.update({
@@ -463,6 +467,7 @@ def srv(work, llm):
         s.stop()
 
 
+@pytest.mark.timeout(300)
 def test_真实请求面工具模式与指令段(srv, work):
     sid = 't0456-e2e'
     st, raw = srv.post({'messages': [{'role': 'user', 'content': 'T0456-PROBE 看一眼工具面'}],
@@ -488,6 +493,7 @@ def test_真实请求面工具模式与指令段(srv, work):
 _CONTRACT_FROM_SERVER = None
 
 
+@pytest.mark.timeout(300)
 def test_真实请求面_无指令文件时逐字向后兼容(work, llm):
     """判据 3：没有 AGENTS.md 的目录起服务，系统提示 == 默认系统提示文本()。"""
     empty = work / 'repo_no_agents'
