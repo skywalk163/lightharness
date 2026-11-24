@@ -306,15 +306,35 @@ def test_工具集按规格表_装配层(tmp_path):
     def tools(pid):
         return [x for x in kv.get('装配_' + pid, '').split(',') if x]
 
-    assert tools('standard') == ['bash', '读文件', '写文件', '搜索文件'], out
+    # T-0456 接线后 standard 不再是四件套：叶子映射扩容 + 未映射默认保留，
+    # standard/ptc/cordis/default/topdown 保留 166 个，bottomup 158、lazy 161。
+    # 这里断言「不变量」而不是旧规模——四件套仍在 + 本批新挂的族在场 + 规模下限。
+    base = {'bash', '读文件', '写文件', '搜索文件'}
+    std = tools('standard')
+    assert base <= set(std), out
+    assert len(std) >= 20, ('standard 工具面仍被砍成少数几个', len(std), out)
+    for name in ('编辑文件', 'job_start', 'job_output', 'job_kill', 'skill',
+                 'web_search', 'web_fetch', 'present'):
+        assert name in std, ('本批新工具没挂上 standard：%s' % name, len(std), out)
+
     assert tools('minimal') == ['bash'], out
     for pid in ('topdown', 'bottomup', 'lazy'):
-        assert tools(pid) == ['bash', '读文件', '写文件', '搜索文件'], (pid, out)
+        got = set(tools(pid))
+        assert base <= got, (pid, sorted(base - got), out)
+        assert len(got) >= 20, (pid, len(got), out)
     # brainstorm：bash 不在（这是「只给只读工具」在装配层能验到的部分）
-    assert 'bash' not in tools('brainstorm'), out
-    assert '搜索文件' in tools('brainstorm'), out
-    assert set(tools('brainstorm')) <= {'读文件', '搜索文件'}, out
-    assert '写文件' not in tools('brainstorm'), out
+    br = tools('brainstorm')
+    assert 'bash' not in br, out
+    assert '搜索文件' in br, out
+    assert '写文件' not in br, out
+    assert '编辑文件' not in br, ('brainstorm 装配层不该有写类工具', out)
+    assert 'SSH执行' not in br, ('brainstorm 装配层不该有执行类工具', out)
+    assert set(br) <= {'读文件', '搜索文件', 'job_start', 'job_output', 'job_kill', 'skill',
+                       'web_search', 'web_fetch', 'present', '提问提交', '回答提交',
+                       '待答列出', '答案取出', '作业状态查询', '作业取消', '待办添加',
+                       '待办完成', '待办列出', '待办删除', '技能列表', '技能取用',
+                       '网页抓取', '交付登记', '交付列出', '交付完成', '交付关联',
+                       '查询会话'}, out
 
 
 def test_brainstorm装配层没有写文件(tmp_path):
