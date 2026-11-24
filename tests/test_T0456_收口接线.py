@@ -169,7 +169,8 @@ def _run_light(source, tmp_path, name, cwd=None):
 
 
 def _missing_module(out):
-    return ('lightplugin' in out and ('ModuleNotFound' in out or '导入失败' in out or 'No module' in out))
+    """只认「兄弟仓没放到位」这一种缺失（生产挂载 只在 lightplugin 仓里），别把真正的导入回归吞成 skip。"""
+    return ('生产挂载' in out) and ('No module named' in out or 'ModuleNotFound' in out or '导入失败' in out)
 
 
 @pytest.fixture(scope='module')
@@ -361,7 +362,10 @@ class _Server:
         end = time.time() + BOOT_TIMEOUT
         while time.time() < end:
             if self.proc.poll() is not None:
-                raise RuntimeError('服务提前退出：' + self.log()[-2000:])
+                log = self.log()
+                if _missing_module(log):
+                    pytest.skip('本机缺 lightplugin/light-merge 兄弟仓：真起服务用例请在 192.168.0.88 等带兄弟仓的机器上跑')
+                raise RuntimeError('服务提前退出：' + log[-2000:])
             try:
                 raw = self.port_file.read_text(encoding='utf-8').strip()
             except OSError:
@@ -373,7 +377,10 @@ class _Server:
                 except OSError:
                     pass
             time.sleep(0.2)
-        raise RuntimeError('服务 180s 未起：' + self.log()[-2000:])
+        log = self.log()
+        if _missing_module(log):
+            pytest.skip('本机缺 lightplugin/light-merge 兄弟仓：真起服务用例请在 192.168.0.88 等带兄弟仓的机器上跑')
+        raise RuntimeError('服务 180s 未起：' + log[-2000:])
 
     def log(self):
         try:
