@@ -217,6 +217,21 @@ body {
   background: rgba(210,153,34,.10);
 }
 
+/* T-0454：结束原因提示行内的「继续」按钮（max-steps 后一键续跑） */
+.sys .continue-btn {
+  margin-left: 8px;
+  padding: 2px 12px;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(88,166,255,.15);
+  border: 1px solid rgba(88,166,255,.45);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sys .continue-btn:hover { background: rgba(88,166,255,.28); }
+.sys .continue-btn:disabled { opacity: .5; cursor: default; }
+
 /* ---------- 输入区 ---------- */
 #composer {
   display: flex;
