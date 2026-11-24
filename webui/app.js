@@ -401,10 +401,48 @@
     if (pct > 95) statsEl.classList.add("danger");
     else if (pct > 80) statsEl.classList.add("warn");
     renderContextUsage(pct);
+    // T-0454：结束原因可见（服务端 T-0453 起统计帧带 结束原因，四值闭集）
+    handleEndReason(s);
+  }
+
+  // T-0454 需求二：结束原因提示。max-steps 时给「继续」按钮（点击即发"继续"），
+  //   max-tokens/aborted 只提示；error 走错误帧分支的上方提示。
+  function handleEndReason(s) {
+    var reason = s && s["结束原因"];
+    if (!reason) return;
+    if (reason === "max-steps") {
+      var steps = (typeof s["步数上限"] === "number") ? s["步数上限"] : "";
+      var row = addSystem("本轮达到步数上限" + (steps !== "" ? "（" + steps + " 步）" : "") +
+        "，已暂停。发送「继续」或 /goal 可接着跑。", false);
+      if (row && row.appendChild) offerContinueButton(row);
+    } else if (reason === "max-tokens") {
+      addSystem("本轮输出被截断（达到输出上限）。发送「继续」可接着跑。", false);
+    } else if (reason === "aborted") {
+      addSystem("本轮已中止。", false);
+    } else if (reason === "error") {
+      addSystem("本轮异常结束，详情见上方错误提示。", true);
+    }
+    // completed：正常完成，无需提示
+  }
+
+  // T-0454：在结束原因系统行内附一个「继续」按钮——点击即往发送通道塞"继续"。
+  function offerContinueButton(row) {
+    var btn = document.createElement("button");
+    btn.className = "continue-btn";
+    btn.type = "button";
+    btn.textContent = "继续";
+    btn.addEventListener("click", function () {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      sendMessage("继续");
+    });
+    row.appendChild(btn);
   }
 
   function showCompactionNotice(text) {
-    var msg = text || "已触发上下文压缩，旧消息可能被省略。";
+    // T-0454：文案补一句"如何接着做"——压缩只是视觉提示，不发新流、不改本轮状态，
+    //   用户看到提示要知道：这轮跑完后发「继续」即可继续。
+    var msg = text || "已触发上下文压缩，旧消息可能被省略。本轮结束后发「继续」即可接着做。";
     // T-0398：压缩提示走 messages.js 的专用样式钩子（不动既有消息渲染契约）
     if (window.Messages && Messages.addCompaction) Messages.addCompaction(msg);
     else addSystem(msg);
@@ -1097,6 +1135,43 @@
   }
 
   // ---------- 流程控制 ----------
+  // T-0454 需求三：streaming 自愈看门狗——setStreaming(true) 后若 30s 没有任何帧
+  //   且流未结束（服务端挂住/连接半死），前端自动收口当前气泡 → setStreaming(false)
+  //   → flush 本地队列 → 系统提示可重发。时间源用 nowMs()（测试可注入假时钟）。
+  var STREAM_WATCHDOG_MS = 30000;    // 判定"连接半死"的静默阈值
+  var STREAM_WATCHDOG_TICK_MS = 5000; // 看门狗巡检周期
+  var streamWatchdogHandle = null;
+  var lastStreamActivityAt = 0;
+
+  function nowMs() { return Date.now(); }
+
+  function touchStream() {
+    lastStreamActivityAt = nowMs();
+  }
+
+  function stopStreamWatchdog() {
+    if (streamWatchdogHandle) { clearInterval(streamWatchdogHandle); streamWatchdogHandle = null; }
+  }
+
+  function startStreamWatchdog() {
+    stopStreamWatchdog();
+    touchStream();
+    streamWatchdogHandle = setInterval(checkStreamWatchdog, STREAM_WATCHDOG_TICK_MS);
+  }
+
+  function checkStreamWatchdog() {
+    if (!streaming) { stopStreamWatchdog(); return; }
+    if (nowMs() - lastStreamActivityAt < STREAM_WATCHDOG_MS) return;
+    stopStreamWatchdog();
+    // 自愈四连：收口气泡 → 放开 streaming（内部 flush 本地队列）→ 状态标 → 提示
+    endThinking();
+    finalizeTurn();
+    setStatus("down");
+    setStreaming(false);
+    addSystem("连接可能已断开（" + Math.round(STREAM_WATCHDOG_MS / 1000) +
+      " 秒没有收到任何数据），已结束本轮；排队消息将自动发出，可重发。", true);
+  }
+
   function setStreaming(on) {
     streaming = on;
     sendBtn.disabled = on;
@@ -1112,10 +1187,14 @@
       // 阶段指示器：流一开就显示「等待模型响应」，之后被思考/工具事件接管
       setPhase("wait", "等待模型响应");
       startPhaseTimer();
+      // T-0454：流式开始挂看门狗（30s 静默自愈）
+      startStreamWatchdog();
     } else {
       stopPhaseTimer();
       if (turnTimerHandle) { clearInterval(turnTimerHandle); turnTimerHandle = null; }
       turnStartedAt = 0;
+      // T-0454：本轮收口即撤看门狗（无论正常结束还是异常自愈）
+      stopStreamWatchdog();
       // 本轮收口后把本地排队的下一条发出去（与服务端 202 排队通道互为兜底）
       setTimeout(flushLocalQueue, 0);
     }
@@ -1184,6 +1263,21 @@
         if (payload === "[DONE]") { finished = true; return; }
         try {
           var json = JSON.parse(payload);
+          touchStream();   // T-0454：任何成功解析的帧都算流活动（看门狗喂狗）
+          // T-0454：驱动失败帧显式可见——此前前端没有任何 json.error 分支，
+          //   服务端投递 {"error":{...}} / [{"error":{...}}] 时界面上表现为
+          //   「什么都没发生、流结束」（与用户报的"停止/继续无反应"同症状）。
+          var errObj = null;
+          if (json && json.error) errObj = json.error;
+          else if (json && json.length && json[0] && json[0].error) errObj = json[0].error;
+          if (errObj) {
+            endThinking();
+            if (currentBubble) { Messages.endAssistant(currentBubble); currentBubble = null; }
+            addSystem("驱动失败：" + ((errObj && (errObj.message || errObj["消息"])) ||
+              JSON.stringify(errObj)), true);
+            setStatus("down");
+            return;
+          }
           // 会话延续（角色块内 session_id / 会话绑定帧 {"种类":"会话","session_id":id}）
           if (json && json.session_id) { bindSession(json.session_id); continue; }
           if (json && json.种类 === "会话") {
@@ -1808,4 +1902,25 @@
   checkStatus();
   checkConfig();
   loadPermissions();
+
+  // T-0454：测试专用调试钩子——只在 window.__LH_TEST__ 为真时挂载（生产零开销零暴露）。
+  //   行为测试（node + DOM 桩）经此驱动真实 handleFrame / setStreaming / sendMessage，
+  //   并可注入假时钟推进看门狗。生产环境 window.__LH_TEST__ 恒为 undefined。
+  if (window.__LH_TEST__) {
+    window.__lhTest = {
+      checkStreamWatchdog: checkStreamWatchdog,
+      touchStream: touchStream,
+      setStreaming: setStreaming,
+      sendMessage: sendMessage,
+      enqueueLocal: enqueueLocal,
+      nowMs: nowMs,
+      state: function () {
+        return { streaming: streaming, queue: localQueue.length, sessionId: sessionId };
+      },
+      setNowSource: function (fn) {
+        // 测试注入假时钟：替换 nowMs 的实现（看门狗按注入时钟判定静默时长）
+        nowMs = fn;
+      }
+    };
+  }
 })();
