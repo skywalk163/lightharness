@@ -354,12 +354,46 @@
   }
 
   // T-0398：输入区的「上下文 xx%」——数据源与顶栏统计同一个字段（上下文使用率）
-  function renderContextUsage(pct) {
+  // T-0466：前端封顶 —— 服务端已按「当前占用 / 真实模型窗口」计算并封顶，这里再兜一层，
+  //   绝不让 928% 这种数字出现在界面上；真的算到 100 以上也显示成「100%+」。
+  var USAGE_MAX = 100;
+  function clampUsagePct(pct) {
+    var n = (typeof pct === "number" && isFinite(pct)) ? pct : Number(pct);
+    if (!isFinite(n)) n = 0;
+    if (n < 0) n = 0;
+    if (n > USAGE_MAX) n = USAGE_MAX;
+    return n;
+  }
+  function isUsageOverflow(pct) {
+    var n = (typeof pct === "number" && isFinite(pct)) ? pct : Number(pct);
+    return isFinite(n) && n > USAGE_MAX;
+  }
+  // 使用率文案：封顶后的整数 + 溢出后缀（>100% 显示 100%+，不再显示 928%）
+  function formatUsagePct(pct) {
+    var n = Math.round(clampUsagePct(pct));
+    return n + "%" + (isUsageOverflow(pct) ? "+" : "");
+  }
+  function renderContextUsage(pct, stats) {
     if (!ctxUsageEl) return;
-    var n = isFinite(pct) ? Math.round(pct) : 0;
-    ctxUsageEl.textContent = "上下文 " + n + "%";
-    ctxUsageEl.title = "本轮上下文占上下文窗口 " + n +
-      "%（服务端统计帧回填）；点右侧「压缩」可手动把旧消息收进摘要";
+    // T-0466：没显式传统计帧时用最近一帧（顶栏 renderStats 已落 lastStats），
+    //   这样压缩帧 / 初始化只传 pct 的旧调用点行为不变。
+    if (!stats || typeof stats !== "object") stats = lastStats || null;
+    var n = Math.round(clampUsagePct(pct));
+    var mark = isUsageOverflow(pct) ? "+" : "";
+    ctxUsageEl.textContent = "上下文 " + n + "%" + mark;
+    var tip = "当前上下文占用 / 上下文窗口 = " + formatUsagePct(pct) +
+      "（服务端统计帧回填）；点右侧「压缩」可手动把旧消息收进摘要";
+    if (stats && typeof stats === "object") {
+      if (typeof stats["上下文窗口"] === "number" && stats["上下文窗口"] > 0) {
+        tip += "\n窗口 " + stats["上下文窗口"] +
+          (stats["窗口来源"] ? "（来源：" + stats["窗口来源"] + "）" : "");
+      }
+      if (typeof stats["上下文占用"] === "number" && stats["上下文占用"] > 0) {
+        tip += "\n当前占用 " + stats["上下文占用"] + " token" +
+          (stats["占用口径"] ? "（口径：" + stats["占用口径"] + "）" : "");
+      }
+    }
+    ctxUsageEl.title = tip;
     ctxUsageEl.classList.remove("warn", "danger");
     if (n > 95) ctxUsageEl.classList.add("danger");
     else if (n > 80) ctxUsageEl.classList.add("warn");
@@ -373,11 +407,25 @@
     var total = s["累计总"] || 0;
     var cost = s["花费"] || 0;
     var pct = s["上下文使用率"] || 0;
-    var pctInt = Math.round(pct);
+    // T-0466：封顶后再显示与判色（>100% 只显示 100%+，颜色按危险档）
+    var pctSafe = clampUsagePct(pct);
     statsEl.textContent =
       "in " + inT + " out " + outT +
       " | 累计 " + total + " | 花费 " + formatCost(cost) +
-      " | 使用率 " + pctInt + "%";
+      " | 使用率 " + formatUsagePct(pct);
+    // T-0466：把口径摊开给用户看——「in/out」是一轮内所有 step 的累计（不是当前驻留），
+    //   使用率的分子分母才是当前占用 / 真实窗口；窗口与口径都来自服务端统计帧。
+    var statsTip = "使用率 = 当前上下文占用 / 上下文窗口（封顶 100%）";
+    if (typeof s["上下文窗口"] === "number" && s["上下文窗口"] > 0) {
+      statsTip += "\n窗口 " + s["上下文窗口"] +
+        (s["窗口来源"] ? "（来源：" + s["窗口来源"] + "）" : "");
+    }
+    if (typeof s["上下文占用"] === "number" && s["上下文占用"] > 0) {
+      statsTip += "\n当前占用 " + s["上下文占用"] + " token" +
+        (s["占用口径"] ? "（口径：" + s["占用口径"] + "）" : "");
+    }
+    statsTip += "\n注意：in/out 是一轮内所有 step 的累计，不等于当前驻留上下文";
+    statsEl.title = statsTip;
     // T-0407 需求四：耗时/速率（服务端统计帧权威；流式中本地计时兜底）
     lastStats = s;
     var dur = (typeof s["耗时秒"] === "number") ? s["耗时秒"] : 0;
@@ -396,10 +444,10 @@
         turnTpsEl.hidden = true;
       }
     }
-    // 使用率变色
+    // 使用率变色（按封顶后的值判档：溢出仍然是危险档，只是数字不再爆表）
     statsEl.classList.remove("warn", "danger");
-    if (pct > 95) statsEl.classList.add("danger");
-    else if (pct > 80) statsEl.classList.add("warn");
+    if (pctSafe > 95) statsEl.classList.add("danger");
+    else if (pctSafe > 80) statsEl.classList.add("warn");
     renderContextUsage(pct);
     // T-0454：结束原因可见（服务端 T-0453 起统计帧带 结束原因，四值闭集）
     handleEndReason(s);
