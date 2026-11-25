@@ -231,6 +231,7 @@ DRIVER = r'''
 MCP_DRIVER = r'''
 从 总入口 导入 组装注册表, 预设保留工具, 工具名到叶子
 从 工具 导入 造工具定义
+从 工具面装配 导入 白名单
 
 段落 假执行(参数):
   返回 ["ok": 真]
@@ -251,6 +252,8 @@ MCP_DRIVER = r'''
   打印("MCP_待办在=" + 转字符串(后.包含("todo_write")))
   打印("MCP_目标在=" + 转字符串(后.包含("目标")))
   打印("MCP_无叶子=" + 转字符串(长度(工具名到叶子("mcp__demo__echo"))))
+  # T-0491：白名单本体规模（含末尾追加的 "mcp__*" 通配项），供「保留数 = 白名单 - 通配 + 实挂 MCP」判据用
+  打印("MCP_白名单数=" + 转字符串(长度(白名单("standard"))))
 主程()
 '''
 
@@ -424,7 +427,13 @@ def test_新增工具真的能跑(探针):
 
 
 def test_mcp工具与预设过滤共存(tmp_path):
-    """T-0468 的 MCP 工具挂载不能被预设过滤掉（mcp__* 与新增三类工具共存）。"""
+    """T-0468 的 MCP 工具挂载不能被预设过滤掉（mcp__* 与新增三类工具共存）。
+
+    T-0491：老口径 `后 == 前`（过滤不许砍掉任何工具）被 T-0477 的白名单收口
+    结构性打破 —— 白名单就是唯一保留依据（168 → 22），MCP 靠 `mcp__*` 通配
+    + HARNESS_MCP_TOOLS 开关单独保留。改为钉「白名单保留 + 实挂 MCP」的等式，
+    并把「过滤真的发生了」一起钉住，免得又退回 168 全量而不自知。
+    """
     rc, out, kv = _run(MCP_DRIVER, tmp_path, 'mcp_probe')
     if rc != 0 and _missing_module(out):
         pytest.skip('本机缺 lightplugin 兄弟仓：装配层用例请在 192.168.0.88 上跑')
@@ -433,8 +442,20 @@ def test_mcp工具与预设过滤共存(tmp_path):
     assert kv['MCP_add在'] == 'True', ('standard 过滤把 mcp__* 工具注销了', out)
     assert kv['MCP_待办在'] == 'True', '预设过滤把新增的 todo_write 一起注销了'
     assert kv['MCP_目标在'] == 'True', '预设过滤把新增的目标工具一起注销了'
-    assert int(kv['MCP_后']) == int(kv['MCP_前']), ('MCP 挂载后预设过滤又砍掉了工具',
-                                                   kv['MCP_前'], kv['MCP_后'])
-    # mcp__* 本来就没有 DSH 叶子（靠「未映射默认保留」活下来），这里把口径钉住
-    assert kv['MCP_无叶子'] == '0', ('mcp__* 应按「无叶子依据 + 未映射默认保留」保留，'
-                                    '不该硬塞叶子', kv['MCP_无叶子'])
+    # 白名单本体（不含末尾追加的 "mcp__*" 通配项）+ 本探针手工挂的 2 个 mcp__ 工具
+    白名单数 = int(kv['MCP_白名单数'])
+    期望 = (白名单数 - 1) + 2
+    assert 20 <= 白名单数 - 1 <= 30, ('standard 白名单应 20–30（T-0477 口径）', 白名单数)
+    assert int(kv['MCP_后']) == 期望, ('MCP 挂载后总数必须是「白名单保留 + 2 个 mcp__」',
+                                      kv['MCP_前'], kv['MCP_后'], 白名单数)
+    # 过滤必须真的发生：从装配日志的「白名单外注销」读，> 0 才算收口生效
+    log = ''
+    for ln in out.splitlines():
+        if ln.startswith('[装配] 预设=standard '):
+            log = ln
+    assert log, ('没有打出 standard 装配日志（过滤没跑）', out[-2000:])
+    dropped = re.search(r'白名单外注销=(\d+)', log)
+    assert dropped and int(dropped.group(1)) > 0, ('白名单外注销必须 > 0（过滤不许退回 168 全量）', log)
+    # mcp__* 没有 DSH 叶子（靠 "mcp__*" 通配 + 开关保留），这里把口径钉住
+    assert kv['MCP_无叶子'] == '0', ('mcp__* 应按「mcp__* 通配保留」，不该硬塞叶子',
+                                    kv['MCP_无叶子'])
