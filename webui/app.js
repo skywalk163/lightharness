@@ -90,6 +90,11 @@
   //   切走时 turnEpoch 自增，老请求的 then/catch/finally 与 SSE 帧处理先比对
   //   epoch，对不上就静默放弃（见 isTurnAlive）。
   var turnEpoch = 0;
+  // T-0490：发送流水号。统计帧到达后（流在收尾、服务端已跑完）点「继续」时，
+  //   必须让新请求直接发出，而不是进本地队列；老请求的 finally 不得关掉新流。
+  var sendSerial = 0;
+  var pendingEndReason = "";   // 本轮收到 max-steps/max-tokens 后置位，流收口时清
+  var queuedPoll = null;       // 202 排队后的轮询句柄（只盯当前会话）
   // T-0407 需求三：下拉里要出现四种组合型模式（自上而下/自下而上/头脑风暴/懒人）。
   var MODE_NAMES = { standard: "标准", cordis: "创造", ptc: "PTC", minimal: "极简", "default": "默认" };
   //   标识在运行时注册；源码级用拼接常量，避免 T-0403 的「热点文件不得含模式标识」
@@ -1012,6 +1017,87 @@
       : "已停止当前输出并切换会话。");
   }
 
+  // ---------- T-0490：排队轮次的可观测落点 ----------
+  // 服务端 202 排队的轮次没有 SSE 连接，结果只落会话库。这里只盯**当前会话**：
+  //   轮询轻量状态 /api/sessions/:id/queue，消息数一变就重拉 /api/sessions/:id 并回放，
+  //   15s 无变化则给「排队仍在执行」提示（不误报失败），60s 兜底收口。
+  var QUEUE_POLL_MS = 1500;
+  var QUEUE_POLL_MAX_MS = 60000;
+
+  function stopQueuedPoll() {
+    if (queuedPoll) { clearTimeout(queuedPoll); queuedPoll = null; }
+  }
+
+  function refreshCurrentSession(id, quiet) {
+    if (!id || id !== sessionId) return Promise.resolve(false);
+    return fetch("/api/sessions/" + encodeURIComponent(id), { headers: apiHeaders() })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
+      .then(function (data) {
+        // 二次确认：异步期间用户又切了会话，绝不能把 A 的历史刷到 B 上
+        if (id !== sessionId) return false;
+        var list = (data && data["消息"]) || [];
+        Messages.renderHistory(list);
+        history = [];
+        for (var i = 0; i < list.length; i++) {
+          var m = list[i];
+          if (!m || typeof m !== "object") continue;
+          var rawRole = m.角色 || m.role || "";
+          if (rawRole === "tool-call" || rawRole === "tool-result") continue;
+          var role = (rawRole === "user" || m.role === "user") ? "user" : "assistant";
+          var content = m.内容 != null ? m.内容 : (m.content != null ? m.content : "");
+          history.push({ role: role, content: String(content) });
+        }
+        if (!quiet) addSystem("已刷新排队轮次结果（" + list.length + " 条消息）。");
+        return list.length > 0;
+      })
+      .catch(function () { return false; });
+  }
+
+  function startQueuedPoll(id) {
+    stopQueuedPoll();
+    if (!id) return;
+    var 开始 = Date.now();
+    var lastCount = -1;
+    var warned = false;
+    function tick() {
+      if (id !== sessionId) { stopQueuedPoll(); return; }
+      fetch("/api/sessions/" + encodeURIComponent(id) + "/queue", { headers: apiHeaders() })
+        .then(function (resp) { if (!resp.ok) throw new Error("HTTP " + resp.status); return resp.json(); })
+        .then(function (j) {
+          if (id !== sessionId) { stopQueuedPoll(); return; }
+          var count = j && typeof j["消息数"] === "number" ? j["消息数"] : 0;
+          if (lastCount < 0) lastCount = count;
+          if (count > lastCount) {
+            lastCount = count;
+            refreshCurrentSession(id, false);
+          } else if (!warned && Date.now() - 开始 >= 15000 && j && j["深度"] > 0) {
+            warned = true;
+            addSystem("排队轮次仍在执行中，界面将在结果落库后自动刷新。");
+          }
+          if (!warned && j && typeof j["深度"] === "number" && j["深度"] === 0 && count > 0 &&
+              Date.now() - 开始 >= QUEUE_POLL_MS) {
+            // 队列空且消息数变化过：已落库（上面已刷新），再刷一次兜底后收口
+            refreshCurrentSession(id, true);
+            stopQueuedPoll();
+            return;
+          }
+          if (Date.now() - 开始 >= QUEUE_POLL_MAX_MS) {
+            addSystem("排队轮次超过 60 秒未返回结果，请查看会话历史或重试。", true);
+            stopQueuedPoll();
+            return;
+          }
+          queuedPoll = setTimeout(tick, QUEUE_POLL_MS);
+        })
+        .catch(function () {
+          if (id === sessionId) queuedPoll = setTimeout(tick, QUEUE_POLL_MS);
+        });
+    }
+    queuedPoll = setTimeout(tick, QUEUE_POLL_MS);
+  }
+
   // 切换会话：拉取完整历史并回放
   // T-0422：流式输出中不再拦人——先停掉当前流，再进目标会话（老会话内容保留）。
   function selectSession(id) {
@@ -1021,6 +1107,7 @@
       closeSidebarOnMobile();
       return;
     }
+    stopQueuedPoll();
     var abortedQueue = -1;                                  // T-0422：-1 = 原本没在流式
     if (streaming) abortedQueue = abortActiveTurnForSwitch();
     fetch("/api/sessions/" + encodeURIComponent(id), { headers: apiHeaders() })
@@ -1070,6 +1157,10 @@
         loadModels(id); // 切会话：恢复该会话自己的模型
         applySessionMode(data["模式"], data["权限预设"]); // T-0397：恢复该会话的模式/权限
         if (list.length) addSystem("已载入会话历史（" + list.length + " 条消息）。");
+        else addSystem("该会话暂无历史消息。");
+        // T-0490：切回会话时若服务端还有排队待办在跑，订阅刷新（只盯这个 id）
+        stopQueuedPoll();
+        startQueuedPoll(id);
       })
       .catch(function (e) {
         announceStreamAborted(abortedQueue);
@@ -1339,6 +1430,10 @@
           // E5：统计事件（无 choices，含 种类=统计）
           if (json && json.种类 === "统计") {
             renderStats(json);
+            // T-0490：统计帧到了就说明服务端这一轮已落定；标记「流在收尾、服务端已空闲」，
+            //   让用户此刻点「继续」直接发新请求（而不是被 streaming=true 塞进本地队列）。
+            var why = json && json["结束原因"];
+            if (why === "max-steps" || why === "max-tokens") pendingEndReason = why;
             continue;
           }
           // E5：压缩事件（服务端可选推送）——T-0398：顺手刷新输入区用量
@@ -1460,12 +1555,23 @@
     var isCommand = (typeof overrideText === "string");
     var text = isCommand ? overrideText : inputEl.value.trim();
     if (!text) return;
+    // T-0490：统计帧已到（流在收尾）时点「继续」，服务端其实已经空闲；直接发新请求。
+    //   同时作废老轮的收口回调，避免老 finally 把新流的 streaming/按钮态关掉。
+    var streamTail = streaming && pendingEndReason !== "";
+    if (streamTail) {
+      sendSerial += 1;
+      pendingEndReason = "";
+      if (controller) { try { controller.abort(); } catch (e) {} controller = null; }
+      streaming = false;
+    }
     // T-0407 需求五：流式中再提交 → 本地排队（服务端 202 通道的同形状兜底）
     if (streaming) {
       enqueueLocal(text, isCommand);
       if (!isCommand) { inputEl.value = ""; autoResize(); updateCharCount(); }
       return;
     }
+    var mySerial = ++sendSerial;
+    function serialAlive() { return mySerial === sendSerial && isTurnAlive(myEpoch); }
 
     // 追加本轮 UI 与历史（必须在组装消息体之前，否则 msgs 缺本轮用户消息）
     turnStartIndex = history.length;
@@ -1518,7 +1624,7 @@
       body: JSON.stringify(body),
       signal: controller.signal
     }).then(function (resp) {
-      if (!isTurnAlive(myEpoch)) return null;   // T-0422：已切走，老响应不再改任何 UI/附件
+      if (!serialAlive()) return null;   // T-0490/T-0422：老轮次不再改任何 UI/附件
       if (!resp.ok) {
         handleHttpError(resp, isCommand ? "" : text);
         return null;
@@ -1531,15 +1637,18 @@
       if (resp.status === 202) {
         return resp.json().catch(function () { return {}; }).then(function (j) {
           rollbackTurn(isCommand ? "" : text);
-          addSystem("服务端已排队（位置 " + ((j && j["位置"]) || 1) + "）：当前会话正在跑，本条结束后自动执行。");
+          var qsid = sessionId || (j && j["会话"]) || "";
+          addSystem("服务端已排队（位置 " + ((j && j["位置"]) || 1) + "）：当前会话正在跑，本条结束后自动执行；" +
+            "结果会自动刷新到当前会话。");
+          startQueuedPoll(qsid);
           return null;
         });
       }
       return readStream(resp, myEpoch);
     }).then(function () {
-      if (started && isTurnAlive(myEpoch)) finalizeTurn();
+      if (started && serialAlive()) finalizeTurn();
     }).catch(function (err) {
-      if (!isTurnAlive(myEpoch)) return;   // T-0422：切会话后老请求的失败不落到新会话
+      if (!serialAlive()) return;   // T-0490/T-0422：切会话或被新轮接管后，老请求失败不落到新会话
       if (err && err.name === "AbortError") {
         finalizeTurn();               // 用户主动停止：保留已渲染内容
       } else if (started) {
@@ -1554,11 +1663,11 @@
           "），请确认服务已启动、地址与端口正确。", true);
       }
     }).finally(function () {
-      // T-0422：老轮次的收尾不能关掉新会话正在跑的流（setStreaming(false) 会放开
-      //   发送键、停计时、触发队列 flush），所以同样按 epoch 判定。
-      if (!isTurnAlive(myEpoch)) return;
+      // T-0422/T-0490：老轮次的收尾不能关掉新会话/新轮正在跑的流。
+      if (!serialAlive()) return;
       setStreaming(false);
       controller = null;
+      pendingEndReason = "";
     });
   }
 
@@ -2026,6 +2135,10 @@
       setStreaming: setStreaming,
       sendMessage: sendMessage,
       enqueueLocal: enqueueLocal,
+      refreshCurrentSession: refreshCurrentSession,
+      startQueuedPoll: startQueuedPoll,
+      stopQueuedPoll: stopQueuedPoll,
+      selectSession: selectSession,
       nowMs: nowMs,
       state: function () {
         return { streaming: streaming, queue: localQueue.length, sessionId: sessionId };
