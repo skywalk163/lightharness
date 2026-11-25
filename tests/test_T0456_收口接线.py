@@ -6,17 +6,19 @@
    minimal 恰为 ["bash"]；brainstorm 无 写文件、无 bash。
 2. 真实请求面（E2E，真起服务 + mock LLM）：读 request/header 事件，
    工具模式条数 ≥ 20 且含编辑工具的线名，系统提示含临时工作目录 AGENTS.md 的哨兵串。
-3. 向后兼容：无 AGENTS.md 的目录起服务，系统提示与 默认系统提示文本() 逐字相同。
+3. 向后兼容（T-0489 口径）：无 AGENTS.md 的目录起服务，系统提示去掉环境段后
+   与 默认系统提示文本() 逐字相同（环境段是 T-0489 新接线的上下文，见 _去环境段）。
 4. 装配期单个工具挂载失败 → 只记日志 + 跳过，其余工具照常挂上（红线）。
-5. 反跑锚点（静态）：工具名到叶子 必须「先查 叶子映射」、预设保留工具 必须调用
-   未映射默认保留 —— 删掉任一处，判据 1 的对应断言与 5 的锚点立红（反跑记录见 .hive/summary.md）。
+5. 反跑锚点（静态）：工具名到叶子 必须「先查 叶子映射」、预设保留工具 必须走
+   白名单 / 白名单命中 / 装配日志行 —— 删掉任一处，判据 1 的对应断言与 5 的锚点立红
+   （反跑记录见 .hive/summary.md）。
 
 判据口径与任务卡的两处差异（已写进 .hive/summary.md，并给出反跑）：
 - 卡面写「工具模式 含 编辑文件」：工具模式走 兼容注册表 的线名（DeepSeek 只收 ASCII），
   编辑文件 的线名是 edit_file，故断言 edit_file 在场 + 注册名 编辑文件 在场（两处合起来等价且更严）。
 - 卡面写 todo_write / ask_user_question / 交付登记：本仓现状是 造待办工具 需要所属 agent 会话、
   造提问工具定义 需要宿主提问器、交付呈现 的证据在 lightplugin（生产挂载因同名撞车剔除）。
-  本卡不造假工具，改为断言这些族**真实存在的注册名**（待办添加 / 提问提交 / present）并单列缺口。
+  本卡不造假工具，改为断言这些族**真实存在的注册名**（todo_write / 提问提交 / present）并单列缺口。
 """
 import json
 import os
@@ -197,6 +199,8 @@ def test_标准预设工具面不再是四个(work):
     assert rc == 0, out
     names = [x for x in kv.get('STD', '').split(',') if x]
     assert int(kv['STD_COUNT']) >= 20, ('standard 工具面仍少于 20', kv['STD_COUNT'], names)
+    # T-0477/T-0489 口径：白名单 20–30，不再「148 砍成 4」也不再全量放行
+    assert int(kv['STD_COUNT']) <= 30, ('standard 工具面超出白名单上限 30', kv['STD_COUNT'], names)
     assert len(names) >= 20
     # 既有四件套
     for need in ('bash', '读文件', '写文件', '搜索文件'):
@@ -205,10 +209,10 @@ def test_标准预设工具面不再是四个(work):
     for need in ('编辑文件', 'job_start', 'job_output', 'job_kill', 'skill', 'web_search', 'web_fetch'):
         assert need in names, ('standard 缺本批新增工具 ' + need, out)
     # 既有族（卡面 todo_write / ask_user_question / 交付登记 在本仓的真实注册名，见模块头）
-    for need in ('待办添加', '提问提交', 'present', '提醒注册', '派发子任务'):
+    for need in ('todo_write', '提问提交', 'present', '派发子任务'):
         assert need in names, ('standard 缺既有族工具 ' + need, out)
-    # 未映射默认保留（反跑 B）：没有叶子依据的真实工具必须活下来，否则又回到「148 砍成 4」
-    assert 'SSH执行' in names, ('未映射工具被无条件注销（未映射默认保留 没接上）', out)
+    # 白名单外注销（反跑 B）：有叶子族但不在白名单的真实工具必须被注销，不许又回到全量
+    assert 'SSH执行' not in names, ('白名单没生效：SSH执行 仍在 standard 面', out)
 
 
 def test_叶子映射覆盖新工具(work):
@@ -260,10 +264,15 @@ def test_反跑锚点_两条接线路径都在(work):
     body = src_in.split('段落 工具名到叶子(名字):', 1)[1].split('段落 ', 1)[0]
     assert '叶子映射(名字)' in body, ('工具名到叶子 必须先查 工具面装配.叶子映射（反跑锚点）', body[:400])
     keep = src_in.split('段落 预设保留工具(注册表, 预设标识):', 1)[1].split('段落 ', 1)[0]
-    assert '未映射默认保留(预设标识)' in keep, ('预设保留工具 必须按 未映射默认保留 决定未映射工具去留（反跑锚点）', keep[:400])
+    # T-0477 把「未映射默认保留」收口成显式白名单：未映射工具不再兜底保留
+    assert '白名单(预设标识)' in keep, ('预设保留工具 必须按 白名单 决定工具去留（反跑锚点）', keep[:400])
+    assert '白名单命中(允许, 名)' in keep, ('预设保留工具 必须走 白名单命中（反跑锚点）', keep[:400])
     assert '装配日志行(' in keep, ('注销结果必须打 [装配] 日志（反跑锚点）', keep[:400])
     report = src_in.split('段落 装配日志行(', 1)[1].split('段落 ', 1)[0]
-    assert '装配报告(' in report, ('日志的「未映射」口径必须来自 工具面装配.装配报告（反跑锚点）', report[:400])
+    # T-0477 口径：日志自带 保留 / 白名单外注销 / 未映射 / 挂载失败 四项，并汇总核心工具失败
+    assert '白名单外注销=' in report, ('日志缺「白名单外注销」口径（反跑锚点）', report[:400])
+    assert '未映射(应=0)' in report, ('日志缺「未映射」口径（反跑锚点）', report[:400])
+    assert '核心工具装配失败(' in report, ('日志必须汇总核心工具挂载失败（反跑锚点）', report[:400])
 
 
 # --------------------------------------------------------------------------- #
@@ -492,10 +501,25 @@ def test_真实请求面工具模式与指令段(srv, work):
 
 _CONTRACT_FROM_SERVER = None
 
+# T-0489：本轮系统提示 开始把上下文接进 生产提示，环境段（操作系统/壳/目录/时间）
+#   由平台与时钟决定，不再属于「无指令文件时逐字向后兼容」的可比部分。比对前两侧
+#   都去掉这 4 类行；其余（身份/规划/纪律/权限/文件引用/技能/工具选择/逐工具/MCP/
+#   协作/实参契约）仍逐字相同。
+_环境行前缀 = ('操作系统：', '命令一律按 ', '工作目录：', '当前本地时间：', '当前模式：')
+
+
+def _去环境段(text):
+    t = '\n'.join(ln for ln in (text or '').splitlines()
+                  if not ln.startswith(_环境行前缀))
+    # 环境段自身以空行收尾；删行后把遗留的多余空行压回一段
+    while '\n\n\n' in t:
+        t = t.replace('\n\n\n', '\n\n')
+    return t
+
 
 @pytest.mark.timeout(300)
 def test_真实请求面_无指令文件时逐字向后兼容(work, llm):
-    """判据 3：没有 AGENTS.md 的目录起服务，系统提示 == 默认系统提示文本()。"""
+    """判据 3：没有 AGENTS.md 的目录起服务，系统提示（去环境段）== 默认系统提示文本()。"""
     empty = work / 'repo_no_agents'
     empty.mkdir(parents=True, exist_ok=True)
     rc, out, kv = _run_light(_CONTRACT_DRIVER, work, 'contract', cwd=empty)
@@ -512,8 +536,8 @@ def test_真实请求面_无指令文件时逐字向后兼容(work, llm):
         heads = _requests(_session_file(work, sid))
         assert heads, s.log()[-3000:]
         head = heads[-1]['数据']
-        assert head.get('系统提示') == contract, (
-            '无指令文件时系统提示必须与 默认系统提示文本() 逐字相同（向后兼容）',
+        assert _去环境段(head.get('系统提示')) == _去环境段(contract), (
+            '无指令文件时系统提示（去环境段）必须与 默认系统提示文本() 逐字相同（向后兼容）',
             repr(head.get('系统提示'))[:400], repr(contract)[:400])
     finally:
         s.stop()
