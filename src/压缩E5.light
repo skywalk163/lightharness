@@ -115,7 +115,12 @@
   设 窗口串 为 os.environ.get("HARNESS_MODEL_CONTEXT_WINDOW", "32768")
   设 比例串 为 os.environ.get("HARNESS_COMPACTION_THRESHOLD_RATIO", "0.75")
   设 条数串 为 os.environ.get("HARNESS_COMPACTION_KEEP_COUNT", "10")
-  返回 ["上下文窗口": 转整数(窗口串), "阈值比例": 转浮点(比例串), "保留条数": 转整数(条数串)]
+  # T-0486：模型摘要开关（默认 1 开）。HARNESS_COMPACTION_MODEL_SUMMARY=0/false/no 关。
+  设 摘要串 为 os.environ.get("HARNESS_COMPACTION_MODEL_SUMMARY", "1").lower()
+  设 用模型摘要 为 真
+  如果 摘要串 == "0" 或 摘要串 == "false" 或 摘要串 == "no":
+    设 用模型摘要 为 假
+  返回 ["上下文窗口": 转整数(窗口串), "阈值比例": 转浮点(比例串), "保留条数": 转整数(条数串), "模型摘要": 用模型摘要]
 
 类 压缩配置:
   属性 阈值token 等于 8000
@@ -123,12 +128,14 @@
   属性 上下文窗口 等于 32768
   属性 阈值比例 等于 0.75
   属性 保留条数 等于 10
+  属性 模型摘要 等于 真
 
   段落 构造:
     设 统一配置 为 压缩配置解析()
     设 己.上下文窗口 为 统一配置["上下文窗口"]
     设 己.阈值比例 为 统一配置["阈值比例"]
     设 己.保留条数 为 统一配置["保留条数"]
+    设 己.模型摘要 为 统一配置["模型摘要"]
     设 阈值串 为 os.environ.get("HARNESS_COMPACTION_THRESHOLD", "8000")
     设 保留串 为 os.environ.get("HARNESS_COMPACTION_KEEP_ROUNDS", "6")
     设 己.阈值token 为 转整数(阈值串)
