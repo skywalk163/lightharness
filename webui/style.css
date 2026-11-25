@@ -1764,3 +1764,57 @@ body {
   font-size: 12px;
 }
 .interrupt-btn:hover { background: rgba(90, 160, 255, 0.12); }
+
+/* ==== 运行中任务控制：子任务卡片右侧 暂停/继续/停止 ==== */
+.tool-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 8px;
+  border-top: 1px dashed var(--border);
+}
+.tool-controls[hidden] { display: none; }
+.tool-ctrl {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text);
+  cursor: pointer;
+}
+.tool-ctrl:hover { border-color: var(--blue); color: var(--blue); }
+.tool-ctrl.danger:hover { border-color: #f85149; color: #f85149; }
+.tool-ctrl[hidden] { display: none; }
+.tool-card.state-paused { opacity: .75; }
+.tool-card.state-paused .tool-status::after { content: "⏸ 已暂停"; color: #e3b341; font-size: 11px; }
+.tool-card.state-stopped { opacity: .7; }
+.tool-card.state-stopped .tool-status::after { content: "⏹ 已停止"; color: #f85149; font-size: 11px; }
+
+/* 运行中任务条：插话/停止的快捷入口 */
+.running-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  border-radius: 6px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+.running-bar[hidden] { display: none; }
+.running-bar .rb-label { color: var(--text-dim); flex: 1; }
+.steer-btn, .task-stop-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--blue);
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+}
+.steer-btn:hover { background: rgba(31,111,235,.12); }
+.task-stop-btn { border-color: #f85149; color: #f85149; }
+.task-stop-btn:hover { background: rgba(248,81,73,.12); }

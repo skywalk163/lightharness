@@ -36,6 +36,9 @@
   var modelPopoverEl = document.getElementById("model-popover");
   var sendBtn = document.getElementById("send-btn");
   var stopBtn = document.getElementById("stop-btn");
+  var runningBarEl = document.getElementById("running-bar");
+  var steerBtn = document.getElementById("steer-btn");
+  var taskStopBtn = document.getElementById("task-stop-btn");
   var subtitleEl = document.getElementById("subtitle");
   var statusEl = document.getElementById("status");
   var inputCountEl = document.getElementById("input-count");
@@ -1225,6 +1228,7 @@
     sendBtn.disabled = on;
     stopBtn.disabled = !on;
     if (interruptBtn) interruptBtn.hidden = !on;
+    if (runningBarEl) runningBarEl.hidden = !on;
     if (currentBubble) currentBubble.classList.toggle("streaming", on);
     if (on) {
       // T-0407 需求四：流式开始即本地计时（统计帧到达后再校正为服务端耗时）
@@ -1359,6 +1363,13 @@
           }
           if (json && json.种类 === "工具结果") {
             handleToolResult(json);
+            continue;
+          }
+          // 子任务状态帧（暂停/继续/停止）：更新工具卡片右侧控制条
+          if (json && json.种类 === "工具状态") {
+            if (window.ToolCard && window.ToolCard.applyToolState) {
+              window.ToolCard.applyToolState(json);
+            }
             continue;
           }
           var choice = json && json.choices && json.choices[0];
@@ -1584,6 +1595,53 @@
   // ---------- 停止 ----------
   function stopStreaming() {
     if (controller) controller.abort();
+    // 同步告诉服务端停止任务：杀掉正在跑的子进程（测试等），而不只是关 UI 流
+    if (sessionId) taskControl("stop");
+  }
+
+  // ---------- 运行中任务控制（暂停/继续/停止/插入/工具控制）----------
+  function taskControl(action, extra) {
+    var body = { session_id: sessionId || "" };
+    if (extra) {
+      for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) body[k] = extra[k];
+    }
+    var path = "/api/task/" + action;
+    return fetch(path, {
+      method: "POST",
+      headers: apiHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+      .then(function (j) {
+        if (!j.ok && j["理由"]) addSystem("任务控制失败：" + j["理由"], true);
+        return j;
+      })
+      .catch(function () { addSystem("任务控制请求失败（网络错误）", true); return { ok: false }; });
+  }
+
+  // 插入：把输入框里的新 prompt 送进正在运行的任务的下一步之前（steer）
+  function steerIntoRunning() {
+    var text = inputEl.value.trim();
+    if (!text) { addSystem("请先输入要插入的内容。", true); return; }
+    taskControl("steer", { text: text }).then(function (j) {
+      if (j.ok) {
+        addSystem("已插入到正在运行的任务（位置 " + (j["位置"] || 1) + "）：将在下一步之前生效。");
+        inputEl.value = "";
+        autoResize();
+        updateCharCount();
+      }
+    });
+  }
+
+  // 工具卡片右侧 暂停/继续/停止：直接作用于该子任务的进程树
+  function controlTool(action, callId, cardEl) {
+    taskControl("tool/" + action, { id: callId }).then(function (j) {
+      if (j.ok) {
+        addSystem("子任务已" + (action === "pause" ? "暂停" : action === "resume" ? "继续" : "停止") + "。");
+        if (window.ToolCard && window.ToolCard.applyToolState) {
+          window.ToolCard.applyToolState({ 调用id: callId, 状态: action === "pause" ? "paused" : action === "resume" ? "running" : "stopped" });
+        }
+      }
+    });
   }
 
   // ---------- 输入框 ----------
@@ -1750,6 +1808,13 @@
   });
   sendBtn.addEventListener("click", sendMessage);
   stopBtn.addEventListener("click", stopStreaming);
+  if (steerBtn) steerBtn.addEventListener("click", steerIntoRunning);
+  // T-0421 红线：stopStreaming 只能注册一次；任务条上的「停止任务」共用同一入口
+  if (taskStopBtn) taskStopBtn.addEventListener("click", function () { stopStreaming(); });
+  // 工具卡片右侧控制按钮的回调注入
+  if (window.ToolCard && window.ToolCard.setControlHandler) {
+    window.ToolCard.setControlHandler(controlTool);
+  }
 
   // 第6轮 D：附件选择器
   if (attachBtn && attachInput) {
