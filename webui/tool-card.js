@@ -17,6 +17,9 @@
   // ---------- 内部注册表 ----------
   // {callId, name, cls, state, durationText, cardEl(聊天区卡片DOM), ts}
   var registry = [];
+  // 控制回调（app.js 注入）：function(action, callId, cardEl)
+  var controlHandler = null;
+  function setControlHandler(fn) { controlHandler = fn; }
 
   function escapeHtml(s) {
     return String(s == null ? "" : s)
@@ -156,6 +159,22 @@
     body.appendChild(resultPre);
     card.appendChild(body);
 
+    // 控制条：暂停 / 继续 / 停止（运行中可见；对标 Claude Code / Cursor /
+    // OpenHands 的子任务独立控制——停止按钮必须真杀子进程，不只关 UI 流）。
+    var controls = document.createElement("div");
+    controls.className = "tool-controls";
+    controls.innerHTML =
+      '<button type="button" class="tool-ctrl" data-action="pause" title="暂停这个子任务">⏸ 暂停</button>' +
+      '<button type="button" class="tool-ctrl" data-action="resume" title="继续这个子任务" hidden>▶ 继续</button>' +
+      '<button type="button" class="tool-ctrl danger" data-action="stop" title="停止这个子任务（杀掉进程）">⏹ 停止</button>';
+    controls.addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      e.stopPropagation();
+      if (controlHandler) controlHandler(btn.getAttribute("data-action"), callId, card);
+    });
+    card.appendChild(controls);
+
     // 头部点击 = 展开/折叠主体
     head.addEventListener("click", function () {
       body.hidden = !body.hidden;
@@ -206,6 +225,9 @@
     var durationText = elapsed >= 0.1 ? elapsed.toFixed(1) + "s" : "<0.1s";
     卡片El.classList.remove("state-running");
     卡片El.classList.add(isError ? "state-error" : "state-done");
+    // 子任务已结束：隐藏控制条（暂停/继续/停止都不再有意义）
+    var ctrlEl = 卡片El.querySelector(".tool-controls");
+    if (ctrlEl) ctrlEl.hidden = true;
     if (statusEl) statusEl.innerHTML = isError ? '<span class="state-icon err">✗</span>' : '<span class="state-icon ok">✓</span>';
     if (durationEl) durationEl.textContent = durationText;
     if (isError) {
@@ -297,12 +319,33 @@
     renderStats(lastStatsEl);
   }
 
+  // 任务控制帧：{"种类":"工具状态","调用id","状态"} → 更新卡片右侧控制条
+  function applyToolState(数据) {
+    if (!数据 || !数据.调用id) return;
+    var 卡片 = findByCallId(数据.调用id);
+    if (!卡片) return;
+    var 控制条 = 卡片.querySelector(".tool-controls");
+    if (!控制条) return;
+    var 状态 = 数据.状态 || "running";
+    var 暂停钮 = 控制条.querySelector('[data-action="pause"]');
+    var 继续钮 = 控制条.querySelector('[data-action="resume"]');
+    var 停止钮 = 控制条.querySelector('[data-action="stop"]');
+    控制条.hidden = (状态 === "done");
+    if (暂停钮) 暂停钮.hidden = (状态 !== "running");
+    if (继续钮) 继续钮.hidden = (状态 !== "paused");
+    if (停止钮) 停止钮.hidden = (状态 !== "running" && 状态 !== "paused");
+    卡片.classList.toggle("state-paused", 状态 === "paused");
+    卡片.classList.toggle("state-stopped", 状态 === "stopped");
+  }
+
   window.ToolCard = {
     create: create,
     attachResult: attachResult,
     renderTimeline: renderTimeline,
     renderStats: renderStats,
     findByCallId: findByCallId,
-    reset: reset
+    reset: reset,
+    setControlHandler: setControlHandler,
+    applyToolState: applyToolState
   };
 })();

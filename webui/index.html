@@ -98,6 +98,12 @@
       <!-- 底部：输入区 + 按钮 -->
       <footer id="composer">
         <div id="attach-chips" class="attach-chips" hidden></div>
+        <!-- 运行中任务条：允许写新 prompt，用「插入」把它送进当前正在跑的任务（下一步之前生效） -->
+        <div id="running-bar" class="running-bar" hidden>
+          <span class="rb-label">任务运行中：可输入框写补充指令，点「插入」送进当前任务下一步</span>
+          <button type="button" id="steer-btn" class="steer-btn" title="插入到正在运行的任务（下一步之前生效）">插入</button>
+          <button type="button" id="task-stop-btn" class="task-stop-btn" title="停止当前任务并杀掉子进程">停止任务</button>
+        </div>
         <input type="file" id="attach-input" class="attach-input" multiple hidden>
         <div class="composer-row">
           <button id="attach-btn" class="btn btn-ghost attach-btn" title="添加附件（图片/文件）">📎</button>
