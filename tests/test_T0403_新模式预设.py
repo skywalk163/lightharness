@@ -277,6 +277,7 @@ def test_懒人两个开关与成本闸(tmp_path):
 REG_DRIVER = '''
 从 预设组合 导入 预设清单
 从 总入口 导入 组装注册表
+从 工具面装配 导入 白名单
 
 段落 逗号连接(表):
   设 文本 为 ""
@@ -289,11 +290,32 @@ REG_DRIVER = '''
   返回 文本
 
 段落 主程():
+  打印 "全量=" + 逗号连接(组装注册表().名单())
   遍历 标识 之 预设清单():
     设 注册表 为 组装注册表(标识)
     打印 "装配_" + 标识 + "=" + 逗号连接(注册表.名单())
+    打印 "白_" + 标识 + "=" + 逗号连接(白名单(标识))
 主程()
 '''
+
+# T-0521/D5：装配层件数按「白名单(预设) ∩ 注册表」现算，另给每档下限（理由见下）。
+#   白名单收口（T-0477）是刻意为之的收紧，旧判据的「一律 ≥20」是收口前（未映射默认保留
+#   166 件）的口径，对 bottomup/lazy 已不成立，改判据而不是把白名单加长（加回去等于回退）。
+#   · standard/ptc/cordis/default/topdown —— 基础白名单全量，不删任何方法项 → 22 件（下限 20）
+#   · bottomup —— 基础集 − 目标 − 提问族(提问提交/回答提交/待答列出/答案取出) → 17 件（下限 16）
+#   · lazy     —— 基础集 − 提问族 → 18 件（下限 17）
+#   · brainstorm —— 只读白名单（读/搜/问/网查）→ 12 件（下限 10）
+#   · minimal  —— 仅 bash → 1 件（钉死相等）
+PRESET_FLOORS = {
+    'standard': 20, 'ptc': 20, 'cordis': 20, 'default': 20, 'topdown': 20,
+    'bottomup': 16, 'lazy': 17, 'brainstorm': 10,
+}
+
+
+def _whitelist_hits(kv, pid, all_names):
+    """白名单(pid) 里真在注册表里的名字集合（"mcp__*" 是通配符，不是具体工具名）。"""
+    allow = [x for x in kv.get('白_' + pid, '').split(',') if x]
+    return {x for x in allow if x in all_names and x != 'mcp__*'}
 
 
 def test_工具集按规格表_装配层(tmp_path):
@@ -306,13 +328,21 @@ def test_工具集按规格表_装配层(tmp_path):
     def tools(pid):
         return [x for x in kv.get('装配_' + pid, '').split(',') if x]
 
-    # T-0456 接线后 standard 不再是四件套：叶子映射扩容 + 未映射默认保留，
-    # standard/ptc/cordis/default/topdown 保留 166 个，bottomup 158、lazy 161。
-    # 这里断言「不变量」而不是旧规模——四件套仍在 + 本批新挂的族在场 + 规模下限。
+    all_names = {x for x in kv.get('全量', '').split(',') if x}
+    assert all_names, ('REG 探针没打出全量注册表名单', out[-2000:])
+
+    # 0) 装配结果 == 白名单 ∩ 注册表（T-0477 之后工具面的唯一保留依据；MCP 走通配不在此列）
+    for pid, floor in PRESET_FLOORS.items():
+        real = [x for x in tools(pid) if not x.startswith('mcp__')]
+        assert len(real) >= floor, ('工具面被砍过头', pid, len(real), floor, out[-2000:])
+        expected = _whitelist_hits(kv, pid, all_names)
+        assert set(real) == expected, (pid, '装配与白名单不一致',
+                                       sorted(set(real) ^ expected), out[-2000:])
+
+    # T-0456 接线后 standard 不再是四件套；这里断言「不变量」+ 白名单必须集在场。
     base = {'bash', '读文件', '写文件', '搜索文件'}
     std = tools('standard')
     assert base <= set(std), out
-    assert len(std) >= 20, ('standard 工具面仍被砍成少数几个', len(std), out)
     for name in ('编辑文件', 'job_start', 'job_output', 'job_kill', 'skill',
                  'web_search', 'web_fetch', 'present'):
         assert name in std, ('本批新工具没挂上 standard：%s' % name, len(std), out)
@@ -321,7 +351,6 @@ def test_工具集按规格表_装配层(tmp_path):
     for pid in ('topdown', 'bottomup', 'lazy'):
         got = set(tools(pid))
         assert base <= got, (pid, sorted(base - got), out)
-        assert len(got) >= 20, (pid, len(got), out)
     # brainstorm：bash 不在（这是「只给只读工具」在装配层能验到的部分）
     br = tools('brainstorm')
     assert 'bash' not in br, out
