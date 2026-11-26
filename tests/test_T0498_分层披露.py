@@ -375,14 +375,19 @@ def _run(driver, tmp_path, name):
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
-    # 诊断增强：driver 非 0 退出时把错误行打到 stdout 尾部，便于后台日志
-    # 只留 tail 5 行时仍能定位真正的异常（不改判据语义，只补可观测性）。
+    # 诊断增强：driver 非 0 退出时把完整输出落盘到 .hive/（不进 git），
+    # 便于后台 verify 只留 tail 5 行时仍能定位真正的异常。
+    # 不改判据语义，只补可观测性；成功时不写文件。
     if proc.returncode != 0:
-        err_lines = [ln for ln in (proc.stdout + proc.stderr).splitlines()
-                     if any(t in ln for t in ('Error', '错误', 'Traceback', 'Exception',
-                                              'File ', 'line '))]
-        for ln in err_lines[-12:]:
-            print('[DRIVER_DIAG]', ln)
+        try:
+            diag_dir = os.path.join(ROOT, '.hive')
+            os.makedirs(diag_dir, exist_ok=True)
+            with open(os.path.join(diag_dir, 'driver_diag_' + name + '.txt'),
+                      'w', encoding='utf-8') as fh:
+                fh.write('RC=' + str(proc.returncode) + '\n')
+                fh.write(proc.stdout + '\n=== STDERR ===\n' + proc.stderr)
+        except OSError:
+            pass
     return proc.returncode, proc.stdout + proc.stderr, kv
 
 
