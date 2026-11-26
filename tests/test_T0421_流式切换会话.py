@@ -22,6 +22,7 @@ abort 后 finalizeTurn 保留已渲染内容，不丢已收到的文本；绝不
   - 第 5 组：旧实现切会话时不清 localQueue。
 """
 import os
+import re
 import subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -110,14 +111,26 @@ def test_abort竞态有世代号校验():
 
     send = _fn_body(app, 'function sendMessage(overrideText)', ['function handleHttpError('])
     assert 'var myEpoch = turnEpoch;' in send, '本轮没有快照 epoch'
-    # 响应/收尾/异常三条路径都要先比对 epoch
-    assert send.count('isTurnAlive(myEpoch)') >= 4, \
-        '竞态校验没覆盖 resp.ok / then / catch / finally：%d 处' % send.count('isTurnAlive(myEpoch)')
+    # 响应/收尾/异常/收口四条路径都要先比对轮次存活。
+    # T-0490 把裸 isTurnAlive(myEpoch) 收敛成 serialAlive()（= mySerial === sendSerial &&
+    #   isTurnAlive(myEpoch)，多一道「被新轮接管」判定），语义只强不弱；两种写法都接受，
+    #   但覆盖处数仍必须 ≥ 4（不许为了过判据删守卫）。
+    guard = send.count('serialAlive()') + send.count('isTurnAlive(myEpoch)')
+    assert guard >= 4, \
+        '竞态校验没覆盖 resp.ok / then / catch / finally：%d 处' % guard
+    if 'serialAlive()' in send:
+        # 收敛形式必须真的把 epoch 与 serial 都算进去，不能退化成只看其中一个
+        assert re.search(r'function serialAlive\(\)\s*\{\s*return\s+[^}]*isTurnAlive\(myEpoch\)', app), \
+            'serialAlive 没有把 isTurnAlive(myEpoch) 算进去（等于丢了 epoch 守卫）'
+        assert re.search(r'function serialAlive\(\)\s*\{\s*return\s+mySerial\s*===\s*sendSerial', app), \
+            'serialAlive 没有把 mySerial === sendSerial 算进去（等于丢了轮次接管守卫）'
     assert 'readStream(resp, myEpoch)' in send, 'SSE 读取没带上 epoch（残留帧会写进新会话）'
-    assert 'if (!isTurnAlive(myEpoch)) return;   // T-0422：切会话后老请求的失败不落到新会话' in send, \
-        'catch 没有 epoch 守卫（AbortError 晚到会 finalize 新会话）'
-    assert 'if (!isTurnAlive(myEpoch)) return;\n      setStreaming(false);' in send, \
-        'finally 没有 epoch 守卫（老轮次收尾会关掉新会话的流）'
+    assert ('if (!isTurnAlive(myEpoch)) return;   // T-0422：切会话后老请求的失败不落到新会话' in send
+            or 'if (!serialAlive()) return;   // T-0490/T-0422：切会话或被新轮接管后，老请求失败不落到新会话' in send), \
+        'catch 没有 epoch/轮次守卫（AbortError 晚到会 finalize 新会话）'
+    assert ('if (!isTurnAlive(myEpoch)) return;\n      setStreaming(false);' in send
+            or 'if (!serialAlive()) return;\n      setStreaming(false);' in send), \
+        'finally 没有 epoch/轮次守卫（老轮次收尾会关掉新会话的流）'
 
     stream = _fn_body(app, 'function readStream(resp, epoch)',
                       ['// ---------- T-0398：一键压缩'])
