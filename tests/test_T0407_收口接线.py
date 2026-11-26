@@ -89,6 +89,20 @@ class 处理器(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         载荷 = json.loads(self.rfile.read(n) or b"{}")
         计数["n"] += 1
+        # T-0523：宿主旁路请求识别——压缩摘要（T-0486 LLM 摘要器）等宿主侧请求
+        #   都不带 tools。这类请求不能推进 goal 状态机，否则 turn 2 正式对话的
+        #   「目标.complete tool_call」额度会被摘要请求抢走，目标工具永远不被调用，
+        #   goal/change 落空（T0407 修前留证的根因；探针实测请求序列已证实）。
+        if not 载荷.get("tools"):
+            块 = 文本块("## 目标推进检查点\n- 第一轮已推进：示例项目结构盘点完成。\n- 待办：下一轮收口并标记目标完成。")
+            体 = "".join("data: " + json.dumps(c, ensure_ascii=False) + "\n\n" for c in 块)
+            体 = (体 + "data: [DONE]\n\n").encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Content-Length", str(len(体)))
+            self.end_headers()
+            self.wfile.write(体)
+            return
         消息 = 载荷.get("messages") or []
         用户 = ""
         遍历 = list(reversed(消息))
@@ -311,6 +325,10 @@ def srv(work, llm):
 # --------------------------------------------------------------------------- #
 # 1. 目标续跑：2 轮 + 目标工具 complete + 统计 轮次数=2
 # --------------------------------------------------------------------------- #
+# T-0523：module 级 fixture（mock LLM + 真服务）的冷启动都算在第一条用例头上，
+#   冷启动实测约 59s（见 test_T0456 先例）；全局 --timeout=60 连 setup 一起计时，
+#   修前在服务起完前就被杀。沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_目标续跑两轮后由目标工具收口(srv):
     sid = 't0407-goal'
     st, raw = srv.post({'messages': [{'role': 'user', 'content': '/goal T0407-GOAL 把示例项目收口'}],
@@ -333,6 +351,10 @@ def test_目标续跑两轮后由目标工具收口(srv):
 # --------------------------------------------------------------------------- #
 # 2. 自动压缩：小窗口 + 长消息 → compact-checkpoint 真的进会话
 # --------------------------------------------------------------------------- #
+# T-0523：xdist 并发下 module fixture（mock LLM + 真服务，冷启动约 59s）会在
+#   每个 worker 的首条用例 setup 里实例化，全局 --timeout=60 连 setup 一起计时。
+#   除首条外的 srv 用例都补 timeout(300)（超时声明，沿 T-0456 先例），防调度落点漂移。
+@pytest.mark.timeout(300)
 def test_小窗口下自动压缩写出检查点(srv, llm):
     sid = 't0407-compact'
     # 触发条件（T-0402 校准后的口径）：超阈值 + **有可折叠的旧区**。
@@ -351,6 +373,8 @@ def test_小窗口下自动压缩写出检查点(srv, llm):
 # --------------------------------------------------------------------------- #
 # 3. /compact：不调模型、回压缩帧
 # --------------------------------------------------------------------------- #
+# T-0523：同上，防 fixture 冷启动落在本条 setup（见用例 2 注释）。
+@pytest.mark.timeout(300)
 def test_compact命令不消耗模型轮次并回压缩帧(srv, llm):
     sid = 't0407-cmd'
     srv.post({'messages': [{'role': 'user', 'content': '先建立一段历史。' * 20}],
@@ -367,6 +391,8 @@ def test_compact命令不消耗模型轮次并回压缩帧(srv, llm):
 # --------------------------------------------------------------------------- #
 # 4. 八种模式可开会话；未知模式 400 文案由 预设清单 拼
 # --------------------------------------------------------------------------- #
+# T-0523：同上，防 fixture 冷启动落在本条 setup（见用例 2 注释）。
+@pytest.mark.timeout(300)
 def test_八种模式都可开会话(srv):
     for m in ('standard', 'cordis', 'ptc', 'minimal', 'topdown', 'bottomup', 'brainstorm', 'lazy'):
         st, raw = srv.post({'messages': [{'role': 'user', 'content': '模式检查 ' + m}],
@@ -382,6 +408,8 @@ def test_八种模式都可开会话(srv):
 # --------------------------------------------------------------------------- #
 # 5. 统计帧细节：耗时/速率/轮次数
 # --------------------------------------------------------------------------- #
+# T-0523：同上，防 fixture 冷启动落在本条 setup（见用例 2 注释）。
+@pytest.mark.timeout(300)
 def test_统计帧带耗时与速率(srv):
     sid = 't0407-stat'
     st, raw = srv.post({'messages': [{'role': 'user', 'content': '统计细节'}],
@@ -397,6 +425,8 @@ def test_统计帧带耗时与速率(srv):
 # --------------------------------------------------------------------------- #
 # 6. 并发同会话 → 202 排队，JSONL 不重复
 # --------------------------------------------------------------------------- #
+# T-0523：同上，防 fixture 冷启动落在本条 setup（见用例 2 注释）。
+@pytest.mark.timeout(300)
 def test_同会话并发第二条走202排队(srv):
     sid = 't0407-queue'
     srv.post({'messages': [{'role': 'user', 'content': '先建会话'}], 'stream': False, 'session_id': sid})
