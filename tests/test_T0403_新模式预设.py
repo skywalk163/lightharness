@@ -25,9 +25,17 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 180
+
+# T-0521：装配层 / CLI 两条要真起 `运行.py` 子进程编译整仓（单跑 35–37s，实测），
+#   与 pytest.ini 的全局 --timeout=60 只差一点点余量；一旦与其它重用例并跑（-n 4），
+#   60s 预算被吃穿，pytest-timeout 直接把 worker kill（报 "worker crashed" 而非断言红）。
+#   照 tests/test_T0456_收口接线.py 的既有先例，给这两条放宽到 300s。
+SLOW = pytest.mark.timeout(300)
 
 # 9 个预设在 预设清单() 里的次序 = order 升序（1..9；T-0441 起 default 为方法维第一项）
 EXPECTED_ORDER = ['standard', 'ptc', 'minimal', 'cordis',
@@ -318,6 +326,7 @@ def _whitelist_hits(kv, pid, all_names):
     return {x for x in allow if x in all_names and x != 'mcp__*'}
 
 
+@SLOW
 def test_工具集按规格表_装配层(tmp_path):
     rc, out, kv = _run(REG_DRIVER, tmp_path, 'reg')
     if rc != 0 and _missing_module(out):
@@ -366,6 +375,7 @@ def test_工具集按规格表_装配层(tmp_path):
                        '查询会话'}, out
 
 
+@SLOW
 def test_brainstorm装配层没有写文件(tmp_path):
     """T-0419 拆叶子后，brainstorm 在**装配层**就不该出现「写文件」（不只是提示词约束）。"""
     rc, out, kv = _run(REG_DRIVER, tmp_path, 'reg')
@@ -404,6 +414,7 @@ CLI_DRIVER = '''
 '''
 
 
+@SLOW
 def test_CLI_preset_文案与校验(tmp_path):
     rc, out, kv = _run(CLI_DRIVER, tmp_path, 'cli')
     if rc != 0 and _missing_module(out):
