@@ -182,7 +182,13 @@ def test_会话cwd成为四工具根(tmp_path):
 打印("读内容=" + 读["内容"])
 设 搜 为 搜索文件处理(["模式": "内容", "查询": "worktree 内容", "路径": "."])
 打印("命中数=" + 转字符串(长(搜["结果"])))
-设 命 为 bash处理(["命令": "pwd"])
+# T-0523 平台适配：bash 工具在 Windows 上走 cmd /c（无 pwd；无参 cd 打印目录但会被
+# cd 守卫按 POSIX 语义拦成「cd 无目标」，POSIX 的无参 cd 则是去 home 不打印）——
+# 按 OS 选「打印当前目录且不触 cd 守卫」的命令：cmd 用 echo %CD%，POSIX 用 pwd。
+设 列目录 为 "pwd"
+如果 环境变量("OS", "") == "Windows_NT":
+  设 列目录 为 "echo %CD%"
+设 命 为 bash处理(["命令": 列目录])
 打印("bash=" + 命["输出"].去除空白())
 设 越界 为 读文件处理(["路径": "../../etc/passwd"])
 '''
@@ -211,8 +217,12 @@ def test_会话cwd成为四工具根(tmp_path):
 # --------------------------------------------------------------------------- #
 # B. cd 守卫：解析后判定（变量 / 引号 / 白名单），越界仍拒
 # --------------------------------------------------------------------------- #
-
-# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+# T-0523：本用例的命令模板是 POSIX shell 语义（W=x 赋值 / $VAR 引用 / eval / sh -c），
+#   Windows 的 bash 工具走 cmd /c——这些语义无法在 cmd 下等价表达（T-0523 实测 +
+#   主仓 HEAD 同红）；守卫判定层平台无关，FreeBSD/Linux 上原样真跑。
+@pytest.mark.skipif(os.name == "nt",
+                    reason="POSIX shell 语义判据（W=x; cd $W; pwd / eval / sh -c）在 Windows cmd 下无等价表达；"
+                           "FreeBSD/Linux 上真跑（T-0523 实测 192.168.0.88 全绿），Windows 口径见任务书平台说明")
 @pytest.mark.timeout(300)
 def test_cd守卫_解析后路径判定(tmp_path):
     wt = _make_worktree(tmp_path)
@@ -270,8 +280,10 @@ def test_cd守卫_解析后路径判定(tmp_path):
 # --------------------------------------------------------------------------- #
 # B2. 间接形式：包装词 / eval / sh -c —— 字面量正则时代的「第二种绕过面」
 # --------------------------------------------------------------------------- #
-
-# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+# T-0523：同 B——命令模板是 POSIX shell 语义（eval/sh -c/if true; then），FreeBSD/Linux 真跑。
+@pytest.mark.skipif(os.name == "nt",
+                    reason="POSIX shell 语义判据（eval / sh -c / then）在 Windows cmd 下无等价表达；"
+                           "FreeBSD/Linux 上真跑（T-0523 实测 192.168.0.88 全绿），Windows 口径见任务书平台说明")
 @pytest.mark.timeout(300)
 def test_cd守卫_间接形式也判定(tmp_path):
     root = tmp_path / '工程'
@@ -340,7 +352,11 @@ def test_无worktree时根仍为项目根(tmp_path):
 打印("上级码=" + 转字符串(上["退出码"]))
 设 绝 为 bash处理(["命令": "cd /tmp"])
 打印("绝对码=" + 转字符串(绝["退出码"]))
-设 命 为 bash处理(["命令": "pwd"])
+# T-0523 平台适配（同 test_会话cwd成为四工具根）：cmd 用 echo %CD%，POSIX 用 pwd
+设 列目录 为 "pwd"
+如果 环境变量("OS", "") == "Windows_NT":
+  设 列目录 为 "echo %CD%"
+设 命 为 bash处理(["命令": 列目录])
 打印("bash=" + 命["输出"].去除空白())
 '''
     proc = _run(tmp_path, '_c.light', src)
