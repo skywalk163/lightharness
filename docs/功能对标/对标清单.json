@@ -5339,6 +5339,139 @@
       "本轮目标": "tests/test_T0421_流式切换会话.py 7 passed + node --check webui/app.js / messages.js",
       "反跑判据": "把 selectSession 的 streaming 分支改回弹提示 return、或去掉 epoch 校验、或切会话不清队列，对应用例立红",
       "语言缺陷": []
+    },
+    {
+      "编号": 380,
+      "id": "T-0489-skill",
+      "功能": "技能段接线：技能目录发现 → 上下文字典 → 生产提示「技能清单」节",
+      "原版包": "packages/skill + packages/system-prompt（SkillCatalog section）",
+      "光明模块": "src/总入口.light 收集技能表/收集上下文/本轮系统提示；src/提示_技能段.light",
+      "状态": "done（T-0489）：收集上下文 调 技能目录.发现技能(项目根, [工作目录])，技能表进上下文；技能发现抛错降级为空表，不打断系统提示构建。",
+      "证据": [
+        "src/总入口.light 收集技能表（537）/ 收集上下文（562）",
+        "src/系统提示.light 造生产提示注册表的 skill:catalog 节",
+        "tests/test_T0489_收口.py::test_本轮系统提示含六段与两级指令",
+        "tests/test_T0489_收口.py::test_技能异常降级为空不打断"
+      ],
+      "本轮目标": "python -m pytest -q tests/test_T0489_收口.py 全绿",
+      "反跑判据": "把 收集技能表 的失败分支改成直传异常 → 技能降级用例立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 381,
+      "id": "T-0489-environment",
+      "功能": "环境段接线：系统/壳/工作目录/项目根/本地时间进生产提示",
+      "原版包": "packages/context/harness-dev-context + packages/context/time-context",
+      "光明模块": "src/总入口.light 系统壳/时区偏移分钟/取现在毫秒/收集上下文；src/提示_环境段.light",
+      "状态": "done（T-0489）：环境信息含 sys.platform、HARNESS_SHELL（缺省 pwsh/bash）、工作目录、项目根、HARNESS_TZ_OFFSET（缺省 480）与 epoch 毫秒；时间格式化仍由 提示_环境段 → 时间上下文.格式化时间戳 负责。",
+      "证据": [
+        "src/总入口.light 系统壳（470）/ 时区偏移分钟（479）/ 收集上下文（562）",
+        "src/提示_环境段.light 环境段文本",
+        "src/时间上下文.light 格式化时间戳/时区偏移文本",
+        "tests/test_T0489_收口.py::test_平台与偏移缺省口径"
+      ],
+      "本轮目标": "本轮系统提示 含「操作系统：」「当前本地时间」",
+      "反跑判据": "把 时区偏移分钟 缺省改成 0、或 系统壳 固定成 pb → 偏移/壳用例立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 382,
+      "id": "T-0489-permission",
+      "功能": "权限段接线：会话头 权限预设 / 审批策略 → 权限与审批边界节",
+      "原版包": "packages/guard + packages/system-prompt（APPROVAL_POLICY）",
+      "光明模块": "src/总入口.light 会话头取值/收集上下文；src/提示_权限段.light",
+      "状态": "done（T-0489）：会话头有值才进上下文（缺省空 → 段不渲染）；全拒绝 → 「写盘与命令一律拒绝」。",
+      "证据": [
+        "src/总入口.light 会话头取值（496）/ 收集上下文（562）",
+        "src/提示_权限段.light 权限段文本",
+        "tests/test_T0489_收口.py::test_权限预设全拒绝进提示"
+      ],
+      "本轮目标": "全拒绝可见、缺省头不出现权限段",
+      "反跑判据": "把 权限预设 写死「全放行」→ 全拒绝用例立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 383,
+      "id": "T-0489-mcp",
+      "功能": "MCP 段接线：配置枚举出的服务器名表 → MCP resource servers 节",
+      "原版包": "packages/mcp + packages/system-prompt（TOOL_WEB_SEARCH 邻位）",
+      "光明模块": "src/总入口.light 发现MCP服务器名表/收集上下文；src/提示_MCP段.light",
+      "状态": "done（T-0489）：复用 取MCP配置路径 + 解析MCP配置 的装配前枚举（只取名、不连接）；配置坏/缺 → 空表。",
+      "证据": [
+        "src/总入口.light 发现MCP服务器名表（511）",
+        "src/mcp接线.light 取MCP配置路径 / 挂载MCP服务器",
+        "src/提示_MCP段.light MCP段文本",
+        "tests/test_T0489_收口.py::test_本轮系统提示含六段与两级指令"
+      ],
+      "本轮目标": "提示含「MCP resource servers」与假服务器名 alpha-mcp",
+      "反跑判据": "把 发现MCP服务器名表 的连接/注册也搬进来（重副作用）或删掉 上下文[\"服务器名表\"] → MCP 段用例立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 384,
+      "id": "T-0489-discipline",
+      "功能": "纪律段接线：工具使用纪律随上下文进生产提示",
+      "原版包": "packages/system-prompt（PLAN_POLICY 邻位 discipline）",
+      "光明模块": "src/系统提示.light 造生产提示注册表 plan:discipline；src/提示_纪律段.light",
+      "状态": "done（T-0489）：纪律段为静态节，空上下文也在场；本轮接线后随生产提示一起进真实会话。",
+      "证据": [
+        "src/系统提示.light 造生产提示注册表（plan:discipline）",
+        "src/提示_纪律段.light 纪律段文本",
+        "tests/test_T0489_收口.py::test_本轮系统提示含六段与两级指令"
+      ],
+      "本轮目标": "本轮系统提示 的 生产提示 部分含纪律段",
+      "反跑判据": "把 plan:discipline 的注册条件改成「上下文有技能表才挂」→ 空上下文用例（T-0487）立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 385,
+      "id": "T-0489-collab",
+      "功能": "协作段接线：协作与长任务随上下文进生产提示",
+      "原版包": "packages/system-prompt（TOOL_SUBAGENT 邻位 collaboration）",
+      "光明模块": "src/系统提示.light 造生产提示注册表 plan:collab；src/提示_协作段.light",
+      "状态": "done（T-0489）：协作段为静态节，空上下文也在场；与纪律段同批接线。",
+      "证据": [
+        "src/系统提示.light 造生产提示注册表（plan:collab）",
+        "src/提示_协作段.light 协作段文本",
+        "tests/test_T0489_收口.py::test_本轮系统提示含六段与两级指令"
+      ],
+      "本轮目标": "本轮系统提示 的 生产提示 部分含协作段",
+      "反跑判据": "把 plan:collab 的槽位改成 TOOL_SUBAGENT+100 → T-0487 段序判据立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 386,
+      "id": "T-0489-toolface",
+      "功能": "工具面白名单：standard 生产工具面 168→20–30（T-0477 收口后与注册表逐件一致）",
+      "原版包": "packages/system-prompt（tool surface）+ packages/tool-registry",
+      "光明模块": "src/系统提示.light 标准工具面 / 取标准工具面；src/总入口.light 组装注册表",
+      "状态": "done（T-0477 收口 + T-0489 复核）：组装注册表(\"standard\") 22 件工具、描述表 22 件；本轮系统提示 传装配注册表.名单()，工具选择段按真实工具面渲染。",
+      "证据": [
+        "src/系统提示.light 标准工具面（22 项）",
+        "src/总入口.light 跑一轮（本轮工具名表 = 装配注册表.名单()）",
+        "tests/test_T0489_收口.py::test_standard工具数20到30",
+        "tests/test_T0488_生产面快照.py::test_standard工具数与描述表预算"
+      ],
+      "本轮目标": "20 ≤ 工具数 ≤ 30",
+      "反跑判据": "把 标准工具面 常量加回 168 项或删掉白名单 → 工具数用例立红",
+      "语言缺陷": []
+    },
+    {
+      "编号": 387,
+      "id": "T-0489-summary",
+      "功能": "压缩模型摘要：压缩检查点摘要来源=model，摘要正文用于跨轮上下文",
+      "原版包": "packages/compaction（checkpoint + model summary）",
+      "光明模块": "src/压缩摘要器.light / src/压缩.light；CHANGELOG.md",
+      "状态": "done（T-0484 落地 + T-0489 文档收口）：摘要来源标记与八段检查点均有判据；本轮在 CHANGELOG 记录实测数字。",
+      "证据": [
+        "src/压缩摘要器.light",
+        "tests/test_T0484_压缩摘要器.py",
+        "tests/test_T0488_生产面快照.py::test_压缩检查点八段与来源",
+        "CHANGELOG.md（T-0489 条目）"
+      ],
+      "本轮目标": "CHANGELOG 含「模型摘要」；压缩检查点判据保持绿",
+      "反跑判据": "把 摘要来源 从 model 改成 none → T-0488 压缩检查点用例立红",
+      "语言缺陷": []
     }
   ]
 }
