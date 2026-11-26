@@ -26,13 +26,25 @@ pytest 这里判的是**能机器验证的两端**：
   - newChatState 不清空附件（本次只在它后面补了「已保留 N 个待发附件」的中文提示）。
 """
 import os
+import pathlib
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
+import threading
+import time
+
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 240
+# T-0523 D1 第二层：driver 调 处理对话 会起 T-0490 的排队唤醒循环（非守护线程），
+# 业务跑完后进程永不退出——修前 subprocess TimeoutExpired 的机制。
+# 契约：driver（异步 主() 结构，见用例 1）在主函数末尾打印结束标记行；_run 见到
+# 标记即 kill 并按业务完成解析；进程先退出且无标记 = 崩溃，按真实退出码返回。
+DONE_MARK = 'T0523-DRIVER-DONE'
 
 
 def _lp(p) -> str:
@@ -66,7 +78,11 @@ def _find_sibling(name):
 
 
 def _run(src: str, tmp_path):
-    """在独立子进程里跑一段光明驱动脚本，返回 (rc, 合并输出, {键: 值})。"""
+    """在独立子进程里跑一段光明驱动脚本，返回 (rc, 合并输出, {键: 值})。
+
+    T-0523：driver 结构见用例 1（异步 主()），结束标记行已由用例 1 打印；
+    _run 见到标记即 kill（排队唤醒线程挡退出），未见标记按真实退出码/超时处理。
+    """
     f = tmp_path / 'driver.light'
     f.write_text(src, encoding='utf-8')
     env = {k: v for k, v in os.environ.items() if k not in ('HARNESS_ROOT', 'HARNESS_CWD')}
@@ -76,17 +92,44 @@ def _run(src: str, tmp_path):
             env[key] = found
         else:
             env.pop(key, None)
-    p = subprocess.run(
+    proc = subprocess.Popen(
         [sys.executable, RUNNER, str(f)],
-        capture_output=True, text=True, encoding='utf-8', errors='replace',
-        timeout=TIMEOUT_SEC, cwd=str(tmp_path), env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding='utf-8', errors='replace',
+        cwd=str(tmp_path), env=env,
     )
+    buf = []
+    reader = threading.Thread(target=lambda: buf.extend(iter(proc.stdout)), daemon=True)
+    reader.start()
+    deadline = time.time() + TIMEOUT_SEC
+    done = False
+    while time.time() < deadline:
+        if DONE_MARK in ''.join(buf):
+            done = True
+            break
+        if proc.poll() is not None:
+            reader.join(timeout=10)
+            if DONE_MARK in ''.join(buf):
+                done = True
+            break
+        time.sleep(0.2)
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    reader.join(timeout=10)
+    combined = ''.join(buf)
     kv = {}
-    for line in p.stdout.splitlines():
+    for line in combined.splitlines():
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
-    return p.returncode, p.stdout + p.stderr, kv
+    if not done:
+        if proc.poll() is None:
+            raise subprocess.TimeoutExpired([sys.executable, RUNNER, str(f)],
+                                            TIMEOUT_SEC, output=combined)
+        return proc.returncode, combined, kv
+    return 0, combined, kv
 
 
 def _read(name):
@@ -184,18 +227,33 @@ def _main(body):
 # --------------------------------------------------------------------------- #
 # 1. 服务端接收面：任意 attachments 形状都不能把请求打崩，也不能绕过校验
 # --------------------------------------------------------------------------- #
+# T-0523：真起服务的 E2E，冷启动约 59s（test_T0456 先例）；全局 --timeout=60 会先杀
+# 判据（修前留证：63s Timeout）。沿 T-0456 先例放宽到 300s；TIMEOUT_SEC=240 不动。
+# 另：会话目录名把项目根整条转义编码（--<路径>--），pytest tmp_path 超长中文名
+# 编码后临界超 Windows MAX_PATH → 偶发 500「会话保存失败」（随 pytest run 编号
+# 增长越来越容易红，T0499 修 T0499 判据时错误体实锤同根因）→ 服务根换短目录。
+@pytest.mark.timeout(300)
 def test_服务端稳健接收附件形状(tmp_path):
+    服务根 = pathlib.Path(tempfile.mkdtemp(prefix='t0523-t0398'))
+    try:
+        _跑附件形状用例(服务根)
+    finally:
+        shutil.rmtree(服务根, ignore_errors=True)
+
+
+def _跑附件形状用例(服务根):
     src = BOOT + MOCK + POST + (
         '\n异步 段落 主():\n'
         f'  设 注册表 为 组装注册表()\n'
         f'  设 客户端 为 新建 模拟客户端(["T0398-OK"])\n'
-        f'  全局服务.配置(客户端, 注册表, "{_lp(tmp_path)}", 30.0, "")\n'
+        f'  全局服务.配置(客户端, 注册表, "{_lp(服务根)}", 30.0, "")\n'
         + ''.join('  ' + line + '\n' for line in PROBE.strip('\n').split('\n'))
         + ''.join('  ' + line + '\n' for line in REPORT.strip('\n').split('\n'))
         + '  全局服务.停止()\n'
+        + f'  打印("{DONE_MARK}")\n'
         '\n异步 运行 主()\n'
     )
-    rc, out, kv = _run(src, tmp_path)
+    rc, out, kv = _run(src, 服务根)
     assert rc == 0, f'驱动脚本失败 rc={rc}\n{out}'
 
     # 正常三元组：200 且答复不受附件影响（服务端目前只接收、不消费 content 之外的字段）

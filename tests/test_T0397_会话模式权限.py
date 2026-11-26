@@ -12,10 +12,19 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
+
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 120
+# T-0523 D1 第二层：driver 调 处理对话 会起 T-0490 的排队唤醒循环（非守护线程），
+# 业务跑完后进程永不退出——修前 subprocess 120s TimeoutExpired 的机制。
+# 契约：_run 给 driver 末尾统一追加结束标记行，见到标记即 kill 并按业务完成解析；
+# 进程先退出且无标记 = 崩溃，按真实退出码返回。
+DONE_MARK = 'T0523-DRIVER-DONE'
 
 
 def _lp(p) -> str:
@@ -61,19 +70,45 @@ def _env():
 
 def _run(src, tmp_path):
     f = tmp_path / 'driver.light'
-    f.write_text(src, encoding='utf-8')
-    p = subprocess.run(
+    f.write_text(src + '\n打印("' + DONE_MARK + '")\n', encoding='utf-8')
+    proc = subprocess.Popen(
         [sys.executable, RUNNER, str(f)],
-        capture_output=True, text=True, encoding='utf-8', errors='replace',
-        timeout=TIMEOUT_SEC, cwd=str(tmp_path), env=_env(),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding='utf-8', errors='replace',
+        cwd=str(tmp_path), env=_env(),
     )
+    buf = []
+    reader = threading.Thread(target=lambda: buf.extend(iter(proc.stdout)), daemon=True)
+    reader.start()
+    deadline = time.time() + TIMEOUT_SEC
+    done = False
+    while time.time() < deadline:
+        if DONE_MARK in ''.join(buf):
+            done = True
+            break
+        if proc.poll() is not None:
+            reader.join(timeout=10)
+            if DONE_MARK in ''.join(buf):
+                done = True
+            break
+        time.sleep(0.2)
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    reader.join(timeout=10)
+    combined = ''.join(buf)
     kv = {}
-    for line in p.stdout.splitlines():
+    for line in combined.splitlines():
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
-    combined = p.stdout + p.stderr
-    return p.returncode, combined, kv
+    if not done:
+        if proc.poll() is None:
+            raise subprocess.TimeoutExpired([sys.executable, RUNNER, str(f)],
+                                            TIMEOUT_SEC, output=combined)
+        return proc.returncode, combined, kv
+    return 0, combined, kv
 
 
 BOOT = r'''
@@ -117,6 +152,9 @@ def _body(title, mode=None, perm=None):
 # --------------------------------------------------------------------------- #
 # 1. 建两会话分别指定「全放行 / 全拒绝」——同一工具分别得到 放行 / 拒绝，且全局不变
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_两会话并发权限隔离同一工具分别放行拒绝(tmp_path):
     src = (BOOT + _service(tmp_path)
            + f'''
@@ -145,6 +183,9 @@ def test_两会话并发权限隔离同一工具分别放行拒绝(tmp_path):
 # --------------------------------------------------------------------------- #
 # 2. 未设置时回退默认「标准 + 按类别」——默认行为零变化
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_未设置回退默认标准加按类别(tmp_path):
     src = (BOOT + _service(tmp_path)
            + f'''
@@ -178,6 +219,9 @@ def test_未设置回退默认标准加按类别(tmp_path):
 # --------------------------------------------------------------------------- #
 # 3. POST /api/permissions 改默认，不影响已绑定会话
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_改全局默认不影响已绑定会话(tmp_path):
     src = (BOOT + _service(tmp_path)
            + f'''
@@ -202,6 +246,9 @@ def test_改全局默认不影响已绑定会话(tmp_path):
 # --------------------------------------------------------------------------- #
 # 4. 持久化/恢复：新 Web服务端实例（模拟重启）能从磁盘恢复会话模式/权限
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_切换会话持久化重启恢复(tmp_path):
     src = (BOOT + _service(tmp_path)
            + f'''
@@ -230,6 +277,9 @@ def test_切换会话持久化重启恢复(tmp_path):
 # --------------------------------------------------------------------------- #
 # 5. 会话内切换 POST /api/sessions/:id/模式权限 只改该会话，不动另一会话/全局
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_会话内切换只改本会话(tmp_path):
     src = (BOOT + _service(tmp_path)
            + f'''
@@ -258,6 +308,9 @@ def test_会话内切换只改本会话(tmp_path):
 # --------------------------------------------------------------------------- #
 # 6. 每轮对话把实际生效的 preset / 权限预设写回会话（含首条消息带 preset/权限预设）
 # --------------------------------------------------------------------------- #
+# T-0523：真起服务的 E2E，冷启动约 59s（test_T0456 先例）；全局 --timeout=60 会先杀
+# 判据（修前留证：63s Timeout）。沿 T-0456 先例放宽到 300s；TIMEOUT_SEC=120 不动。
+@pytest.mark.timeout(300)
 def test_对话每轮写回预设(tmp_path):
     mock = r'''
 从 总入口 导入 组装注册表
@@ -314,6 +367,8 @@ def test_前端会话切换恢复与按会话落库接线():
 # --------------------------------------------------------------------------- #
 # 8. 续轮 / 单项更新不互相抹除（主控合入补丁：空串 ≠ 「本轮没带」）
 # --------------------------------------------------------------------------- #
+# T-0523：同上，真起服务 E2E 放宽到 300s（修前留证：63s Timeout，全局 60s 先杀）。
+@pytest.mark.timeout(300)
 def test_续轮与单项更新不互相抹除(tmp_path):
     mock = r'''
 从 总入口 导入 组装注册表
