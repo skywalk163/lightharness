@@ -375,6 +375,14 @@ def _run(driver, tmp_path, name):
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
+    # 诊断增强：driver 非 0 退出时把错误行打到 stdout 尾部，便于后台日志
+    # 只留 tail 5 行时仍能定位真正的异常（不改判据语义，只补可观测性）。
+    if proc.returncode != 0:
+        err_lines = [ln for ln in (proc.stdout + proc.stderr).splitlines()
+                     if any(t in ln for t in ('Error', '错误', 'Traceback', 'Exception',
+                                              'File ', 'line '))]
+        for ln in err_lines[-12:]:
+            print('[DRIVER_DIAG]', ln)
     return proc.returncode, proc.stdout + proc.stderr, kv
 
 
