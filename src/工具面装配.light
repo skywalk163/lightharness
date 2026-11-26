@@ -205,6 +205,280 @@
   返回 -1
 
 # =====================================================================
+# §3.9 W2/T2.2 工具语义名与别名（T-0502）
+#
+# 数据来源：docs/工具命名规范.light.md §6（T-0501 的机器可读映射表，160 条）。
+# 口径：
+#   · 语义名映射表 —— 基线注册名 → <域>.<动作>；只认这 160 个名字。
+#     未登记的名字（测试名 / 插件临时名 / mcp__*）一律原样保留，不改名。
+#   · 别名保留名单 —— T-0501 §5.1 的 27 条「保留别名」：旧名继续可调用；
+#     其余 133 条「直接改名」，旧名**不登记别名**（调用即 TOOL_NOT_FOUND）。
+#   · 本段是装配侧唯一数据源：工具执行.light §1 的注册与执行管线直接从这里
+#     取 规范工具名 / 别名表 / 解析，不另存第二份表（防两处漂移）。
+#   · 编号 tool_NN 只是文档引用键，**不是别名**，绝不登记（T-0501 §4）。
+# =====================================================================
+
+设 语义名映射表 为 {
+  # ---- shell（4）----
+  "bash": "shell.run",
+  "SSH执行": "shell.ssh_exec",
+  "运行用例表": "shell.run_cases",
+  "执行Python脚本": "shell.python",
+  # ---- file（5）----
+  "读文件": "file.read",
+  "写文件": "file.write",
+  "搜索文件": "file.search",
+  "编辑文件": "file.edit",
+  "订阅文件变更": "file.watch",
+  # ---- workflow（61）----
+  "job_start": "workflow.job_start",
+  "job_output": "workflow.job_output",
+  "job_kill": "workflow.job_kill",
+  "todo_write": "workflow.todo_write",
+  "目标": "workflow.goal",
+  "提问提交": "workflow.ask_submit",
+  "回答提交": "workflow.answer_submit",
+  "待答列出": "workflow.ask_list",
+  "答案取出": "workflow.answer_take",
+  "创建会话": "workflow.session_create",
+  "切换会话": "workflow.session_switch",
+  "列出会话": "workflow.session_list",
+  "反馈提交": "workflow.feedback_submit",
+  "反馈列出": "workflow.feedback_list",
+  "反馈处理": "workflow.feedback_handle",
+  "反馈筛选": "workflow.feedback_filter",
+  "执行启动序列": "workflow.boot_sequence",
+  "启动子进程": "workflow.process_start",
+  "等待子进程": "workflow.process_wait",
+  "提醒注册": "workflow.reminder_add",
+  "提醒取消": "workflow.reminder_cancel",
+  "提醒列出": "workflow.reminder_list",
+  "提醒触发": "workflow.reminder_fire",
+  "注册工作区": "workflow.workspace_register",
+  "工作流提交": "workflow.submit",
+  "工作流状态查询": "workflow.query_status",
+  "工作流汇总": "workflow.summary",
+  "工作线程打包": "workflow.thread_pack",
+  "工作线程运行时": "workflow.thread_runtime",
+  "派发工具任务": "workflow.tool_task_dispatch",
+  "回收工具结果": "workflow.tool_task_collect",
+  "列出能力": "workflow.capability_list",
+  "调用能力": "workflow.capability_call",
+  "作业状态查询": "workflow.job_status",
+  "作业取消": "workflow.job_cancel",
+  "待办添加": "workflow.todo_add",
+  "待办完成": "workflow.todo_complete",
+  "待办列出": "workflow.todo_list",
+  "待办删除": "workflow.todo_delete",
+  "登记产物": "workflow.artifact_register",
+  "生成清单": "workflow.manifest_build",
+  "注册路由": "workflow.route_register",
+  "分发请求": "workflow.request_dispatch",
+  "写入缓冲": "workflow.buffer_write",
+  "读取缓冲": "workflow.buffer_read",
+  "目标创建": "workflow.goal_create",
+  "目标推进": "workflow.goal_advance",
+  "目标列出": "workflow.goal_list",
+  "打开终端": "workflow.terminal_open",
+  "写入终端": "workflow.terminal_write",
+  "读取终端": "workflow.terminal_read",
+  "关闭终端": "workflow.terminal_close",
+  "计划创建": "workflow.plan_create",
+  "计划开始": "workflow.plan_start",
+  "计划完成": "workflow.plan_complete",
+  "计划阻塞": "workflow.plan_block",
+  "计划列出": "workflow.plan_list",
+  "登记任务槽": "workflow.task_slot_register",
+  "释放任务槽": "workflow.task_slot_release",
+  "注册钩子": "workflow.hook_register",
+  "触发事件": "workflow.event_emit",
+  # ---- skill（3）----
+  "skill": "skill.use",
+  "技能列表": "skill.list",
+  "技能取用": "skill.load",
+  # ---- web（3）----
+  "web_search": "web.search",
+  "web_fetch": "web.fetch",
+  "网页抓取": "web.scrape",
+  # ---- delegation（3）----
+  "present": "delegation.present",
+  "派发子任务": "delegation.dispatch",
+  "收集子任务结果": "delegation.collect",
+  # ---- config（11）----
+  "设置环境变量": "config.set_env",
+  "获取环境变量": "config.get_env",
+  "读取设置": "config.settings_read",
+  "写入设置": "config.settings_write",
+  "采集诊断快照": "config.diagnostics_snapshot",
+  "健康检查": "config.health_check",
+  "运行检视": "config.inspect",
+  "预设保存": "config.preset_save",
+  "预设应用": "config.preset_apply",
+  "预设列出": "config.preset_list",
+  "预设删除": "config.preset_delete",
+  # ---- 横切（13）----
+  "解析命令行": "xcut.parse_command",
+  "校验装配": "xcut.validate_assembly",
+  "校验ACP消息": "xcut.validate_acp_message",
+  "风险判定": "xcut.risk_assess",
+  "解析路径": "xcut.resolve_path",
+  "规范化路径": "xcut.normalize_path",
+  "文档大纲": "xcut.document_outline",
+  "沙箱裁决": "xcut.sandbox_verdict",
+  "判定类型": "xcut.is_type",
+  "校验结构": "xcut.validate_shape",
+  "自动审查": "xcut.auto_review",
+  "合并字典": "xcut.merge_dict",
+  "去重列表": "xcut.dedupe_list",
+  # ---- generative（3）----
+  "三维生成": "generative.model3d",
+  "图片生成": "generative.image",
+  "视频生成": "generative.video",
+  # ---- ctx（5）----
+  "压缩评估": "ctx.assess",
+  "压缩选块": "ctx.select_blocks",
+  "压缩摘要": "ctx.summarize",
+  "上下文装配": "ctx.assemble",
+  "上下文装配报告": "ctx.report",
+  # ---- team（1）----
+  "注册团队画像": "team.register_profile",
+  # ---- credential（4）----
+  "凭据存入": "credential.store",
+  "凭据读取": "credential.read",
+  "凭据删除": "credential.delete",
+  "凭据列出": "credential.list",
+  # ---- acp（3）----
+  "构造ACP请求": "acp.build_request",
+  "切换连接态": "acp.set_connection",
+  "拉取事件": "acp.pull_events",
+  # ---- storage（4）----
+  "存储写入": "storage.write",
+  "存储读取": "storage.read",
+  "存储列举": "storage.list",
+  "存储删除": "storage.delete",
+  # ---- host（4）----
+  "宿主名称": "host.name",
+  "宿主平台": "host.platform",
+  "宿主工作区根": "host.workspace_root",
+  "宿主能力声明": "host.capabilities",
+  # ---- extension（2）----
+  "注册扩展": "extension.register",
+  "列出扩展": "extension.list",
+  # ---- session（7）----
+  "查时间": "session.time",
+  "查工作目录": "session.cwd",
+  "查版本": "session.version",
+  "查退出码": "session.exit_code",
+  "模型补全": "session.model_complete",
+  "人格列表": "session.persona_list",
+  "人格装配": "session.persona_assemble",
+  # ---- desktop（3）----
+  "屏幕操作": "desktop.screen_action",
+  "桌面驱动CUA协议": "desktop.cua_protocol",
+  "桌面驱动CUA原生": "desktop.cua_native",
+  # ---- browser（6）----
+  "浏览器执行": "browser.execute",
+  "登记页面": "browser.page_register",
+  "执行动作队列": "browser.action_queue",
+  "浏览器驱动DevTools": "browser.driver_devtools",
+  "浏览器驱动Playwright": "browser.driver_playwright",
+  "浏览器驱动Stagehand": "browser.driver_stagehand",
+  # ---- webhook（4）----
+  "Webhook注册": "webhook.register",
+  "Webhook触发": "webhook.trigger",
+  "Webhook列出": "webhook.list",
+  "Webhook删除": "webhook.delete",
+  # ---- lsp（3）----
+  "LSP初始化": "lsp.initialize",
+  "LSP发请求": "lsp.request",
+  "LSP收响应": "lsp.response",
+  # ---- voice（5）----
+  "语音转文字": "voice.speech_to_text",
+  "录音控制": "voice.record_control",
+  "语音打包": "voice.bundle",
+  "语音目录": "voice.directory",
+  "语音转写": "voice.transcript",
+  # ---- attachment（3）----
+  "附件上传": "attachment.upload",
+  "附件下载": "attachment.download",
+  "附件列举": "attachment.list",
+}
+
+# 反向表（语义名 → 基线注册名）：叶子映射 / 工具域 / 白名单等价判定共用。
+# 建一次即可（模块加载期算完），避免每次查询都扫 160 条。
+段落 建语义名反向表():
+  设 结果 为 {}
+  遍历 旧名 之 字典键列表(语义名映射表):
+    字典设置(结果, 语义名映射表[旧名], 旧名)
+  返回 结果
+
+设 语义名反向表 为 建语义名反向表()
+
+# 语义名(名) -> 该基线工具的目标语义名；未登记名字返回 ""（表示「不改名」）
+段落 语义名(名):
+  如果 是字符串(名) == 假:
+    返回 ""
+  返回 字典获取(语义名映射表, 名, "")
+
+# 原名(名) -> 基线注册名；入参本身不是语义名时原样返回（幂等）
+段落 原名(名):
+  设 旧名 为 字典获取(语义名反向表, 名, "")
+  如果 旧名 == "":
+    返回 名
+  返回 旧名
+
+# 是语义名(名) -> 布尔
+段落 是语义名(名):
+  如果 是字符串(名) == 假:
+    返回 假
+  返回 字典包含键(语义名反向表, 名)
+
+# 别名保留名单：27 条（T-0501 §5.1 基础白名单 22 + 只读白名单 2 + 既有判据/文档 3）
+设 别名保留名单 为 ["bash", "读文件", "写文件", "编辑文件", "搜索文件", "job_start", "job_output", "job_kill", "skill", "技能列表", "技能取用", "web_search", "web_fetch", "网页抓取", "present", "todo_write", "目标", "派发子任务", "收集子任务结果", "提问提交", "回答提交", "待答列出", "答案取出", "作业状态查询", "SSH执行", "运行用例表", "执行Python脚本"]
+
+段落 建别名映射表():
+  设 结果 为 {}
+  遍历 旧名 之 别名保留名单:
+    设 新名 为 语义名(旧名)
+    如果 新名 != "":
+      字典设置(结果, 旧名, 新名)
+  返回 结果
+
+# 别名表() -> {旧名: 语义名}，只含「保留别名」的 27 条
+设 别名映射表 为 建别名映射表()
+
+段落 别名表():
+  设 结果 为 {}
+  遍历 旧名 之 字典键列表(别名映射表):
+    字典设置(结果, 旧名, 别名映射表[旧名])
+  返回 结果
+
+# 是保留别名(名) -> 布尔
+段落 是保留别名(名):
+  如果 是字符串(名) == 假:
+    返回 假
+  返回 列表包含(别名保留名单, 名)
+
+# 规范工具名(名) -> 注册表应登记的键：
+#   登记了语义名的基线工具 → 语义名；其余（测试名 / 插件名 / mcp__*）原样返回。
+段落 规范工具名(名):
+  设 新名 为 语义名(名)
+  如果 新名 != "":
+    返回 新名
+  返回 名
+
+# 解析可调名(名) -> 执行管线实际查找的键：
+#   语义名直查（原样）→ 旧名经别名表 → 其余原样（由调用方判未找到）。
+#   「直接改名」的旧名不在别名表里，所以不会被解析到新名（符合 T-0501 §5.2）。
+段落 解析可调名(名):
+  如果 是保留别名(名) == 假:
+    返回 名
+  设 新名 为 字典获取(别名映射表, 名, "")
+  如果 新名 == "":
+    返回 名
+  返回 新名
+
+# =====================================================================
 # §4 叶子映射
 # =====================================================================
 
@@ -214,10 +488,13 @@
   如果 是字符串(名字) == 假:
     设 空表 为 []
     返回 空表
-  如果 字典包含键(叶子映射表, 名字) == 假:
+  # T-0502：语义名（ctx.select_blocks / file.read …）先还原成基线注册名再查叶子，
+  #   旧名与语义名两套口径得到同一份叶子，装配报告/预设过滤不需要改判据。
+  设 查名 为 原名(名字)
+  如果 字典包含键(叶子映射表, 查名) == 假:
     设 空表 为 []
     返回 空表
-  返回 列表副本(叶子映射表[名字])
+  返回 列表副本(叶子映射表[查名])
 
 # 不上叶子(名字) -> 布尔；登记在不上叶子表里的名字明确不映射
 段落 不上叶子(名字):
@@ -1099,6 +1376,8 @@
 段落 工具域(工具名):
   如果 是字符串(工具名) == 假 或 字符串长度(工具名) == 0:
     返回 默认域
+  # T-0502：语义名先还原成基线注册名，域口径与 T-0496 的覆盖表/规则表保持一字不差。
+  设 查名 为 原名(工具名)
   如果 是MCP域标识(工具名) == 真:
     设 余 为 截取(工具名, 5, 字符串长度(工具名))
     设 位 为 查找双下划线(余)
@@ -1107,9 +1386,9 @@
       如果 字符串长度(服务器) > 0:
         返回 "mcp_" + 服务器
     返回 "mcp_未知"
-  如果 字典包含键(域覆盖表, 工具名) == 真:
-    返回 域覆盖表[工具名]
-  设 命中 为 规则匹配(工具名)
+  如果 字典包含键(域覆盖表, 查名) == 真:
+    返回 域覆盖表[查名]
+  设 命中 为 规则匹配(查名)
   如果 字符串长度(命中) > 0:
     返回 命中
   返回 默认域
