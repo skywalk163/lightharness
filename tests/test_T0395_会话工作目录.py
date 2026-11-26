@@ -8,12 +8,24 @@
   - 旧 `GET /api/sessions/:id` 详情没有 工作目录 键。
 """
 import os
+import pathlib
+import shutil
 import subprocess
 import sys
+import tempfile
+import threading
+import time
+
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 120
+# T-0523 D1 第二层：driver 调 处理对话 会起 T-0490 的排队唤醒循环（当 真 + sleep，
+# 非守护线程），业务跑完后进程永不退出——修前 subprocess 120s TimeoutExpired 的机制。
+# 契约：_run 给 driver 末尾统一追加结束标记行，见到标记即 kill 并按业务完成解析
+# （rc=0）；进程先退出且无标记 = 崩溃，按真实退出码返回（原 subprocess.run 语义）。
+DONE_MARK = 'T0523-DRIVER-DONE'
 
 
 def _lp(p) -> str:
@@ -36,7 +48,7 @@ def _find_sibling(name):
 
 def _run(src: str, tmp_path, cwd=None):
     f = tmp_path / 'driver.light'
-    f.write_text(src, encoding='utf-8')
+    f.write_text(src + '\n打印("' + DONE_MARK + '")\n', encoding='utf-8')
     env = {k: v for k, v in os.environ.items() if k not in ('HARNESS_ROOT', 'HARNESS_CWD')}
     # 本卡只碰后端会话目录，但 Web服务端 间接依赖 lightplugin 的 生产挂载；
     # worker 的 worktree 在 .hive/wt（无 ../lightplugin），必须显式给路径，
@@ -47,32 +59,73 @@ def _run(src: str, tmp_path, cwd=None):
             env[key] = found
         else:
             env.pop(key, None)
-    p = subprocess.run(
+    proc = subprocess.Popen(
         [sys.executable, RUNNER, str(f)],
-        capture_output=True, text=True, encoding='utf-8', errors='replace',
-        timeout=TIMEOUT_SEC, cwd=str(cwd or tmp_path), env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding='utf-8', errors='replace',
+        cwd=str(cwd or tmp_path), env=env,
     )
+    buf = []
+    reader = threading.Thread(target=lambda: buf.extend(iter(proc.stdout)), daemon=True)
+    reader.start()
+    deadline = time.time() + TIMEOUT_SEC
+    done = False
+    while time.time() < deadline:
+        if DONE_MARK in ''.join(buf):
+            done = True
+            break
+        if proc.poll() is not None:
+            reader.join(timeout=10)
+            if DONE_MARK in ''.join(buf):
+                done = True
+            break
+        time.sleep(0.2)
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    reader.join(timeout=10)
+    combined = ''.join(buf)
     kv = {}
-    for line in p.stdout.splitlines():
+    for line in combined.splitlines():
         if '=' in line:
             k, v = line.split('=', 1)
             kv[k.strip()] = v.strip()
-    combined = p.stdout + p.stderr
+    if not done:
+        # 进程还挂着且没见到标记 = 业务真没跑完（真 hang），按原语义抛超时
+        if proc.poll() is None:
+            raise subprocess.TimeoutExpired([sys.executable, RUNNER, str(f)],
+                                            TIMEOUT_SEC, output=combined)
+        # 进程已退出但无标记 = 崩溃/业务失败：返回真实退出码，交给业务断言红
+        return proc.returncode, combined, kv
     # T-0395 诊断留痕：写到 worktree 下（仅本地排查用，不参与 git 提交）
     try:
         debug = os.path.join(ROOT, '.hive', 'verify-debug')
         os.makedirs(debug, exist_ok=True)
         with open(os.path.join(debug, 'T0395-' + os.path.basename(str(f)) + '.log'),
                   'w', encoding='utf-8') as fh:
-            fh.write('rc=' + str(p.returncode) + '\n' + combined)
+            fh.write('rc=0(done)\n' + combined)
     except OSError:
         pass
-    return p.returncode, combined, kv
+    return 0, combined, kv
 
 
 def _same(a: str, b: str) -> bool:
     norm = lambda s: os.path.normcase(os.path.normpath(s.strip()))
     return norm(a) == norm(b)
+
+
+@pytest.fixture
+def short_root():
+    """T-0523 判据侧短根：会话存储把「会话工作目录」整条路径编码成磁盘目录名
+    （--<转义路径>--），pytest tmp_path 的超长中文名编码后超 Windows MAX_PATH(260)，
+    增量保存创建目录失败 → 处理对话 500「会话保存失败」（修前被进程挂住掩盖）。
+    改用系统 Temp 下的短根目录，语义与 tmp_path 等价（任意临时目录），业务断言不变。"""
+    d = pathlib.Path(tempfile.mkdtemp(prefix='t0523'))
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 BOOT = '''
@@ -108,6 +161,9 @@ def _body(title, cwd_expr=None):
 # --------------------------------------------------------------------------- #
 # 1. 两条会话各自不同目录并发存在，路径安全各按各根（反证）
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_两条会话不同目录并发存在且路径安全各按各根(tmp_path):
     a = tmp_path / '甲项目'
     b = tmp_path / '乙项目'
@@ -146,6 +202,9 @@ def test_两条会话不同目录并发存在且路径安全各按各根(tmp_pat
 # --------------------------------------------------------------------------- #
 # 2. GET /api/sessions/:id 的 cwd，与重启后 cwd 不丢
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_会话详情cwd与重启后cwd不丢(tmp_path):
     target = tmp_path / '项目'
     target.mkdir()
@@ -177,6 +236,9 @@ def test_会话详情cwd与重启后cwd不丢(tmp_path):
 # --------------------------------------------------------------------------- #
 # 3. 非法目录 400，且索引里没有新会话
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_非法目录400且不建会话(tmp_path):
     a_file = tmp_path / '是文件.txt'
     a_file.write_text('x', encoding='utf-8')
@@ -204,6 +266,9 @@ def test_非法目录400且不建会话(tmp_path):
 # --------------------------------------------------------------------------- #
 # 4. 不传工作目录时回退全局（旧行为不变）
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_不传目录回退全局(tmp_path):
     g = tmp_path / '全局'
     g.mkdir()
@@ -227,10 +292,14 @@ def test_不传目录回退全局(tmp_path):
 # --------------------------------------------------------------------------- #
 # 5. POST /v1/chat/completions 首条消息带 工作目录 → 写入新会话头信息
 # --------------------------------------------------------------------------- #
-def test_对话首条消息带目录写入新会话头信息(tmp_path):
-    target = tmp_path / '聊天项目'
+# T-0523：真起服务的 E2E——冷启动实测约 59s（见 test_T0456_收口接线.py 注释），
+# pytest.ini 全局 --timeout=60 会在服务起完前先杀判据（修前留证：64s Timeout）。
+# 沿 T-0456 先例显式放宽到 300s；subprocess 层 TIMEOUT_SEC=120 不动，仍先于 300 出清晰报错。
+@pytest.mark.timeout(300)
+def test_对话首条消息带目录写入新会话头信息(tmp_path, short_root):
+    target = short_root / '聊天项目'
     target.mkdir()
-    bad_dir = tmp_path / '不存在聊天目录'
+    bad_dir = short_root / '不存在聊天目录'
 
     src = BOOT + """
 从 总入口 导入 组装注册表
@@ -243,7 +312,7 @@ def test_对话首条消息带目录写入新会话头信息(tmp_path):
   段落 对话响应(消息表, 选项表, 工具表, 增量回调 = 空):
     设 文本 为 "ok"
     返回 [造块开始(0, "text"), 造文本增量(0, 文本), 造块结束(0, ["type":"text","text":文本]), 造结束(造停止原因())]
-""" + _new_service(tmp_path) + f"""
+""" + _new_service(short_root) + f"""
 服务.配置(新建 模拟客户端(), 组装注册表(), 根, 30.0, "", 空)
 设 目录 为 "{_lp(target)}"
 设 聊天体 为 序列化JSON(["model":"mock","messages":[["role":"user","content":"你好"]],"工作目录":目录])
@@ -276,6 +345,9 @@ def test_对话首条消息带目录写入新会话头信息(tmp_path):
 # --------------------------------------------------------------------------- #
 # 6. 空体 / 非字典体仍按旧行为建会话（T-0395 主控补丁：多了可选键不能把 200 变 500）
 # --------------------------------------------------------------------------- #
+
+# T-0523：driver 重导入 web服务器（冷启动约 59s），并发争用下全局 60s 会先杀判据；沿 T-0456 先例放宽到 300s。
+@pytest.mark.timeout(300)
 def test_空体与非字典体仍建会话(tmp_path):
     src = BOOT + _new_service(tmp_path) + '''
 设 空体 为 服务.处理新建会话(["方法":"POST","路径":"/api/sessions","头":{}, "体":编码("")], "")
