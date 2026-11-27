@@ -23,6 +23,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 import time
 
 import pytest
@@ -98,6 +99,16 @@ def _must_exit(label, entry, cwd):
     raise last
 
 
+def _fresh_dir(label):
+    """每条用例一个全新的独立 cwd（对齐 tests/test_回归.py 的 _run）。
+
+    必须用 %TEMP% 下的短目录，不能用 pytest 的 tmp_path：tmp_path 会把用例名转义进
+    路径（...pytest-of-.../test_~8D77~670D...），会话保存时按 cwd 拼出的目录名直接
+    撞 Windows 260 字符上限 → WinError 3 → 用例 rc=1（假红，与线程无关）。
+    """
+    return tempfile.mkdtemp(prefix='t0526_')
+
+
 def test_起服务用例跑完必须自己退出(tmp_path):
     """三条场景顺序跑（避免 -n 4 下多条光明编译抢 CPU 造成假红）：
 
@@ -111,7 +122,7 @@ def test_起服务用例跑完必须自己退出(tmp_path):
         entry = os.path.join(EXAMPLES, name)
         assert os.path.isfile(entry), f'缺用例文件: {entry}'
         try:
-            (rc, wall, out), attempt = _must_exit(name, entry, str(tmp_path))
+            (rc, wall, out), attempt = _must_exit(name, entry, _fresh_dir(name))
         except subprocess.TimeoutExpired:
             failures.append(f'{name}: 两轮都 {SUB_TIMEOUT}s 内没退出（进程挂死）')
             report.append(f'{name}: TIMEOUT×2')
@@ -124,10 +135,12 @@ def test_起服务用例跑完必须自己退出(tmp_path):
             )
 
     # ③ 起停往返：把 .light 入口写进临时目录，不往仓库里丢文件
-    entry = tmp_path / '_t0526_roundtrip.light'
-    entry.write_text(_ROUND_TRIP, encoding='utf-8')
+    rt_dir = _fresh_dir('roundtrip')
+    entry = os.path.join(rt_dir, '_t0526_roundtrip.light')
+    with open(entry, 'w', encoding='utf-8') as fh:
+        fh.write(_ROUND_TRIP)
     try:
-        (rc, wall, out), attempt = _must_exit('起停往返', str(entry), str(tmp_path))
+        (rc, wall, out), attempt = _must_exit('起停往返', entry, rt_dir)
         ok = rc == 0 and wall < WALL_LIMIT and 'T-0526 起停往返 通过' in out
         report.append(f'起停往返: rc={rc} wall={wall:.1f}s (第{attempt}轮)')
         if not ok:
