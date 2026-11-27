@@ -10,7 +10,10 @@
   3. 唯一性：语义名互不重复，且与现名、与 mcp__ 前缀不冲突；
   4. 域对齐：域 ∈ T-0496 的 24 个枚举值，前缀 == 域（唯一例外 横切 → xcut）；
   5. 兼容标注：只有「保留别名 / 直接改名」两种，保留别名 ⟺ 现名 ∈ 别名保留名单；
-  6. 与真实注册表逐位一致（环境里挂了 lightplugin 时强校验；未挂载则跳过，不假绿不假红）。
+  6. 与真实注册表的两条互补判据（T-0525 改写，环境无关，§6.1）：
+     正向 —— §6 的 160 条必须按登记序作为注册表的**前缀**逐位一致（现名 + 域）；
+     反向 —— 注册表里既不在 §6、也不在 `不上叶子表`、也不以 `mcp__` 开头的条目逐条点名判红。
+     注册面完全未装配（缺核心工具）时以明确理由跳过，不假绿不假红。
 
 运行方式：python -m pytest -q tests/test_T0501_命名映射表.py
 Windows 本机若子进程输出触发 GBK 解码错误，加 PYTHONUTF8=1 再跑（不是产物问题）。
@@ -46,6 +49,13 @@ MAX_LEN = 40
 MAX_ACTION = 24
 POLICIES = {'保留别名', '直接改名'}
 
+# 注册面「装上了」的证据：核心四件套至少出现一个。用它判断环境可用性，
+#   不用「条数 >= 100」这种数量门槛（数量会随插件 / MCP 漂移，不是环境判据）。
+CORE_SENTINELS = ('bash', '读文件', '写文件', '搜索文件')
+# MCP 透传名只按前缀豁免：枚举必然随各机 mcp.json 过期（§2.1）
+MCP_PREFIX = 'mcp__'
+MAX_DETAIL = 8
+
 
 def _read_doc():
     assert os.path.isfile(DOC), '缺少规范文档：%s' % DOC
@@ -66,6 +76,14 @@ def _load_table():
 TABLE = _load_table()
 ROWS = TABLE['工具']
 KEEP = TABLE['别名保留名单']
+
+
+def _brief(items, limit=MAX_DETAIL):
+    """把违规明细压成可读的几行：全列会淹掉真正的第一条。"""
+    items = list(items)
+    if len(items) <= limit:
+        return '\n  '.join(items)
+    return '\n  '.join(items[:limit]) + '\n  …（共 %d 处）' % len(items)
 
 
 # ---------------------------------------------------------------- 1 完整性
@@ -152,14 +170,18 @@ def test_兼容策略标注完备():
 
 
 # ---------------------------------------------------------------- 6 真实注册表
+# 一次 dump 同时给两条判据供料：REG| 注册表(名|域)，EXEMPT| 不上叶子表。
+# 豁免名单必须从 工具面装配 导入，测试里不留第二份（两份一定漂移）。
 DUMP_DRIVER = '''
 从 总入口 导入 组装注册表
-从 工具面装配 导入 工具域
+从 工具面装配 导入 工具域, 不上叶子表
 
 段落 主程():
   设 注册表 为 组装注册表()
   遍历 名 之 注册表.名单():
-    打印 名 + "|" + 工具域(名)
+    打印 "REG|" + 名 + "|" + 工具域(名)
+  遍历 名 之 不上叶子表:
+    打印 "EXEMPT|" + 名
 主程()
 '''
 
@@ -176,7 +198,8 @@ def _lightplugin_dir():
     return ''
 
 
-def _registry(tmp_path):
+def _dump(tmp_path):
+    """返回 ((注册表 [(名, 域)], 不上叶子表 [名]), 错误文本)；导出失败时第一项为 None。"""
     path = tmp_path / 't0501_registry.light'
     path.write_text(DUMP_DRIVER, encoding='utf-8')
     env = dict(os.environ)
@@ -189,23 +212,98 @@ def _registry(tmp_path):
                           capture_output=True, text=True, timeout=240,
                           env=env, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
-        return None, (proc.stdout or '') + (proc.stderr or '')
-    out = []
+        return (None, None), (proc.stdout or '') + (proc.stderr or '')
+    reg = []
+    exempt = []
     for line in proc.stdout.splitlines():
         line = line.strip()
-        if '|' in line and not line.startswith('['):
-            name, dom = line.split('|', 1)
-            out.append((name.strip(), dom.strip()))
-    return out, ''
+        if line.startswith('REG|'):
+            rest = line[len('REG|'):]
+            if '|' in rest:
+                name, dom = rest.split('|', 1)
+                reg.append((name.strip(), dom.strip()))
+        elif line.startswith('EXEMPT|'):
+            exempt.append(line[len('EXEMPT|'):].strip())
+    return (reg, exempt), ''
+
+
+def _prefix_violations(reg):
+    """正向判据：§6 160 条按登记序 = 注册表最前 160 位（现名 + 域逐位相等）。
+
+    追加只允许发生在末尾；缺基线、移位、改名、域漂移都点名。
+    """
+    bad = []
+    names = [n for n, _ in reg]
+    table_names = [r['现名'] for r in ROWS]
+    missing = [n for n in table_names if n not in names]
+    if missing:
+        bad.append('基线工具在注册表里缺失（被删或改名）：%s' % '、'.join(missing))
+    if len(reg) < len(ROWS):
+        bad.append('注册表只有 %d 条，少于映射表基线 %d 条（前 %d 位必须逐位对齐）'
+                   % (len(reg), len(ROWS), len(ROWS)))
+    for i, (r, (name, dom)) in enumerate(zip(ROWS, reg)):
+        if r['现名'] != name:
+            bad.append('登记序第 %d 位现名漂移：映射表=%s 注册表=%s'
+                       % (i, r['现名'], name))
+        elif r['域'] != dom:
+            bad.append('登记序第 %d 位（%s）域漂移：映射表=%s 注册表=%s'
+                       % (i, name, r['域'], dom))
+    return bad
+
+
+def _unregistered(reg, exempt):
+    """反向判据：注册表里既不在 §6、也不在 不上叶子表、也不以 mcp__ 开头 → 真·漏登记。"""
+    table_names = {r['现名'] for r in ROWS}
+    exempt_names = set(exempt)
+    stray = []
+    for name, dom in reg:
+        if name in table_names or name in exempt_names or name.startswith(MCP_PREFIX):
+            continue
+        stray.append('%s（域 %s）' % (name, dom))
+    return stray
 
 
 def test_与真实注册表逐位一致(tmp_path):
-    reg, err = _registry(tmp_path)
+    (reg, exempt), err = _dump(tmp_path)
     assert reg is not None, '注册表导出失败：%s' % err[-2000:]
-    if len(reg) < 100:
-        pytest.skip('当前环境未挂载 lightplugin（%d 个工具），跳过注册表强校验；'
-                    '映射表本身的完整性判据已通过' % len(reg))
-    assert len(reg) == len(ROWS), '注册表工具数与映射表不一致：%d vs %d' % (len(reg), len(ROWS))
-    for r, (name, dom) in zip(ROWS, reg):
-        assert r['现名'] == name, '登记序第 %d 位现名漂移：%s vs %s' % (r['编号'], r['现名'], name)
-        assert r['域'] == dom, '%s 的域漂移：%s vs %s' % (name, r['域'], dom)
+    assert exempt, '不上叶子表 未从 工具面装配 导入到条目：%s' % err[-2000:]
+
+    # 环境可用性判据：注册面是否装上了。不用条数门槛（条数随插件 / MCP 漂移）。
+    if not (set(n for n, _ in reg) & set(CORE_SENTINELS)):
+        pytest.skip('当前环境未装配工具注册面（注册表仅 %d 条，且不含核心工具 %s）——'
+                    '这是环境声明，不是放低判据；映射表自身的完整性判据已通过'
+                    % (len(reg), '/'.join(CORE_SENTINELS)))
+
+    bad = _prefix_violations(reg)
+    assert not bad, ('§6 映射表与注册表前缀不一致（基线 %d 条 vs 注册表 %d 条）：\n  %s'
+                     % (len(ROWS), len(reg), _brief(bad)))
+
+    stray = _unregistered(reg, exempt)
+    assert not stray, (
+        '注册表里有 %d 个工具既不在 §6 映射表、也不在 工具面装配.不上叶子表（§3.9 A 类）、'
+        '也不以 mcp__ 开头 —— 属真·漏登记，逐条点名：\n  %s'
+        % (len(stray), _brief(stray)))
+
+
+def test_判据自检_基线漂移与漏登记必红():
+    """反证：两条判据都必须在人造的坏数据上红并点名（不依赖真实环境）。"""
+    clean = [(r['现名'], r['域']) for r in ROWS]
+    assert _prefix_violations(clean) == []
+    assert _unregistered(clean, []) == []
+
+    # 一、基线改名 → 正向判据红并点名
+    renamed = list(clean)
+    renamed[3] = ('临时改名', renamed[3][1])
+    bad = _prefix_violations(renamed)
+    assert bad and '临时改名' in ' '.join(bad), bad
+
+    # 二、删掉一条基线 → 正向判据红并点名
+    trimmed = clean[:3] + clean[4:]
+    bad = _prefix_violations(trimmed)
+    assert bad and '搜索文件' in ' '.join(bad), bad
+
+    # 三、新增未登记 → 反向判据红并点名；豁免源与 mcp__ 透传不误伤
+    with_extra = clean + [('我的新工具', '其他'), ('豁免样例', 'team'),
+                          ('mcp__fake__echo', '其他')]
+    stray = _unregistered(with_extra, ['豁免样例'])
+    assert stray == ['我的新工具（域 其他）'], stray
