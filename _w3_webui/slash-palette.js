@@ -1,1 +1,0 @@
-console.log('R106_PALETTE');
