@@ -1,0 +1,1 @@
+console.log('WEBUI_SETTINGS_JS');
