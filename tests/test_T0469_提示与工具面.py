@@ -12,8 +12,11 @@ DSH 对照：核心工具 20+，system-prompt 是由各插件贡献的 30+ 顺�
      FILE_REFERENCE / TOOL_* / 末尾实参契约），工具不在场时对应指导段不出现。
   C. 长度受控（关联 T-0466）：生产提示总长 ≤ 生产提示上限()，超预算时限长提示 会截断并留标记。
   D. 工具面：standard 注册表含结构化编辑（编辑文件）/ 待办规划（todo_write）/
-     目标管理（目标 = 线名 goal）三类，且与 MCP 工具（mcp__*）共存不互相过滤；
+     目标管理（目标 = 语义线名 workflow__goal）三类，且与 MCP 工具（mcp__*）共存不互相过滤；
      再验这三个工具真的能跑（不是一调就抛错的死工具）。
+
+     T-0534：线名口径改为「语义名点号转写」（<域>__<动作>），旧口径的 tool_<序> 兜底废除，
+     本判据同步钉新形态（edit_file 仍是核心 fs 固定线名）。
 
 反跑锚点（见 .hive/summary.md 记录）：
   - 把 造生产提示注册表 的 规划段 注册行删掉 → 判据 A 的「先规划」断言立红；
@@ -183,8 +186,8 @@ DRIVER = r'''
     线名表.追加(名)
   打印("D_模式数=" + 转字符串(长度(线名表)))
   打印("D_模式有编辑=" + 转字符串(线名表.包含("edit_file")))
-  打印("D_模式有待办=" + 转字符串(线名表.包含("todo_write")))
-  打印("D_模式有目标tool=" + 转字符串(线名表.包含("tool_" + 转字符串(1))))
+  打印("D_模式有待办=" + 转字符串(线名表.包含("workflow__todo_write")))
+  打印("D_模式有目标=" + 转字符串(线名表.包含("workflow__goal")))
 
   # 待办 / 目标工具真的能跑（不是注册了就抛错的死工具）
   设 会话对象 为 新建会话("t0469-verify", ".")
@@ -392,17 +395,18 @@ def test_standard含三类新增工具(探针):
     assert kv['D_有待办'] == 'True', 'standard 缺待办规划（todo_write）'
     assert kv['D_有目标'] == 'True', 'standard 缺目标管理（目标 / goal）'
     assert kv['D_有四件套'] == 'True', '既有的 bash / 读文件 被弄丢了（工具线名规则必须不变）'
-    # 线名规则：中文注册名 → 固定 ASCII 线名，目标走 tool_<序> 兜底
+    # 线名规则（T-0534）：语义名点号转写 —— 核心 fs 四件套固定线名，其余 <域>__<动作>；
+    #   旧的「中文名 → tool_<序> 兜底」已废除（语义名必须出现在模型面）。
     assert kv['D_线名_编辑'] == 'edit_file', kv
-    assert kv['D_线名_待办'] == 'todo_write', kv
-    # 目标（中文注册名）不合线名规则 → 走确定性 tool_<序> 兜底；这里只钉「是 ASCII 线名」，
-    # 具体序号随注册规模变，写死序号会让判据对无关新增过敏（T-0419/T-0456 的教训）。
-    assert re.match(r'^tool_\d+$', kv['D_线名_目标'] or ''), (
-        '中文注册名必须被合名化成 ASCII 线名（DeepSeek 只收 ^[A-Za-z0-9_]{1,64}$）', kv['D_线名_目标'])
-    assert kv['D_线名_目标'] not in ('', '目标'), kv['D_线名_目标']
+    assert kv['D_线名_待办'] == 'workflow__todo_write', kv
+    assert kv['D_线名_目标'] == 'workflow__goal', kv
+    # 所有线名仍必须是 API 能收的 ASCII 形态（DeepSeek 只收 ^[A-Za-z0-9_]{1,64}$）
+    for 名 in (kv['D_线名_编辑'], kv['D_线名_待办'], kv['D_线名_目标']):
+        assert re.match(r'^[A-Za-z0-9_]{1,64}$', 名 or ''), ('线名不合 API 约束', 名)
     assert int(kv['D_模式数']) >= 20, ('模型可见工具模式仍不足 20', kv['D_模式数'])
     assert kv['D_模式有编辑'] == 'True', '工具模式里没有 edit_file（模型看不见结构化编辑）'
-    assert kv['D_模式有待办'] == 'True', '工具模式里没有 todo_write（模型看不见规划工具）'
+    assert kv['D_模式有待办'] == 'True', '工具模式里没有 workflow__todo_write（模型看不见规划工具）'
+    assert kv['D_模式有目标'] == 'True', '工具模式里没有 workflow__goal（模型看不见目标工具）'
 
 
 def test_只读预设仍收紧(探针):
