@@ -48,3 +48,35 @@ F-06	test_R87_B3_基建_团队状态收敛.light	windows	Windows 全量偶发 Pe
 F-07	tests/unit/test_会话持久化JSONL.py::test_投影目录_空cwd	windows	Windows 全量偶发 Permission denied: stdlib\内置核心字典.light（投影目录空 cwd 写内置字典瞬时占用）。隔离单跑恒绿（NOWD=_no-cwd 断言通过）。F 路复核隔离通过。	登记豁免同类 Windows 文件锁 Permission denied；稳定复现须人工归因。
 F-08	test_终端PTY.light	windows	当前 Windows session（无 console 窗口/后台进程）CreatePseudoConsole 稳定 HRESULT E_INVALIDARG(-2147024890)，隔离单跑亦红（非偶发 flaky）。0.88 环境与有 console 的交互 session 下绿。非 B 路回归（F 路未动 stdlib/伪终端.light）。	登记豁免本环境确定性红；若在有 console 的 CI/交互 session 下仍红，须人工归因（疑似真退化）。
 F-09	test_异步PTY.light	windows	同 F-08：当前 Windows session CreatePseudoConsole E_INVALIDARG，隔离单跑亦红。0.88 环境下绿。非 B 路回归。	登记豁免本环境确定性红；有 console session 下红须人工归因。
+#
+# ── T-0524 复核：5 条「并发候选」实测为确定性挂死，不入账（2026-11-27）────────────
+# 背景：任务卡原判断是「直接运行 rc=0、pytest -n 4 下红 ⇒ 并发争用假红」。实测不成立，
+#   因此**没有**给这 5 条登记 flaky（登记即「把真缺陷提前转绿」，违反台账红线）。
+# 被测提交：e940664（main，含 T-0520/0521/0522/0523）。用例：
+#   test_R41_真实IO端到端.light / test_R41_真实网络IO.light / test_流式推流E2E.light /
+#   test_web路由.light / test_会话模型选择.light
+# 取证 1（直跑，Windows 10 + pwsh，cwd=独立临时目录）：
+#   python 运行.py examples/<用例> —— 5/5 都打印「全部断言通过 / 通过」，但进程 120s 不退
+#   （subprocess timeout 记为 TIMEOUT120；输出尾如「任务5 全部断言通过（真实IO端到端…）」）。
+# 取证 2（直跑，FreeBSD 15.1 / 192.168.0.88，python3.12，同一提交）：
+#   python3 运行.py examples/test_流式推流E2E.light —— 「--- 流式推流E2E 通过 ---」后
+#   90s 仍不退（TIMEOUT90）；test_R41_真实IO端到端 / test_R41_真实网络IO 同现象。
+# 取证 3（pytest 串行，不带 xdist）：-o addopts='--timeout=60' 单跑即 Timeout 红
+#   ⇒ 不是并发争用，隔离也红。
+# 取证 4（pytest -n 4）：5 failed（worker crashed while running …），与 F-03~F-05 的
+#   worker crash 表象相同，但根因不同（见取证 5），不能照抄那几条的处置。
+# 取证 5（卡点定位）：0.88 上 `python3 -X faulthandler` + dump_traceback_later(40s)：
+#   主线程停在 threading.py:_shutdown，等一条非守护线程：
+#     src/web服务器.light 排队唤醒循环 → stdlib/线程.py _包装 → threading.run
+#   根因：T-0490（commit a1cec55，2026-11-25）为「排队兜底」加了 `当 真: sleep(2)` 的
+#   唤醒线程，Web服务端.停止() 只停服务端、不停这条线程 ⇒ 进程永远退不出 ⇒ 全量按
+#   timeout(60)/_run(300) 判红。
+# 结论：真缺陷，修复路径是 src/web服务器.light（加停止标志 + 停止时 join 唤醒线程，
+#   或把该线程设为守护线程）。不在 T-0524 的允许修改路径内，已写进 .hive/summary.md
+#   请派修复卡；修好后若再出现「隔离恒绿 + 全量偶发红」，才按上面的取证格式登记。
+# 防回归：tests/unit/test_ci_台账口径.py::test_确定性挂死用例不得登记为flaky 会拦住
+#   任何人把这 5 条直接登记进本台账。
+# 同轮全量对拍里还有 1 条 test_会话持久化用户目录（写死 /tmp/lh_migrate_test，撞上别的
+#   用户 0755 残留 ⇒ Permission denied；隔离 3/3 rc=1）——属测试卫生缺陷，不是 flaky、
+#   也不入环境红台账，分账见 tests/ci_environment_reds.txt「T-0524 全量对拍」节。
+
