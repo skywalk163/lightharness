@@ -10,8 +10,8 @@
 3. 条目不虚指：引用的用例文件必须真实存在；同一 (文件, 平台) 不得重复登记；
    环境红台账与 flaky 台账不得对同一 (文件, freebsd) 双登记；
 4. 口径不串门：环境红台账只收平台能力差异，flaky 台账只收「隔离恒绿 + 全量偶发红」。
-   已知的确定性挂死用例（T-0524 实测，见 flaky_registry.txt 复核节）不得登记为 flaky
-   —— 那是真缺陷，登记即「提前转绿」。
+   T-0524 实测的 5 条确定性挂死（证据链见 flaky_registry.txt 复核节）已由 T-0526 修复
+   （T-0528 销账）：它们必须在两份台账之外，且必须能正常退出（rc=0、进程自己返回）。
 
 解析口径刻意与 tests/test_回归.py、tests/ci_judge_env_reds.py 保持一致：
 制表符分隔、# 开头与空行为注释。日期允许落在条目自身或它所在段落的标题注释里
@@ -20,10 +20,18 @@
 import importlib.util
 import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+import pytest
 
 TESTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO = os.path.dirname(TESTS_DIR)
 EXAMPLES = os.path.join(REPO, "examples")
+RUNNER = os.path.join(REPO, "运行.py")
 ENV_LEDGER = os.path.join(TESTS_DIR, "ci_environment_reds.txt")
 FLAKY_REGISTRY = os.path.join(TESTS_DIR, "flaky_registry.txt")
 
@@ -40,14 +48,24 @@ PLATFORMS = {"windows", "freebsd", "linux"}
 # T-0524 实测为「断言全过但进程不退出」的确定性挂死（非并发假红、非环境差异）。
 # 根因：src/web服务器.light 的 排队唤醒循环（T-0490 引入）无停止标志，
 #       Web服务端.停止() 只停服务端不停唤醒线程 ⇒ 进程退不出 ⇒ 全量超时判红。
-# 证据链见 tests/flaky_registry.txt 的「T-0524 复核」节。
-DETERMINISTIC_HANG_CASES = {
+# T-0526（2026-11-27，commit 75c6b6f）已修：新增 唤醒停止 标志，停止() 置真后 join(3)，
+#       兜底唤醒线程同时改守护线程 ⇒ 进程可正常退出。T-0528 在 0.88 全量复跑销账
+#       （提交 59798ce，641 例 / 584.3s，这 5 条全部 rc=0，judge 新增红 0）。
+# 故本判据从「不得登记」升级为「在台账外 + 能正常退出」——放宽登记禁令不等于放水：
+#       真挂死会在下面的退出判据里超时露馅。
+FIXED_HANG_CASES = {
     "test_R41_真实IO端到端.light",
     "test_R41_真实网络IO.light",
     "test_流式推流E2E.light",
     "test_web路由.light",
     "test_会话模型选择.light",
 }
+# 退出判据阈值：正常退出实测 18–29s（大头是光明编译；0.88 18.4–22.0s、Windows 26–29s），
+# 原挂死态实测 90–120s 不返回；取 70s 墙钟上限 + 90s 硬超时，两边都留足间距。
+WALL_LIMIT = 70
+SUB_TIMEOUT = 90
+
+pytestmark = pytest.mark.timeout(600)
 
 
 def _parse(path):
@@ -189,19 +207,71 @@ def test_环境红与flaky不得双登记():
     )
 
 
-# ── 4. 口径不串门：确定性挂死不得当 flaky ──────────────────────────────────
-def test_确定性挂死用例不得登记为flaky():
-    """T-0524 复核：这 5 条是「断言全过、进程退不出」的真缺陷，不是并发假红。
+# ── 4. 口径不串门：已修复的挂死用例在台账外、且能正常退出 ──────────────────
+def test_挂死用例修复后仍在两份台账之外():
+    """T-0526 修好后，这 5 条既不是平台环境红、也不是「隔离恒绿 + 全量偶发红」的 flaky。
 
-    若将来 src/web服务器.light 的唤醒线程被加上停止标志（进程能正常退出）后，
-    确实出现了「隔离恒绿 + 全量偶发红」，再按取证口径登记，并同步更新本条判据。
+    登记它们不是「有据可查的豁免」，而是把真缺陷糊成噪音；所以两份台账都不许收。
     """
-    registered = {f[1] for _, f in _parse(FLAKY_REGISTRY)}
-    leaked = sorted(DETERMINISTIC_HANG_CASES & registered)
-    assert not leaked, (
-        "确定性挂死用例被登记为 flaky（等于把真缺陷提前转绿）: "
-        + ", ".join(leaked)
-        + "；先修 src/web服务器.light 的退出路径，再谈豁免"
+    env_files = {f[1] for _, f in _parse(ENV_LEDGER)}
+    flaky_files = {f[1] for _, f in _parse(FLAKY_REGISTRY)}
+    leaked_env = sorted(FIXED_HANG_CASES & env_files)
+    leaked_flaky = sorted(FIXED_HANG_CASES & flaky_files)
+    assert not leaked_env, (
+        "已修复的挂死用例被登记进环境红台账（被当成平台能力差异）: " + ", ".join(leaked_env)
+    )
+    assert not leaked_flaky, (
+        "已修复的挂死用例被登记为 flaky（等于把真缺陷提前转绿）: " + ", ".join(leaked_flaky)
+    )
+
+
+def _case_env():
+    env = dict(os.environ)
+    env["HARNESS_PY"] = sys.executable
+    env["HARNESS_WEB_NO_OPEN"] = "1"  # 门禁不弹浏览器（examples/运行Web服务器.light 约定）
+    return env
+
+
+def test_挂死用例修复后能正常退出():
+    """外部可观察判据：5 条都 rc=0 且进程自己退出（不是被 timeout 杀掉）。
+
+    用 %TEMP% 下的短目录做 cwd（pytest tmp_path 会把用例名转义进路径，撞 Windows 260
+    字符上限 → 会话保存 WinError 3 假红）；顺序跑，避免 -n auto 下 5 份光明编译并发抢 CPU。
+    """
+    root = tempfile.mkdtemp(prefix="t0528_")
+    failures, report = [], []
+    try:
+        for name in sorted(FIXED_HANG_CASES):
+            entry = os.path.join(EXAMPLES, name)
+            assert os.path.isfile(entry), f"缺用例文件: {entry}"
+            wd = os.path.join(root, name.replace(".light", ""))
+            os.makedirs(wd, exist_ok=True)
+            t0 = time.monotonic()
+            try:
+                p = subprocess.run(
+                    [sys.executable, RUNNER, entry],
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    cwd=wd, timeout=SUB_TIMEOUT, env=_case_env(),
+                )
+            except subprocess.TimeoutExpired:
+                failures.append(f"{name}: {SUB_TIMEOUT}s 内没退出（进程挂死）")
+                report.append(f"{name}: TIMEOUT")
+                continue
+            wall = time.monotonic() - t0
+            report.append(f"{name}: rc={p.returncode} wall={wall:.1f}s")
+            if p.returncode != 0:
+                failures.append(
+                    f"{name}: rc={p.returncode}（要求 rc==0）\n{(p.stdout or '')[-1500:]}"
+                )
+            elif wall >= WALL_LIMIT:
+                failures.append(
+                    f"{name}: wall={wall:.1f}s ≥ {WALL_LIMIT}s（退出得太晚，疑似仍在挂死边缘）"
+                )
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not failures, (
+        "T-0526 修复的 5 条起服务用例没有干净退出:\n  - " + "\n  - ".join(failures)
+        + "\n实测: " + " | ".join(report)
     )
 
 
