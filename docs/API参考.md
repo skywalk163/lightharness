@@ -407,6 +407,14 @@ OTLP（OpenTelemetry Protocol）导出器。当前为接口层预留，仅组装
 
 ---
 
+## 模型面工具名（`function.name`，T-0534）
+
+`/v1/chat/completions` 请求体里的 `tools[].function.name` 用**语义线名** `<域>__<动作>`（语义名 `<域>.<动作>` 的点号转写成双下划线），例如 `workflow__todo_write`、`workflow__goal`、`web__search` / `web__fetch`、`shell__run`、`ctx__select_blocks`；核心 fs 四件套与 `bash` 沿用固定线名 `read_file` / `write_file` / `search_files` / `edit_file` / `bash`。
+
+旧名（`todo_write` / `web_search` / `goal`）仍作为兼容别名可调用，调用侧 `回名` 会解析回基线注册名；完整 160 条映射见 `docs/工具命名规范.light.md`。
+
+---
+
 ## Web HTTP API（新会话落地页，T-0395~T-0399）
 
 服务入口见 `src/web服务器.light`。下表的键名是**字面量**，请求/响应都用 UTF-8 JSON。

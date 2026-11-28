@@ -183,6 +183,22 @@ python 运行.py examples/运行CLI.light
 python 运行.py examples/运行Web服务器.light
 ```
 
+## 模型面工具名（线名）
+
+模型在请求里看到的 `tools[].function.name` 是**语义线名**：由语义名 `<域>.<动作>` 的点号转写成 `<域>__<动作>`（T-0534）。常用的几个：
+
+| 线名（`function.name`） | 用途 |
+|------|------|
+| `workflow__todo_write` | 整表替换待办清单（本轮规划） |
+| `workflow__goal` | 跨轮目标推进 / 完成 / 暂停 |
+| `web__search` / `web__fetch` | 外部检索与抓正文 |
+| `shell__run` | 跑命令 |
+| `ctx__select_blocks` | 上下文压缩选块 |
+
+核心 fs 四件套沿用固定线名（`read_file` / `write_file` / `search_files` / `edit_file`），`bash` 的线名也不变。
+
+旧名（`todo_write` / `web_search` / `goal` 等）仍作为**兼容别名**可调用，调用侧 `回名` 会解析回基线注册名；完整 160 条映射见 **[docs/工具命名规范.light.md](docs/工具命名规范.light.md)**。
+
 ## 环境变量
 
 启动 Web 服务时可用以下环境变量控制行为：
