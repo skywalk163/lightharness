@@ -27,6 +27,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, '运行.py')
 TIMEOUT_SEC = 240
 
+# T-0540：T0477 的 xdist worker 崩溃根因是**超时预算**，不是断言。
+# 本文件判据全部走真实 `.light` 子进程（`运行.py`），每次调用都要冷编译整仓
+# 工具面（单跑 21–37s；`test_mcp工具无叶子且受开关控制` 连起两个子进程）。
+# pytest.ini 的全局 `--timeout=60` 在 xdist 并跑（尤其全量负载、多 worker 同时
+# 编译）时会被吃穿，pytest-timeout 直接把 worker kill，报「worker crashed」而非
+# 断言红（T-0499/T-0521/T-0522 同源记录）。照 tests/test_T0456_收口接线.py /
+# test_T0403_新模式预设.py 的既有先例放宽到 300s：判据一字不改，只给足真实编译
+# 预算，xdist 并行下不再被误杀。
+pytestmark = pytest.mark.timeout(300)
+
 REQUIRED = [
     'bash', '读文件', '写文件', '编辑文件', '搜索文件',
     'job_start', 'job_output', 'job_kill',

@@ -81,7 +81,7 @@ def test_unspaced_arithmetic_split():
     assert ("IDENTIFIER", "甲") in toks and ("IDENTIFIER", "乙") in toks
 
 
-# ---- 4) 硬语句头排除集契约（_P0A_SUFFIX_SPLIT_KW） ----
+# ---- 4) 硬语句头排除集契约（_P0A_SUFFIX_SPLIT_KW；定义 为 T-0444 例外） ----
 
 def test_name_connector_still_split():
     """`等于空那么`：那么 是连接词，词中不得被后缀规则吞掉。"""
@@ -97,11 +97,20 @@ def test_type_kw_still_split():
     assert ("IDENTIFIER", "除") in toks
 
 
-def test_definition_kw_still_split():
-    """`自定义表`：定义 是定义语句头，词中保持既有切分（权限.light 语料契约）。"""
-    toks = _pairs("自定义表")
-    assert ("KEYWORD", "定义") in toks
-    assert ("IDENTIFIER", "自") in toks and ("IDENTIFIER", "表") in toks
+def test_definition_kw_word_internal_merged():
+    """`自定义表`：T-0444 起 定义 从后缀切分排除集移出，词中/词尾并入标识符。
+
+    原判据「定义 是定义语句头，词中保持既有切分」的前提已被 T-0444 证伪：定义 作
+    语句头恒在语句起始（scan_pos==0），词中/词尾不存在真语句头；保留排除项只会让
+    同一串字符在声明处整体登记、使用处被截断（`未定义甲` 声明后使用报
+    `name '未' is not defined`）。现按当前契约钉住：词中/词尾整体成词，词首/独立
+    出现仍是 KEYWORD（未取消关键字身份）。参见 lexer.py `_P0A_SUFFIX_SPLIT_KW`
+    注释【T-0444 移出 定义】。
+    """
+    assert _pairs("自定义表") == [("IDENTIFIER", "自定义表")]
+    # 词首独立出现仍是语句头 KEYWORD（不因整体识别而取消关键字）
+    assert _pairs("定义甲") == [("KEYWORD", "定义"), ("IDENTIFIER", "甲")]
+    assert _pairs("定义 宏")[0] == ("KEYWORD", "定义")
 
 
 # ---- 5) 控制流语句头（token 层） ----
