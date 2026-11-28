@@ -14,8 +14,10 @@
 T-0533 基线漂移根治（原判据写死 168/75/40/5/48，插件开关一变就假红）：
   - 总数 / 四档计数一律从真实 `组装注册表()` 的 dump 实时推导，**不写死在断言里**；
     插件关开（REG=160 / REG=168）两种环境都能绿；
-  - 「静态分级表 168 项」是源码里的**超集**，保留「表条数 >= 注册表总数」的关系断言，
-    不要求等于某个具体数字；
+  - T-0544：静态分级表 168 项只覆盖**内置工具**（MCP 是动态挂载，逐名穷举不可行），
+    关系断言改为「逐名 dump 覆盖全部注册工具」——dump 由 工具可逆性()/逐名dump()
+    统一生成，MCP 走服务器规则表（hive/lightmem/github → 半可逆），未知服务器
+    fail-closed 归不可逆；`未分级` 仍必须为 0（MCP 不是漏网）；
   - 关键工具档位逐名钉住（含横切/宿主/命令类），防把档位表掏空。
 
 运行方式：python -m pytest -q tests/test_T0508_可逆性分级.py
@@ -63,6 +65,7 @@ REAL_DRIVER = '''
 从 总入口 导入 组装注册表
 从 工具面装配 导入 工具可逆性, 可逆性统计, 未分级工具, 按可逆性取工具
 从 工具面装配 导入 可逆性表, 可逆性级别名表, 是合法可逆性, 是否显式分级, 默认可逆性
+从 工具面装配 导入 可逆性逐名dump, MCP可逆性规则表
 从 工具面装配 导入 级只读, 级可逆, 级半可逆, 级不可逆
 从 内置核心列表 导入 列表追加, 列表包含
 从 内置核心字典 导入 字典键列表
@@ -87,6 +90,7 @@ REAL_DRIVER = '''
   设 名表 为 注册表.名单()
   打印 "总数=" + 转字符串(长度(名表))
   打印 "表条数=" + 转字符串(长度(字典键列表(可逆性表)))
+  打印 "dump条数=" + 转字符串(长度(字典键列表(可逆性逐名dump(名表))))
   设 统 为 可逆性统计(名表)
   打印 "只读=" + 转字符串(统["read_only"])
   打印 "可逆=" + 转字符串(统["reversible"])
@@ -119,7 +123,11 @@ REAL_DRIVER = '''
   打印 "非字符串档=" + 工具可逆性(123)
   打印 "空串档=" + 工具可逆性("")
   打印 "MCP档=" + 工具可逆性("mcp__github__list_issues")
+  打印 "MCP规则hive=" + 工具可逆性("mcp__hive__hive_get_task")
+  打印 "MCP规则lightmem=" + 工具可逆性("mcp__lightmem__lightmem_save")
+  打印 "MCP未知服务器=" + 工具可逆性("mcp__no_such_server__boom")
   打印 "MCP显式=" + 转字符串(是否显式分级("mcp__github__list_issues"))
+  打印 "MCP未知显式=" + 转字符串(是否显式分级("mcp__no_such_server__boom"))
   打印 "已登记显式=" + 转字符串(是否显式分级("读文件"))
   打印 "未知显式=" + 转字符串(是否显式分级("完全不存在的工具NNN"))
   打印 "默认可逆性=" + 默认可逆性
@@ -187,10 +195,12 @@ def test_分级回填完整且可复核(真实注册表):
     assert int(kv.get('非法档位数', '1')) == 0, ('档位不是四级之一', out)
     # 2) 四档并集 = 全集
     assert kv.get('并集数') == kv.get('总数'), ('按档查询漏了工具', out)
-    # 3) 计数环境无关：四档数从本次 dump 推导，只校验「分剧 + 求和 == 总数」
-    #    160（不挂插件）/ 168（挂 lightplugin）两种环境都适用，不写死任何一档计数。
+    # 3) 计数环境无关：四档数从本次 dump 推导，只校验「分档 + 求和 == 总数」
+    #    160（不挂插件）/ 199（挂 MCP）等环境都适用，不写死任何一档计数。
     档图 = _档位图(kv)
     assert len(档图) == total, ('逐名档位记录数与总数不符', len(档图), total, out)
+    assert int(kv.get('dump条数', '0')) == total, \
+        ('逐名 dump 未覆盖全部注册工具', kv.get('dump条数'), total, out)
     # dump 的统计键是英文档位字面值（read_only/reversible/semi/irreversible）
     中文键 = {只读: '只读', 可逆: '可逆', 半可逆: '半可逆', 不可逆: '不可逆'}
     for 档 in 档位键:
@@ -200,10 +210,17 @@ def test_分级回填完整且可复核(真实注册表):
             ('统计档位与逐名 dump 不一致：' + k, kv[k], out)
     assert (int(kv['只读']) + int(kv['可逆']) + int(kv['半可逆']) +
             int(kv['不可逆'])) == total, out
-    # 静态分级表是超集：表条数不随注册表裁剪，但至少要覆盖当前注册表
-    # （main 上实测 168 项静态表 vs 160/168 两种注册表规模）。
-    assert int(kv.get('表条数', '0')) >= total, \
-        ('分级表未覆盖当前注册表', kv.get('表条数'), total, out)
+    # T-0544：静态分级表只覆盖内置工具（MCP 动态挂载无法逐名穷举），
+    # 关系断言只能拿「非 MCP 工具数」比，不能拿全量总数比 —— 否则挂 MCP 必崩。
+    mcp数 = sum(1 for 名 in 档图 if 名.startswith('mcp__'))
+    内置数 = total - mcp数
+    assert int(kv.get('表条数', '0')) >= 内置数, \
+        ('静态分级表未覆盖全部内置工具', kv.get('表条数'), 内置数, total, out)
+    # MCP fail-closed 必须落在半可逆/不可逆两档之一，绝不能落到 未分级：
+    # 未分级 == 0 已在上方断言，这里再钉住档位方向（不许把 MCP 全塞只读/可逆）。
+    for 名, 档 in 档图.items():
+        if 名.startswith('mcp__'):
+            assert 档 in (半可逆, 不可逆), ('MCP 工具档位不合规', 名, 档, out)
 
 
 def test_关键工具档位与不可逆风险面(真实注册表):
@@ -244,15 +261,21 @@ def test_查询语义与fail_closed兜底(真实注册表):
     assert kv.get('不可逆首项') == 'bash', out
     # 未知档位返回空表（不抛错）
     assert kv.get('未知档列表') == '', out
-    # 未知/非字符串/空串/MCP 一律按 fail-closed 兜底
+    # 未知/非字符串/空串 一律按 fail-closed 兜底为不可逆
     assert kv.get('未知工具档') == 不可逆, out
     assert kv.get('非字符串档') == 不可逆, out
     assert kv.get('空串档') == 不可逆, out
-    assert kv.get('MCP档') == 不可逆, out
+    # MCP：规则表命中的已知服务器 → 半可逆；未知服务器 → fail-closed 不可逆
+    # T-0544：逐名钉位 3 个（hive / lightmem / 未知服务器），防规则表被掏空。
+    assert kv.get('MCP档') == 半可逆, out
+    assert kv.get('MCP规则hive') == 半可逆, out
+    assert kv.get('MCP规则lightmem') == 半可逆, out
+    assert kv.get('MCP未知服务器') == 不可逆, out
     assert kv.get('默认可逆性') == 不可逆, out
-    # 显式分级口径：表内与 MCP 算显式；未知不算
+    # 显式分级口径：表内与 MCP（含未知服务器 fail-closed）算显式；未知不算
     assert kv.get('已登记显式') in ('True', '真'), out
     assert kv.get('MCP显式') in ('True', '真'), out
+    assert kv.get('MCP未知显式') in ('True', '真'), out
     assert kv.get('未知显式') in ('False', '假'), out
     # 档位合法性判定
     assert kv.get('合法semi') in ('True', '真'), out
