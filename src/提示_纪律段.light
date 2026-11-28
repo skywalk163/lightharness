@@ -28,7 +28,7 @@
   ["读文件", "read_file"],
   ["搜索文件", "search_files"],
   ["编辑文件", "edit_file"],
-  ["web_search", "web_fetch"]
+  ["web_search", "web__search", "web_fetch", "web__fetch"]
 ]
 设 规则文案表 为 [
   退出码行,
