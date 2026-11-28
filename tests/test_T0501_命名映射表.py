@@ -10,10 +10,24 @@
   3. 唯一性：语义名互不重复，且与现名、与 mcp__ 前缀不冲突；
   4. 域对齐：域 ∈ T-0496 的 24 个枚举值，前缀 == 域（唯一例外 横切 → xcut）；
   5. 兼容标注：只有「保留别名 / 直接改名」两种，保留别名 ⟺ 现名 ∈ 别名保留名单；
-  6. 与真实注册表的两条互补判据（T-0525 改写，环境无关，§6.1）：
-     正向 —— §6 的 160 条必须按登记序作为注册表的**前缀**逐位一致（现名 + 域）；
-     反向 —— 注册表里既不在 §6、也不在 `不上叶子表`、也不以 `mcp__` 开头的条目逐条点名判红。
+  6. 与真实注册表的两条互补判据（T-0525 改写，T-0542 环境无关化，§6.1）：
+     正向 —— §6 的 160 条必须按登记序作为**核心注册面**的**前缀**逐位一致（现名 + 域）；
+     反向 —— 核心注册面里既不在 §6、也不在 `不上叶子表`、也不以 `mcp__` 开头的条目
+     逐条点名判红；完整注册面只额外校验「核心在前、挂载项在末尾追加」。
      注册面完全未装配（缺核心工具）时以明确理由跳过，不假绿不假红。
+
+T-0542 基线漂移根治（与 T-0533 同类：判据不能把环境规模写死成契约）：
+  - §6 的权威范围是**本仓核心注册面 160**（规范 §6.1 标题即此口径），但完整注册面会随
+    「本机挂了哪些插件」漂移：lightplugin 兄弟仓在场时 `动态挂载撞车插件` 会追加
+    代理团队/交付呈现/会话查询/团队界面 的工具（实测 fb98 168 = 160 + 8，其中
+    交付登记/交付列出/交付完成/交付关联/查询会话 5 条既不在 §6、也不在不上叶子表、
+    也不是 mcp__，在旧判据里被误判成「真·漏登记」）。
+  - 修法不是给这 5 条开豁免名单（规范 §6.1 明确「豁免源只有两个，别处不得再新增名单」），
+    而是把判据的复算面收回到**核心注册面**：同一驱动在「没有 lightplugin 兄弟」的
+    工作目录再装配一次（`动态挂载撞车插件` 的插件目录按 cwd 的 `../lightplugin` 求值），
+    正向/反向都只判这一面；完整注册面只要求「核心 160 位前缀不变 + 追加项在末尾」。
+  - 判据强度不降：新增的**核心**工具两面都会出现，反向判据照样点名判红；
+    插件挂载项只在完整面出现（核心面里根本没有），不构成「漏登记」，也不靠豁免名单掩盖。
 
 运行方式：python -m pytest -q tests/test_T0501_命名映射表.py
 Windows 本机若子进程输出触发 GBK 解码错误，加 PYTHONUTF8=1 再跑（不是产物问题）。
@@ -23,6 +37,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -198,8 +213,13 @@ def _lightplugin_dir():
     return ''
 
 
-def _dump(tmp_path):
-    """返回 ((注册表 [(名, 域)], 不上叶子表 [名]), 错误文本)；导出失败时第一项为 None。"""
+def _dump(tmp_path, cwd=None):
+    """返回 ((注册表 [(名, 域)], 不上叶子表 [名]), 错误文本)；导出失败时第一项为 None。
+
+    `cwd` 默认仓库根（完整注册面：挂上本机 lightplugin 兄弟仓里的插件）；
+    指向 `没有 ../lightplugin` 的目录时得到**核心注册面**——`动态挂载撞车插件`
+    的插件目录按 cwd 的 `../lightplugin` 求值，核心面因此不含插件工具（T-0542）。
+    """
     path = tmp_path / 't0501_registry.light'
     path.write_text(DUMP_DRIVER, encoding='utf-8')
     env = dict(os.environ)
@@ -208,7 +228,8 @@ def _dump(tmp_path):
     plug = _lightplugin_dir()
     if plug:
         env['LIGHTPLUGIN'] = plug
-    proc = subprocess.run([sys.executable, RUNNER, str(path)], cwd=ROOT,
+    proc = subprocess.run([sys.executable, RUNNER, str(path)],
+                          cwd=str(cwd or ROOT),
                           capture_output=True, text=True, timeout=240,
                           env=env, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
@@ -263,26 +284,74 @@ def _unregistered(reg, exempt):
     return stray
 
 
+def _surface_split(full, core):
+    """完整注册面 vs 核心注册面：返回 (前缀是否一致, 末尾追加的挂载项, 说明)。
+
+    核心面是「没有 lightplugin 兄弟仓」时装配出来的那一面（§6.1 的权威范围 160）；
+    完整面 = 核心面 + 本机插件/MCP 挂载项。追加只允许发生在末尾：
+    核心 160 位必须逐位等于完整面的前 160 位，否则顺序契约被破坏。
+    """
+    core_names = [n for n, _ in core]
+    full_names = [n for n, _ in full]
+    if full_names[:len(core_names)] != core_names:
+        return False, [n for n in full_names if n not in set(core_names)], \
+            '完整面的前 %d 位与核心面不一致' % len(core_names)
+    if any(n in set(core_names) for n in full_names[len(core_names):]):
+        # 前缀已相等，就不可能再出现核心名；这条是防御性断言
+        return False, [], '挂载项里混进了核心注册名'
+    return True, full_names[len(core_names):], ''
+
+
+def _dump_both(tmp_path):
+    """并发装配完整面与核心面（两次跑光明解释器，串行会顶到 pytest --timeout=60）。"""
+    core_dir = tmp_path / 'core'
+    core_dir.mkdir()
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        full_f = ex.submit(_dump, tmp_path)
+        core_f = ex.submit(_dump, core_dir, core_dir)
+        return full_f.result(), core_f.result()
+
+
+@pytest.mark.timeout(180)
 def test_与真实注册表逐位一致(tmp_path):
-    (reg, exempt), err = _dump(tmp_path)
-    assert reg is not None, '注册表导出失败：%s' % err[-2000:]
+    # 完整面（可能挂本机 lightplugin 插件）+ 核心面（无插件兄弟）各装配一次
+    ((reg, exempt), err), ((core, core_exempt), err2) = _dump_both(tmp_path)
+    assert reg is not None, '完整注册表导出失败：%s' % err[-2000:]
+    assert core is not None, '核心注册表导出失败：%s' % err2[-2000:]
     assert exempt, '不上叶子表 未从 工具面装配 导入到条目：%s' % err[-2000:]
+    assert core_exempt, '不上叶子表 未从 工具面装配 导入到条目：%s' % err2[-2000:]
 
-    # 环境可用性判据：注册面是否装上了。不用条数门槛（条数随插件 / MCP 漂移）。
-    if not (set(n for n, _ in reg) & set(CORE_SENTINELS)):
-        pytest.skip('当前环境未装配工具注册面（注册表仅 %d 条，且不含核心工具 %s）——'
+    # 环境可用性判据：核心注册面是否装上了。不用条数门槛（条数随插件 / MCP 漂移）。
+    if not (set(n for n, _ in core) & set(CORE_SENTINELS)):
+        pytest.skip('当前环境未装配工具注册面（核心注册表仅 %d 条，且不含核心工具 %s）——'
                     '这是环境声明，不是放低判据；映射表自身的完整性判据已通过'
-                    % (len(reg), '/'.join(CORE_SENTINELS)))
+                    % (len(core), '/'.join(CORE_SENTINELS)))
 
-    bad = _prefix_violations(reg)
-    assert not bad, ('§6 映射表与注册表前缀不一致（基线 %d 条 vs 注册表 %d 条）：\n  %s'
-                     % (len(ROWS), len(reg), _brief(bad)))
+    # 正向判据：§6 基线 160 条 = 核心注册面的登记序前缀（现名 + 域逐位相等）
+    bad = _prefix_violations(core)
+    assert not bad, ('§6 映射表与核心注册面不一致（基线 %d 条 vs 核心 %d 条）：\n  %s'
+                     % (len(ROWS), len(core), _brief(bad)))
 
-    stray = _unregistered(reg, exempt)
+    # 反向判据：核心注册面里既不在 §6、也不在 不上叶子表、也不以 mcp__ 开头 → 真·漏登记
+    stray = _unregistered(core, exempt)
     assert not stray, (
-        '注册表里有 %d 个工具既不在 §6 映射表、也不在 工具面装配.不上叶子表（§3.9 A 类）、'
-        '也不以 mcp__ 开头 —— 属真·漏登记，逐条点名：\n  %s'
+        '核心注册面里有 %d 个工具既不在 §6 映射表、也不在 工具面装配.不上叶子表'
+        '（§3.9 A 类）、也不以 mcp__ 开头 —— 属真·漏登记，逐条点名：\n  %s'
         % (len(stray), _brief(stray)))
+
+    # 完整面：核心 160 位前缀不变，插件/MCP 挂载项只允许在末尾追加
+    ok, extras, why = _surface_split(reg, core)
+    assert ok, ('完整注册面与核心面不是「核心前缀 + 末尾追加」的关系：%s\n'
+                '核心 %d 条、完整 %d 条；追加项：%s'
+                % (why, len(core), len(reg), _brief(extras)))
+
+    # 完整面里同样的反向口径只允许命中「只在完整面出现的挂载项」：
+    # 任何同时出现在核心面的名字若漏登记，上面那条已经判红；这里再钉一次，防两面口径分叉。
+    full_stray = _unregistered(reg, exempt)
+    core_names = {n for n, _ in core}
+    outside = [s for s in full_stray if s.split('（', 1)[0] in core_names]
+    assert not outside, ('完整面反向判据命中了核心注册名（与核心面口径分叉）：\n  %s'
+                         % _brief(outside))
 
 
 def test_判据自检_基线漂移与漏登记必红():
@@ -307,3 +376,16 @@ def test_判据自检_基线漂移与漏登记必红():
                           ('mcp__fake__echo', '其他')]
     stray = _unregistered(with_extra, ['豁免样例'])
     assert stray == ['我的新工具（域 其他）'], stray
+
+    # 四、完整面多出「插件挂载项」不算漏登记（它不在核心面）；
+    #     同一个名字一旦进了核心面，必须按真·漏登记红并点名
+    ok, extras, why = _surface_split(clean + [('插件新增', '其他')], list(clean))
+    assert ok and extras == ['插件新增'], (ok, extras, why)
+    assert _unregistered(list(clean), []) == []
+    core_with_extra = clean + [('插件新增', '其他')]
+    assert _unregistered(core_with_extra, []) == ['插件新增（域 其他）']
+
+    # 五、完整面把挂载项插到中间（不在末尾）→ 顺序契约破坏，_surface_split 红
+    misplaced = clean[:80] + [('插件新增', '其他')] + clean[80:]
+    ok, _, why = _surface_split(misplaced, list(clean))
+    assert not ok, why
